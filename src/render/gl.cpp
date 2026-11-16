@@ -1,5 +1,7 @@
 #include "render/gl.h"
 #include <SDL.h>
+#include <cstdio>
+#include <cstring>
 #include <regex>
 #include <set>
 #include <algorithm>
@@ -55,13 +57,89 @@ static void GLAD_API_PTR glDebugCb(GLenum, GLenum type, GLuint, GLenum severity,
   if (severity == GL_DEBUG_SEVERITY_HIGH || type == GL_DEBUG_TYPE_ERROR) DQ_WARN("GL: %s", msg);
 }
 
+// ---- OpenGL ES 3 (Android phones without Vulkan 1.3): the Legacy renderer on the phone's GLES driver.
+// glad's loader is the desktop one. Told "OpenGL ES 3.2" it loads the functions up to 3.2 only, and the Legacy path
+// uses 3.3's too (the instancing divisor, sampler objects), which ES 3.0 has under the same names: so while it loads,
+// glGetString(GL_VERSION) says 3.3. The few desktop calls ES lacks get ES versions (esFixups), and shaders get the ES
+// version line (forDriver).
+static const GLubyte* (GLAD_API_PTR* g_esRealGetString)(GLenum) = nullptr;
+static bool g_esLoading = false;
+static const GLubyte* GLAD_API_PTR esGetString(GLenum name) {
+  if (g_esLoading && name == GL_VERSION) return (const GLubyte*)"3.3";
+  return g_esRealGetString ? g_esRealGetString(name) : nullptr;
+}
+static GLADapiproc esLoad(const char* name) {
+  void* p = SDL_GL_GetProcAddress(name);
+  if (std::strcmp(name, "glGetString") == 0) { g_esRealGetString = (const GLubyte* (GLAD_API_PTR*)(GLenum))p; return (GLADapiproc)esGetString; }
+  return (GLADapiproc)p;
+}
+static void GLAD_API_PTR esClearDepth(GLdouble d) {
+  static auto f = (void (GLAD_API_PTR*)(GLfloat))SDL_GL_GetProcAddress("glClearDepthf");
+  if (f) f((GLfloat)d);
+}
+static void GLAD_API_PTR esPolygonMode(GLenum, GLenum) {}   // (ES draws filled only)
+static void GLAD_API_PTR esDrawBuffer(GLenum b) { glDrawBuffers(1, &b); }
+// glGetTexImage (the item icon atlas reads itself back): the bound 2D texture's level, read through a framebuffer
+static void GLAD_API_PTR esGetTexImage(GLenum target, GLint level, GLenum format, GLenum type, void* pixels) {
+  if (target != GL_TEXTURE_2D || !glad_glGetTexLevelParameteriv) return;
+  GLint tex = 0, w = 0, h = 0, fb = 0;
+  glGetIntegerv(GL_TEXTURE_BINDING_2D, &tex);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, level, GL_TEXTURE_WIDTH, &w);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, level, GL_TEXTURE_HEIGHT, &h);
+  if (!tex || w <= 0 || h <= 0) return;
+  glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &fb);
+  GLuint tmp = 0; glGenFramebuffers(1, &tmp);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, tmp);
+  glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, (GLuint)tex, level);
+  glReadPixels(0, 0, w, h, format, type, pixels);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)fb);
+  glDeleteFramebuffers(1, &tmp);
+}
+static void esFixups() {
+  glad_glClearDepth = esClearDepth;
+  glad_glPolygonMode = esPolygonMode;
+  glad_glDrawBuffer = esDrawBuffer;
+  glad_glGetTexImage = esGetTexImage;
+  // the chunks draw with a base vertex: core in ES 3.2, an extension before it
+  if (!glad_glDrawElementsBaseVertex) glad_glDrawElementsBaseVertex = (PFNGLDRAWELEMENTSBASEVERTEXPROC)SDL_GL_GetProcAddress("glDrawElementsBaseVertexOES");
+  if (!glad_glDrawElementsBaseVertex) glad_glDrawElementsBaseVertex = (PFNGLDRAWELEMENTSBASEVERTEXPROC)SDL_GL_GetProcAddress("glDrawElementsBaseVertexEXT");
+  if (!glad_glDrawElementsBaseVertex) DQ_WARN("OpenGL ES: no glDrawElementsBaseVertex (ES 3.2 or its extension): the world can't be drawn");
+}
+// the header an ES shader starts with: its version, and the precision desktop GLSL doesn't ask for
+static std::string glesHead() {
+  const int v = gfx.glesVersion >= 32 ? 320 : gfx.glesVersion >= 31 ? 310 : 300;
+  return "#version " + std::to_string(v) + " es\n#define DQ_GLES 1\n"
+         "precision highp float;\nprecision highp int;\nprecision highp sampler2D;\nprecision highp sampler3D;\n"
+         "precision highp samplerCube;\nprecision highp sampler2DArray;\nprecision highp sampler2DShadow;\n"
+         "precision highp sampler2DArrayShadow;\nprecision highp usampler2D;\nprecision highp isampler2D;\n"
+         "precision highp usampler2DArray;\nprecision highp usampler3D;\n";
+}
+// a shader's text for the driver in use: on GLES its desktop version line becomes the ES header, and
+// noperspective (not in GLSL ES) goes, those varyings then interpolating with perspective
+static std::string forDriver(const std::string& src) {
+  if (!gfx.gles) return src;
+  std::string s = src;
+  size_t v = s.find("#version");
+  if (v != std::string::npos) { size_t e = s.find('\n', v); s.replace(v, e == std::string::npos ? std::string::npos : e - v + 1, glesHead()); }
+  else s = glesHead() + s;
+  for (size_t p; (p = s.find("noperspective ")) != std::string::npos;) s.erase(p, 14);
+  return s;
+}
+
 bool gfxInit(RendererKind kind) {
-  int ver = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
+  int profile = 0;
+  SDL_GL_GetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, &profile);
+  const bool es = profile == SDL_GL_CONTEXT_PROFILE_ES;
+  int ver;
+  if (es) { g_esLoading = true; ver = gladLoadGL(esLoad); g_esLoading = false; if (ver) esFixups(); }
+  else ver = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
   if (!ver) { DQ_ERR("could not load OpenGL"); return false; }
   gfx.major = GLAD_VERSION_MAJOR(ver); gfx.minor = GLAD_VERSION_MINOR(ver);
   gfx.vendor = (const char*)glGetString(GL_VENDOR);
   gfx.renderer = (const char*)glGetString(GL_RENDERER);
   gfx.version = (const char*)glGetString(GL_VERSION);
+  gfx.gles = es;
+  if (es) { int a = 3, b = 0; std::sscanf(gfx.version.c_str(), "OpenGL ES %d.%d", &a, &b); gfx.glesVersion = a * 10 + b; }
   int v = gfx.major * 10 + gfx.minor;
   gfx.vulkan = false;
   gfx.modern = kind == RendererKind::Modern && v >= 43;
@@ -75,7 +153,8 @@ bool gfxInit(RendererKind kind) {
     GLint flags = 0; glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
     if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) { glEnable(GL_DEBUG_OUTPUT); glDebugMessageCallback(glDebugCb, nullptr); }
   }
-  DQ_LOG("OpenGL %d.%d (%s path) — %s / %s", gfx.major, gfx.minor, gfx.modern ? "modern" : "legacy", gfx.vendor.c_str(), gfx.renderer.c_str());
+  if (es) DQ_LOG("%s (legacy path on OpenGL ES) — %s / %s", gfx.version.c_str(), gfx.vendor.c_str(), gfx.renderer.c_str());
+  else DQ_LOG("OpenGL %d.%d (%s path) — %s / %s", gfx.major, gfx.minor, gfx.modern ? "modern" : "legacy", gfx.vendor.c_str(), gfx.renderer.c_str());
   return true;
 }
 
@@ -105,8 +184,9 @@ std::string shaderSource(const std::string& file) {
   return out;
 }
 
-static GLuint compile(GLenum type, const std::string& src, const std::string& name) {
+static GLuint compile(GLenum type, const std::string& text, const std::string& name) {
   GLuint s = glCreateShader(type);
+  const std::string src = forDriver(text);
   const char* p = src.c_str();
   glShaderSource(s, 1, &p, nullptr);
   glCompileShader(s);
@@ -120,7 +200,8 @@ static GLuint compile(GLenum type, const std::string& src, const std::string& na
 }
 
 GLuint buildProgram(const std::string& vs, const std::string& fsrc, const std::string& name, std::string* err) {
-  auto comp = [&](GLenum type, const std::string& src) -> GLuint {
+  auto comp = [&](GLenum type, const std::string& text) -> GLuint {
+    const std::string src = forDriver(text);
     GLuint s = glCreateShader(type); const char* p = src.c_str();
     glShaderSource(s, 1, &p, nullptr); glCompileShader(s);
     GLint ok = 0; glGetShaderiv(s, GL_COMPILE_STATUS, &ok);

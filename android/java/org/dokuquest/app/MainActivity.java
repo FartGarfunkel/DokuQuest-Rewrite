@@ -25,7 +25,7 @@ public class MainActivity extends SDLActivity {
     // Only these, each with its value: any app can start this activity, so nothing that opens a port or reads a
     // script from elsewhere.
     private static final Set<String> ALLOWED = new HashSet<>(Arrays.asList(
-        "--create", "--seed", "--world", "--world-type", "--smoke-frames", "--smoke-shot"));
+        "--create", "--seed", "--world", "--world-type", "--smoke-frames", "--smoke-shot", "--renderer"));
 
     @Override
     protected String[] getArguments() {

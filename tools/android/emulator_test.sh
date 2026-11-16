@@ -35,13 +35,15 @@ print("=== end")
 EOF
 }
 logs() { adb logcat -d -v brief > "$OUT/logcat-$1.txt" 2>/dev/null; }
-crashed() {   # anything in logcat that means the app died
-  grep -E "FATAL EXCEPTION|Fatal signal|UnsatisfiedLinkError|dlopen failed|SIGSEGV|SIGABRT|Abort message|E/DokuQuest.*(crashed|uncaught)" "$OUT/logcat-$1.txt" | grep -v "^--------- " | head -30
+crashed() {   # anything in logcat that means this app died (other processes' errors are not ours)
+  grep -E -A12 "Process: $PKG|Fatal signal.*\($PKG\)|>>> $PKG <<<|E/DokuQuest.*(crashed|uncaught)" "$OUT/logcat-$1.txt" | head -40
 }
 game_log() { grep -E "DokuQuest|SDL|vulkan|Vulkan" "$OUT/logcat-$1.txt" | grep -E "[IWEF]/(DokuQuest|SDL)" | head -${2:-80}; }
 
 echo "Android $(adb shell getprop ro.build.version.release | tr -d '\r'), ABIs $(adb shell getprop ro.product.cpu.abilist | tr -d '\r'), Vulkan HAL $(adb shell getprop ro.hardware.vulkan | tr -d '\r')"
 adb install -r "$APK" || { err "the APK did not install"; exit 1; }
+# (no "Viewing full screen" tip over the screenshots)
+adb shell settings put secure immersive_mode_confirmations confirmed
 note "installed $(basename "$APK")"
 
 # ---- 1. first start: unpacking, Vulkan, the title screen
@@ -65,6 +67,18 @@ c=$(crashed first); [ -n "$c" ] && { err "crash on the first start"; echo "$c"; 
 alive && note "still running after $(( $(date +%s) - t0 )) s (state: ${state:-waiting})" || err "the game is not running after the first start (state: ${state:-none})"
 shot title
 VULKAN_OK=0; [ "$state" = vulkan ] && VULKAN_OK=1
+
+# ---- 1b. away and back (Home, then the app again): Android takes the window's surface and gives a new one
+if [ $VULKAN_OK = 1 ] && alive; then
+  adb logcat -c
+  adb shell input keyevent KEYCODE_HOME; sleep 6
+  adb shell am start -n $PKG/.MainActivity > /dev/null; sleep 20
+  logs resume
+  c=$(crashed resume); [ -n "$c" ] && { err "crash on coming back to the app"; echo "$c"; }
+  if alive && grep -q "vulkan: new window surface" "$OUT/logcat-resume.txt"; then note "away and back: a new Vulkan surface, still running"; else err "away and back: not running, or no new Vulkan surface"; fi
+  grep -E "[EW]/DokuQuest" "$OUT/logcat-resume.txt" | head -10
+  shot after-resume
+fi
 adb shell am force-stop $PKG
 sleep 2
 
@@ -101,5 +115,35 @@ EOF
   fi
 else
   note "the emulator's Vulkan can't run the game (see the log above); the world run is skipped"
+fi
+
+# ---- 3. the same world on OpenGL ES (what a phone without Vulkan 1.3 gets): reopened, 200 frames, a screenshot
+adb shell am force-stop $PKG; sleep 2
+adb shell rm -f $DIR/shot-gles.png
+adb logcat -c
+t0=$(date +%s)
+WORLD=--create,TestGles; [ $VULKAN_OK = 1 ] && WORLD=--world,Test
+adb shell am start -W -n $PKG/.MainActivity --esa args "--renderer,legacy,$WORLD,--smoke-frames,200,--smoke-shot,$DIR/shot-gles.png"
+for i in $(seq 1 240); do sleep 5; alive || break; [ $((i % 24)) = 0 ] && shot "gles-$((i / 12))min"; done
+logs gles
+secs=$(( $(date +%s) - t0 ))
+echo "::group::game log, OpenGL ES"; game_log gles 150; echo "::endgroup::"
+grep -E "I/DokuQuest.*OpenGL ES" "$OUT/logcat-gles.txt" | head -2 | while IFS= read -r l; do note "${l:0:300}"; done
+grep -E "[EW]/DokuQuest" "$OUT/logcat-gles.txt" | sort -u | head -20 | while IFS= read -r l; do echo "::warning::emulator gles: ${l:0:300}"; done
+c=$(crashed gles); [ -n "$c" ] && { err "crash in the OpenGL ES run"; echo "$c"; }
+if alive; then err "the OpenGL ES run did not finish its 200 frames in $secs s"; shot gles-stuck; adb shell am force-stop $PKG; fi
+if adb pull $DIR/shot-gles.png "$OUT/gles.png" > /dev/null 2>&1; then
+  note "OpenGL ES: the world ran 200 frames in $secs s and saved its screenshot"
+  python3 - "$OUT/gles.png" <<'PYEOF' || true
+import base64, io, sys
+from PIL import Image
+im = Image.open(sys.argv[1]).convert("RGB")
+im.thumbnail((800, 800)); b = io.BytesIO(); im.save(b, "JPEG", quality=75)
+print("=== screenshot gles-game"); s = base64.b64encode(b.getvalue()).decode()
+for i in range(0, len(s), 120): print(s[i:i + 120])
+print("=== end")
+PYEOF
+else
+  err "no screenshot from the OpenGL ES run"
 fi
 exit $rc

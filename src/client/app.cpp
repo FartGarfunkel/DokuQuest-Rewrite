@@ -79,7 +79,7 @@ bool App::initWindow() {
   }
   RendererKind want = args.rendererSet ? args.renderer : settings.renderer;
 #ifdef __ANDROID__
-  want = RendererKind::Vulkan;
+  if (want != RendererKind::Legacy) want = RendererKind::Vulkan;   // (Legacy here = OpenGL ES, below)
   const bool fullscreen = true;   // (the whole screen, the system bars hidden)
 #else
   const bool fullscreen = settings.fullscreen;
@@ -89,37 +89,48 @@ bool App::initWindow() {
     window = SDL_CreateWindow(("DokuQuest " DQ_VERSION), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, settings.windowW, settings.windowH, flags);
     if (!window) { DQ_ERR("window: %s", SDL_GetError()); return false; }
     gfxVulkanSetVsync(settings.vsync != 0);   // before the swapchain is made (it was only applied on a later Options change, so Vulkan stayed at the screen's refresh rate)
-    if (!gfxInitVulkan(window)) {
-#ifdef __ANDROID__
-      SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "DokuQuest", "DokuQuest needs Vulkan 1.3, and this device's graphics driver doesn't offer it.\n(Android 13 or newer on a recent phone has it.)", window);
-#else
-      SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "DokuQuest", "Vulkan couldn't be started on this graphics driver.\nPick Modern or Legacy OpenGL in the launcher.", window);
-#endif
-      return false;
-    }
-    SDL_GetWindowSize(window, &width, &height);
-    if (auto icon = readBinary(assetsDir() / "icon.png")) {
-      int w, h; std::vector<u8> px;
-      if (loadPngMem(icon->data(), icon->size(), w, h, px)) {
-        SDL_Surface* s = SDL_CreateRGBSurfaceWithFormatFrom(px.data(), w, h, 32, w * 4, SDL_PIXELFORMAT_RGBA32);
-        SDL_SetWindowIcon(window, s); SDL_FreeSurface(s);
+    if (gfxInitVulkan(window)) {
+      SDL_GetWindowSize(window, &width, &height);
+      if (auto icon = readBinary(assetsDir() / "icon.png")) {
+        int w, h; std::vector<u8> px;
+        if (loadPngMem(icon->data(), icon->size(), w, h, px)) {
+          SDL_Surface* s = SDL_CreateRGBSurfaceWithFormatFrom(px.data(), w, h, 32, w * 4, SDL_PIXELFORMAT_RGBA32);
+          SDL_SetWindowIcon(window, s); SDL_FreeSurface(s);
+        }
       }
+      return true;
     }
-    return true;
+#ifdef __ANDROID__
+    // no Vulkan 1.3 on this phone (Android 12 and older): OpenGL ES 3 draws the game instead, the Legacy renderer on
+    // the phone's GLES driver (render/gl.cpp), in a window made for it
+    DQ_WARN("vulkan: not on this device, drawing with OpenGL ES");
+    SDL_DestroyWindow(window); window = nullptr;
+    want = RendererKind::Legacy;
+#else
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "DokuQuest", "Vulkan couldn't be started on this graphics driver.\nPick Modern or Legacy OpenGL in the launcher.", window);
+    return false;
+#endif
   }
-  Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (settings.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+  Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
   struct Try { int maj, min; RendererKind k; };
   std::vector<Try> tries;
-  if (want == RendererKind::Modern) tries = {{4, 6, RendererKind::Modern}, {4, 5, RendererKind::Modern}, {4, 3, RendererKind::Modern}, {3, 3, RendererKind::Legacy}};
+#ifdef __ANDROID__
+  const bool gles = true;
+#else
+  const bool gles = std::getenv("DQ_GLES") != nullptr;   // DQ_GLES=1: Android's OpenGL ES path, tried on a PC (Mesa has GLES)
+#endif
+  const int profile = gles ? SDL_GL_CONTEXT_PROFILE_ES : SDL_GL_CONTEXT_PROFILE_CORE;
+  if (gles) tries = {{3, 2, RendererKind::Legacy}, {3, 1, RendererKind::Legacy}, {3, 0, RendererKind::Legacy}};
+  else if (want == RendererKind::Modern) tries = {{4, 6, RendererKind::Modern}, {4, 5, RendererKind::Modern}, {4, 3, RendererKind::Modern}, {3, 3, RendererKind::Legacy}};
   else tries = {{3, 3, RendererKind::Legacy}};
   for (auto& t : tries) {
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, profile);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, t.maj);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, t.min);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-#ifndef NDEBUG
+#if !defined(NDEBUG) && !defined(__ANDROID__)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 #endif
     if (!window) window = SDL_CreateWindow(("DokuQuest " DQ_VERSION), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, settings.windowW, settings.windowH, flags);
@@ -128,7 +139,11 @@ bool App::initWindow() {
     if (glctx) { if (gfxInit(t.k)) break; SDL_GL_DeleteContext(glctx); glctx = nullptr; }
   }
   if (!glctx) {
+#ifdef __ANDROID__
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "DokuQuest", "DokuQuest needs Vulkan 1.3 or OpenGL ES 3, and this device's graphics driver offers neither.", window);
+#else
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "DokuQuest", "Your graphics driver doesn't support OpenGL 3.3, which DokuQuest needs.\nUpdating the graphics driver usually fixes this.", window);
+#endif
     return false;
   }
   SDL_GL_SetSwapInterval(settings.vsync ? 1 : 0);
@@ -151,7 +166,7 @@ void App::initImGui() {
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad;
   if (gfx.vulkan) ImGui_ImplSDL2_InitForVulkan(window);
   else ImGui_ImplSDL2_InitForOpenGL(window, glctx);
-  ImGui_ImplOpenGL3_Init(gfx.vulkan || gfx.modern ? "#version 450 core" : "#version 330 core");
+  ImGui_ImplOpenGL3_Init(gfx.gles ? "#version 300 es" : gfx.vulkan || gfx.modern ? "#version 450 core" : "#version 330 core");
   float dpi = 1; int dw, dh; SDL_GL_GetDrawableSize(window, &dw, &dh); if (width > 0) dpi = (float)dw / width;
   uiScale = clampv(height / 720.f, 0.75f, 2.5f);
   ImFontConfig cfg; cfg.OversampleH = 1; cfg.OversampleV = 1; cfg.PixelSnapH = true;
@@ -329,10 +344,11 @@ int App::run(int argc, char** argv) {
   registerPortalView();   // render/portal_view.cpp
   settings = Settings::load();
 #ifdef __ANDROID__
-  // Android has no launcher to suggest the first settings: a phone starts on Low (Options → Video raises it). Vulkan
-  // is the only renderer there (the OpenGL ones need a desktop driver).
+  // Android has no launcher to suggest the first settings: a phone starts on Low (Options → Video raises it). The
+  // renderers there: Vulkan, and Legacy, which is the phone's OpenGL ES (also what a phone without Vulkan 1.3 gets).
+  // Modern (desktop OpenGL 4) doesn't exist on phones.
   if (settings.preset == "auto") { settings.applyPreset("low"); settings.save(); }
-  settings.renderer = RendererKind::Vulkan;
+  if (settings.renderer == RendererKind::Modern) settings.renderer = RendererKind::Vulkan;
 #endif
   profileLook(settings, 0);   // ui/profiles.cpp: undo a profile edit the last run left half done
   if (!settings.shaderPack.empty()) setShaderPack(settings.shaderPack);

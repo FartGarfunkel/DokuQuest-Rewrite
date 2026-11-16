@@ -218,8 +218,23 @@ private:
     case P_VIDEO: {
       if (kit.category("Display")) {
         std::string rn = rendererName(gfx.vulkan ? RendererKind::Vulkan : gfx.modern ? RendererKind::Modern : RendererKind::Legacy); if (!rn.empty()) rn[0] = (char)toupper((unsigned char)rn[0]);
+#ifdef __ANDROID__
+        // Android has no launcher: the choice is here, Vulkan or the phone's OpenGL ES, for the next start
+        {
+          const bool wantGles = s.renderer == RendererKind::Legacy;
+          std::string now = gfx.vulkan ? "Vulkan" : "OpenGL ES", next = wantGles ? "OpenGL ES" : "Vulkan";
+          std::string tip = "Drawing with " + now + ". Vulkan is faster; OpenGL ES is there for phones whose Vulkan has trouble." +
+                            (next != now ? " " + next + " from the next start." : "");
+          if (kit.action("Renderer", next.c_str(), tip.c_str())) {
+            s.renderer = wantGles ? RendererKind::Vulkan : RendererKind::Legacy;
+            a.toast(std::string(s.renderer == RendererKind::Legacy ? "OpenGL ES" : "Vulkan") + " from the next start of DokuQuest", "good");
+            applyLight = true;
+          }
+        }
+#else
         std::string tip = std::string(gfx.vulkan ? "Vulkan" : "OpenGL ") + (gfx.vulkan ? "" : std::to_string(gfx.major) + "." + std::to_string(gfx.minor)) + ". Change it in the launcher's Options.";
         kit.action("Renderer", rn.c_str(), tip.c_str(), true);
+#endif
         if (kit.toggle("Full Screen", &s.fullscreen, D.fullscreen, "F11 switches at any time.")) applyNow = true;
         { static const int v[] = {0, 30, 60, 120, 144, 240, -1}; int cur = s.vsync ? 0 : 6; if (!s.vsync) for (int i = 1; i < 6; i++) if (s.fpsLimit == v[i]) cur = i;
           if (kit.cycle("FPS Limit", &cur, {"VSync", "30 FPS", "60 FPS", "120 FPS", "144 FPS", "240 FPS", "Unlimited"}, 0, "VSync matches the display. 30 saves battery.")) { s.fpsLimit = v[cur]; s.vsync = s.fpsLimit == 0; applyNow = true; } }

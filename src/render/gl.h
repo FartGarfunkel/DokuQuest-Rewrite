@@ -15,6 +15,8 @@ struct GfxCaps {
   int major = 3, minor = 3;
   bool modern = false;          // running the Modern (4.x) path, or Vulkan (same chunk path)
   bool vulkan = false;         // Vulkan 1.3, reached through the OpenGL-shaped calls
+  bool gles = false;           // OpenGL ES 3 (Android without Vulkan 1.3): the Legacy path on the phone's GLES driver
+  int glesVersion = 0;         // 30, 31, 32
   bool mdi = false;             // glMultiDrawElementsIndirect
   bool bufferStorage = false;   // persistent mapped buffers
   bool anisotropic = false;
