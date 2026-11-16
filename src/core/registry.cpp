@@ -78,9 +78,9 @@ bool Registry::loadBase(const fs::path& dir) {
   // imported models (tools/local/boss_import.py: git-ignored, the mods' art): their rigs, clips and attack tables
   clips = json::object(); kits = json::object();
   { std::error_code ec;
-    for (auto& e : fs::directory_iterator(dir / "local_models", ec)) {
-      if (e.path().extension() != ".json") continue;
-      auto j = readJson(e.path()); if (!j || !j->is_object()) continue;
+    for (const fs::path& ep : listDataFiles(dir / "local_models")) {   // (the archive's too: a release keeps them there)
+      if (ep.extension() != ".json") continue;
+      auto j = readJson(ep); if (!j || !j->is_object()) continue;
       if (j->contains("models")) for (auto& [k, v] : (*j)["models"].items()) models[k] = v;
       if (j->contains("clips")) for (auto& [k, v] : (*j)["clips"].items()) clips[k] = v;
       if (j->contains("kits")) for (auto& [k, v] : (*j)["kits"].items()) kits[k] = v;

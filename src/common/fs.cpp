@@ -14,6 +14,8 @@
 #include <climits>
 #endif
 
+#include <algorithm>
+
 namespace dq {
 
 // ---- the data archive: a release keeps data/ in one file, data.dqa (a zip, made by tools/package.sh), next to the
@@ -50,6 +52,26 @@ struct DataArchive {
     const auto t = fs::last_write_time(p, ec);
     return !ec && t + std::chrono::minutes(10) < made;
   }
+  bool has(const fs::path& p) {
+    std::lock_guard<std::mutex> lk(mx);
+    if (!tried) open();
+    if (!ok) return false;
+    const std::string g = p.lexically_normal().generic_string();
+    return g.compare(0, root.size(), root) == 0 && idx.count(g.substr(root.size()));
+  }
+  // the archive's files directly in a data/ folder (their names)
+  std::vector<std::string> children(const fs::path& dir) {
+    std::vector<std::string> out;
+    std::lock_guard<std::mutex> lk(mx);
+    if (!tried) open();
+    if (!ok) return out;
+    std::string g = dir.lexically_normal().generic_string();
+    if (!g.empty() && g.back() != '/') g += '/';
+    if (g.compare(0, root.size(), root) != 0) return out;
+    const std::string pre = g.substr(root.size());
+    for (auto& [name, i] : idx) if (name.size() > pre.size() && name.compare(0, pre.size(), pre) == 0 && name.find('/', pre.size()) == std::string::npos) out.push_back(name.substr(pre.size()));
+    return out;
+  }
   bool read(const fs::path& p, std::string& out) {
     std::lock_guard<std::mutex> lk(mx);
     if (!tried) open();
@@ -66,7 +88,16 @@ struct DataArchive {
 };
 DataArchive& dataArchive() { static DataArchive* a = new DataArchive(); return *a; }   // kept past exit
 } // namespace
-bool inDataArchive(const fs::path& p) { std::string s; return dataArchive().read(p, s); }
+bool inDataArchive(const fs::path& p) { return dataArchive().has(p); }
+bool dataFileExists(const fs::path& p) { std::error_code ec; return fs::is_regular_file(p, ec) || dataArchive().has(p); }
+std::vector<fs::path> listDataFiles(const fs::path& dir) {
+  std::vector<fs::path> out;
+  std::error_code ec;
+  for (auto& e : fs::directory_iterator(dir, ec)) if (e.is_regular_file(ec)) out.push_back(e.path());
+  for (const std::string& rel : dataArchive().children(dir)) { const fs::path p = dir / rel; if (std::find(out.begin(), out.end(), p) == out.end()) out.push_back(p); }
+  std::sort(out.begin(), out.end());
+  return out;
+}
 
 std::optional<std::string> readFile(const fs::path& p) {
   if (dataArchive().stale(p)) { std::string s; if (dataArchive().read(p, s)) return s; }
