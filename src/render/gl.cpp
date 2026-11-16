@@ -165,6 +165,10 @@ bool gfxInit(RendererKind kind) {
   if (gfx.anisotropic) glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &gfx.maxAniso);
   glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &gfx.maxArrayLayers);
   glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &gfx.maxTexUnits);
+  // GLES (phones): the fragment limit is often 16, but the chunk shader samples at most 15 textures there, the tiles'
+  // third page among them; that page only needs units 16..18 to exist, and the combined limit says they do (32 at
+  // least on ES 3.0). Kept at 16, a phone had two pages and the blocks past 4096 tiles came out wrong.
+  if (es) { GLint comb = 0; glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &comb); if (comb >= 19) gfx.maxTexUnits = std::max(gfx.maxTexUnits, 19); }
   if (v >= 43 || GLAD_GL_KHR_debug) {
     GLint flags = 0; glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
     if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) { glEnable(GL_DEBUG_OUTPUT); glDebugMessageCallback(glDebugCb, nullptr); }

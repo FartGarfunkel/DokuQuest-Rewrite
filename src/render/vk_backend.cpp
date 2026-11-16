@@ -4931,10 +4931,10 @@ bool gfxInitVulkan(SDL_Window* window) {
   gfx.anisotropic = enable.features.samplerAnisotropy == VK_TRUE;
   gfx.maxAniso = gfx.anisotropic ? limits.maxSamplerAnisotropy : 1.f;
   gfx.maxArrayLayers = (int)limits.maxImageArrayLayers;
-  // texture units: this file keeps 32 (dq_glActiveTexture); a shader's samplers all sit in one set, so the device's
-  // per-stage sampler limit is the one that counts. Left at 16, the tiles' third page (units 16..18:
-  // render/world_renderer.cpp) was never bound here, and blocks past 4096 tiles were drawn from the wrong pictures.
-  gfx.maxTexUnits = (int)std::min<uint32_t>(32, std::min(limits.maxPerStageDescriptorSamplers, limits.maxPerStageDescriptorSampledImages));
+  // texture units: this file keeps 32 (dq_glActiveTexture). A unit only picks which texture a shader's sampler sees;
+  // whether the device holds a shader's samplers is settled when it links (linkProg). Left at 16, the tiles' third page
+  // (units 16..18: render/world_renderer.cpp) was never bound here, and blocks past 4096 tiles used the wrong pictures.
+  gfx.maxTexUnits = 32;
   gfx.vendor = "Vulkan";
   gfx.renderer = props.deviceName;
   gfx.version = "Vulkan 1.3";
