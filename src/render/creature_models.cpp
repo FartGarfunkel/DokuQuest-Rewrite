@@ -462,6 +462,12 @@ static void partGrid(const TileSet& ts, const RigModel& M, const std::string& ke
   ivec3 n = glm::max(ivec3(glm::round(size * (p.res > 0 ? p.res : 32.f))), ivec3(1));
   bool faceRelief = p.tex.is_object() && p.tex.contains("front") && !pack;
   voxelPart(g, n, F, p.glow || p.unlit, faceRelief);
+  // an open front ("front": false: a hood, a cowl) is a shell round what it covers, not a solid block: two voxels thick on
+  // its sides, top and back, open at the front and underneath, so the face inside shows (it filled the space before it)
+  if (!packed && p.tex.is_object() && p.tex.contains("front") && p.tex["front"] == false && n.x > 4 && n.y > 2 && n.z > 2) {
+    const int T = 2;
+    for (int z = 0; z < n.z - T; z++) for (int y = 0; y < n.y - T; y++) for (int x = T; x < n.x - T; x++) g.set(x, y, z, 0);
+  }
   if (p.name == "jaw" && M.key == "enderman") toothCrown(g, n);
   // a bird's head drawn from one feather picture all round has no eyes in it (a crow, a gull, an eagle): one eye on each
   // side, near the front and high up, dark on a pale head and a light glint on a dark one
