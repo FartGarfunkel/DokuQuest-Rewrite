@@ -83,8 +83,22 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
     std::string el = d->props.contains("tool") && d->props["tool"].is_object() ? d->props["tool"].value("element", std::string()) : "";
     if (isPartTool(s) && s.tag["pt"].contains("el")) el = s.tag["pt"].value("el", std::string());
     auto e = EL.find(el);
-    L.push_back({(t.type == "sword" ? std::string("Attack") : "Mining speed " + num(t.speed) + "\xC3\x97 \xC2\xB7 attack") + " " + num(t.damage / 2) + " \xE2\x99\xA5" + (e != EL.end() ? " \xC2\xB7 " + e->second + " element" : ""), TS});
+    // only what it does: a digging tool its speed and its blow, a sword or staff its blow, the rest (bows, rods,
+    // strikers, shears...) neither (a staff used to read "mining speed")
+    const bool digs = t.type == "pickaxe" || t.type == "axe" || t.type == "shovel" || t.type == "hoe" || t.type == "hammer";
+    const bool melee = digs || t.type == "sword" || t.type == "staff";
+    if (melee) L.push_back({(digs ? "Mining speed " + num(t.speed) + "\xC3\x97 \xC2\xB7 attack" : std::string("Attack")) + " " + num(t.damage / 2) + " \xE2\x99\xA5" + (e != EL.end() ? " \xC2\xB7 " + e->second + " element" : ""), TS});
     L.push_back({"Durability " + std::to_string(t.durability - s.d) + " / " + std::to_string(t.durability), TD});
+    if (d->has("staff") && d->props["staff"].is_object()) {   // what a staff does: casts your chosen spell, stronger
+      const json& st = d->props["staff"];
+      L.push_back({"Casts your chosen spell (sneak + use to change it)", 0xc88cff});
+      std::string k;
+      const double pw = st.value("power", 1.0);
+      if (pw != 1) k += "Spell power \xC3\x97" + num(pw);
+      for (auto [key, nm] : {std::pair<const char*, const char*>{"fire", "Fire"}, {"frost", "Frost"}, {"storm", "Storm"}}) { const double v = st.value(key, 1.0); if (v != 1) k += (k.empty() ? "" : " \xC2\xB7 ") + std::string(nm) + " spells \xC3\x97" + num(v); }
+      if (!k.empty()) L.push_back({k, 0xc88cff});
+      if (const double rg = st.value("regen", 0.0); rg > 0) L.push_back({"+" + num(rg) + " mana a second while held", 0xc88cff});
+    }
     if (isPartTool(s)) {   // what it's made of (core/tool_parts.h)
       std::string mk; const json& m = s.tag["pt"]["m"];
       for (size_t i = 0; i < m.size(); i++) { const ToolMaterial* tm = toolMaterial(m[i].get<std::string>()); mk += (i ? " \xC2\xB7 " : "") + (tm ? tm->name : m[i].get<std::string>()); }
@@ -126,7 +140,8 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
       L.push_back({line, TS});
       static const char* TIER[] = {"", "wood", "stone", "iron", "diamond", "mithril", "adamantite"};
       int tier = d->tool.tier;
-      if (d->tool.type != "sword" && tier) L.push_back({"Tier " + std::to_string(tier) + (tier < 7 && *TIER[tier] ? std::string(" (") + TIER[tier] + ")" : "") + " \xC2\xB7 digs " + fmt1(d->tool.speed * (1 + gearBonus(s, 0.35))) + "\xC3\x97 as fast as a bare hand", TD});
+      const std::string& ty = d->tool.type;
+      if ((ty == "pickaxe" || ty == "axe" || ty == "shovel" || ty == "hoe" || ty == "hammer") && tier) L.push_back({"Tier " + std::to_string(tier) + (tier < 7 && *TIER[tier] ? std::string(" (") + TIER[tier] + ")" : "") + " \xC2\xB7 digs " + fmt1(d->tool.speed * (1 + gearBonus(s, 0.35))) + "\xC3\x97 as fast as a bare hand", TD});
     }
     if (d->has("armor")) {
       int slot = d->props["armor"].value("slot", 0);
