@@ -21,7 +21,10 @@ double spellXp(const Player& p, const std::string& k) {
   auto jt = it->find(k);
   return jt != it->end() && jt->is_number() ? jt->get<double>() : 0;
 }
-int rankOf(double xp) { return std::min(10, 1 + (int)std::sqrt(std::max(0.0, xp) / 40)); }
+// a spell's rank from its practice (6 xp a mana cast): rank r from 300 (r-1)^2 — a fireball is mastered after some three
+// hundred casts, a firebolt after a thousand (it was 40 (r-1)^2: a fireball mastered in 39 casts)
+constexpr double RANK_XP = 300;
+int rankOf(double xp) { return std::min(10, 1 + (int)std::sqrt(std::max(0.0, xp) / RANK_XP)); }
 bool staffIn(const ItemStack& s) { const ItemDef* d = s.def(); return d && d->props.contains("staff") && d->props["staff"].is_object(); }
 bool weaponIn(const ItemStack& s) { const ItemDef* d = s.def(); return d && d->hasTool && (d->tool.type == "sword" || d->tool.type == "axe"); }
 bool leftFree(const Player& p) { return p.offhand[0].empty() || staffIn(p.offhand[0]); }
@@ -125,7 +128,7 @@ int spellRank(const Player& p, const std::string& k) { return rankOf(spellXp(p, 
 float spellRankProgress(const Player& p, const std::string& k) {
   double xp = spellXp(p, k); int r = rankOf(xp);
   if (r >= 10) return 1;
-  double lo = 40.0 * (r - 1) * (r - 1), hi = 40.0 * r * r;
+  double lo = RANK_XP * (r - 1) * (r - 1), hi = RANK_XP * r * r;
   return (float)clampv((xp - lo) / (hi - lo), 0.0, 1.0);
 }
 float spellRankPower(const Player& p, const std::string& k) { return 1 + 0.05f * (spellRank(p, k) - 1); }
