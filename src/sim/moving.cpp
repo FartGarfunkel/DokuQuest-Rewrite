@@ -3,6 +3,7 @@
 #include "sim/glue.h"
 #include "sim/rotate.h"
 #include "sim/gameplay.h"
+#include "sim/worldsys.h"
 #include "core/registry.h"
 #include <cmath>
 
@@ -77,7 +78,8 @@ public:
     Motion m; m.machine = machine; m.face = machineFace(w, machine);
     m.kind = reg().block(w.getBlock(machine.x, machine.y, machine.z)).str("machine") == "slider" ? 1 : 0;
     int q = st.value("quarters", 1); if (q == 0) q = 1;   // (turning for good needs an axle: stage 2; by hand a quarter)
-    const int d = std::clamp(st.value("distance", 1), 1, 16);
+    int d = std::clamp(st.value("distance", 1), 1, 16);
+    if (open) { q = st.value("usedQ", q); d = std::clamp(st.value("usedD", d), 1, 16); }   // (shut the way it opened, whatever it's set to now)
     if (m.kind == 0) m.quarters = open ? -q : q;
     else { m.distance = open ? -d : d; m.reach = open ? 1 + d : 1; }
     Piece p;
@@ -96,8 +98,11 @@ public:
       const json* e = w.blockEntity(c.x, c.y, c.z);
       body.blocks.push_back({c - machine, w.getBlock(c.x, c.y, c.z), w.getMeta(c.x, c.y, c.z), e ? *e : json(), w.getCarve(c.x, c.y, c.z)});
     }
-    for (const ivec3& c : p.cells) { w.setBlockEntity(c.x, c.y, c.z, nullptr); w.setBlock(c.x, c.y, c.z, AIR); }
-    st["open"] = !open; w.blockEntityChanged(machine.x, machine.y, machine.z);
+    { QuietEdits quiet;   // (lifted whole: a door or torch on a lifted plank must not drop as it goes, nor sand fall)
+      for (const ivec3& c : p.cells) { w.setBlockEntity(c.x, c.y, c.z, nullptr); w.setBlock(c.x, c.y, c.z, AIR); } }
+    st["open"] = !open;
+    if (!open) { st["usedQ"] = q; st["usedD"] = d; } else { st.erase("usedQ"); st.erase("usedD"); }
+    w.blockEntityChanged(machine.x, machine.y, machine.z);
     sfxAt(lv, m.kind == 1 ? "piston_out" : "door_open", vec3(machine) + vec3(0.5f));
     bodies.push_back(std::move(body));
     return true;
@@ -107,6 +112,7 @@ public:
     World* wp = lv.worldIfOpen(b.realm);
     if (!wp) return;
     World& w = *wp;
+    QuietEdits quiet;   // (set down whole, the same way)
     for (BodyBlock& k : b.blocks) {
       const ivec3 from = b.m.machine + k.rel, to = movedCell(b.m, from);
       u8 meta = turnMeta(b.m, k.id, k.meta), carve = turnCarve(b.m, k.carve);

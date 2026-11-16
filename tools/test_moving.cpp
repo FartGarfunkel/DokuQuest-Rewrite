@@ -206,6 +206,46 @@ int main(int argc, char** argv) {
     check(w.getBlock(S.x + 1, S.y, S.z) == planks && w.getBlock(S.x + 4, S.y, S.z) == AIR && !machineOpen(w, S) && glued(w, S, 0), "back against the slider, glued to it again");
   }
 
+  printf("[review fixes]\n");
+  {
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 8; y++) w.setBlock(x, y, z, AIR);
+    auto tick = [&](double s) { for (double t = 0; t < s; t += 0.05) L->tick(0.05); };
+    auto items = [&] { int n = 0; for (auto& e : L->entities()) if (!e->removed && e->type == "item") n++; return n; };
+    for (auto& e : L->entities()) if (e->type == "item") e->removed = true;
+    L->tick(0.05);
+    const BlockId hingeB = reg().blockId("hinge"), door = reg().blockId("oak_door"), torch = reg().blockId("torch");
+    // a door and a torch carried on a plank: lifting the plank must not knock them off (they ride along)
+    const ivec3 H(4, Y + 1, 4);
+    w.setBlock(H.x, H.y, H.z, hingeB, 1);
+    w.setBlock(H.x, H.y + 1, H.z, planks); w.setBlock(H.x + 1, H.y + 1, H.z, planks);
+    w.setBlock(H.x + 1, H.y + 2, H.z, door, 0); w.setBlock(H.x + 1, H.y + 3, H.z, door, 16);
+    w.setBlock(H.x, H.y + 2, H.z, torch, 0);
+    setGlue(w, H, 2, true); setGlue(w, H + ivec3(0, 1, 0), 0, true); setGlue(w, H + ivec3(1, 1, 0), 2, true); setGlue(w, H + ivec3(1, 2, 0), 2, true); setGlue(w, H + ivec3(0, 1, 0), 2, true);
+    const int before = items();
+    check(startMove(*L, REALM_MAIN, H, nullptr), "a gate with a door and a torch on it starts");
+    tick(1.3);
+    check(items() == before, "nothing dropped as it lifted (" + std::to_string(items() - before) + " items)");
+    check(w.getBlock(H.x, H.y + 2, H.z + 1) == door && w.getBlock(H.x, H.y + 3, H.z + 1) == door && w.getBlock(H.x, H.y + 2, H.z) == torch, "the door and the torch rode round with it");
+    // its setting changed while it stands open: it still shuts the way it came
+    machineState(w, H)["quarters"] = -1;
+    check(startMove(*L, REALM_MAIN, H, nullptr), "set the other way while open, it starts back");
+    tick(1.3);
+    check(!machineOpen(w, H) && w.getBlock(H.x + 1, H.y + 1, H.z) == planks && w.getBlock(H.x + 1, H.y + 2, H.z) == door, "and shuts where it began");
+    const BlockId sliderB = reg().blockId("slider");
+    const ivec3 S(4, Y + 1, 10); w.setBlock(S.x, S.y, S.z, sliderB, 5);
+    w.setBlock(S.x + 1, S.y, S.z, planks); setGlue(w, S, 0, true);
+    startMove(*L, REALM_MAIN, S, nullptr); tick(1.0);
+    machineState(w, S)["distance"] = 4;
+    check(startMove(*L, REALM_MAIN, S, nullptr), "a slider set further while out still comes back");
+    tick(3.0);
+    check(!machineOpen(w, S) && w.getBlock(S.x + 1, S.y, S.z) == planks && w.getBlock(S.x + 2, S.y, S.z) == AIR, "back against the slider");
+    // water in its way: it doesn't go, and the water stays
+    w.setBlock(S.x + 3, S.y, S.z, water);
+    machineState(w, S)["distance"] = 3;
+    check(!startMove(*L, REALM_MAIN, S, nullptr) && w.getBlock(S.x + 3, S.y, S.z) == water && w.getBlock(S.x + 1, S.y, S.z) == planks, "water in the way stops it, and stays");
+    w.setBlock(S.x + 3, S.y, S.z, AIR);
+  }
+
   printf("[by hand]\n");
   {
     for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 8; y++) w.setBlock(x, y, z, AIR);
