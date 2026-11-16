@@ -40,6 +40,13 @@ void openFolder(const fs::path& p) {
   std::error_code ec;
   fs::create_directories(p, ec);
   std::string g = fs::absolute(p, ec).generic_string();
+#ifdef __ANDROID__
+  // (an app can't open a folder of its own in the phone's file manager; a computer reaches it over USB)
+  const std::string shared = "/storage/emulated/0/";
+  if (g.rfind(shared, 0) == 0) g = g.substr(shared.size());
+  app().toast("The folder is " + g + " on the phone's storage: a computer reaches it over USB.", "good");
+  return;
+#endif
 #ifdef _WIN32
   std::string url = "file:///" + g;
 #else
