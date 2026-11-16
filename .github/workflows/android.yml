@@ -206,3 +206,27 @@ jobs:
           for v in $(grep -o -E "VUID-[A-Za-z0-9_-]+" all.log | sort -u | head -40); do echo "== $v"; grep -m1 "$v" all.log | cut -c1-900; done
           grep -E "TEST (PASS|FAIL|DONE)|crashed|uncaught" all.log | head -20 || true
           grep -q "Validation" all.log || echo "::notice::validation: no errors"
+
+  # the APK goes on the version's release too (v<version>, beside the Windows and Linux downloads), only once the
+  # emulator run has passed: a build that crashes there stays on android-latest alone
+  attach:
+    needs: [apk, emulator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: DokuQuest-android-arm64
+          path: dist
+      - name: Add the APK to the version's release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk=$(ls dist/*.apk | head -1)
+          v=$(basename "$apk" | sed -E 's/^DokuQuest-(.*)-android-arm64\.apk$/\1/')
+          if gh release view "v$v" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "v$v" "$apk" --clobber -R "$GITHUB_REPOSITORY"
+            echo "::notice::added $(basename "$apk") to the v$v release"
+          else
+            echo "::warning::no v$v release yet: the APK is on android-latest only (tag the PC release first)"
+          fi
