@@ -81,7 +81,10 @@ done
 echo "== java"
 mkdir -p "$WORK/classes" "$WORK/dex"
 mapfile -t JAVA_SRC < <(find third_party/SDL2/android-project/app/src/main/java android/java -name '*.java' | sort)
-javac -encoding UTF-8 -source 8 -target 8 -Xlint:-options -nowarn -bootclasspath "$ANDROID_JAR" -d "$WORK/classes" "${JAVA_SRC[@]}"
+# (SDL's Java has lambdas: javac needs the build-tools' lambda stubs beside android.jar; d8 turns them into classes)
+BOOT="$ANDROID_JAR"
+[ -f "$BT/core-lambda-stubs.jar" ] && BOOT="$BOOT:$BT/core-lambda-stubs.jar"
+javac -encoding UTF-8 -source 8 -target 8 -Xlint:-options -nowarn -bootclasspath "$BOOT" -d "$WORK/classes" "${JAVA_SRC[@]}"
 mapfile -t CLASSES < <(find "$WORK/classes" -name '*.class' | sort)
 "$BT/d8" --release --min-api $MIN_SDK --lib "$ANDROID_JAR" --output "$WORK/dex" "${CLASSES[@]}"
 cp "$WORK/dex/classes.dex" "$WORK/apk/"

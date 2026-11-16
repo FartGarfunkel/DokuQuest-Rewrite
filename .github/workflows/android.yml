@@ -26,7 +26,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ninja-build ccache zip
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         with:
           path: ~/.cache/ccache
           key: ccache-android-${{ github.sha }}
@@ -54,6 +54,11 @@ jobs:
           grep -E "^(DokuQuest |  NDK|  needs:|  [0-9.]+[KMG] built|  [0-9]+ files|APK:|package:|sdkVersion|targetSdkVersion|native-code|Verified)" build.log | while IFS= read -r l; do echo "::notice::${l:0:400}"; done
           ccache -s | head -6
           exit $rc
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ~/.cache/ccache
+          key: ccache-android-${{ github.sha }}
       - uses: actions/upload-artifact@v4
         with:
           name: DokuQuest-android-arm64
@@ -107,7 +112,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ninja-build ccache zip python3-pil
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         with:
           path: ~/.cache/ccache
           key: ccache-android-x86_64-${{ github.sha }}
@@ -124,6 +129,11 @@ jobs:
           set +e; bash tools/android/build_apk.sh 2>&1 | tee build.log; rc=${PIPESTATUS[0]}; set -e
           grep -E "error:|error |undefined (reference|symbol)|FAILED:|cannot find|No such file" build.log | grep -v "^ccache" | sort -u | head -40 | while IFS= read -r l; do echo "::error::${l:0:500}"; done
           exit $rc
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ~/.cache/ccache
+          key: ccache-android-x86_64-${{ github.sha }}
       - name: Let the emulator use KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
