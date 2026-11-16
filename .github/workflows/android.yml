@@ -159,3 +159,46 @@ jobs:
           name: emulator-test
           path: emulator-test/
           if-no-files-found: ignore
+
+  vulkan-validation:
+    # The Vulkan renderer (what phones draw with) run on the PC build under the Khronos validation layer, with Mesa's
+    # software Vulkan: a new world and the tree playtest. Every rule it breaks is listed (desktop drivers forgive
+    # much that phone drivers need not). It checks the code; nothing is published from here.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Packages (SDL backends, Mesa Vulkan, the validation layer, Xvfb)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxinerama-dev libxxf86vm-dev libxss-dev libxfixes-dev libxkbcommon-dev \
+            libwayland-dev wayland-protocols libdecor-0-dev libegl-dev libgl-dev libgles-dev libgl1-mesa-dev libdrm-dev libgbm-dev \
+            libasound2-dev libpulse-dev libudev-dev libdbus-1-dev \
+            xvfb xauth libgl1-mesa-dri mesa-vulkan-drivers vulkan-validationlayers libvulkan1 ccache
+      - uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-Linux-${{ github.sha }}
+          restore-keys: ccache-Linux-
+      - name: Fetch dependencies
+        run: bash tools/fetch_deps.sh
+      - name: Build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache > /dev/null
+          cmake --build build --target dokuquest 2>&1 | tail -3
+      - name: Run on Vulkan under validation
+        run: |
+          ud="$RUNNER_TEMP/ud"; mkdir -p "$ud"
+          echo '{"preset":"custom","renderDist":4,"farTerrain":256,"shadows":0,"waterQuality":0,"clouds":true,"portalViews":false,"scale":0.5,"particles":1,"weatherParticles":0,"microVoxels":0,"plantDetail":"flat","shaderLevel":0,"fancyLeaves":false,"volumetricClouds":false}' > "$ud/settings.json"
+          icd=$(ls /usr/share/vulkan/icd.d/lvp_icd*.json | head -1); echo "lavapipe: $icd"
+          export VK_ICD_FILENAMES="$icd" VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation VK_LOADER_LAYERS_ENABLE='*validation*'
+          run() { timeout 1500 xvfb-run -a -s "-screen 0 1280x720x24" "$@" > run.log 2>&1; echo "exit $?"; cat run.log >> all.log; }
+          run ./build/dokuquest --userdir "$ud" --renderer vulkan --create Test --seed hello --smoke-frames 200
+          run ./build/dokuquest --userdir "$ud" --renderer vulkan --world Test --smoke-frames 3000 --smoke-script tools/playtests/tree.json
+          grep -c "Validation Error" all.log || true
+          grep -o -E "VUID-[A-Za-z0-9_-]+" all.log | sort | uniq -c | sort -rn | head -40 | while read -r n v; do echo "::warning::validation: $v x$n"; done
+          # one example message of each, in the log
+          for v in $(grep -o -E "VUID-[A-Za-z0-9_-]+" all.log | sort -u | head -40); do echo "== $v"; grep -m1 "$v" all.log | cut -c1-900; done
+          grep -E "TEST (PASS|FAIL|DONE)|crashed|uncaught" all.log | head -20 || true
+          grep -q "Validation" all.log || echo "::notice::validation: no errors"
