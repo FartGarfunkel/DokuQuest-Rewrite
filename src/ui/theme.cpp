@@ -37,6 +37,12 @@ float computeZoom(const App& a) {
     SDL_Rect b{};
     if (SDL_GetDisplayBounds(idx, &b) == 0 && b.w > 0 && b.h > 0) edge = std::min(b.w, b.h);
   }
+#ifdef __ANDROID__
+  // a phone: a small screen for its pixels (1080 of them are a few centimetres), so the interface takes as much of it
+  // as the 1280×720 layout allows (150% on a 2400×1080 phone): buttons a finger can hit, text that can be read
+  if (uiScaleIsAuto(a.settings.guiScale) && a.width > 0 && a.height > 0)
+    return std::clamp(std::min(a.width / (float)kUiFitW, a.height / (float)kUiFitH), 1.f, 3.f);
+#endif
   return uiZoomFromSetting(a.settings.guiScale, autoUiZoom(a.width, a.height, edge));
 }
 
