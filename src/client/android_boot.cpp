@@ -54,6 +54,8 @@ bool androidPrepare(std::string& error) {
   // the Back button (and the back gesture) reaches the game as a key instead of closing it: App turns it into Escape
   SDL_SetHint(SDL_HINT_ANDROID_TRAP_BACK_BUTTON, "1");
   SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+  // SDL would offer the phone's tilt sensor as a joystick; controllers are the real ones only
+  SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");
 
   const char* internal = SDL_AndroidGetInternalStoragePath();
   if (!internal) { error = std::string("The app's storage can't be opened: ") + SDL_GetError(); return false; }
