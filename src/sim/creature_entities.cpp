@@ -227,6 +227,33 @@ public:
       if (frand() < dt * 30) lv.fx->particles(blue ? "mana_arcane" : "smoke", pos, 1);
       return;
     }
+    // a boss's shots (sim/boss_brains.cpp): "arcane" flies straight and glows (data.frost: it chills, slowing you),
+    // "boss_rock" is thrown in an arc and bursts on what it strikes, "web" is spat in an arc and slows whoever it catches
+    if (kind == "arcane" || kind == "boss_rock" || kind == "web") {
+      const bool arcane = kind == "arcane", rock = kind == "boss_rock";
+      if (age > (arcane ? 5 : 4)) { removed = true; return; }
+      if (!arcane) vel.y -= (rock ? 16.f : 12.f) * dt;
+      const float dmg = data.value("dmg", arcane ? 5.f : rock ? 6.f : 2.f);
+      auto pop = [&] {
+        removed = true;
+        if (arcane) mobBurst(lv, pos, data.value("frost", false) ? "white" : "end_mote", 14, 1.4f);
+        else lv.fx->particles("burst", pos, rock ? 10 : 6, json{{"tile", rock ? "cobblestone" : "cobweb"}, {"speed", 1.2f}});
+        lv.fx->sound(arcane ? "spell_hit" : rock ? "thud" : "slime_small", pos, 24);
+      };
+      for (int s = 0; s < 3; s++) {
+        pos += vel * (dt / 3);
+        for (Entity* p : pawnsOf(lv, realm)) if (std::fabs(p->pos.x - pos.x) < p->w + 0.3f && std::fabs(p->pos.z - pos.z) < p->w + 0.3f && pos.y > p->pos.y - 0.2f && pos.y < p->pos.y + p->h + 0.2f) {
+          DamageSrc d; d.knock = rock ? 5 : arcane ? 2 : 0.5f; if (arcane) d.element = data.value("frost", false) ? "frost" : "magic";
+          aimRay(d, pos - vel * (dt / 3), pos);
+          damageEntity(lv, *p, dmg, owner, "projectile", d);
+          if (auto* pl = dynamic_cast<Player*>(p)) { if (kind == "web" || data.value("frost", false)) giveEffect(lv, *pl, "slow", kind == "web" ? 4.f : 3.f, 1); }
+          pop(); return;
+        }
+        if (solidAt(wd, pos)) { pop(); return; }
+      }
+      if (arcane && frand() < dt * 40) mobBurst(lv, pos, data.value("frost", false) ? "white" : "end_mote", 1, 0.1f);
+      return;
+    }
     if (kind == "shulker") {   // a shulker's bolt: seeks its mark, and whoever it strikes floats up off the ground
       if (age > 10) { removed = true; mobBurst(lv, pos, "end_mote", 8, 0.8f); return; }
       if (data.value("deflected", false)) {   // punched back: it seeks the shulker that sent it, and stings it

@@ -530,6 +530,15 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       mat4 m = glm::translate(mat4(1), rel);
       m = glm::rotate(m, ip.age * 6, vec3(0.3f, 1, 0.2f));
       m = glm::scale(glm::translate(m, vec3(-sz / 2)), vec3(sz / n));
+      if (k == "arcane" || k == "boss_rock" || k == "web") {   // a boss's shots (sim/boss_brains.cpp)
+        const bool arc = k == "arcane";
+        const vec4 tint = arc ? (e.data.value("frost", false) ? vec4(0.7f, 0.9f, 1.f, 0.85f) : vec4(0.62f, 0.32f, 1.f, 0.85f)) : k == "web" ? vec4(0.95f, 0.95f, 0.95f, 0.9f) : vec4(0.45f, 0.43f, 0.4f, 0.95f);
+        const float ss = arc ? 0.42f : k == "web" ? 0.3f : 0.5f;
+        mat4 q = glm::translate(mat4(1), rel); q = glm::rotate(q, ip.age * 6, vec3(0.3f, 1, 0.2f));
+        q = glm::scale(glm::translate(q, vec3(-ss / 2)), vec3(ss / 6));
+        D.draw(S.snow, q, arc ? VoxelLight{1, 1} : lightAt(w, ip.pos), tint);
+        continue;
+      }
       D.draw(mesh, m, k == "fireball" || big ? VoxelLight{1, 1} : lightAt(w, ip.pos));
     } else if (t == "hex_flask") {
       const VoxelModel& im = itemModel("hex_flask");
