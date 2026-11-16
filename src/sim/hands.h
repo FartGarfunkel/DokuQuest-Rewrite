@@ -43,7 +43,7 @@ bool handsGrindTarget(const ItemStack& s);   // worn (past its ground-in wear) o
 // (on its lid or rim); open, a tray of fifteen shows one page (the other fifteen heaped loose below): what's held goes in
 // where you look at the tray (held a moment: the stack), a strike takes one (sneaking: the stack), sneak + use on the tray
 // puts in all you carry that's already there; its buttons sort the page (sneaking: both) and turn to the other page
-struct HandsChestAim { enum { None, Shut, Lid, Tray, Sort, Swap }; int what = None, slot = -1; };
+struct HandsChestAim { enum { None, Shut, Lid, Tray, Sort, Swap, Take }; int what = None, slot = -1; };
 bool handsChest(World& w, ivec3 at);
 // how a chest's slots lie on its tray: a single chest's 27 in pages of fifteen; a large chest one chest of 54 in pages of
 // thirty, fifteen on each half's tray (off: where this half's start in a page), its page kept by its left half (key), the
