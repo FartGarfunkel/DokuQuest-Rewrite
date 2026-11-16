@@ -244,6 +244,10 @@ int main(int argc, char** argv) {
     machineState(w, S)["distance"] = 3;
     check(!startMove(*L, REALM_MAIN, S, nullptr) && w.getBlock(S.x + 3, S.y, S.z) == water && w.getBlock(S.x + 1, S.y, S.z) == planks, "water in the way stops it, and stays");
     w.setBlock(S.x + 3, S.y, S.z, AIR);
+    // a guest's use reaches the host as an action: the host moves it
+    check(!bus.emit("netAction", json::array({P->name, "movingUse", json::array({P->name, "", S.x, S.y, S.z, 2})})) && !movingBodiesList(*L).empty(), "a guest's use, sent to the host, starts it there");
+    tick(2.0);
+    check(bus.emit("itemUse", json::array({P->name, "", 0, 0, 0, -1})) && movingBodiesList(*L).empty(), "a use aimed at nothing does nothing");
   }
 
   printf("[by hand]\n");

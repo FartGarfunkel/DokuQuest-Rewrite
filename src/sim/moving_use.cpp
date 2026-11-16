@@ -56,8 +56,16 @@ class MovingUse : public LevelSystem {
 public:
   explicit MovingUse(Level& l) : lv(l) {
     if (!lv.events) return;
-    hUse = lv.events->on("itemUse", [this](const json& a) {
-      if (!a.is_array() || a.size() < 6 || !a[2].is_number()) return true;
+    hUse = lv.events->on("itemUse", [this](const json& a) { return use(a); });
+    // netAction [player, "movingUse", [the itemUse args]]: a guest's use, done here on the host (whose world is the real one)
+    hAct = lv.events->on("netAction", [this](const json& a) {
+      if (lv.isRemote() || !a.is_array() || a.size() < 3 || a[1] != "movingUse" || !a[2].is_array()) return true;
+      use(a[2]); return false;
+    });
+  }
+  bool use(const json& a) {
+    {
+      if (!a.is_array() || a.size() < 6 || !a[2].is_number() || !a[5].is_number() || a[5].get<int>() < 0) return true;   // (no block aimed at)
       const std::string item = a[1].is_string() ? a[1].get<std::string>() : "";
       if (item == "glue") return true;
       Player* p = rs::playerNamed(lv, a[0].is_string() ? a[0].get<std::string>() : "");
@@ -66,7 +74,9 @@ public:
       const ivec3 at(a[2].get<int>(), a[3].get<int>(), a[4].get<int>());
       const BlockId id = w.getBlock(at.x, at.y, at.z);
       if (!id) return true;
+      auto toHost = [&] { if (lv.net) lv.net->action(*p, "movingUse", a); return false; };   // (a guest: the host moves it)
       if (isMachine(id)) {
+        if (lv.isRemote()) return toHost();
         if (p->sneaking) { cycle(w, *p, at, id); return false; }
         std::string why;
         if (!startMove(lv, p->realm, at, &why) && !why.empty()) toast(lv, *p, "It won't move: " + why);
@@ -75,12 +85,13 @@ public:
       if (p->sneaking || hasOwnUse(id) || !glueMask(w, at)) return true;
       ivec3 m;
       if (!machineFor(w, at, m)) return true;
+      if (lv.isRemote()) return toHost();
       std::string why;
       if (!startMove(lv, p->realm, m, &why) && !why.empty()) toast(lv, *p, "It won't move: " + why);
       return false;
-    });
+    }
   }
-  ~MovingUse() override { if (lv.events) lv.events->off(hUse); }
+  ~MovingUse() override { if (lv.events) { lv.events->off(hUse); lv.events->off(hAct); } }
   const char* name() const override { return "movingUse"; }
 private:
   void cycle(World& w, Player& p, ivec3 at, BlockId id) {
@@ -101,7 +112,7 @@ private:
     w.blockEntityChanged(at.x, at.y, at.z);
     sfxAt(lv, "click", vec3(at) + vec3(0.5f));
   }
-  Level& lv; int hUse = -1;
+  Level& lv; int hUse = -1, hAct = -1;
 };
 }
 
