@@ -154,7 +154,8 @@ fi
 # drag on the right turns the view, a tap on the Bag button opens the bag and Back closes it. The game runs a script
 # that only reports where the player stands, every few frames (the touches come from adb, as a finger's would).
 timeout 30 adb shell am force-stop $PKG; sleep 2
-python3 -c 'import json; print(json.dumps({"steps": [{"wait": 20, "do": "report"}] + [{"wait": 4, "do": "report"}] * 60 + [{"wait": 2, "do": "quit"}]}))' > "$OUT/touchrun.json"
+# (open ground round the player first: the world's spawn can face a cliff)
+python3 -c 'import json; print(json.dumps({"steps": [{"wait": 20, "do": "anchor"}, {"do": "fill", "rel": True, "from": [-6, 0, -16], "to": [6, 5, 6], "key": "air"}, {"do": "fill", "rel": True, "from": [-6, -1, -16], "to": [6, -1, 6], "key": "grass"}, {"do": "look", "yaw": 0, "pitch": 0}, {"wait": 2, "do": "report"}] + [{"wait": 4, "do": "report"}] * 70 + [{"wait": 2, "do": "quit"}]}))' > "$OUT/touchrun.json"
 timeout 60 adb push "$OUT/touchrun.json" $DIR/touchrun.json > /dev/null || err "could not write the touch script into the game's folder"
 adb logcat -c
 TW=--world,TestGles; [ $VULKAN_OK = 1 ] && TW=--world,Test
@@ -166,8 +167,17 @@ if [ $up = 1 ]; then
   SW=${SW:-2400}; SH=${SH:-1080}
   [ "$SW" -lt "$SH" ] && { t=$SW; SW=$SH; SH=$t; }   # (the game is landscape)
   note "touch: screen ${SW}x${SH}; walking (left thumb pushed up)"
-  timeout 60 adb shell input swipe $((SW * 20 / 100)) $((SH * 70 / 100)) $((SW * 20 / 100)) $((SH * 52 / 100)) 6000 &
-  sleep 3; shot touch-walking; wait
+  # the thumb down, pushed up to the ring's edge, held there 15 s (the emulator draws about a frame a second, and each
+  # frame moves the player at most a tenth of a second's walk), then lifted
+  X=$((SW * 20 / 100)); Y0=$((SH * 70 / 100)); Y1=$((SH * 57 / 100))
+  if timeout 20 adb shell input motionevent DOWN $X $Y0 > /dev/null 2>&1; then
+    for y in $(seq $Y0 -20 $Y1) $Y1; do timeout 20 adb shell input motionevent MOVE $X $y > /dev/null 2>&1; done
+    sleep 5; shot touch-walking; sleep 10
+    timeout 20 adb shell input motionevent UP $X $Y1 > /dev/null 2>&1
+  else
+    timeout 60 adb shell input swipe $X $Y0 $X $Y1 15000 &
+    sleep 5; shot touch-walking; wait
+  fi
   sleep 6
   note "touch: turning (a drag on the right)"
   timeout 60 adb shell input swipe $((SW * 55 / 100)) $((SH * 40 / 100)) $((SW * 75 / 100)) $((SH * 40 / 100)) 2500
