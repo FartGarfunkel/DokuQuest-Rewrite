@@ -11,6 +11,7 @@
 #include "world/dims.h"
 #include "sim/rotate.h"
 #include "sim/glue.h"
+#include "sim/moving_piece.h"
 #include <thread>
 #include <cstdio>
 
@@ -94,6 +95,56 @@ int main(int argc, char** argv) {
     w.setBlock(B.x, B.y, B.z, planks);
     check(!use("glue", A, 0) && glued(w, A, 0) && P->held().n == 7, "using glue on a face sticks it, one glue used");
     check(!use("glue", A, 0) && !glued(w, A, 0) && P->held().n == 9, "using it again unsticks it, the glue given back");
+  }
+
+  printf("[piece and path]\n");
+  {
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 8; y++) w.setBlock(x, y, z, AIR);
+    const BlockId hingeB = reg().blockId("hinge"), slider = reg().blockId("slider"), grass = reg().blockId("tall_grass"), door = reg().blockId("oak_door");
+    const ivec3 H(6, Y + 1, 6);
+    w.setBlock(H.x, H.y, H.z, hingeB, 1);   // (facing up)
+    // a gate: three planks above the hinge running east, glued to it and to each other
+    for (int i = 0; i < 3; i++) w.setBlock(H.x + i, H.y + 1, H.z, planks);
+    setGlue(w, H, 2, true); setGlue(w, H + ivec3(0, 1, 0), 0, true); setGlue(w, H + ivec3(1, 1, 0), 0, true);
+    Motion m; m.kind = 0; m.machine = H; m.face = 2; m.quarters = 1;
+    Piece pc; std::string why;
+    const bool gOk = gatherPiece(w, m, pc, &why);
+    check(gOk && pc.cells.size() == 3, "a three-plank gate glued to the hinge is one piece (" + std::to_string(pc.cells.size()) + ")");
+    check(movedCell(m, H + ivec3(1, 1, 0)) == H + ivec3(0, 1, 1), "a quarter turn clockwise takes the plank east of the hinge round to its south");
+    setGlue(w, H + ivec3(0, 1, 0), 0, false);
+    Piece small; gatherPiece(w, m, small, &why);
+    check(small.cells.size() == 1, "unglued in the middle, only the plank on the hinge moves");
+    setGlue(w, H + ivec3(0, 1, 0), 0, true);
+    std::vector<ivec3> brk; ivec3 at(0);
+    w.setBlock(H.x + 1, H.y + 1, H.z + 2, stone);   // (in the far plank's sweep)
+    check(!pathClear(w, m, pc, &brk, &at), "a stone in the gate's swing blocks it");
+    w.setBlock(H.x + 1, H.y + 1, H.z + 2, grass);
+    brk.clear();
+    check(pathClear(w, m, pc, &brk, &at) && !brk.empty(), "tall grass in the swing doesn't block it: it's broken as the gate goes through");
+    w.setBlock(H.x + 1, H.y + 1, H.z + 2, AIR);
+    Motion s; s.kind = 1; s.machine = H; s.face = 0; s.distance = 3;
+    check(movedCell(s, H + ivec3(1, 0, 0)) == H + ivec3(4, 0, 0), "a slider facing east, distance 3: a block moves three east");
+    // a door glued by its lower half only
+    const ivec3 D(12, Y + 1, 12), DH = D + ivec3(0, -1, 0);
+    w.setBlock(DH.x, DH.y + 0, DH.z, stone);
+    w.setBlock(D.x, D.y, D.z, door, 0); w.setBlock(D.x, D.y + 1, D.z, door, 16);
+    w.setBlock(D.x - 1, D.y, D.z, hingeB, 5);   // (facing east, toward the door)
+    setGlue(w, D + ivec3(-1, 0, 0), 0, true);
+    Motion dm; dm.kind = 0; dm.machine = D + ivec3(-1, 0, 0); dm.face = 0;
+    Piece dp; why.clear();
+    const bool dOk = gatherPiece(w, dm, dp, &why);
+    check(!dOk && why.find("both halves") != std::string::npos, "a door glued by one half only is refused: glue both halves (" + why + ")");
+    setGlue(w, D, 2, true);
+    check(gatherPiece(w, dm, dp, &why) && dp.cells.size() == 2, "both halves glued: the door moves whole");
+    // too big
+    for (int x = 0; x < 10; x++) for (int z = 0; z < 10; z++) for (int y = 0; y < 6; y++) w.setBlock(x - 2, Y + 1 + y, z - 2 + 14, planks);
+    const ivec3 S(-3, Y + 1, 12); w.setBlock(S.x, S.y, S.z, slider, 5);
+    setGlue(w, S, 0, true);
+    for (int x = 0; x < 10; x++) for (int z = 0; z < 10; z++) for (int y = 0; y < 6; y++) { const ivec3 q(x - 2, Y + 1 + y, z - 2 + 14); if (x < 9) setGlue(w, q, 0, true); if (z < 9) setGlue(w, q, 4, true); if (y < 5) setGlue(w, q, 2, true); }
+    Motion bm; bm.kind = 1; bm.machine = S; bm.face = 0; bm.distance = 1;
+    Piece bp; why.clear();
+    const bool bOk = gatherPiece(w, bm, bp, &why);
+    check(!bOk && why.find("512") != std::string::npos, "600 glued blocks are too many (" + why + ")");
   }
 
   printf("%d passed, %d failed\n", passes, fails);
