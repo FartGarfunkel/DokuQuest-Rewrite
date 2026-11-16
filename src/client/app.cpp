@@ -204,6 +204,8 @@ void App::reloadTiles() {
   }
   int page = std::min(2048, gfx.maxArrayLayers);
   const int pages = gfx.maxTexUnits >= 19 ? 3 : 2;   // (the third page's samplers: TileTextures::bind)
+  // too few units for a third page (many phones): bigger pages instead, where the GPU takes that many layers
+  if (tiles.count > page * pages) page = std::max(page, std::min(gfx.maxArrayLayers, (tiles.count + pages - 1) / pages));
   if (tiles.count > page * pages) DQ_WARN("tiles: %d tiles but this GPU holds %d; some blocks will look wrong", tiles.count, page * pages);
   tileTex.page = page;
   size_t tsz = (size_t)tiles.size * tiles.size;

@@ -4582,6 +4582,7 @@ static void GLAD_API_PTR dq_glGetIntegerv(GLenum pname, GLint* out) {
     case GL_BLEND_EQUATION_RGB: *out = (GLint)blendEq; break;
     case GL_BLEND_EQUATION_ALPHA: *out = (GLint)blendEqA; break;
     case GL_MAX_ARRAY_TEXTURE_LAYERS: *out = gfx.maxArrayLayers; break;
+    case GL_MAX_TEXTURE_IMAGE_UNITS: case GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS: *out = gfx.maxTexUnits; break;
     case GL_PIXEL_UNPACK_BUFFER_BINDING: *out = (GLint)pixelUnpack; break;
     case GL_SAMPLER_BINDING: *out = 0; break;
     case GL_POLYGON_MODE: out[0] = out[1] = GL_FILL; break;
@@ -4900,6 +4901,8 @@ bool gfxInitVulkan(SDL_Window* window) {
   gfx.anisotropic = enable.features.samplerAnisotropy == VK_TRUE;
   gfx.maxAniso = gfx.anisotropic ? limits.maxSamplerAnisotropy : 1.f;
   gfx.maxArrayLayers = (int)limits.maxImageArrayLayers;
+  // the units a shader may sample (the OpenGL-shaped calls keep 32): the tile pictures' third page needs units 16-18
+  gfx.maxTexUnits = (int)std::min<uint32_t>(32u, std::min(limits.maxPerStageDescriptorSamplers, limits.maxPerStageDescriptorSampledImages));
   gfx.vendor = "Vulkan";
   gfx.renderer = props.deviceName;
   gfx.version = "Vulkan 1.3";
