@@ -111,17 +111,26 @@ void buildVoxelMesh(const VoxelGrid& g, VoxelMeshData& out, const VoxelFaceColor
 VoxelMeshGL::VoxelMeshGL() = default;
 VoxelMeshGL::~VoxelMeshGL() { release(); }
 void VoxelMeshGL::release() { if (mesh) mesh->release(); mesh.reset(); quads = 0; }
+// What the GPU gets: the position as floats. The grid's 16-bit whole numbers read as floats are a "scaled" vertex
+// format on Vulkan, which phone GPUs leave out; and these meshes are drawn by voxel.glsl, creature.glsl, content.glsl
+// and shader packs alike, all reading a float position, so the numbers are made float here, once, at upload.
+struct VoxelVertexGpu { float x, y, z; u8 nao, pad[3]; u32 rgba; };
+static_assert(sizeof(VoxelVertexGpu) == 20, "VoxelVertexGpu layout");
 void VoxelMeshGL::upload(const VoxelMeshData& d) {
   if (d.verts.empty()) { release(); return; }
   if (!mesh) {
     mesh = std::make_unique<Mesh>();
-    mesh->setup(sizeof(VoxelVertex), {
-      {0, 3, GL_UNSIGNED_SHORT, GL_FALSE, true, 0},   // (an integer input, voxel.glsl makes it float: see there)
-      {1, 1, GL_UNSIGNED_BYTE, GL_FALSE, true, 6},
-      {2, 4, GL_UNSIGNED_BYTE, GL_TRUE, false, 8},
+    mesh->setup(sizeof(VoxelVertexGpu), {
+      {0, 3, GL_FLOAT, GL_FALSE, false, 0},
+      {1, 1, GL_UNSIGNED_BYTE, GL_FALSE, true, 12},
+      {2, 4, GL_UNSIGNED_BYTE, GL_TRUE, false, 16},
     });
   }
-  mesh->uploadQuads(d.verts.data(), d.verts.size() * sizeof(VoxelVertex), d.quads());
+  {
+    std::vector<VoxelVertexGpu> gpu(d.verts.size());
+    for (size_t i = 0; i < d.verts.size(); i++) { const VoxelVertex& v = d.verts[i]; gpu[i] = {(float)v.x, (float)v.y, (float)v.z, v.nao, {0, 0, 0}, v.rgba}; }
+    mesh->uploadQuads(gpu.data(), gpu.size() * sizeof(VoxelVertexGpu), d.quads());
+  }
   quads = d.quads();
   glass = false; liquidY = vec2(0);
   vec3 lo(1e9f), hi(-1e9f);

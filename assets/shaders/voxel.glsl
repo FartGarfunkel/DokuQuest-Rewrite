@@ -17,9 +17,7 @@ uniform vec3 uSlosh;
 uniform vec4 uClip;          // cut away where dot(uClip.xyz, p) + uClip.w > 0 (render space)         // its surface's slope (x, z) as it's carried, time
 
 #ifdef VERTEX
-// (whole numbers in, made float here: phone GPUs can't turn 16-bit integers into floats as they read the vertex)
-layout(location = 0) in uvec3 aPosU;
-#define aPos vec3(aPosU)
+layout(location = 0) in vec3 aPos;
 layout(location = 1) in uint aNA;
 layout(location = 2) in vec4 aCol;
 
