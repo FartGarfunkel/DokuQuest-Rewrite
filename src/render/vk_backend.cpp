@@ -1081,6 +1081,11 @@ static VkPrimitiveTopology topoOf(GLenum m) {
   if (m == GL_TRIANGLE_FAN) return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
   return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 }
+// 0 triangles, 1 lines: the class a pipeline's topology must share with the topology a draw sets (PipeKey)
+static uint32_t topoClassOf(GLenum m) {
+  const VkPrimitiveTopology t = topoOf(m);
+  return t == VK_PRIMITIVE_TOPOLOGY_LINE_LIST || t == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP ? 1 : 0;
+}
 static VkFormat attribFormat(const Attrib& a) {
   // Three packed bytes (particle tint). R8G8B8 is not a required vertex format; R8G8B8A8
   // is, and a vec3 shader keeps the first three components. The extra byte is the next
@@ -3015,7 +3020,9 @@ static VkPipeline pipelineFor(Prog& p, const PipeKey& key, const std::vector<VkV
   vi.pVertexAttributeDescriptions = attrs.empty() ? nullptr : attrs.data();
   if (tiny) { vi.vertexBindingDescriptionCount = 0; vi.pVertexBindingDescriptions = nullptr; vi.vertexAttributeDescriptionCount = 0; vi.pVertexAttributeDescriptions = nullptr; }
   VkPipelineInputAssemblyStateCreateInfo ia{VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
-  ia.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+  // of the class the draws set it within (drawCommonImpl puts the class in the key's last word)
+  const uint32_t topoClass = key.w[key.w.size() - 1];
+  ia.topology = topoClass == 2 ? VK_PRIMITIVE_TOPOLOGY_POINT_LIST : topoClass == 1 ? VK_PRIMITIVE_TOPOLOGY_LINE_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
   VkPipelineViewportStateCreateInfo vp{VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
   vp.viewportCount = 1; vp.scissorCount = 1;
   VkPipelineRasterizationStateCreateInfo rs{VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
@@ -3760,6 +3767,11 @@ static void drawCommonImpl(GLenum mode, bool indexed, GLsizei count, GLenum inde
   key.w[n++] = (uint32_t)vb.size();
   for (auto& a : attrs) { if (n + 4 >= key.w.size()) break; key.w[n++] = a.location; key.w[n++] = a.binding; key.w[n++] = (uint32_t)a.format; key.w[n++] = a.offset; }
   for (auto& b : vb) { if (n + 2 >= key.w.size()) break; key.w[n++] = b.stride; key.w[n++] = (uint32_t)b.inputRate; }
+  // The topology is dynamic, but only within its class (points, lines, triangles) unless the device has
+  // dynamicPrimitiveTopologyUnrestricted: lines (the block outline, a fishing line) drawn with a triangle pipeline
+  // are outside the rules, which desktop drivers forgive and phone drivers need not. (The last word: the loops
+  // above stop before it.)
+  key.w[key.w.size() - 1] = topoClassOf(mode);
 
   // A sampler still attached (the shadow map the gbuffer is about to read) leaves
   // attachment layout here. That ends the pass. Depth test, compare, and cull are
