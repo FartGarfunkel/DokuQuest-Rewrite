@@ -133,7 +133,8 @@ void loadLocalTiles(TileSet& ts) {
     if (u == std::string::npos || ts.index.count(name)) continue;
     const fs::path f = dataDir() / "local_models" / "tiles" / name.substr(0, u) / (name.substr(u + 1) + ".png");
     int w = 0, h = 0, ch = 0;
-    u8* px = stbi_load(f.string().c_str(), &w, &h, &ch, 4);
+    const auto fb = readBinary(f);   // (through the data archive in a release: a plain file open missed every one)
+    u8* px = fb ? stbi_load_from_memory(fb->data(), (int)fb->size(), &w, &h, &ch, 4) : nullptr;
     if (!px) continue;
     const int fw = std::min(w, h);   // (a strip: its first frame)
     std::vector<u8> out((size_t)T * T * 4);

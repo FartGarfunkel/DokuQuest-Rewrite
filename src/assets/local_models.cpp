@@ -59,7 +59,8 @@ int localTile(TileSet& ts, const fs::path& dir, const std::string& ref, int reco
     const std::string name = r.substr(std::string("hands:block/").size()), key = "hands:" + name + (recolor >= 0 && name == "chest_wood" ? "@" + std::to_string(recolor) : "");
     if (auto it = ts.index.find(key); it != ts.index.end()) return it->second;
     int w = 0, h = 0, ch = 0;
-    u8* px = stbi_load((dir / "textures" / (name + ".png")).string().c_str(), &w, &h, &ch, 4);
+    const auto fb = readBinary(dir / "textures" / (name + ".png"));   // (through the data archive in a release)
+    u8* px = fb ? stbi_load_from_memory(fb->data(), (int)fb->size(), &w, &h, &ch, 4) : nullptr;
     if (!px) return -1;
     const int T = ts.size, fw = std::min(w, h);
     std::vector<u8> out((size_t)T * T * 4);
@@ -151,12 +152,11 @@ void loadStationModels(TileSet& ts) {
     }
   }
   if (!S->byId.empty()) {   // the parts drawn on their own (doors, lids, the wheel, the arm): every model of the import
-    std::error_code ec;
-    for (auto& f : fs::directory_iterator(dir / "models", ec)) {
-      const std::string name = f.path().stem().string();
-      if (f.path().extension() != ".json" || S->models.count(name)) continue;
+    for (const fs::path& f : listDataFiles(dir / "models")) {   // (the archive's too, in a release)
+      const std::string name = f.stem().string();
+      if (f.extension() != ".json" || S->models.count(name)) continue;
       auto pm = std::make_shared<PackModel>();
-      if (const auto mj = readJson(f.path())) *pm = parseBlockModel(*mj, [&](const std::string& ref) { return localTile(ts, dir, ref); });
+      if (const auto mj = readJson(f)) *pm = parseBlockModel(*mj, [&](const std::string& ref) { return localTile(ts, dir, ref); });
       S->models[name] = pm;
     }
   }

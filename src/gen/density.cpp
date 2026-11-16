@@ -140,9 +140,9 @@ std::atomic<u64> gSerial{1};
 DensityGraph::DensityGraph() = default;
 DensityGraph::~DensityGraph() = default;
 
-static bool readJsonFile(const fs::path& p, json& out) {
-  std::ifstream f(p); if (!f) return false;
-  try { out = json::parse(f); } catch (...) { return false; }
+static bool readJsonFile(const fs::path& p, json& out) {   // (through the data archive in a release)
+  auto j = readJson(p); if (!j) return false;
+  out = std::move(*j);
   return true;
 }
 
