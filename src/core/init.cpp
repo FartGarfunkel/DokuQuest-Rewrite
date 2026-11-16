@@ -24,7 +24,8 @@ bool initCore(const CoreOptions& o) {
   registerEndStory();
   registerVillagers();
   registerRedstone();
-  registerBossKits();   // imported bosses fight by their own attack tables (sim/boss_kit.cpp)
+  registerBossKits();
+  registerBossBrains();   // the great foes that had no fight of their own (sim/boss_brains.cpp)   // imported bosses fight by their own attack tables (sim/boss_kit.cpp)
   return true;
 }
 void shutdownCore() {}
