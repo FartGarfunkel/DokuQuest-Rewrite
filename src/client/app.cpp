@@ -78,13 +78,23 @@ bool App::initWindow() {
     settings.windowW = w; settings.windowH = h;
   }
   RendererKind want = args.rendererSet ? args.renderer : settings.renderer;
+#ifdef __ANDROID__
+  want = RendererKind::Vulkan;
+  const bool fullscreen = true;   // (the whole screen, the system bars hidden)
+#else
+  const bool fullscreen = settings.fullscreen;
+#endif
   if (want == RendererKind::Vulkan) {
-    Uint32 flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (settings.fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
+    Uint32 flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
     window = SDL_CreateWindow(("DokuQuest " DQ_VERSION), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, settings.windowW, settings.windowH, flags);
     if (!window) { DQ_ERR("window: %s", SDL_GetError()); return false; }
     gfxVulkanSetVsync(settings.vsync != 0);   // before the swapchain is made (it was only applied on a later Options change, so Vulkan stayed at the screen's refresh rate)
     if (!gfxInitVulkan(window)) {
+#ifdef __ANDROID__
+      SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "DokuQuest", "DokuQuest needs Vulkan 1.3, and this device's graphics driver doesn't offer it.\n(Android 13 or newer on a recent phone has it.)", window);
+#else
       SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "DokuQuest", "Vulkan couldn't be started on this graphics driver.\nPick Modern or Legacy OpenGL in the launcher.", window);
+#endif
       return false;
     }
     SDL_GetWindowSize(window, &width, &height);
@@ -318,6 +328,12 @@ int App::run(int argc, char** argv) {
   }
   registerPortalView();   // render/portal_view.cpp
   settings = Settings::load();
+#ifdef __ANDROID__
+  // Android has no launcher to suggest the first settings: a phone starts on Low (Options → Video raises it). Vulkan
+  // is the only renderer there (the OpenGL ones need a desktop driver).
+  if (settings.preset == "auto") { settings.applyPreset("low"); settings.save(); }
+  settings.renderer = RendererKind::Vulkan;
+#endif
   profileLook(settings, 0);   // ui/profiles.cpp: undo a profile edit the last run left half done
   if (!settings.shaderPack.empty()) setShaderPack(settings.shaderPack);
   mods = std::make_unique<ModLoader>();
@@ -368,6 +384,17 @@ void App::frameLoop() {
     if (args.bridge || settings.extra.value("engineBridge", false)) engineBridgeFrame(*this, args.bridge ? args.bridge : 25590);   // the launcher's Engine page, Strata
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
+#ifdef __ANDROID__
+      // the Back button / back gesture is Escape (SDL keeps it from closing the app: client/android_boot.cpp)
+      if ((e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) && (e.key.keysym.sym == SDLK_AC_BACK || e.key.keysym.scancode == SDL_SCANCODE_AC_BACK)) {
+        e.key.keysym.sym = SDLK_ESCAPE; e.key.keysym.scancode = SDL_SCANCODE_ESCAPE;
+      }
+      // Android may close a game it sent to the background without asking: the world is saved on the way out
+      if (e.type == SDL_APP_DIDENTERBACKGROUND && session) session->save();
+      // coming back, the window has a new surface: Vulkan draws to that one
+      if (e.type == SDL_APP_DIDENTERFOREGROUND && gfx.vulkan) gfxVulkanSurfaceChanged();
+      if (e.type == SDL_APP_TERMINATING) quit = true;
+#endif
       ImGui_ImplSDL2_ProcessEvent(&e);
       input.handle(e);
       if (e.type == SDL_QUIT) quit = true;
@@ -435,6 +462,10 @@ void App::frameLoop() {
     if (audio) audio->setMuted(settings.muteOnLostFocus && !focused);
     ImGui::PopFont();
     ImGui::Render();
+#ifdef __ANDROID__
+    // a text field is being typed in: the on-screen keyboard (desktop SDL always takes text, Android only on request)
+    { static bool kb = false; const bool want = ImGui::GetIO().WantTextInput; if (want != kb) { kb = want; if (want) SDL_StartTextInput(); else SDL_StopTextInput(); } }
+#endif
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     if (screenshotPending) {
       std::vector<u8> px((size_t)dw * dh * 4);

@@ -7,10 +7,15 @@
 #include <csignal>
 #include <exception>
 #include <cstring>
-#if defined(__linux__) || defined(__APPLE__)
+#if (defined(__linux__) && !defined(__ANDROID__)) || defined(__APPLE__)
 #include <execinfo.h>
 #include <unistd.h>
 #define DQ_HAVE_BT 1
+#endif
+#ifdef __ANDROID__
+// Android: an app's stderr goes nowhere, so the log goes to the system log too (adb logcat -s DokuQuest). A crash is
+// left to the system's own crash reporter, which writes a full report with the backtrace.
+#include <android/log.h>
 #endif
 
 namespace dq {
@@ -36,6 +41,10 @@ void logMsg(LogLevel lv, const char* fmt, ...) {
   va_list ap; va_start(ap, fmt); vsnprintf(buf, sizeof buf, fmt, ap); va_end(ap);
   static const char* tags[] = {"debug", "info", "warn", "error"};
   std::lock_guard<std::mutex> lk(g_logMx);
+#ifdef __ANDROID__
+  static const int prio[] = {ANDROID_LOG_DEBUG, ANDROID_LOG_INFO, ANDROID_LOG_WARN, ANDROID_LOG_ERROR};
+  __android_log_write(prio[(int)lv], "DokuQuest", buf);
+#endif
   fprintf(stderr, "[%s] %s\n", tags[(int)lv], buf);
   if (g_logFile) { fprintf(g_logFile, "[%s] %s\n", tags[(int)lv], buf); fflush(g_logFile); }
   std::string s(buf);
@@ -49,6 +58,9 @@ static void crashWrite(const char* msg) {
   if (::write(2, msg, n) < 0) {}
   if (g_logFile && ::write(fileno(g_logFile), msg, n) < 0) {}
 #else
+#ifdef __ANDROID__
+  __android_log_write(ANDROID_LOG_FATAL, "DokuQuest", msg);
+#endif
   fputs(msg, stderr); if (g_logFile) { fputs(msg, g_logFile); fflush(g_logFile); }
 #endif
 }
@@ -69,11 +81,15 @@ static void onCrashSignal(int sig) {
   std::raise(sig);
 }
 void installCrashHandler() {
+#ifndef __ANDROID__   // (Android: the system's crash reporter keeps these signals)
   for (int s : {SIGSEGV, SIGABRT, SIGFPE, SIGILL
 #ifdef SIGBUS
                 , SIGBUS
 #endif
        }) std::signal(s, onCrashSignal);
+#else
+  (void)onCrashSignal;
+#endif
   std::set_terminate([] {
     std::string what = "unknown";
     if (auto ep = std::current_exception()) {

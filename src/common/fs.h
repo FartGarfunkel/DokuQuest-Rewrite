@@ -39,6 +39,7 @@ fs::path assetsDir();    // installDir()/assets
 fs::path userDir();
 fs::path userSub(const char* name);   // creates it
 void setUserDirOverride(const fs::path& p); // --userdir (tests, portable installs)
+void setInstallDirOverride(const fs::path& p);   // Android: the game's files, unpacked from the APK (client/android_boot.cpp)
 
 // zlib (miniz) helpers
 std::vector<u8> zCompress(const void* data, size_t n, int level = 6);

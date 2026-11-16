@@ -93,10 +93,13 @@ bool writeJson(const fs::path& p, const json& j, bool pretty) {
   return writeFileAtomic(p, pretty ? j.dump(2) : j.dump());
 }
 
-static fs::path g_userOverride;
+static fs::path g_userOverride, g_installOverride;
 void setUserDirOverride(const fs::path& p) { g_userOverride = p; }
+void setInstallDirOverride(const fs::path& p) { g_installOverride = p; }
 
 fs::path installDir() {
+  // (Android: the program is the system's app_process, so /proc/self/exe says nothing about where the game's files are)
+  if (!g_installOverride.empty()) return g_installOverride;
   static fs::path cached;
   if (!cached.empty()) return cached;
 #if defined(_WIN32)

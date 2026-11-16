@@ -25,6 +25,9 @@ else()
   set_property(SOURCE ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp APPEND PROPERTY COMPILE_OPTIONS "-include" "glad/gl.h")
 endif()
 target_link_libraries(imgui PUBLIC SDL2::SDL2-static)
+# Android: ImGui's GL backend would switch itself to the system's GLES 3; the game's GL is glad, which the Vulkan
+# renderer answers (imgui/backends/imgui_impl_opengl3.h checks this)
+target_compile_definitions(imgui PUBLIC DQ_IMGUI_GL_VIA_GLAD)
 
 add_library(enet STATIC enet/callbacks.c enet/compress.c enet/host.c enet/list.c enet/packet.c enet/peer.c enet/protocol.c enet/unix.c enet/win32.c)
 target_include_directories(enet PUBLIC enet/include)

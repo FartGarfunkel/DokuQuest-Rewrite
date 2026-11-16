@@ -61,6 +61,17 @@ target_link_libraries(dqclient PUBLIC dqcore glad imgui SDL2::SDL2-static glslan
 add_executable(dokuquest src/client/main.cpp)
 target_link_libraries(dokuquest PRIVATE dqclient)
 
+if(ANDROID)
+  # Android: the game is libmain.so, which SDL's Java activity (android/) loads and starts at SDL_main. SDL is linked
+  # in through its own target, which brings the system libraries its Android parts need (GLESv1_CM, GLESv2, OpenSLES,
+  # ...): a library that leaves any of them out still builds, but Android refuses to load it. --no-undefined turns
+  # such a gap into a build error here instead. tools/android/build_apk.sh builds the APK around it.
+  add_library(main SHARED src/client/main.cpp)
+  target_link_libraries(main PRIVATE dqclient android log)
+  target_link_options(main PRIVATE -Wl,--no-undefined -Wl,-z,max-page-size=16384)
+  target_link_libraries(dqcore PUBLIC log)   # common.cpp writes the log to logcat
+endif()
+
 file(GLOB_RECURSE DQ_LAUNCHER_SRC CONFIGURE_DEPENDS src/launcher/*.cpp)
 add_executable(dokuquest-launcher ${DQ_LAUNCHER_SRC})
 target_compile_options(dokuquest-launcher PRIVATE ${DQ_WARN})

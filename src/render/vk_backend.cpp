@@ -167,6 +167,7 @@ static VkFormat swapFmt = VK_FORMAT_R8G8B8A8_UNORM;
 static VkFormat depthFmt = VK_FORMAT_D24_UNORM_S8_UINT;
 static VkColorSpaceKHR swapSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 static VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+static bool swapTurned = false;   // the swapchain is upright on a screen the system reports as turned (createSwapchain)
 static bool wantVsync = true;
 static std::vector<VkImage> swapImages;
 static std::vector<VkImageView> swapViews;
@@ -3882,7 +3883,12 @@ static bool createSwapchain(SDL_Window* window) {
   sci.imageArrayLayers = 1;
   sci.imageUsage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
   sci.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-  sci.preTransform = caps.currentTransform;
+  // The picture is drawn upright. A phone held sideways reports its screen as turned (currentTransform 90/270):
+  // taking that as preTransform said the images were already turned, and the game showed on its side. Upright
+  // images let the system turn them; it then answers each present with SUBOPTIMAL, which is expected (see
+  // gfxVulkanPresent).
+  sci.preTransform = (caps.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR : caps.currentTransform;
+  swapTurned = sci.preTransform != caps.currentTransform;
   sci.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
   if (!(caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)) {
     if (caps.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) sci.compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
@@ -4838,9 +4844,25 @@ bool gfxInitVulkan(SDL_Window* window) {
   VkPhysicalDeviceVulkan13Features v13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
   VkPhysicalDeviceExtendedDynamicStateFeaturesEXT eds{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT};
   VkPhysicalDeviceExtendedDynamicState2FeaturesEXT eds2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT};
-  feat.pNext = &v13; v13.pNext = &eds; eds.pNext = &eds2;
+  // The drawing uses Vulkan 1.3's own dynamic-state calls (extended dynamic state 1 and the base of 2 are part of 1.3).
+  // The extensions' feature structs are only asked for where the driver lists the extensions: some phone drivers have
+  // 1.3 without listing them, and the structs then came back empty and turned the device away.
+  bool hasEds = false, hasEds2 = false;
+  {
+    uint32_t ne = 0; vkEnumerateDeviceExtensionProperties(phys, nullptr, &ne, nullptr);
+    std::vector<VkExtensionProperties> de(ne);
+    vkEnumerateDeviceExtensionProperties(phys, nullptr, &ne, de.data());
+    for (auto& e : de) {
+      if (std::strcmp(e.extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME) == 0) hasEds = true;
+      if (std::strcmp(e.extensionName, VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME) == 0) hasEds2 = true;
+    }
+  }
+  feat.pNext = &v13; v13.pNext = nullptr;
+  void** featTail = &v13.pNext;
+  if (hasEds) { *featTail = &eds; featTail = &eds.pNext; }
+  if (hasEds2) { *featTail = &eds2; featTail = &eds2.pNext; }
   vkGetPhysicalDeviceFeatures2(phys, &feat);
-  if (!v13.dynamicRendering || !eds.extendedDynamicState || !eds2.extendedDynamicState2) {
+  if (!v13.dynamicRendering || (hasEds && !eds.extendedDynamicState) || (hasEds2 && !eds2.extendedDynamicState2)) {
     DQ_ERR("vulkan: this driver is missing dynamic rendering");
     shutdownDevice(); return false;
   }
@@ -4848,7 +4870,10 @@ bool gfxInitVulkan(SDL_Window* window) {
   VkPhysicalDeviceVulkan13Features ev13{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES};
   VkPhysicalDeviceExtendedDynamicStateFeaturesEXT eeds{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT};
   VkPhysicalDeviceExtendedDynamicState2FeaturesEXT eeds2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT};
-  enable.pNext = &ev13; ev13.pNext = &eeds; eeds.pNext = &eeds2;
+  enable.pNext = &ev13; ev13.pNext = nullptr;
+  void** enableTail = &ev13.pNext;
+  if (hasEds) { *enableTail = &eeds; enableTail = &eeds.pNext; }
+  if (hasEds2) { *enableTail = &eeds2; enableTail = &eeds2.pNext; }
   ev13.dynamicRendering = VK_TRUE;
   eeds.extendedDynamicState = VK_TRUE;
   eeds2.extendedDynamicState2 = VK_TRUE;
@@ -4982,6 +5007,7 @@ void gfxVulkanNewFrame() {
   skipFrame = false;
   frameOpen = false;
   recording = false;
+  if (!surface) { skipFrame = true; frameOpen = true; submitEmpty(); return; }   // (no window surface: gfxVulkanSurfaceChanged)
   VkSurfaceCapabilitiesKHR caps{};
   const double tc = g_vkStats ? statNow() : 0;
   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phys, surface, &caps);
@@ -5071,8 +5097,27 @@ void gfxVulkanPresent(SDL_Window* window) {
   const double tq = g_vkStats ? statNow() : 0;
   VkResult pr = vkQueuePresentKHR(queue, &pi);
   if (g_vkStats) g_statPresentMs += (statNow() - tq) * 1000;
-  if (pr == VK_ERROR_OUT_OF_DATE_KHR || pr == VK_SUBOPTIMAL_KHR) swapW = 0;
+  // SUBOPTIMAL from a turned screen only says the system turns the picture (createSwapchain): rebuilding for it rebuilt
+  // the swapchain every frame. A new size is still caught by gfxVulkanNewFrame's extent check.
+  if (pr == VK_ERROR_OUT_OF_DATE_KHR || (pr == VK_SUBOPTIMAL_KHR && !swapTurned)) swapW = 0;
+  if (pr == VK_ERROR_SURFACE_LOST_KHR) DQ_WARN("vulkan: the window surface is gone");
   frameOpen = false;
+}
+
+// Android takes the window's surface away when the app goes to the background and hands out a new one when it comes
+// back. The old VkSurfaceKHR still points at the old one (presenting to it fails from then on), so the surface is made
+// again for the window as it is now; the next frame builds a swapchain for it.
+void gfxVulkanSurfaceChanged() {
+  if (!g_on || !g_window) return;
+  vkDeviceWaitIdle(device);
+  destroySwapchain();
+  if (surface) { vkDestroySurfaceKHR(instance, surface, nullptr); surface = VK_NULL_HANDLE; }
+  if (!SDL_Vulkan_CreateSurface(g_window, instance, &surface)) { DQ_ERR("vulkan: surface: %s", SDL_GetError()); surface = VK_NULL_HANDLE; return; }
+  VkBool32 present = VK_FALSE;
+  vkGetPhysicalDeviceSurfaceSupportKHR(phys, queueFamily, surface, &present);
+  if (!present) DQ_WARN("vulkan: the queue can't draw to the new surface");
+  swapW = 0;
+  DQ_LOG("vulkan: new window surface");
 }
 
 } // namespace dq
