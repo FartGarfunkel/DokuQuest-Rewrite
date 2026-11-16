@@ -36,6 +36,16 @@ namespace dq {
 
 static App* g_app = nullptr;
 App& app() { return *g_app; }
+
+#ifdef __ANDROID__
+// A phone whose Vulkan driver takes the game down as it starts would do it on every start, before Options could be
+// reached. So a mark is left while Vulkan starts and taken away once it has drawn for a while (or the game was left or
+// closed normally); a mark found at the next start means that start died, and the game draws with OpenGL ES from then
+// on (Options → Video → Renderer switches back).
+static fs::path vulkanMark() { return userDir() / "vulkan_starting"; }
+static void clearVulkanMark() { std::error_code ec; fs::remove(vulkanMark(), ec); }
+static bool g_vulkanFellBack = false;
+#endif
 App::App() = default;
 App::~App() = default;
 
@@ -89,6 +99,9 @@ bool App::initWindow() {
     window = SDL_CreateWindow(("DokuQuest " DQ_VERSION), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, settings.windowW, settings.windowH, flags);
     if (!window) { DQ_ERR("window: %s", SDL_GetError()); return false; }
     gfxVulkanSetVsync(settings.vsync != 0);   // before the swapchain is made (it was only applied on a later Options change, so Vulkan stayed at the screen's refresh rate)
+#ifdef __ANDROID__
+    writeFileAtomic(vulkanMark(), std::string("1"));   // (taken away after a while of drawing: see vulkanMark)
+#endif
     if (gfxInitVulkan(window)) {
       SDL_GetWindowSize(window, &width, &height);
       if (auto icon = readBinary(assetsDir() / "icon.png")) {
@@ -104,6 +117,7 @@ bool App::initWindow() {
     // no Vulkan 1.3 on this phone (Android 12 and older): OpenGL ES 3 draws the game instead, the Legacy renderer on
     // the phone's GLES driver (render/gl.cpp), in a window made for it
     DQ_WARN("vulkan: not on this device, drawing with OpenGL ES");
+    clearVulkanMark();   // (no Vulkan 1.3 is not a crash)
     SDL_DestroyWindow(window); window = nullptr;
     want = RendererKind::Legacy;
 #else
@@ -349,6 +363,12 @@ int App::run(int argc, char** argv) {
   // Modern (desktop OpenGL 4) doesn't exist on phones.
   if (settings.preset == "auto") { settings.applyPreset("low"); settings.save(); }
   if (settings.renderer == RendererKind::Modern) settings.renderer = RendererKind::Vulkan;
+  { std::error_code ec;
+    if (settings.renderer == RendererKind::Vulkan && !args.rendererSet && fs::exists(vulkanMark(), ec)) {
+      DQ_WARN("android: the last start on Vulkan didn't get through; drawing with OpenGL ES from now on");
+      settings.renderer = RendererKind::Legacy; settings.save(); g_vulkanFellBack = true;
+    }
+    clearVulkanMark(); }
 #endif
   profileLook(settings, 0);   // ui/profiles.cpp: undo a profile edit the last run left half done
   if (!settings.shaderPack.empty()) setShaderPack(settings.shaderPack);
@@ -372,7 +392,13 @@ int App::run(int argc, char** argv) {
   else if (!args.server.empty()) { if (!joinServer(args.server)) setScreen(makeTitleScreen()); }
   else if (!args.createWorld.empty()) { LevelInfo li; li.name = args.createWorld; li.seedText = args.seed; if (!args.worldType.empty()) li.worldType = args.worldType; createWorld(li); }
   else setScreen(makeTitleScreen());
+#ifdef __ANDROID__
+  if (g_vulkanFellBack) toast("Vulkan stopped DokuQuest last time, so it draws with OpenGL ES now (Options \xE2\x86\x92 Video \xE2\x86\x92 Renderer)", "warn");
+#endif
   frameLoop();
+#ifdef __ANDROID__
+  clearVulkanMark();   // (closed normally)
+#endif
   leaveWorld(false);
   settings.save();
   pool.reset();
@@ -407,7 +433,7 @@ void App::frameLoop() {
       }
       // Android may close a game it sent to the background without asking: the world is saved on the way out. The
       // sound stops too (its thread keeps running while the game waits; each frame back sets the mute again).
-      if (e.type == SDL_APP_DIDENTERBACKGROUND) { if (session) session->save(); if (audio) audio->setMuted(true); if (gfx.vulkan) gfxVulkanSaveCache(); }
+      if (e.type == SDL_APP_DIDENTERBACKGROUND) { if (session) session->save(); if (audio) audio->setMuted(true); if (gfx.vulkan) gfxVulkanSaveCache(); clearVulkanMark(); }
       // coming back, the window has a new surface: Vulkan draws to that one
       if (e.type == SDL_APP_DIDENTERFOREGROUND && gfx.vulkan) gfxVulkanSurfaceChanged();
       if (e.type == SDL_APP_TERMINATING) quit = true;
@@ -504,6 +530,9 @@ void App::frameLoop() {
       fence[fi] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0); fi = (fi + 1) % 3;
     }
     frame++;
+#ifdef __ANDROID__
+    if (frame == 1800) clearVulkanMark();   // (half a minute of drawing: this Vulkan start got through)
+#endif
     // DQ_FRAME_STATS=1: average and worst frame time every 120 frames, to compare renderers
     static const bool frameStats = std::getenv("DQ_FRAME_STATS") != nullptr;
     if (frameStats) {
