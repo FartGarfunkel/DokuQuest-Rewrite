@@ -101,7 +101,7 @@ public:
     { QuietEdits quiet;   // (lifted whole: a door or torch on a lifted plank must not drop as it goes, nor sand fall)
       for (const ivec3& c : p.cells) { w.setBlockEntity(c.x, c.y, c.z, nullptr); w.setBlock(c.x, c.y, c.z, AIR); } }
     st["open"] = !open;
-    if (!open) { st["usedQ"] = q; st["usedD"] = d; } else { st.erase("usedQ"); st.erase("usedD"); }
+    if (!open) { st["usedQ"] = q; st["usedD"] = d; }   // (cleared when it's really shut again: finish())
     w.blockEntityChanged(machine.x, machine.y, machine.z);
     sfxAt(lv, m.kind == 1 ? "piston_out" : "door_open", vec3(machine) + vec3(0.5f));
     bodies.push_back(std::move(body));
@@ -113,11 +113,21 @@ public:
     if (!wp) return;
     World& w = *wp;
     QuietEdits quiet;   // (set down whole, the same way)
+    auto freeCell = [&](ivec3 p) { const BlockId id = w.getBlock(p.x, p.y, p.z); return w.isLoaded(p.x, p.y, p.z) && (!id || reg().tReplaceable[id] || reg().tLiquid[id]); };
+    // all of it where it was going, or (something put in the way since it set off) all of it back: never split
+    bool arrive = true;
+    for (const BodyBlock& k : b.blocks) if (!freeCell(movedCell(b.m, b.m.machine + k.rel))) { arrive = false; break; }
+    if (!arrive) {
+      json& st = machineState(w, b.m.machine);
+      st["open"] = !st.value("open", false);   // (it never got there: as it was)
+      w.blockEntityChanged(b.m.machine.x, b.m.machine.y, b.m.machine.z);
+    }
+    { json& st = machineState(w, b.m.machine); if (!st.value("open", false)) { st.erase("usedQ"); st.erase("usedD"); } }   // (shut: how it opened is done with)
     for (BodyBlock& k : b.blocks) {
-      const ivec3 from = b.m.machine + k.rel, to = movedCell(b.m, from);
-      u8 meta = turnMeta(b.m, k.id, k.meta), carve = turnCarve(b.m, k.carve);
+      const ivec3 from = b.m.machine + k.rel, to = arrive ? movedCell(b.m, from) : from;
+      u8 meta = arrive ? turnMeta(b.m, k.id, k.meta) : k.meta, carve = arrive ? turnCarve(b.m, k.carve) : k.carve;
       json e = k.entity;
-      if (e.is_object() && e.contains("glue")) {   // the glue's faces turn with it
+      if (arrive && e.is_object() && e.contains("glue")) {   // the glue's faces turn with it
         int g = e["glue"], ng = 0;
         for (int f = 0; f < 6; f++) if (g >> f & 1) ng |= 1 << turnFace(b.m, f);
         e["glue"] = ng;

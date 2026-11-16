@@ -263,6 +263,27 @@ int main(int argc, char** argv) {
     setGlue(w, H3, 0, true); setGlue(w, H3 + ivec3(1, 0, 0), 2, true); setGlue(w, H3 + ivec3(1, 1, 0), 2, true);
     std::string why;
     check(!startMove(*L, REALM_MAIN, H3, &why) && w.getBlock(H3.x + 1, H3.y + 1, H3.z) == door, "a drawbridge carrying a door is refused (" + why + ")");
+    // something put where one of its blocks was going, mid-move: the whole piece goes back, and the machine counts shut
+    for (int x = 0; x < 20; x++) for (int z = 0; z < 20; z++) for (int y = Y + 1; y < Y + 8; y++) w.setBlock(x, y, z, AIR);
+    const ivec3 G(6, Y + 1, 6); w.setBlock(G.x, G.y, G.z, hingeB, 1);
+    for (int i = 0; i < 3; i++) w.setBlock(G.x + i, G.y + 1, G.z, planks);
+    setGlue(w, G, 2, true); setGlue(w, G + ivec3(0, 1, 0), 0, true); setGlue(w, G + ivec3(1, 1, 0), 0, true);
+    startMove(*L, REALM_MAIN, G, nullptr); tick(0.3);
+    w.setBlock(G.x, G.y + 1, G.z + 2, stone);   // (where the far plank was going)
+    tick(1.2);
+    int home = 0, there = 0; for (int i = 0; i < 3; i++) { home += w.getBlock(G.x + i, G.y + 1, G.z) == planks; there += w.getBlock(G.x, G.y + 1, G.z + i) == planks && i > 0; }
+    check(home == 3 && there == 0 && !machineOpen(w, G), "blocked at the end: all of it back where it started, and shut (" + std::to_string(home) + " home, " + std::to_string(there) + " there)");
+    w.setBlock(G.x, G.y + 1, G.z + 2, AIR);
+    startMove(*L, REALM_MAIN, G, nullptr); tick(1.3);   // (open)
+    machineState(w, G)["quarters"] = 2;
+    startMove(*L, REALM_MAIN, G, nullptr); tick(0.3);
+    w.setBlock(G.x + 2, G.y + 1, G.z, stone);   // (blocks its way home)
+    tick(1.2);
+    w.setBlock(G.x + 2, G.y + 1, G.z, AIR);
+    check(machineOpen(w, G), "its way shut blocked: it stays open");
+    startMove(*L, REALM_MAIN, G, nullptr); tick(1.3);
+    int back = 0; for (int i = 0; i < 3; i++) back += w.getBlock(G.x + i, G.y + 1, G.z) == planks;
+    check(back == 3 && !machineOpen(w, G), "and shuts the way it opened next time (" + std::to_string(back) + ")");
   }
 
   printf("[by hand]\n");
