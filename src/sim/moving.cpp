@@ -84,6 +84,13 @@ public:
     else { m.distance = open ? -d : d; m.reach = open ? 1 + d : 1; }
     Piece p;
     if (!gatherPiece(w, m, p, why)) return false;
+    // a machine riding in it that stands open or is moving: its own piece would be left behind (shut it first)
+    for (const ivec3& c : p.cells) {
+      if (!isMachine(w.getBlock(c.x, c.y, c.z))) continue;
+      bool busy = machineOpen(w, c);
+      for (const Body& o : bodies) if (o.realm == realm && o.m.machine == c) busy = true;
+      if (busy) { if (why) *why = "a hinge or slider in it is open or moving: shut it first"; return false; }
+    }
     std::vector<ivec3> breakable; ivec3 at(0);
     if (!pathClear(w, m, p, &breakable, &at)) {
       if (why) *why = "something is in the way";

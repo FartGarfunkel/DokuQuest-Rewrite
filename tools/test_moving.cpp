@@ -284,6 +284,17 @@ int main(int argc, char** argv) {
     startMove(*L, REALM_MAIN, G, nullptr); tick(1.3);
     int back = 0; for (int i = 0; i < 3; i++) back += w.getBlock(G.x + i, G.y + 1, G.z) == planks;
     check(back == 3 && !machineOpen(w, G), "and shuts the way it opened next time (" + std::to_string(back) + ")");
+    // a slider riding on the gate, standing open (its plank slid out): the gate won't go until it's shut
+    w.setBlock(G.x + 2, G.y + 2, G.z, sliderB, 5); setGlue(w, G + ivec3(2, 1, 0), 2, true);
+    w.setBlock(G.x + 3, G.y + 2, G.z, planks); setGlue(w, G + ivec3(2, 2, 0), 0, true);
+    machineState(w, G + ivec3(2, 2, 0))["distance"] = 1;
+    startMove(*L, REALM_MAIN, G + ivec3(2, 2, 0), nullptr); tick(1.0);
+    std::string why2;
+    const bool went = startMove(*L, REALM_MAIN, G, &why2);
+    check(!went && why2.find("shut") != std::string::npos, "a gate carrying an open slider won't go (" + why2 + ")");
+    startMove(*L, REALM_MAIN, G + ivec3(2, 2, 0), nullptr); tick(1.0);
+    check(startMove(*L, REALM_MAIN, G, nullptr), "with the slider shut, it goes, slider and all");
+    tick(2.5); finishAll(*L);   // (a half turn now: done before the next test clears the ground)
   }
 
   printf("[by hand]\n");
