@@ -1,6 +1,10 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.24 (in progress) | November 2026
+**Things that move:**
+- **Hinges, Sliders and Glue:** glue blocks together and set them on a Hinge to swing them (gates and doors facing up, drawbridges and hatches on a wall) or on a Slider to slide them out and back, up to 512 blocks at a time. Use the hinge or any block of what it carries to open and shut it; sneak-use to set which way it turns or how far it slides. Chests keep what's in them, stairs and logs turn with the piece, and nothing is ever lost if the game saves mid-move.
+- Removed Herobrine.
 ## Alpha 1.0.0.23 — Down Deep | November 2026
 **The land:**
 - **A whole new Overworld for new worlds.** Continents, eroded valleys and ridges, real cliffs, overhangs and arches, and caves of every size, from great open caverns to long winding tunnels and narrow passages. Worlds you already have keep their terrain.

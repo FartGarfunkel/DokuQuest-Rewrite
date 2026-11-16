@@ -5,6 +5,13 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.24 (in progress)
+
+**Things that move:**
+- **Hinges, Sliders and Glue:** glue blocks together and set them on a Hinge to swing them (gates and doors facing up, drawbridges and hatches on a wall) or on a Slider to slide them out and back, up to 512 blocks at a time. Use the hinge or any block of what it carries to open and shut it; sneak-use to set which way it turns or how far it slides. Chests keep what's in them, stairs and logs turn with the piece, and nothing is ever lost if the game saves mid-move.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.23 — Down Deep (November 2026)
 
 **The land:**

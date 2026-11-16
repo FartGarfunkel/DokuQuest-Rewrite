@@ -71,9 +71,12 @@ def main(d):
                        'tex': {'front': front, 'side': side, 'top': side, 'back': 'machine_back'}, 'facing6': True,
                        'f6': {'front': t[front], 'frontV': t[front], 'back': t['machine_back'], 'backOn': t['machine_back'], 'side': t[side], 'top': t[side]}})
         faces.append([t[side], t[side], t[side], t[side], t[front], t[side]])
+    DESC = {'hinge': 'Swings what is glued to its face. Facing up or down it turns sideways, like a gate; on a wall it swings up and down, like a drawbridge. Use it, or any block of what it carries, to open and shut it. Sneak-use: which way it turns.',
+            'slider': 'Slides what is glued to its face straight out, then back. Use it, or any block of what it carries. Sneak-use: how far (1 to 16 blocks).',
+            'glue': 'Use on the face between two blocks to stick them together (again to unstick). A hinge or slider moves everything glued to it, up to 512 blocks; glued faces show while you hold it.'}
     for key, name in (('hinge', 'Hinge'), ('slider', 'Slider')):
-        items[key] = {'key': key, 'name': name, 'maxStack': 64, 'icon': 'block:' + key, 'block': key}
-    items['glue'] = {'key': 'glue', 'name': 'Glue', 'maxStack': 64, 'icon': 'glue'}
+        items[key] = {'key': key, 'name': name, 'maxStack': 64, 'icon': 'block:' + key, 'block': key, 'desc': DESC[key]}
+    items['glue'] = {'key': 'glue', 'name': 'Glue', 'maxStack': 64, 'icon': 'glue', 'desc': DESC['glue']}
     K = {'I': 'iron_ingot', 'P': 'planks', 'R': 'redstone'}
     recipe('hinge', 1, ['IPI', 'PRP', 'IPI'], K)
     recipe('slider', 1, ['PIP', 'IRI', 'PIP'], K)
