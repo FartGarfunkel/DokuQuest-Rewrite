@@ -5,6 +5,25 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.24 — Great Foes (November 2026)
+
+**The bosses fight:**
+- **The Hollow Archmage, the Lich King, the Hex Matron and the Grave Warden** keep their distance and cast at you (arcane bolts, frost bolts that slow you, hex flasks, arrow volleys), blink away when you close in, blast you back when you stand on top of them, and call a few servants.
+- **The Minotaur, the Valkyrie Queen, the Pirate Captain, the Rot King, the Slider, the Ember Lord and the Sun Spirit** swing, charge, leap at you and slam the ground. A charge into a wall leaves them dazed for a moment.
+- **The Broodmother** pounces, bites, spits webs that slow you, and calls her brood.
+- **Every one of them** turns furious at half health (faster, harder, more servants), throws something at you if you climb out of reach, and keeps its servants few. Before, these twelve wandered about and never struck.
+
+**Fixes:**
+- **Android:** the game no longer crashes drawing clouds on phones that use OpenGL ES. Each release now carries the Android APK beside the Windows and Linux downloads.
+- **Vulkan:** blocks added lately (and others past the first 4,096 pictures) show their own pictures instead of the wrong ones.
+- **Everything stacks to 64:** chests, barrels, doors, beds, cakes, minecarts, boats, compasses, tomes, discs and more. Things that wear out, carried containers (backpacks, quivers), filled buckets, stews, capes and personal items stay single, and a chest picked up full never stacks with empty ones.
+- **Barrels:** what's in one lies on its first layer when you open it (their loot was there, just on the layers below), and their layer buttons are bigger and easier to find.
+- **String, redstone dust and rails** used on a chest, furnace or station go into it instead of being laid on top (sneak to lay them).
+- **Eyes:** foxes, wolves, cats, ocelots and moas have their eyes back, and crows, gulls, eagles and roadrunners have eyes now.
+- **Hoods:** the Hollow Archmage's, witches', warlocks', raiders', pirates' and village guards' faces show inside their hoods.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.23 — Down Deep (November 2026)
 
 **The land:**
