@@ -15,7 +15,7 @@ namespace {
 // (the chest's layout: the tray's slots and the open chest's boxes, sixteenths, north-facing)
 const float COL_X[5] = {2.4f, 5.2f, 8.0f, 10.8f, 13.6f}, ROW_Z[3] = {9.5f, 6.5f, 3.5f};
 const float GRID_SLAB[6] = {1, 8.5f, 2, 15, 9.6f, 11}, LID_BOX[6] = {0, 9, 11, 16, 16, 16}, LID_POKE[6] = {0, 16, 11, 16, 22, 16};
-const float BTN_SORT[6] = {11.5f, 12, 11, 13.5f, 14.7f, 13}, BTN_SWAP[6] = {11.5f, 16, 11, 13.5f, 19, 13};
+const float BTN_SORT[6] = {11.5f, 12, 11, 13.5f, 14.7f, 13}, BTN_SWAP[6] = {11.5f, 16, 11, 13.5f, 19, 13}, BTN_TAKE[6] = {2.5f, 16, 11, 4.5f, 19, 13};   // (take all: the page button's mirror, up on the left)
 const int SLOTS = 27, PAGE = 15;
 
 // the ray's entry into a box (sixteenths) in the chest's north frame, -1 if it misses
@@ -57,9 +57,26 @@ void compact(json& items, int page, int PG = PAGE, int NS = SLOTS) {
   }
   for (int i = a; i < b; i++) items[i] = i - a < (int)v.size() ? v[i - a].toJson() : json();
 }
-bool placeOne(json& items, int page, ItemStack& held, int PG = PAGE, int NS = SLOTS) {   // (placeOne: onto the same, else the first free)
+// every stack in it joined with its own kind and sorted, laid out from the first slot (all pages: no two part stacks of
+// the same thing left on different pages)
+void mergeAll(json& items, int NS = SLOTS) {
+  std::vector<ItemStack> v;
+  for (int i = 0; i < NS && i < (int)items.size(); i++) {
+    ItemStack s = ItemStack::fromJson(items[i]);
+    if (s.empty()) continue;
+    for (ItemStack& m : v) {
+      if (s.empty()) break;
+      if (!m.canMerge(s) || m.n >= m.maxStack()) continue;
+      const int mv = std::min(s.n, m.maxStack() - m.n); m.n += mv; s.n -= mv;
+    }
+    if (s.n > 0) v.push_back(s);
+  }
+  std::stable_sort(v.begin(), v.end(), [](const ItemStack& x, const ItemStack& y) { return x.id < y.id; });
+  for (int i = 0; i < NS && i < (int)items.size(); i++) items[i] = i < (int)v.size() ? v[i].toJson() : json();
+}
+bool placeOne(json& items, int page, ItemStack& held, int PG = PAGE, int NS = SLOTS) {   // (placeOne: onto the same anywhere in it, else the first free here)
   const int a = page * PG, b = std::min(NS, a + PG);
-  for (int i = a; i < b; i++) {
+  for (int i = 0; i < NS && i < (int)items.size(); i++) {   // (its own kind on any page first: no second pile of the same thing)
     ItemStack s = ItemStack::fromJson(items[i]);
     if (s.empty() || s.id != held.id || !s.canMerge(held) || s.n >= s.maxStack()) continue;
     s.n++; items[i] = s.toJson(); if (--held.n <= 0) held = ItemStack(); return true;
@@ -186,7 +203,7 @@ HandsChestAim handsChestAim(World& w, ivec3 at, vec3 eye, vec3 dir) {
   float best = 1e9f;
   auto test = [&](const float b[6], int what) { const float t = rayBox(o, d, b); if (t >= 0 && t < best) { best = t; r.what = what; } };
   const ChestLayout L = handsChestLayout(w, at);
-  if (L.buttons) { test(BTN_SORT, HandsChestAim::Sort); test(BTN_SWAP, HandsChestAim::Swap); }   // (first: their faces are flush with the lid's, a tie goes to them)
+  if (L.buttons) { test(BTN_SORT, HandsChestAim::Sort); test(BTN_SWAP, HandsChestAim::Swap); test(BTN_TAKE, HandsChestAim::Take); }   // (first: their faces are flush with the lid's, a tie goes to them)
   test(LID_BOX, HandsChestAim::Lid); test(LID_POKE, HandsChestAim::Lid);
   test(GRID_SLAB, HandsChestAim::Tray);
   if (r.what == HandsChestAim::Tray) {
@@ -204,7 +221,7 @@ float handsChestLidRay(World& w, ivec3 at, vec3 eye, vec3 dir) {
   const vec3 o = handsNorthLocal(f, eye - vec3(at)), d = handsNorthLocal(f, eye + dir - vec3(at)) - o;
   float best = -1;
   const bool btn = handsChestLayout(w, at).buttons;
-  for (const float* b : {LID_BOX, LID_POKE, BTN_SORT, BTN_SWAP}) { if (!btn && (b == BTN_SORT || b == BTN_SWAP)) continue; const float t = rayBox(o, d, b); if (t >= 0 && (best < 0 || t < best)) best = t; }
+  for (const float* b : {LID_BOX, LID_POKE, BTN_SORT, BTN_SWAP, BTN_TAKE}) { if (!btn && (b == BTN_SORT || b == BTN_SWAP || b == BTN_TAKE)) continue; const float t = rayBox(o, d, b); if (t >= 0 && (best < 0 || t < best)) best = t; }
   return best;
 }
 
@@ -266,14 +283,24 @@ bool handsChestUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir,
   json& items = slotsAll.items;
   const int page = pageOf(*ke);
   auto changed = [&] { w.blockEntityChanged(at.x, at.y, at.z); if (L.key != at) w.blockEntityChanged(L.key.x, L.key.y, L.key.z); };
-  if (a.what == HandsChestAim::Sort) {   // (doSort; sneaking: every stack of both pages merged)
-    std::vector<ItemStack> v;
-    const int a0 = sneak ? 0 : page * PG, b0 = sneak ? NS : std::min(NS, page * PG + PG);
-    for (int i = a0; i < b0; i++) { ItemStack s = ItemStack::fromJson(items[i]); if (!s.empty()) v.push_back(s); }
-    std::stable_sort(v.begin(), v.end(), [](const ItemStack& x, const ItemStack& y) { return x.id < y.id; });
-    for (int i = a0; i < b0; i++) items[i] = i - a0 < (int)v.size() ? v[i - a0].toJson() : json();
-    compact(items, page, PG, NS); if (sneak) compact(items, 1 - page, PG, NS);
+  if (a.what == HandsChestAim::Sort) {   // (sorted: every stack of both pages joined with its own kind, from the first slot)
+    mergeAll(items, NS);
+    (*ke)["page"] = 0;
     (*ke)["press0"] = ke->value("press0", 0) + 1; changed(); sfxAt(lv, "click", c);
+    return true;
+  }
+  if (a.what == HandsChestAim::Take) {   // (take all: into your bag what fits, the rest left in it)
+    bool any = false;
+    for (int i = 0; i < NS; i++) {
+      ItemStack q = ItemStack::fromJson(items[i]);
+      if (q.empty()) continue;
+      const int left = p.give(q);
+      if (left < q.n) any = true;
+      if (left <= 0) items[i] = nullptr; else { q.n = left; items[i] = q.toJson(); }
+    }
+    mergeAll(items, NS);
+    (*ke)["press2"] = ke->value("press2", 0) + 1; changed(); sfxAt(lv, any ? "pop" : "click", c);
+    if (!any) toast(lv, p, "Your bag is full");
     return true;
   }
   if (a.what == HandsChestAim::Swap) { (*ke)["page"] = 1 - page; (*ke)["press1"] = ke->value("press1", 0) + 1; changed(); sfxAt(lv, "click", c); return true; }
@@ -339,8 +366,8 @@ vec3 handsBarrelLidPoint(World& w, ivec3 at, vec3 chestLidPx) {
   const float y = rel.y * std::cos(ang) - rel.z * std::sin(ang), z = rel.y * std::sin(ang) + rel.z * std::cos(ang);
   return vec3(rel.x, lr / 16 + y, 1 + z);
 }
-vec3 handsBarrelButton(World& w, ivec3 at, int k) {   // (the chest lid's two buttons' middles: sort 12.5,10.25,8.65; next 12.5,10.25,4.5)
-  return handsBarrelLidPoint(w, at, k == 0 ? vec3(12.5f, 10.25f, 8.65f) : vec3(12.5f, 10.25f, 4.5f));
+vec3 handsBarrelButton(World& w, ivec3 at, int k) {   // (the chest lid's buttons' middles: sort 12.5,10.25,8.65; next 12.5,10.25,4.5; take all 3.5,10.25,4.5)
+  return handsBarrelLidPoint(w, at, k == 0 ? vec3(12.5f, 10.25f, 8.65f) : k == 1 ? vec3(12.5f, 10.25f, 4.5f) : vec3(3.5f, 10.25f, 4.5f));
 }
 bool handsBarrel(World& w, ivec3 at) {
   const BlockDef& b = reg().block(w.getBlock(at.x, at.y, at.z));
@@ -356,8 +383,8 @@ HandsChestAim handsBarrelAim(World& w, ivec3 at, vec3 eye, vec3 dir) {
   const vec3 o = handsNorthLocal(f, eye - vec3(at)), d = handsNorthLocal(f, eye + dir - vec3(at)) - o;
   float best = 1e9f;
   auto test = [&](const float b[6], int what) { const float t = rayBox(o, d, b); if (t >= 0 && t < best) { best = t; r.what = what; } };
-  float bs[6], bw[6]; barrelButtonBox(w, at, 0, bs); barrelButtonBox(w, at, 1, bw);
-  test(bs, HandsChestAim::Sort); test(bw, HandsChestAim::Swap);
+  float bs[6], bw[6], bt[6]; barrelButtonBox(w, at, 0, bs); barrelButtonBox(w, at, 1, bw); barrelButtonBox(w, at, 2, bt);
+  test(bs, HandsChestAim::Sort); test(bw, HandsChestAim::Swap); test(bt, HandsChestAim::Take);
   float lb[6]; barrelLidBox(w, at, lb);
   if (r.what == HandsChestAim::None) test(lb, HandsChestAim::Lid);   // (the raised top: shuts it)
   const float ty = barrelTrayY(w, at);
@@ -396,12 +423,24 @@ bool handsBarrelUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir
   const HandsChestAim a = handsBarrelAim(w, at, eye, dir);
   json& items = itemsOf(*e);
   const int pages = (SLOTS + B_PAGE - 1) / B_PAGE, page = std::clamp(e->value("page", 0), 0, pages - 1);
-  if (a.what == HandsChestAim::Sort) {
-    std::vector<ItemStack> v; for (int i = 0; i < SLOTS; i++) { ItemStack s = ItemStack::fromJson(items[i]); if (!s.empty()) v.push_back(s); }
-    std::stable_sort(v.begin(), v.end(), [](const ItemStack& x, const ItemStack& y) { return x.id < y.id; });
-    for (int i = 0; i < SLOTS; i++) items[i] = i < (int)v.size() ? v[i].toJson() : json();
-    for (int pg = 0; pg < pages; pg++) compact(items, pg, B_PAGE);
+  if (a.what == HandsChestAim::Sort) {   // (every stack joined with its own kind across its layers, from the first slot)
+    mergeAll(items, SLOTS);
+    (*e)["page"] = 0;
     (*e)["press0"] = e->value("press0", 0) + 1; changed(); sfxAt(lv, "click", c);
+    return true;
+  }
+  if (a.what == HandsChestAim::Take) {   // (take all: into your bag what fits)
+    bool any = false;
+    for (int i = 0; i < SLOTS; i++) {
+      ItemStack q = ItemStack::fromJson(items[i]);
+      if (q.empty()) continue;
+      const int left = p.give(q);
+      if (left < q.n) any = true;
+      if (left <= 0) items[i] = nullptr; else { q.n = left; items[i] = q.toJson(); }
+    }
+    mergeAll(items, SLOTS);
+    (*e)["press2"] = e->value("press2", 0) + 1; changed(); sfxAt(lv, any ? "pop" : "click", c);
+    if (!any) toast(lv, p, "Your bag is full");
     return true;
   }
   if (a.what == HandsChestAim::Swap) { (*e)["page"] = (page + 1) % pages; (*e)["press1"] = e->value("press1", 0) + 1; changed(); sfxAt(lv, "click", c); return true; }

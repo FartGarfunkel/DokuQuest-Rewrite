@@ -26,7 +26,7 @@ std::vector<std::string> itemTooltipLines(const ItemStack& s);   // the item's n
 namespace {
 const float COL_X[5] = {2.4f, 5.2f, 8.0f, 10.8f, 13.6f}, ROW_Z[3] = {9.5f, 6.5f, 3.5f};
 
-struct Chest { ivec3 at; int facing; bool open; int page; std::vector<ItemStack> items; int press[2]; VoxelLight L; int hover = -1;
+struct Chest { ivec3 at; int facing; bool open; int page; std::vector<ItemStack> items; int press[3]; VoxelLight L; int hover = -1;
                ChestLayout lay;   // (a large chest: one chest over both halves, sim/hands.h)
                bool barrel = false; float trayY = 9.5f, floorY = 2.f, lr = 10.f; };   // (a barrel: the chest's workings under its own top)
 
@@ -68,7 +68,7 @@ public:
     c.items.resize(std::max<size_t>(c.items.size(), 27));
     const json* ke = c.lay.key == c.at ? e : w.blockEntity(c.lay.key.x, c.lay.key.y, c.lay.key.z);
     c.page = ke ? ke->value("page", 0) & 1 : 0;
-    c.press[0] = ke ? ke->value("press0", 0) : 0; c.press[1] = ke ? ke->value("press1", 0) : 0;
+    c.press[0] = ke ? ke->value("press0", 0) : 0; c.press[1] = ke ? ke->value("press1", 0) : 0; c.press[2] = ke ? ke->value("press2", 0) : 0;
     if (c.open && s.target.hit && s.target.block == c.at) {
       const HandsChestAim a = c.barrel ? handsBarrelAim(w, c.at, eye, dir) : handsChestAim(w, c.at, eye, dir);
       if (a.what == HandsChestAim::Tray && c.page * c.lay.pg + c.lay.off + a.slot < c.lay.slots) c.hover = a.slot;
@@ -152,10 +152,11 @@ public:
       const PackModel* swapM = partOf("chest_button_page");
       const float lid = handsEase(c.at, 2, c.open, dt) * (c.barrel ? 71.6f : 90.f);   // (a barrel's top: render/chest_layer.cpp's 1.25)
       const vec2 light(c.L.sky, c.L.block);
-      auto part = [&](const PackModel* m, float press, vec3 grow = vec3(-1)) {
+      auto part = [&](const PackModel* m, float press, vec3 grow = vec3(-1), float dx = 0) {
         if (!m) return;
         TPose p = lidPose(f, c, lid);
         if (press != 0) p.t(0, press * 1.2f / 16, 0);
+        if (dx != 0) p.t(dx / 16, 0, 0);   // (the take-all button: the page button's model, over on the left)
         if (grow.x >= 0) p.t(grow.x / 16, grow.y / 16, grow.z / 16).s(1.8f, 1.8f, 1.8f).t(-grow.x / 16, -grow.y / 16, -grow.z / 16);   // (a barrel's buttons: bigger, to be found)
         handsPartDraw(s.app, cd, *m, p.m, light);
       };
@@ -168,6 +169,7 @@ public:
       if (lid > 0.1f && c.lay.buttons) {
         const vec3 g0 = c.barrel ? vec3(12.5f, 10.25f, 8.65f) : vec3(-1), g1 = c.barrel ? vec3(12.5f, 10.25f, 4.5f) : vec3(-1);   // (sim/hands_chest.cpp handsBarrelButton)
         part(sortM, pressOf(c.at, 0, c.press[0], f.time), g0); part(swapM, pressOf(c.at, 1, c.press[1], f.time), g1);
+        part(swapM, pressOf(c.at, 2, c.press[2], f.time), g1, -9.f);   // (take all: sim/hands_chest.cpp BTN_TAKE)
       }
       if (lid > 0.1f && c.hover >= 0) {   // (the sheet: the item's name and lines written on the sheet: a large chest's on its left lid)
         const int k = c.page * c.lay.pg + c.lay.off + c.hover;

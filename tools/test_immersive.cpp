@@ -296,6 +296,31 @@ int main(int argc, char** argv) {
     check(handsChestAim(w, at, e2, d2).what == HandsChestAim::Sort, "the lower button sorts");
     auto [e3, d3] = aimAt(vec3(4.f / 16, 14.f / 16, 13.f / 16));
     check(handsChestAim(w, at, e3, d3).what == HandsChestAim::Lid, "the rest of the lid shuts it");
+    {   // what goes in joins its own kind on any page; sorting joins them across both; take all empties it into your bag
+      json& it = (*w.blockEntity(at.x, at.y, at.z))["items"];
+      for (int i = 0; i < 27; i++) it[i] = nullptr;
+      it[20] = ItemStack("coal", 10).toJson();   // (on the second page)
+      (*w.blockEntity(at.x, at.y, at.z))["page"] = 0;
+      auto [et, dt2] = aimAt(vec3(8.f / 16, 9.6f / 16, 6.f / 16));
+      ItemStack coal("coal", 5);
+      handsChestUse(*im.lv, *im.P, w, at, et, dt2, coal, true, false);
+      int stacks = 0, n = 0; for (int i = 0; i < 27; i++) { ItemStack q = ItemStack::fromJson((*w.blockEntity(at.x, at.y, at.z))["items"][i]); if (q.id == "coal") { stacks++; n += q.n; } }
+      check(stacks == 1 && n == 15, "coal put in joins the coal on the other page (" + std::to_string(stacks) + " stacks)");
+      json& it2 = (*w.blockEntity(at.x, at.y, at.z))["items"];
+      for (int i = 0; i < 27; i++) it2[i] = nullptr;
+      it2[1] = ItemStack("apple", 7).toJson(); it2[18] = ItemStack("apple", 9).toJson(); it2[3] = ItemStack("bread", 2).toJson();
+      auto [es, ds] = aimAt(vec3(12.5f / 16, 13.3f / 16, 12.f / 16));
+      handsChestUse(*im.lv, *im.P, w, at, es, ds, none, false, false);
+      stacks = 0; for (int i = 0; i < 27; i++) if (ItemStack::fromJson((*w.blockEntity(at.x, at.y, at.z))["items"][i]).id == "apple") stacks++;
+      check(stacks == 1 && ItemStack::fromJson((*w.blockEntity(at.x, at.y, at.z))["items"][0]).n == 16, "sorting joins the apples from both pages into one stack");
+      auto [ek, dk] = aimAt(vec3(3.5f / 16, 17.5f / 16, 12.f / 16));
+      check(handsChestAim(w, at, ek, dk).what == HandsChestAim::Take, "the upper-left button takes all");
+      for (auto& q : im.P->inv) q = ItemStack();
+      handsChestUse(*im.lv, *im.P, w, at, ek, dk, none, false, false);
+      int left = 0; for (int i = 0; i < 27; i++) left += !ItemStack::fromJson((*w.blockEntity(at.x, at.y, at.z))["items"][i]).empty();
+      int apples = 0; for (auto& q : im.P->inv) if (q.id == "apple") apples += q.n;
+      check(left == 0 && apples == 16, "take all: the chest empty, everything in your bag");
+    }
     std::vector<std::pair<vec3, vec3>> ol;
     check(handsChestOutline(w, at, ol) && ol.size() == 2 && ol[1].second.y > at.y + 1.3f, "open, its outline takes in the lid standing up over it");
   }
