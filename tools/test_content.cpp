@@ -627,6 +627,48 @@ int main(int argc, char** argv) {
     check(inscribeWorkTake(*L, *P, w, T, 0) && count("apprentice_spellbook") == 1, "  ...the book taken back");
   }
   lvp->close();
+  printf("[boss fights]\n");
+  {
+    World& wb = L->world();
+    const int BY = dimBase(DIM_OVERWORLD) + 200;
+    auto clearMobs = [&] { for (auto& e : L->entities()) if (!e->isPlayer() && !e->removed) e->removed = true; L->tick(TICK_DT); };
+    const std::string saveMode = P->mode;
+    P->mode = "survival";
+    // each one, given 20 seconds beside you, hurts you: standing on the floor, and up on a pillar out of reach
+    for (const char* b : {"hollow_archmage", "lich_king", "hex_matron", "grave_warden", "minotaur", "valkyrie_queen", "pirate_captain", "rot_king", "slider", "broodmother", "ember_lord", "sun_spirit"}) {
+      for (int pillar = 0; pillar < 2; pillar++) {
+        clearMobs();
+        for (int y = BY + 1; y < BY + 8; y++) for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) wb.setBlock(x, y, z, AIR);
+        P->pos = vec3(8.5f, BY + 1 + (pillar ? 4 : 0), 8.5f); P->vel = vec3(0); P->dead = false;
+        for (double t0 = nowSeconds(); nowSeconds() - t0 < 30 && !(wb.isLoaded(15, BY + 1, 8) && wb.isLoaded(-8, BY + 1, 8) && wb.isLoaded(24, BY + 1, 24));) { wb.stream({{P->pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+        for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) { wb.setBlock(x, BY, z, B("stone")); for (int y = BY + 1; y < BY + 8; y++) wb.setBlock(x, y, z, AIR); }
+        if (pillar) for (int y = BY + 1; y <= BY + 4; y++) wb.setBlock(8, y, 8, B("stone"));
+        P->maxHp = 100000; P->hp = 100000; P->hurtTime = 0;
+        Entity* boss = spawnCreature(*L, REALM_MAIN, b, vec3(15.5f, BY + 1, 8.5f));
+        if (!boss) { check(false, std::string(b) + " spawns"); continue; }
+        const float before = P->hp;
+        for (int k = 0; k < 400 && !boss->removed; k++) { P->pos.x = 8.5f; P->pos.z = 8.5f; P->vel.x = P->vel.z = 0; P->invuln = std::max(0.f, P->invuln - (float)TICK_DT); L->tick(TICK_DT); }   // (the player ticks in the game: its hit protection wears off)
+        const float lost = before - P->hp;
+        if (std::getenv("DQ_BOSS_TEST_DEBUG")) printf("  %s at %.1f %.1f %.1f player %.1f %.1f %.1f state %s removed %d age %.1f hp %.0f\n", b, boss->pos.x, boss->pos.y, boss->pos.z, P->pos.x, P->pos.y, P->pos.z, (static_cast<Creature*>(boss)->state + "/" + boss->data.value("bfState", std::string("-"))).c_str(), (int)boss->removed, boss->age, P->hp);
+        check(lost > 4 && !boss->removed, std::string(b) + (pillar ? " reaches you up a pillar" : " fights you") + " (" + std::to_string((int)lost) + " damage in 20 s)");
+      }
+    }
+    // a summoner keeps its servants few
+    clearMobs();
+    for (int y = BY + 1; y < BY + 8; y++) for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) wb.setBlock(x, y, z, AIR);
+    P->pos = vec3(8.5f, BY + 1, 8.5f); P->hp = P->maxHp;
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 30 && !wb.isLoaded(15, BY + 1, 8);) { wb.stream({{P->pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+    for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) wb.setBlock(x, BY, z, B("stone"));
+    spawnCreature(*L, REALM_MAIN, "rot_king", vec3(15.5f, BY + 1, 8.5f));
+    for (int k = 0; k < 1200; k++) { P->pos.x = 8.5f; P->pos.z = 8.5f; L->tick(TICK_DT); }
+    int minions = 0; for (auto& e : L->entities()) if (!e->removed && e->type == "ghoul") minions++;
+    check(minions >= 1 && minions <= 4, "the Rot King calls ghouls, but never more than a few (" + std::to_string(minions) + ")");
+    clearMobs();
+    P->mode = saveMode; P->maxHp = 20; P->hp = 20;
+    for (int y = BY + 1; y < BY + 8; y++) for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) wb.setBlock(x, y, z, AIR);
+    P->pos = vec3(8.5f, BY + 1, 8.5f);
+  }
+
   printf("[stacking]\n");
   {
     auto ms = [](const char* k) { const ItemDef* d = reg().item(k); return d ? d->maxStack : -1; };
