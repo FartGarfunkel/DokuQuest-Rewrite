@@ -146,4 +146,22 @@ PYEOF
 else
   err "no screenshot from the OpenGL ES run"
 fi
+
+# ---- 4. a start that dies on Vulkan (killed 15 s in, as a crashing driver would): the next start is OpenGL ES
+if [ $VULKAN_OK = 1 ]; then
+  adb shell am force-stop $PKG; sleep 2
+  adb shell am start -n $PKG/.MainActivity > /dev/null; sleep 15
+  adb shell am force-stop $PKG; sleep 2
+  adb logcat -c
+  adb shell am start -n $PKG/.MainActivity > /dev/null; sleep 40
+  logs guard
+  if grep -q "didn't get through; drawing with OpenGL ES" "$OUT/logcat-guard.txt" && grep -q "I/DokuQuest.*OpenGL ES" "$OUT/logcat-guard.txt"; then
+    note "a start killed on Vulkan: the next start drew with OpenGL ES, as it should"
+  else
+    err "a start killed on Vulkan: the next start did not switch to OpenGL ES"
+    grep -E "[IWE]/DokuQuest" "$OUT/logcat-guard.txt" | head -20
+  fi
+  c=$(crashed guard); [ -n "$c" ] && { err "crash after the Vulkan fallback"; echo "$c"; }
+  adb shell am force-stop $PKG
+fi
 exit $rc
