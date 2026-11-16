@@ -39,7 +39,7 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
   // terrain version 15: the land biomes' world (the imported land, biomes and surfaces: tools/port/worldgen/import.py) for the
   // default and bigger-biome worlds when its data is here. The world types that reshape the land their own way keep the old
   if (o.genVersion >= 14 && (wtype.empty() || wtype == "default" || wtype == "amplified" || wtype == "large_biomes" || wtype == "winter" || wtype == "hell")) {
-    const bool sr = o.genVersion >= 15 && (wtype.empty() || wtype == "default" || wtype == "large_biomes") && fs::exists(dataDir() / "worldgen" / "biome_regions.json");
+    const bool sr = o.genVersion >= 15 && (wtype.empty() || wtype == "default" || wtype == "large_biomes") && dataFileExists(dataDir() / "worldgen" / "biome_regions.json");
     const std::string prefix = wtype == "amplified" ? "overworld_amplified" : wtype == "large_biomes" ? "overworld_large_biomes" : "overworld";
     struct Shared { std::shared_ptr<DensityGraph> g; std::shared_ptr<LandBiomes> b; std::shared_ptr<LandSurface> s; std::shared_ptr<BiomeFeatures> f; };
     static std::mutex mx; static std::map<std::tuple<i32, std::string, bool, int>, Shared> worlds;

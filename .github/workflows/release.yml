@@ -97,6 +97,19 @@ jobs:
           if grep -n '^\[error\]' smoke.log; then echo "::error::the smoke test logged errors"; exit 1; fi
       - name: Package (AppImage + tar.gz)
         run: bash tools/package.sh build "$VERSION" linux
+      - name: The packaged game finds all its data (its data.dqa, as a player's download)
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -o pipefail
+          pk="$RUNNER_TEMP/pk"; rm -rf "$pk"; mkdir -p "$pk"
+          tar -C "$pk" -xzf dist/DokuQuest-$VERSION-linux-x64-game.tar.gz
+          ud="$RUNNER_TEMP/ud2"; mkdir -p "$ud"
+          printf '%s' '{"preset":"custom","renderDist":2,"farTerrain":0,"plantDetail":"flat","shaderLevel":0,"clouds":false,"particles":0,"scale":0.5,"microVoxels":0,"fancyLeaves":false,"waterQuality":0,"shadows":0,"volumetricClouds":false,"portalViews":false,"weatherParticles":0}' > "$ud/settings.json"
+          timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" "$pk/DokuQuest/dokuquest" --userdir "$ud" --create Test --seed hello --smoke-frames 120 2>&1 | tee pk.log
+          for want in "data.dqa:" "land biomes:" "local pictures" "stations:"; do
+            grep -q "$want" pk.log || { echo "::error::the packaged game didn't load its data (no '$want' in its log)"; exit 1; }
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: dist-linux

@@ -35,6 +35,11 @@ bool writeJson(const fs::path& p, const json& j, bool pretty = true);
 fs::path installDir();
 fs::path dataDir();      // installDir()/data (a release keeps its files in installDir()/data.dqa: readFile/readBinary/readJson look there too)
 bool inDataArchive(const fs::path& p);   // is this data/ file in data.dqa?
+// data/ as the game sees it: a release keeps most of it inside data.dqa, so a plain fs::exists or a directory listing
+// misses those files (and the game went without them: the new lands, local pictures, imported creatures). These look in
+// both: the loose files and the archive.
+bool dataFileExists(const fs::path& p);
+std::vector<fs::path> listDataFiles(const fs::path& dir);   // the files directly in a data/ folder, loose or archived (sorted)
 fs::path assetsDir();    // installDir()/assets
 fs::path userDir();
 fs::path userSub(const char* name);   // creates it

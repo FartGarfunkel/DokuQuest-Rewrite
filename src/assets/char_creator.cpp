@@ -301,7 +301,7 @@ std::shared_ptr<const CharacterSpec> resolveCharacter(const std::string& ref) {
     fs::path p = fs::path(file).is_absolute() ? fs::path(file) : skinsDir() / file;
     // ship assets: a bare ".png" skin not found in userDir()/skins falls back to data/<file>
     // (herobrine.png ships with the game alongside tiles.png, so mobs.json can name it directly).
-    if (!fs::path(file).is_absolute() && !fs::exists(p)) p = dataDir() / file;
+    if (!fs::path(file).is_absolute() && !fs::exists(p)) p = dataDir() / file;   // (read with readBinary: the archive too)
     if (loadSkinFile(p, spec->skin, &err)) {
       DQ_LOG("skin '%s': loaded from %s", ref.c_str(), p.string().c_str());
       if (!arms.empty() && !spec->skin.legacy) spec->skin.slim = arms == "slim";

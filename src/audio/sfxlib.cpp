@@ -35,11 +35,12 @@ bool SfxLibrary::load(const std::filesystem::path& dir) {
   if (!pack.load(dir / "sounds.json", dir / "sounds.bin")) DQ_WARN("audio: no resource-pack sound profiles (data/sounds.*)");
   // imported creatures' own voices (the creature voice import: local, git-ignored): <name>_sounds.json + .bin, merged in
   { std::error_code ec;
-    for (auto& e : std::filesystem::directory_iterator(dir / "local_models", ec)) {
-      const std::string fn = e.path().filename().string();
+    (void)ec;
+    for (const std::filesystem::path& ep : listDataFiles(dir / "local_models")) {   // (the archive's too)
+      const std::string fn = ep.filename().string();
       if (fn.size() > 12 && fn.compare(fn.size() - 12, 12, "_sounds.json") == 0) {
-        std::filesystem::path bin = e.path(); bin.replace_extension(".bin");
-        pack.load(e.path(), bin);
+        std::filesystem::path bin = ep; bin.replace_extension(".bin");
+        pack.load(ep, bin);
       }
     } }
   loaded = j.has_value() || pack.ok();
