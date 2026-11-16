@@ -206,6 +206,53 @@ int main(int argc, char** argv) {
     check(w.getBlock(S.x + 1, S.y, S.z) == planks && w.getBlock(S.x + 4, S.y, S.z) == AIR && !machineOpen(w, S) && glued(w, S, 0), "back against the slider, glued to it again");
   }
 
+  printf("[by hand]\n");
+  {
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 8; y++) w.setBlock(x, y, z, AIR);
+    auto tick = [&](double s) { for (double t = 0; t < s; t += 0.05) L->tick(0.05); };
+    const BlockId hingeB = reg().blockId("hinge"), sliderB = reg().blockId("slider");
+    const ivec3 H(4, Y + 1, 4);
+    w.setBlock(H.x, H.y, H.z, hingeB, 1);
+    for (int k = 1; k <= 2; k++) for (int i = 0; i < 3; i++) w.setBlock(H.x + i, H.y + k, H.z, planks);
+    setGlue(w, H, 2, true);
+    for (int k = 1; k <= 2; k++) for (int i = 0; i < 2; i++) setGlue(w, H + ivec3(i, k, 0), 0, true);
+    for (int i = 0; i < 3; i++) setGlue(w, H + ivec3(i, 1, 0), 2, true);
+    P->sneaking = true;
+    std::vector<int> seen;
+    for (int i = 0; i < 4; i++) { use("", H, 2); const json* e = w.blockEntity(H.x, H.y, H.z); seen.push_back(e ? e->value("quarters", 1) : 1); }
+    check(seen == std::vector<int>({-1, 2, 0, 1}), "sneak-use on the hinge: anticlockwise, half turn, turning, clockwise (stored)");
+    check(glued(w, H, 2), "changing the setting keeps the hinge's glue");
+    const ivec3 Sl(12, Y + 1, 4); w.setBlock(Sl.x, Sl.y, Sl.z, sliderB, 5);
+    use("", Sl, 2); use("", Sl, 2);
+    const json* se = w.blockEntity(Sl.x, Sl.y, Sl.z);
+    check(se && se->value("distance", 1) == 3, "sneak-use on a slider twice: 3 blocks");
+    for (int i = 0; i < 14; i++) use("", Sl, 2);
+    se = w.blockEntity(Sl.x, Sl.y, Sl.z);
+    check(se && se->value("distance", 1) == 1, "sixteen goes round to 1");
+    P->sneaking = false;
+    check(!use("", H + ivec3(1, 2, 0), 4) && !movingBodiesList(*L).empty(), "using the gate's middle block starts it");
+    tick(1.2);
+    check(machineOpen(w, H) && w.getBlock(H.x, H.y + 2, H.z + 1) == planks, "the gate swung open");
+    check(!use("", H + ivec3(0, 2, 2), 4) && !movingBodiesList(*L).empty(), "using it open swings it shut");
+    tick(1.2);
+    check(!machineOpen(w, H) && w.getBlock(H.x + 2, H.y + 2, H.z) == planks, "shut again");
+    const u8 m0 = glueMask(w, H + ivec3(1, 2, 0));
+    use("glue", H + ivec3(1, 2, 0), 0);
+    check(movingBodiesList(*L).empty() && !machineOpen(w, H) && glueMask(w, H + ivec3(1, 2, 0)) != m0, "holding glue: it glues, the gate doesn't move");
+    use("glue", H + ivec3(1, 2, 0), 0);
+    w.setBlock(H.x + 1, H.y + 1, H.z, chest);
+    w.setBlockEntity(H.x + 1, H.y + 1, H.z, json{{"type", "chest"}});
+    setGlue(w, H + ivec3(0, 1, 0), 0, true); setGlue(w, H + ivec3(1, 1, 0), 0, true); setGlue(w, H + ivec3(1, 1, 0), 2, true);
+    use("", H + ivec3(1, 1, 0), 4);
+    check(movingBodiesList(*L).empty(), "using a chest in the gate opens the chest, not the gate");
+    // a slider slid out: its plank, using it, slides it back
+    w.setBlock(Sl.x + 1, Sl.y, Sl.z, planks); setGlue(w, Sl, 0, true);
+    use("", Sl, 2); tick(1.0);
+    check(w.getBlock(Sl.x + 2, Sl.y, Sl.z) == planks && machineOpen(w, Sl), "using the slider slides its plank out");
+    use("", Sl + ivec3(1, 0, 0) * 2, 2); tick(1.0);
+    check(w.getBlock(Sl.x + 1, Sl.y, Sl.z) == planks && !machineOpen(w, Sl), "using the slid-out plank brings it back");
+  }
+
   printf("%d passed, %d failed\n", passes, fails);
   return fails;
 }

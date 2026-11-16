@@ -183,6 +183,7 @@ MovingBodies* bodiesOf(Level& lv) {
 bool startMove(Level& lv, int realm, ivec3 machine, std::string* why) { auto* m = bodiesOf(lv); if (m) m->attachHooks(); return m && m->start(realm, machine, why); }
 void finishAll(Level& lv) { if (auto* m = bodiesOf(lv)) m->finishAllNow(); }
 const std::vector<Body>& movingBodiesList(Level& lv) { static const std::vector<Body> none; auto* m = bodiesOf(lv); return m ? m->bodies : none; }
-void registerMovingBodies() { registerLevelSystem([](Level& lv) { return std::make_shared<MovingBodies>(lv); }); }
+void registerMovingUse();   // moving_use.cpp
+void registerMovingBodies() { registerLevelSystem([](Level& lv) { return std::make_shared<MovingBodies>(lv); }); registerMovingUse(); }
 
 } // namespace dq
