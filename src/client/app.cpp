@@ -6,6 +6,7 @@
 #include "render/gpu_select.h"
 #include "render/weather_sprites.h"
 #include <algorithm>
+#include <cfloat>
 #include <cstdlib>
 #include <cstring>
 #include "render/particles.h"
@@ -46,6 +47,28 @@ static double g_runStart = 0;   // (when App::run began: the first frame's log l
 static fs::path vulkanMark() { return userDir() / "vulkan_starting"; }
 static void clearVulkanMark() { std::error_code ec; fs::remove(vulkanMark(), ec); }
 static bool g_vulkanFellBack = false;
+
+// one frame with the game's name while the rest of the start-up runs (drawn the way frameLoop draws a frame)
+static void androidLoadingFrame(App& a) {
+  if (gfx.vulkan) gfxVulkanNewFrame();
+  ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplSDL2_NewFrame(); ImGui::NewFrame();
+  int dw = 0, dh = 0; SDL_GL_GetDrawableSize(a.window, &dw, &dh);
+  glViewport(0, 0, dw, dh);
+  glClearColor(0.05f, 0.04f, 0.035f, 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+  ImDrawList* dl = ImGui::GetForegroundDrawList();
+  const ImVec2 size = ImGui::GetIO().DisplaySize;
+  auto centred = [&](ImFont* f, const char* text, float y, ImU32 col) {
+    if (!f) f = ImGui::GetFont();
+    const ImVec2 ts = f->CalcTextSizeA(f->FontSize, FLT_MAX, 0, text);
+    dl->AddText(f, f->FontSize, ImVec2((size.x - ts.x) * 0.5f, y), col, text);
+  };
+  centred(a.fontTitle, "DokuQuest", size.y * 0.38f, IM_COL32(236, 226, 205, 255));
+  centred(a.fontUi, "Loading\xE2\x80\xA6", size.y * 0.56f, IM_COL32(170, 160, 140, 255));
+  ImGui::Render();
+  ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+  if (gfx.vulkan) gfxVulkanPresent(a.window);
+  else SDL_GL_SwapWindow(a.window);
+}
 #endif
 App::App() = default;
 App::~App() = default;
@@ -382,6 +405,9 @@ int App::run(int argc, char** argv) {
   registerTerrainLayers();     // render/terrain_fx.cpp: outline, cracks, tile animation, underwater fog
   if (!initWindow()) return 2;
   initImGui();
+#ifdef __ANDROID__
+  androidLoadingFrame(*this);   // (the tiles, icons and sounds take a while on a phone: not a black screen meanwhile)
+#endif
   input.init(&settings);
   audio = std::make_unique<AudioEngine>();
   audio->init(settings);

@@ -54,6 +54,7 @@ state=""
 for i in $(seq 1 120); do   # (up to 10 minutes: the emulator's GPU is software, so loading is slow)
   sleep 5
   logs first
+  if [ -z "${LOADSHOT:-}" ] && grep -q "I/DokuQuest.*swapchain" "$OUT/logcat-first.txt" && ! grep -q "first frame drawn" "$OUT/logcat-first.txt"; then LOADSHOT=1; sleep 2; shot loading; fi
   if grep -q "I/DokuQuest.*first frame drawn" "$OUT/logcat-first.txt"; then state=vulkan; grep -qE "I/DokuQuest.*Vulkan 1\.3 \(" "$OUT/logcat-first.txt" || state=gles; break; fi
   if [ -n "$(crashed first)" ]; then state=error; sleep 5; break; fi
   if ! alive && [ $i -gt 2 ]; then state=gone; break; fi
