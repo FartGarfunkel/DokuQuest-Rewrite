@@ -17,6 +17,7 @@ struct GfxCaps {
   bool vulkan = false;         // Vulkan 1.3, reached through the OpenGL-shaped calls
   bool gles = false;           // OpenGL ES 3 (Android without Vulkan 1.3): the Legacy path on the phone's GLES driver
   int glesVersion = 0;         // 30, 31, 32
+  bool baseVertex = true;      // glDrawElementsBaseVertex works (GLES before 3.2 may not have it: world_renderer.cpp)
   bool mdi = false;             // glMultiDrawElementsIndirect
   bool bufferStorage = false;   // persistent mapped buffers
   bool anisotropic = false;

@@ -95,15 +95,30 @@ static void GLAD_API_PTR esGetTexImage(GLenum target, GLint level, GLenum format
   glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)fb);
   glDeleteFramebuffers(1, &tmp);
 }
-static void esFixups() {
+static bool esHasExtension(const char* name) {
+  GLint n = 0; glGetIntegerv(GL_NUM_EXTENSIONS, &n);
+  for (GLint i = 0; i < n; i++) if (const char* e = (const char*)glGetStringi(GL_EXTENSIONS, (GLuint)i)) if (std::strcmp(e, name) == 0) return true;
+  return false;
+}
+static void esFixups(int glesVersion) {
   glad_glClearDepth = esClearDepth;
   glad_glPolygonMode = esPolygonMode;
   glad_glDrawBuffer = esDrawBuffer;
   glad_glGetTexImage = esGetTexImage;
-  // the chunks draw with a base vertex: core in ES 3.2, an extension before it
-  if (!glad_glDrawElementsBaseVertex) glad_glDrawElementsBaseVertex = (PFNGLDRAWELEMENTSBASEVERTEXPROC)SDL_GL_GetProcAddress("glDrawElementsBaseVertexOES");
-  if (!glad_glDrawElementsBaseVertex) glad_glDrawElementsBaseVertex = (PFNGLDRAWELEMENTSBASEVERTEXPROC)SDL_GL_GetProcAddress("glDrawElementsBaseVertexEXT");
-  if (!glad_glDrawElementsBaseVertex) DQ_WARN("OpenGL ES: no glDrawElementsBaseVertex (ES 3.2 or its extension): the world can't be drawn");
+  // The chunks draw with a base vertex: core in ES 3.2, an extension before it. Below 3.2 the pointer the loader
+  // hands out for the core name is not to be trusted (an ES 3.0 driver gave one that drew the world in pieces):
+  // only the extension's own function, else world_renderer.cpp points the vertex inputs at each section instead.
+  gfx.baseVertex = glesVersion >= 32;
+  if (!gfx.baseVertex) {
+    glad_glDrawElementsBaseVertex = nullptr;
+    for (const char* ext : {"GL_OES_draw_elements_base_vertex", "GL_EXT_draw_elements_base_vertex"}) {
+      if (!esHasExtension(ext)) continue;
+      const std::string fn = std::string("glDrawElementsBaseVertex") + (ext[3] == 'O' ? "OES" : "EXT");
+      glad_glDrawElementsBaseVertex = (PFNGLDRAWELEMENTSBASEVERTEXPROC)SDL_GL_GetProcAddress(fn.c_str());
+      if (glad_glDrawElementsBaseVertex) { gfx.baseVertex = true; break; }
+    }
+  }
+  DQ_LOG("OpenGL ES %d.%d: base-vertex draws %s", glesVersion / 10, glesVersion % 10, gfx.baseVertex ? "by the driver" : "by moving the vertex inputs");
 }
 // the header an ES shader starts with: its version, and the precision desktop GLSL doesn't ask for
 static std::string glesHead() {
@@ -131,7 +146,7 @@ bool gfxInit(RendererKind kind) {
   SDL_GL_GetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, &profile);
   const bool es = profile == SDL_GL_CONTEXT_PROFILE_ES;
   int ver;
-  if (es) { g_esLoading = true; ver = gladLoadGL(esLoad); g_esLoading = false; if (ver) esFixups(); }
+  if (es) { g_esLoading = true; ver = gladLoadGL(esLoad); g_esLoading = false; }
   else ver = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
   if (!ver) { DQ_ERR("could not load OpenGL"); return false; }
   gfx.major = GLAD_VERSION_MAJOR(ver); gfx.minor = GLAD_VERSION_MINOR(ver);
@@ -139,7 +154,8 @@ bool gfxInit(RendererKind kind) {
   gfx.renderer = (const char*)glGetString(GL_RENDERER);
   gfx.version = (const char*)glGetString(GL_VERSION);
   gfx.gles = es;
-  if (es) { int a = 3, b = 0; std::sscanf(gfx.version.c_str(), "OpenGL ES %d.%d", &a, &b); gfx.glesVersion = a * 10 + b; }
+  gfx.baseVertex = true;
+  if (es) { int a = 3, b = 0; std::sscanf(gfx.version.c_str(), "OpenGL ES %d.%d", &a, &b); gfx.glesVersion = a * 10 + b; esFixups(gfx.glesVersion); }
   int v = gfx.major * 10 + gfx.minor;
   gfx.vulkan = false;
   gfx.modern = kind == RendererKind::Modern && v >= 43;

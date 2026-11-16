@@ -51,15 +51,16 @@ adb logcat -c
 t0=$(date +%s)
 adb shell am start -W -n $PKG/.MainActivity
 state=""
-for i in $(seq 1 60); do
+for i in $(seq 1 120); do   # (up to 10 minutes: the emulator's GPU is software, so loading is slow)
   sleep 5
   logs first
-  if grep -qE "I/DokuQuest.*Vulkan 1\.3 \(" "$OUT/logcat-first.txt"; then state=vulkan; break; fi
-  if grep -qE "E/DokuQuest|FATAL EXCEPTION|Fatal signal|dlopen failed" "$OUT/logcat-first.txt"; then state=error; sleep 5; break; fi
+  if grep -q "I/DokuQuest.*first frame drawn" "$OUT/logcat-first.txt"; then state=vulkan; grep -qE "I/DokuQuest.*Vulkan 1\.3 \(" "$OUT/logcat-first.txt" || state=gles; break; fi
+  if [ -n "$(crashed first)" ]; then state=error; sleep 5; break; fi
   if ! alive && [ $i -gt 2 ]; then state=gone; break; fi
 done
-sleep 20   # the title screen draws
+sleep 10   # (the title screen a few frames in)
 logs first
+grep -E "I/DokuQuest.*first frame drawn" "$OUT/logcat-first.txt" | head -1 | while IFS= read -r l; do note "${l:0:200}"; done
 echo "::group::game log, first start"; game_log first 120; echo "::endgroup::"
 grep -E "I/DokuQuest.*(unpack|files unpacked|game files in|Vulkan 1\.3 \(|swapchain)" "$OUT/logcat-first.txt" | sed 's/^/  /' | while IFS= read -r l; do note "${l:0:300}"; done
 grep -E "E/DokuQuest" "$OUT/logcat-first.txt" | sort -u | head -20 | while IFS= read -r l; do echo "::warning::emulator: ${l:0:300}"; done
@@ -72,8 +73,9 @@ VULKAN_OK=0; [ "$state" = vulkan ] && VULKAN_OK=1
 if [ $VULKAN_OK = 1 ] && alive; then
   adb logcat -c
   adb shell input keyevent KEYCODE_HOME; sleep 6
-  adb shell am start -n $PKG/.MainActivity > /dev/null; sleep 20
-  logs resume
+  adb shell am start -n $PKG/.MainActivity > /dev/null
+  for i in $(seq 1 24); do sleep 5; logs resume; grep -q "vulkan: new window surface" "$OUT/logcat-resume.txt" && break; alive || break; done
+  sleep 5; logs resume
   c=$(crashed resume); [ -n "$c" ] && { err "crash on coming back to the app"; echo "$c"; }
   if alive && grep -q "vulkan: new window surface" "$OUT/logcat-resume.txt"; then note "away and back: a new Vulkan surface, still running"; else err "away and back: not running, or no new Vulkan surface"; fi
   grep -E "[EW]/DokuQuest" "$OUT/logcat-resume.txt" | head -10

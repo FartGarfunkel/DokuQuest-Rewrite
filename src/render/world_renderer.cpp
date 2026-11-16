@@ -586,7 +586,16 @@ void WorldRenderer::emitSections(const FrameCtx& f, int pass, GLint originLoc) {
       if (p != bound) { glBindVertexArray(pages[p].vao); bound = p; }
       vec3 rel = vec3(glm::dvec3(m->origin) - f.cam.origin);
       if (originLoc >= 0) glUniform3fv(originLoc, 1, &rel[0]);
-      glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)(m->nq[pass] * 6), GL_UNSIGNED_INT, nullptr, passBase(m));
+      if (gfx.baseVertex) glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)(m->nq[pass] * 6), GL_UNSIGNED_INT, nullptr, passBase(m));
+      else {   // (OpenGL ES 3.0/3.1 without base-vertex draws: the vertex inputs start at the section's first vertex)
+        glBindBuffer(GL_ARRAY_BUFFER, pages[p].vbo);
+        const uintptr_t first = (uintptr_t)passBase(m) * sizeof(ChunkVertex);
+        for (auto& a : CHUNK_ATTRS) {
+          if (a.integer) glVertexAttribIPointer(a.index, a.size, a.type, sizeof(ChunkVertex), (void*)(first + a.offset));
+          else glVertexAttribPointer(a.index, a.size, a.type, a.normalized, sizeof(ChunkVertex), (void*)(first + a.offset));
+        }
+        glDrawElements(GL_TRIANGLES, (GLsizei)(m->nq[pass] * 6), GL_UNSIGNED_INT, nullptr);
+      }
     }
   }
   glBindVertexArray(0);

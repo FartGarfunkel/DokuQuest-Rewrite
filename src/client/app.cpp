@@ -36,6 +36,7 @@ namespace dq {
 
 static App* g_app = nullptr;
 App& app() { return *g_app; }
+static double g_runStart = 0;   // (when App::run began: the first frame's log line)
 
 #ifdef __ANDROID__
 // A phone whose Vulkan driver takes the game down as it starts would do it on every start, before Options could be
@@ -349,6 +350,7 @@ void App::applySettings() {
 
 int App::run(int argc, char** argv) {
   g_app = this;
+  g_runStart = nowSeconds();
   parseArgs(argc, argv);
   CoreOptions co; co.userDirOverride = args.userDir;
   if (!initCore(co)) {
@@ -530,6 +532,7 @@ void App::frameLoop() {
       fence[fi] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0); fi = (fi + 1) % 3;
     }
     frame++;
+    if (frame == 1) DQ_LOG("first frame drawn, %.1f s after the game started", nowSeconds() - g_runStart);
 #ifdef __ANDROID__
     if (frame == 1800) clearVulkanMark();   // (half a minute of drawing: this Vulkan start got through)
 #endif
