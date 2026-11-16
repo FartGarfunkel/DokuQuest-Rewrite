@@ -34,8 +34,8 @@ int motionAxis(const Motion& m) { return m.face == 2 || m.face == 3 ? 0 : m.face
 bool gatherPiece(const World& w, const Motion& m, Piece& out, std::string* why) {
   out.cells.clear();
   auto fail = [&](const char* s) { if (why) *why = s; out.cells.clear(); return false; };
-  const ivec3 start = m.machine + faceDir(m.face);
-  if (!glued(w, m.machine, m.face)) return fail("nothing is glued to its moving face");
+  const ivec3 start = m.machine + faceDir(m.face) * std::max(1, m.reach);
+  if (m.reach <= 1 ? !glued(w, m.machine, m.face) : !glueable(w.getBlock(start.x, start.y, start.z))) return fail("nothing is glued to its moving face");
   std::unordered_set<ivec3, CellHash> seen{start, m.machine};
   std::vector<ivec3> q{start};
   for (size_t i = 0; i < q.size(); i++) {
@@ -78,7 +78,7 @@ ivec3 movedCell(const Motion& m, ivec3 cell, float fraction) {
 
 bool pathClear(const World& w, const Motion& m, const Piece& p, std::vector<ivec3>* breakable, ivec3* blockedAt) {
   std::unordered_set<ivec3, CellHash> in(p.cells.begin(), p.cells.end()), checked;
-  const int steps = m.kind == 1 ? std::max(1, m.distance) : std::max(1, std::abs(m.quarters) * 6);   // (a hinge: every 15 degrees)
+  const int steps = m.kind == 1 ? std::max(1, std::abs(m.distance)) : std::max(1, std::abs(m.quarters) * 6);   // (a hinge: every 15 degrees)
   for (const ivec3& c : p.cells)
     for (int i = 1; i <= steps; i++) {
       const ivec3 t = movedCell(m, c, (float)i / steps);

@@ -10,5 +10,8 @@ u8 rotateMetaY(BlockId id, u8 meta, int quarters);
 // about a sideways axis (1: east-west, 2: north-south), `quarters` times: a positive quarter about east-west takes up to
 // south, about north-south takes up to east. Logs and rods swap their axis; six-way facings turn; the rest keep theirs.
 u8 rotateMetaAbout(BlockId id, u8 meta, int axis, int quarters);
+// a chiseled block's cut corners (bit (x<<2)|(y<<1)|z) turned the same ways
+u8 rotateCarveY(u8 carve, int quarters);
+u8 rotateCarveAbout(u8 carve, int axis, int quarters);
 
 } // namespace dq

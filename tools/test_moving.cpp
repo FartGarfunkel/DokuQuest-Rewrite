@@ -12,6 +12,7 @@
 #include "sim/rotate.h"
 #include "sim/glue.h"
 #include "sim/moving_piece.h"
+#include "sim/moving.h"
 #include <thread>
 #include <cstdio>
 
@@ -53,6 +54,9 @@ int main(int argc, char** argv) {
     check(rotateMetaAbout(log, 0, 1, 1) == 2 && rotateMetaAbout(log, 0, 2, 1) == 1 && rotateMetaAbout(log, 1, 1, 1) == 1, "about a sideways axis an upright log lies down across it; one along the axis stays");
     check(rotateMetaAbout(disp, 1, 1, 1) == 3 && rotateMetaAbout(disp, 3, 1, 1) == 0 && rotateMetaAbout(disp, 1, 1, 4) == 1, "a six-way block turned about east-west: up becomes south, south becomes down");
     check(rotateMetaAbout(stairs, 1, 1, 1) == 1, "blocks without a six-way facing keep theirs about a sideways axis");
+    // chisel corners: bit (x<<2)|(y<<1)|z
+    check(rotateCarveY(1 << ((1 << 2) | 0 | 0), 1) == 1 << ((1 << 2) | 0 | 1) && rotateCarveY(0x5A, 4) == 0x5A, "a cut corner turns about the upright: the east-north corner goes to east-south");
+    check(rotateCarveAbout(1 << ((0 << 2) | (1 << 1) | 0), 1, 1) == 1 << ((0 << 2) | (1 << 1) | 1) && rotateCarveAbout(1 << ((0 << 2) | (1 << 1) | 0), 2, 1) == 1 << ((1 << 2) | (1 << 1) | 0), "about east-west a top-north corner goes top-south (up to south); about north-south a top-west one goes top-east");
   }
 
   // a little world to build in: a stone floor high in the sky
@@ -145,6 +149,61 @@ int main(int argc, char** argv) {
     Piece bp; why.clear();
     const bool bOk = gatherPiece(w, bm, bp, &why);
     check(!bOk && why.find("512") != std::string::npos, "600 glued blocks are too many (" + why + ")");
+  }
+
+  printf("[moving]\n");
+  {
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 8; y++) w.setBlock(x, y, z, AIR);
+    const BlockId hingeB = reg().blockId("hinge"), stairs = reg().blockId("oak_stairs"), cobble = reg().blockId("cobblestone");
+    auto tick = [&](double s) { for (double t = 0; t < s; t += 0.05) L->tick(0.05); };
+    auto planksCount = [&] { int n = 0; for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 8; y++) n += w.getBlock(x, y, z) == planks; return n; };
+    // a gate two wide and three tall on a hinge facing up; its top far block is stairs, a chest by the hinge column holds 5 cobblestone
+    const ivec3 H(6, Y + 1, 6);
+    w.setBlock(H.x, H.y, H.z, hingeB, 1);
+    for (int k = 1; k <= 3; k++) for (int i = 0; i < 2; i++) w.setBlock(H.x + i, H.y + k, H.z, planks);
+    w.setBlock(H.x + 1, H.y + 3, H.z, stairs, 1);
+    const u8 stairCarve = w.getCarve(H.x + 1, H.y + 3, H.z);
+    w.setBlock(H.x + 1, H.y + 1, H.z, chest);
+    w.setBlockEntity(H.x + 1, H.y + 1, H.z, json{{"type", "chest"}, {"items", json::array({ItemStack("cobblestone", 5).toJson()})}});
+    setGlue(w, H, 2, true);
+    for (int k = 1; k <= 3; k++) { setGlue(w, H + ivec3(0, k, 0), 0, true); if (k < 3) { setGlue(w, H + ivec3(0, k, 0), 2, true); setGlue(w, H + ivec3(1, k, 0), 2, true); } }
+    const int before = planksCount();
+    check(startMove(*L, REALM_MAIN, H, nullptr), "the hinge starts the gate turning");
+    check(w.getBlock(H.x + 1, H.y + 2, H.z) == AIR && !movingBodiesList(*L).empty(), "while it turns the gate's blocks are out of the world, in a moving body");
+    tick(1.2);
+    bool turned = true; for (int k = 1; k <= 3; k++) turned = turned && w.getBlock(H.x + 1, H.y + k, H.z) == AIR && w.getBlock(H.x, H.y + k, H.z + 1) != AIR;
+    check(turned && machineOpen(w, H) && movingBodiesList(*L).empty(), "after a second the gate stands a quarter turn round, open");
+    check(stairCarve != 0 && w.getCarve(H.x, H.y + 3, H.z + 1) == rotateCarveY(stairCarve, 1), "the stairs (chiseled planks) turned with it: their cut corners turned a quarter");
+    const json* ce = w.blockEntity(H.x, H.y + 1, H.z + 1);
+    check(w.getBlock(H.x, H.y + 1, H.z + 1) == chest && ce && (*ce)["items"].size() == 1 && ItemStack::fromJson((*ce)["items"][0]).n == 5, "the chest went with it, its 5 cobblestone inside");
+    check(glued(w, H + ivec3(0, 1, 1), 2) && glued(w, H + ivec3(0, 1, 1), 5), "the glue turned with the blocks (up and back toward the hinge column)");
+    check(startMove(*L, REALM_MAIN, H, nullptr), "using it again starts it back");
+    tick(1.2);
+    bool back = true; for (int k = 1; k <= 3; k++) back = back && w.getBlock(H.x + 1, H.y + k, H.z) != AIR && w.getBlock(H.x, H.y + k, H.z + 1) == AIR;
+    check(back && !machineOpen(w, H) && w.getCarve(H.x + 1, H.y + 3, H.z) == stairCarve && planksCount() == before, "shut again: every block back as it was, nothing lost");
+    // blocked
+    w.setBlock(H.x, H.y + 2, H.z + 1, stone);
+    std::string why;
+    check(!startMove(*L, REALM_MAIN, H, &why) && w.getBlock(H.x + 1, H.y + 2, H.z) != AIR, "a stone in the swing: it doesn't start and nothing moves (" + why + ")");
+    w.setBlock(H.x, H.y + 2, H.z + 1, AIR);
+    // finished early: by finishAll, and by a save
+    startMove(*L, REALM_MAIN, H, nullptr); tick(0.3);
+    finishAll(*L);
+    check(movingBodiesList(*L).empty() && w.getBlock(H.x, H.y + 2, H.z + 1) != AIR && planksCount() == before, "finishAll mid-move sets every block down at the end");
+    startMove(*L, REALM_MAIN, H, nullptr); tick(0.3);
+    L->save(true);
+    check(movingBodiesList(*L).empty() && w.getBlock(H.x + 1, H.y + 2, H.z) != AIR && planksCount() == before, "a save mid-move finishes it first: nothing is saved in mid-air or lost");
+    // a slider: out three and back
+    const BlockId sliderB = reg().blockId("slider");
+    const ivec3 S(2, Y + 1, 14); w.setBlock(S.x, S.y, S.z, sliderB, 5);   // (facing east)
+    w.setBlock(S.x + 1, S.y, S.z, planks); setGlue(w, S, 0, true);
+    w.setBlockEntity(S.x, S.y, S.z, json{{"type", "machine_state"}, {"distance", 3}, {"glue", (int)glueMask(w, S)}});
+    check(startMove(*L, REALM_MAIN, S, nullptr), "the slider starts its plank sliding");
+    tick(2.0);
+    check(w.getBlock(S.x + 1, S.y, S.z) == AIR && w.getBlock(S.x + 4, S.y, S.z) == planks && machineOpen(w, S), "it slides three blocks east");
+    check(startMove(*L, REALM_MAIN, S, nullptr), "and starts back (the plank no longer touches it)");
+    tick(2.0);
+    check(w.getBlock(S.x + 1, S.y, S.z) == planks && w.getBlock(S.x + 4, S.y, S.z) == AIR && !machineOpen(w, S) && glued(w, S, 0), "back against the slider, glued to it again");
   }
 
   printf("%d passed, %d failed\n", passes, fails);

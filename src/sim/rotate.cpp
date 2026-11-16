@@ -38,4 +38,23 @@ u8 rotateMetaAbout(BlockId id, u8 m, int axis, int quarters) {
   return m;
 }
 
+namespace {
+// each of the 8 corner bits sent where the turn takes it (bits: x<<2 | y<<1 | z)
+u8 mapCorners(u8 c, int q, int (*f)(int x, int y, int z)) {
+  q = ((q % 4) + 4) % 4;
+  for (int i = 0; i < q; i++) {
+    u8 o = 0;
+    for (int b = 0; b < 8; b++) if (c >> b & 1) o |= (u8)(1 << f(b >> 2 & 1, b >> 1 & 1, b & 1));
+    c = o;
+  }
+  return c;
+}
+int cornY(int x, int y, int z) { return ((1 - z) << 2) | (y << 1) | x; }    // east -> south
+int cornX(int x, int y, int z) { return (x << 2) | ((1 - z) << 1) | y; }    // up -> south
+int cornZ(int x, int y, int z) { return (y << 2) | ((1 - x) << 1) | z; }    // up -> east
+}
+
+u8 rotateCarveY(u8 c, int quarters) { return mapCorners(c, quarters, cornY); }
+u8 rotateCarveAbout(u8 c, int axis, int quarters) { return mapCorners(c, quarters, axis == 1 ? cornX : cornZ); }
+
 } // namespace dq

@@ -14,7 +14,9 @@ struct Motion {
   int kind = 0;               // 0 hinge, 1 slider
   ivec3 machine{0}; int face = 2;   // the machine block and its moving face (0 east, 1 west, 2 up, 3 down, 4 south, 5 north)
   int quarters = 1;           // hinge: signed quarter turns
-  int distance = 1;           // slider: blocks along the face
+  int distance = 1;           // slider: blocks along the face (negative: back toward the machine)
+  int reach = 1;              // the piece's nearest block is this far out along the face (a slider slid out: 1 + distance);
+                              // only at 1 must it be glued to the machine
 };
 struct Piece { std::vector<ivec3> cells; };
 
