@@ -8,6 +8,7 @@
 // works once it has been set up, and the Nintendo layout option swaps A/B and X/Y like the original.
 #pragma once
 #include "common/settings.h"
+#include "input/touch.h"
 #include <SDL.h>
 #include <array>
 
@@ -131,6 +132,9 @@ public:
   bool rawSnapshot(int padIndex, RawPad& out) const;
   bool textActive = false;           // a text box has focus: keys don't trigger actions
   void releaseAll();                 // every key, button and latch let go (window lost focus, a menu took over)
+  TouchControls touch;               // the phone's on-screen controls (input/touch.h): the first player's, like the keyboard
+  // a mouse event SDL made from a finger while the touch controls play: neither the game nor the menus take it
+  bool touchOwns(const SDL_Event& e) const;
 private:
   Settings* settings = nullptr;
   struct Frame { std::array<bool, (int)Act::Count> cur{}, prev{}, pulse{}, kcur{}, kprev{}; ivec2 nav{0}; float scrollPx = 0; };

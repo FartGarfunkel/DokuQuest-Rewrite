@@ -34,6 +34,16 @@ ImVec2 hudPieceOffset(App& a, const std::string& piece) {
   if (!L.is_object() || !L.contains(piece) || !L[piece].is_array() || L[piece].size() < 2) return ImVec2(0, 0);
   return ImVec2(L[piece][0].get<float>() * (float)a.width, L[piece][1].get<float>() * (float)a.height);
 }
+// where this frame's hotbar slots are, for a finger tapping one (input/touch.cpp)
+struct HotbarHit { ImVec2 p0{0, 0}; float slot = 0, step = 0; u64 frame = 0; };
+static HotbarHit& hotbarHit() { static HotbarHit h; return h; }
+int hudHotbarSlotAt(float x, float y) {
+  const HotbarHit& g = hotbarHit();
+  if (g.step <= 0 || app().frame > g.frame + 2) return -1;   // (not drawn just now: hidden, or a menu)
+  if (y < g.p0.y - 4 || y > g.p0.y + g.slot + 4 || x < g.p0.x - 4) return -1;
+  const int i = (int)std::floor((x - g.p0.x + 1) / g.step);
+  return i >= 0 && i < 9 ? i : -1;
+}
 static int hudPieceBegin(ImDrawList* dl) { return dl->VtxBuffer.Size; }
 static void hudPieceEnd(App& a, ImDrawList* dl, int start, const char* piece) {
   ImVec2 off = hudPieceOffset(a, piece), lo(1e9f, 1e9f), hi(-1e9f, -1e9f);
@@ -511,6 +521,7 @@ public:
       SlotLook lk; lk.inv = false; drawSlot(dl, o0 + ImVec2(2, 2) * z, slot, lk); drawItem(dl, p.offhand[0], o0 + ImVec2(2, 2) * z, slot);
     }
     hudPieceEnd(a, dl, hb0v, "hotbar");
+    { auto& g = hotbarHit(); g.p0 = hb0 + hudPieceOffset(a, "hotbar") + ImVec2(6, 6) * z; g.slot = slot; g.step = slot + 2 * z; g.frame = a.frame; }
     {   // the rotary calendar, held: the season and the day, beside the hotbar
       auto cal = [](const ItemStack& s) { return !s.empty() && s.id == "rotary_calendar"; };
       if (cal(p.held()) || (!p.offhand.empty() && cal(p.offhand[0]))) {

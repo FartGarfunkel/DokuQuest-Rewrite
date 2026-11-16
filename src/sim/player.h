@@ -40,6 +40,7 @@ struct PlayerInput {
   bool jump = false, sneak = false, sprint = false, attack = false, attackPressed = false, use = false, usePressed = false;
   bool drop = false, dropAll = false, pick = false, swap = false, place = false, crawl = false, crawlHeld = false, dodge = false;
   bool hotRow = false;   // the hotbar swaps with the next row of the bag (the rows turn round like pages)
+  bool autoJump = false; // walking into a one-block step jumps it (Options: Auto-Jump, with the touch controls)
   int slot = -1, wheel = 0;
 };
 struct MoveOpts { bool autoJump = false; float slow = 1; bool noLedge = false, noSprint = false; };

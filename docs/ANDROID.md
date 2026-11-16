@@ -22,8 +22,12 @@ GitHub's "latest" release, so the desktop launcher's updater never sees it.
 - `DQ_GLES=1 ./build/dokuquest --renderer legacy` runs the GLES path on a PC (Mesa has GLES) for testing.
 
 ## Playing
-- A controller (Bluetooth or USB) plays everything, menus included. Touch works as a mouse in menus (and turns the
-  camera in the world); there are no on-screen sticks.
+- Touch (`input/touch.h`): a move stick wherever the left thumb lands (pushed up past its ring: sprint), drag anywhere
+  else to look, tap to use/place, press and hold to mine; buttons for Jump, Sneak (a toggle), Mine, Use (hold: eat,
+  draw a bow), Bag, View and Pause; tap the hotbar to pick a slot. In menus a finger is the pointer. The first start
+  turns Auto-Jump on. `DQ_TOUCH=1` shows the controls on a PC; `tools/playtests/touch.json` drives them with fingers.
+- A controller (Bluetooth or USB) plays everything, menus included; using one hides the touch buttons (a touch
+  brings them back).
 - Back button / back gesture = Escape. Text fields open the on-screen keyboard.
 - The first start uses the Low preset; Options → Video raises it.
 - Leaving the app saves the world (Android may close a game in the background without asking).
@@ -56,7 +60,8 @@ Building it on a PC (Linux): install the Android command-line tools, then
 ## The CI's emulator test (`tools/android/emulator_test.sh`)
 The x86_64 build in an Android 14 emulator with software Vulkan: install, first start (unpacking, title screen),
 Home and back (a new Vulkan surface), a new world for 300 frames on Vulkan, then the same world reopened on
-OpenGL ES for 200 frames. Its notices/errors say what happened; screenshots are printed into the job log as base64
+OpenGL ES for 200 frames, the touch controls through the emulator's touch screen (adb swipes and taps: walk, turn,
+the Bag button, Back), and a start killed on Vulkan (the next one uses OpenGL ES). Its notices/errors say what happened; screenshots are printed into the job log as base64
 JPEGs between `=== screenshot <name>` and `=== end`.
 
 ## Mobile GPU notes (kept in the code)

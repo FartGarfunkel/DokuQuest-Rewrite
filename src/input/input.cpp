@@ -114,6 +114,11 @@ void Input::init(Settings* s) {
   // drop the foundation's number-only binds so the settings file matches the original's format
   if (s) for (auto* j : {&s->keyBinds, &s->padBinds}) for (auto it = j->begin(); it != j->end();) { if (!it->is_array()) it = j->erase(it); else ++it; }
   reloadBinds();
+#ifdef __ANDROID__
+  touch.enabled = true;
+#else
+  touch.enabled = std::getenv("DQ_TOUCH") != nullptr;   // (a PC: only to try them out, or for the playtests)
+#endif
 }
 SDL_Scancode Input::keyFor(Act a) const {
   for (auto& c : keyCodes[(int)a]) { SDL_Scancode sc = codeToScancode(c); if (sc != SDL_SCANCODE_UNKNOWN) return sc; }
@@ -130,6 +135,7 @@ void Input::beginFrame() {
   mouseDelta = vec2(0); wheelY = 0; typed.clear(); lastCode.clear(); lastPadButton = -1; dropAllFlag = false;
   std::memcpy(prevKeys, keys, sizeof keys); std::memset(keyHit, 0, sizeof keyHit); std::memset(mouseHit, 0, sizeof mouseHit);
   for (auto& p : padList) p.prevB = p.b;
+  touch.beginFrame();
 }
 
 void Input::openDevice(int index) {
@@ -147,7 +153,21 @@ void Input::openDevice(int index) {
   padList.push_back(p);
 }
 
+bool Input::touchOwns(const SDL_Event& e) const {
+  if (!touch.enabled || !capture) return false;
+  if (e.type == SDL_MOUSEMOTION) return e.motion.which == SDL_TOUCH_MOUSEID;
+  if (e.type == SDL_MOUSEBUTTONDOWN) return e.button.which == SDL_TOUCH_MOUSEID;   // (a release always goes through: a button pressed in a menu that closed under the finger lets go)
+  if (e.type == SDL_MOUSEWHEEL) return e.wheel.which == SDL_TOUCH_MOUSEID;
+  return false;
+}
+
 void Input::handle(const SDL_Event& e) {
+  if (touch.enabled) {
+    if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION || e.type == SDL_FINGERUP) { touch.handle(e, capture); if (e.type == SDL_FINGERDOWN && touch.inUse) lastWasPad = false; return; }
+    if (touchOwns(e)) return;
+    // a key (a keyboard on the phone) puts the on-screen controls away; Back, and typing in a text box, don't
+    if (e.type == SDL_KEYDOWN && !textActive && e.key.keysym.scancode != SDL_SCANCODE_ESCAPE && e.key.keysym.scancode != SDL_SCANCODE_AC_BACK) touch.inUse = false;
+  }
   switch (e.type) {
     case SDL_KEYDOWN:
       if (e.key.keysym.scancode < SDL_NUM_SCANCODES) {
@@ -263,6 +283,7 @@ void Input::readPad(PadState& p) {
 void Input::releaseAll() {
   std::memset(keys, 0, sizeof keys); std::memset(mouseBtn, 0, sizeof mouseBtn); std::memset(keyHit, 0, sizeof keyHit); std::memset(mouseHit, 0, sizeof mouseHit);
   sneakLatch = false; sprintLatch = false; doubleW = false; lastW = -1;
+  touch.releaseAll();
   for (auto& p : padList) { p.sprintLatch = false; p.navDir = ivec2(0); p.viewHold = 0; }
 }
 
@@ -276,8 +297,8 @@ void Input::endFrame() {
   // 1) each controller on its own: read it, its menu navigation (stick repeat), its latches (sprint, crawl, view)
   for (auto& p : padList) {
     readPad(p);
-    for (int k = 0; k < 17; k++) if (p.edge(k)) { lastWasPad = true; if (lastPadButton < 0 && k < 16) lastPadButton = k; }
-    if (glm::length(p.lstick) > 0.3f || glm::length(p.rstick) > 0.3f) lastWasPad = true;
+    for (int k = 0; k < 17; k++) if (p.edge(k)) { lastWasPad = true; touch.inUse = false; if (lastPadButton < 0 && k < 16) lastPadButton = k; }
+    if (glm::length(p.lstick) > 0.3f || glm::length(p.rstick) > 0.3f) { lastWasPad = true; touch.inUse = false; }
     p.navOut = ivec2(0); p.scrollOut = 0; p.pCrawl = p.pView = p.pShoulder = p.viewOn = false;
     if (setupActive) continue;
     for (int k = 0; k < 17; k++) if (k != 9 && p.edge(k)) p.used = true;
@@ -308,6 +329,7 @@ void Input::endFrame() {
   }
   if (settings && settings->toggleSprint && kSprint) sprintLatch = true;
   if (!kFwd) { doubleW = false; sprintLatch = false; }
+  touch.endFrame(dt, capture);
   // 3) the merged view of everything (one player), and one per local player in split screen
   computeFrame(fr[0], true, nullptr);
   for (size_t i = 0; i < sources.size() && i < 4; i++) computeFrame(fr[1 + i], sources[i].kb, &sources[i].pads);
@@ -351,6 +373,15 @@ void Input::computeFrame(Frame& F, bool kb, const std::vector<SDL_JoystickID>* i
     if (p.pView) F.pulse[(int)Act::View] = true;
     padView |= p.viewOn;
   }
+  if (kb && touch.enabled && !setupActive) {   // the phone's on-screen controls (input/touch.h)
+    F.cur[(int)Act::Attack] = F.cur[(int)Act::Attack] || touch.attack; F.cur[(int)Act::Use] = F.cur[(int)Act::Use] || touch.use;
+    F.cur[(int)Act::Jump] = F.cur[(int)Act::Jump] || touch.jump; F.cur[(int)Act::Sneak] = F.cur[(int)Act::Sneak] || touch.sneak;
+    sprint |= touch.sprint;
+    if (touch.pulseBag) F.pulse[(int)Act::Inventory] = true;
+    if (touch.pulsePause) F.pulse[(int)Act::Pause] = true;
+    if (touch.pulseView) F.pulse[(int)Act::View] = true;
+    if (touch.pulseSlot >= 0 && touch.pulseSlot < 9) F.pulse[(int)Act::Hot1 + touch.pulseSlot] = true;
+  }
   F.cur[(int)Act::Sprint] = sprint;
   // the pad's view button acts on release (tap) — only keys make View a plain press
   if (padView) { bool k = false; if (kb && !textActive) for (auto& c : keyCodes[(int)Act::View]) k |= codeDown(c); F.cur[(int)Act::View] = k; }
@@ -379,6 +410,7 @@ vec2 Input::moveAxis() const {
   if (down(Act::Forward)) m.y += 1; if (down(Act::Back)) m.y -= 1;
   if (down(Act::Right)) m.x += 1; if (down(Act::Left)) m.x -= 1;
   if (!setupActive) for (auto& p : padList) if (padSel(p)) { m.x += p.lstick.x; m.y -= p.lstick.y; }
+  if (touch.enabled && kbSel()) m += touch.move;
   if (glm::length(m) > 1) m = glm::normalize(m);
   return m;
 }
@@ -391,6 +423,7 @@ vec2 Input::lookDelta() const {
     float k = ps * 2.8f * (float)dt;
     d += vec2(p.rstick.x * std::fabs(p.rstick.x) * k * 1.15f, p.rstick.y * std::fabs(p.rstick.y) * k * (settings && settings->invertY ? -1.f : 1.f));
   }
+  if (touch.enabled && kbSel()) d += vec2(touch.look.x, settings && settings->invertY ? -touch.look.y : touch.look.y) * sens;
   return d;
 }
 void Input::setCapture(SDL_Window* w, bool on) {

@@ -4,6 +4,7 @@
 //   {"steps":[{"wait":120,"do":"give","item":"chest"}, {"do":"key","key":"E","hold":3},
 //             {"do":"pad","button":"a"}, {"do":"expect","screen":"inventory"}, {"do":"shot","path":"/tmp/a.png"}]}
 // do: key{key,hold} type{text} mouse{button,hold,x?,y?} move{dx,dy} pad{button,hold,id?} padaxis{axis,value,hold,id?}
+//     touch{x,y (0..1),to?:[x,y],hold,id?} (a finger: the on-screen controls; DQ_TOUCH=1 shows them on a PC)
 // (local = which split-screen player the look/tp/give/... steps act on; id = which virtual controller, 0..3: they attach on first use; Start on a free one joins split screen)
 //     furnace{x,y,z,in,fuel,out,n,cook,burn} (a furnace's record filled)
 //     cmd{text} look{yaw,pitch (degrees)} lookAt{x,y,z} tp{x,y,z} give{item,n,clear?,hand?} select{slot} setBlock{x,y,z,key}
@@ -77,6 +78,12 @@ void pushMouseButton(int button, bool down, int x, int y) {
   SDL_Event e{}; e.type = down ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
   e.button.button = (Uint8)button; e.button.state = down ? SDL_PRESSED : SDL_RELEASED; e.button.clicks = 1;
   e.button.x = x; e.button.y = y; e.button.windowID = SDL_GetWindowID(app().window);
+  SDL_PushEvent(&e);
+}
+// a finger on the touch screen (x, y: 0..1 of the window), as Android's SDL sends it
+void pushFinger(Uint32 type, int id, float x, float y) {
+  SDL_Event e{}; e.type = type; e.tfinger.touchId = 1; e.tfinger.fingerId = id; e.tfinger.x = x; e.tfinger.y = y; e.tfinger.pressure = 1;
+  e.tfinger.windowID = SDL_GetWindowID(app().window);
   SDL_PushEvent(&e);
 }
 void pushMotion(int x, int y, int dx, int dy) {
@@ -160,6 +167,17 @@ void runStep(App& a, const json& st) {
   } else if (op == "atlas" && p) {   // the book's atlas: a map and a compass in its slots, the minimap on (sim/atlas.h)
     ItemStack mp("empty_map", 1), cp("compass", 1), back;
     atlasPut(*p, "map", mp, back); atlasPut(*p, "compass", cp, back); setAtlasMinimap(*p, st.value("mini", true));
+  } else if (op == "touch") {   // a finger: down at x,y, slid to "to" [x,y] over "hold" frames, then lifted (input/touch.h)
+    const int id = st.value("id", 0);
+    const float x = st.value("x", 0.5f), y = st.value("y", 0.5f);
+    float tx = x, ty = y;
+    if (st.contains("to") && st["to"].is_array() && st["to"].size() >= 2) { tx = st["to"][0]; ty = st["to"][1]; }
+    R.later.push_back({f + 1, [id, x, y] { pushFinger(SDL_FINGERDOWN, id, x, y); }});
+    for (int k = 1; k <= hold; k++) {
+      const float u = (float)k / (float)hold;
+      if (tx != x || ty != y) R.later.push_back({f + 1 + k, [id, x, y, tx, ty, u] { pushFinger(SDL_FINGERMOTION, id, x + (tx - x) * u, y + (ty - y) * u); }});
+    }
+    R.later.push_back({f + 1 + hold, [id, tx, ty] { pushFinger(SDL_FINGERUP, id, tx, ty); }});
   } else if (op == "move") {
     pushMotion(a.width / 2, a.height / 2, st.value("dx", 0), st.value("dy", 0));
   } else if (op == "pad" && (st.value("button", "") == "lt" || st.value("button", "") == "rt")) {

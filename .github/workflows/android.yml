@@ -86,7 +86,8 @@ jobs:
             echo "- Options → Video → Renderer switches between Vulkan and OpenGL ES (from the next start). If Vulkan ever stops the game as it starts, the next start uses OpenGL ES by itself."
             echo
             echo "### Playing"
-            echo "- A controller (Bluetooth or USB) plays everything, menus included. Touch works as a mouse in the menus."
+            echo "- Touch: the left thumb moves (push it up past the ring to sprint), drag anywhere else to look, tap to use or place, press and hold to mine. Buttons: Jump, Sneak (tap on / off), Mine, Use (hold to eat or draw a bow), Bag, View, Pause. Tap the hotbar to pick a slot. Auto-Jump is on (Options → Controls)."
+            echo "- A controller (Bluetooth or USB) plays everything, menus included; using one hides the touch buttons. In menus, a finger is the pointer."
             echo "- Back button / back gesture = Escape (pause, close a menu)."
             echo "- Starts on the Low graphics preset; raise it in Options → Video."
             echo "- Your folder (worlds, settings, resource packs, screenshots, latest.log): Android/data/org.dokuquest.app/files, reachable from a computer over USB."

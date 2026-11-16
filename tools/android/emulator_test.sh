@@ -150,6 +150,71 @@ else
   err "no screenshot from the OpenGL ES run"
 fi
 
+# ---- 3b. the touch controls (input/touch.h) through the emulator's own touch screen: a thumb on the left walks, a
+# drag on the right turns the view, a tap on the Bag button opens the bag and Back closes it. The game runs a script
+# that only reports where the player stands, every few frames (the touches come from adb, as a finger's would).
+timeout 30 adb shell am force-stop $PKG; sleep 2
+python3 -c 'import json; print(json.dumps({"steps": [{"wait": 20, "do": "report"}] + [{"wait": 4, "do": "report"}] * 60 + [{"wait": 2, "do": "quit"}]}))' > "$OUT/touchrun.json"
+timeout 60 adb push "$OUT/touchrun.json" $DIR/touchrun.json > /dev/null || err "could not write the touch script into the game's folder"
+adb logcat -c
+TW=--world,TestGles; [ $VULKAN_OK = 1 ] && TW=--world,Test
+timeout 180 adb shell am start -W -n $PKG/.MainActivity --esa args "--renderer,legacy,$TW,--smoke-frames,3000,--smoke-script,touchrun.json"
+up=0
+for i in $(seq 1 100); do sleep 3; alive || break; timeout 20 adb logcat -d -v brief 2>/dev/null | grep -q "test report" && { up=1; break; }; done
+if [ $up = 1 ]; then
+  read -r SW SH < <(timeout 20 adb shell wm size | tr -d '\r' | sed -n 's/.*: *\([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -1)
+  SW=${SW:-2400}; SH=${SH:-1080}
+  [ "$SW" -lt "$SH" ] && { t=$SW; SW=$SH; SH=$t; }   # (the game is landscape)
+  note "touch: screen ${SW}x${SH}; walking (left thumb pushed up)"
+  timeout 60 adb shell input swipe $((SW * 20 / 100)) $((SH * 70 / 100)) $((SW * 20 / 100)) $((SH * 52 / 100)) 6000 &
+  sleep 3; shot touch-walking; wait
+  sleep 6
+  note "touch: turning (a drag on the right)"
+  timeout 60 adb shell input swipe $((SW * 55 / 100)) $((SH * 40 / 100)) $((SW * 75 / 100)) $((SH * 40 / 100)) 2500
+  sleep 6
+  # the game's window can be narrower than the screen (the camera's cut-out beside it, on a side not known here): aim
+  # half that difference in from the button's centre, so the tap lands on it whichever side the gap is
+  read -r GW GH < <(timeout 20 adb logcat -d -v brief 2>/dev/null | sed -n 's/.*touch: the window is \([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -1)
+  GW=${GW:-$SW}; GH=${GH:-$SH}
+  B=$((GH * 15 / 100)); M=$((GH * 35 / 1000))
+  note "touch: the Bag button (game window ${GW}x${GH})"
+  timeout 30 adb shell input tap $((GW - M - B * 13 / 10 + (SW - GW) / 2)) $((M + B * 4 / 10))
+  sleep 10; shot touch-bag
+  timeout 30 adb shell input keyevent KEYCODE_BACK
+  sleep 8
+fi
+for i in $(seq 1 120); do sleep 5; alive || break; done
+logs touch
+if alive; then err "the touch run did not finish"; shot touch-stuck; timeout 30 adb shell am force-stop $PKG; fi
+c=$(crashed touch); [ -n "$c" ] && { err "crash in the touch run"; echo "$c"; }
+grep -E "test report" "$OUT/logcat-touch.txt" | sed 's/.*test report: //' | cut -c1-160 > "$OUT/touch-reports.txt"
+echo "::group::touch run reports"; cat "$OUT/touch-reports.txt"; echo "::endgroup::"
+if [ $up = 1 ]; then
+  python3 - "$OUT/touch-reports.txt" <<'PYEOF' || err "the touch controls did not do what they should (see above)"
+import math, re, sys
+rows = []
+for l in open(sys.argv[1]):
+    m = re.search(r"screens: (.*?) \| pos (-?[\d.]+) (-?[\d.]+) (-?[\d.]+) yaw (-?\d+)", l)
+    if m: rows.append((m.group(1), float(m.group(2)), float(m.group(4)), float(m.group(5))))
+ok = True
+if len(rows) < 3: print("::error::touch: too few reports (%d)" % len(rows)); sys.exit(1)
+x0, z0, yaw0 = rows[0][1], rows[0][2], rows[0][3]
+walked = max(math.hypot(r[1] - x0, r[2] - z0) for r in rows)
+turned = max(abs(((r[3] - yaw0) + 180) % 360 - 180) for r in rows)
+bag = any("inventory" in r[0] for r in rows)
+first = next((i for i, r in enumerate(rows) if "inventory" in r[0]), None)
+closed = first is not None and any("inventory" not in r[0] for r in rows[first:])
+print("::notice::touch: walked %.1f blocks, turned %.0f degrees, bag opened %s, closed again with Back %s" % (walked, turned, bag, closed))
+if walked < 0.8: print("::error::touch: the left thumb didn't walk the player"); ok = False
+if turned < 10: print("::error::touch: a drag on the right didn't turn the view"); ok = False
+if not bag: print("::error::touch: the Bag button didn't open the bag"); ok = False
+if bag and not closed: print("::error::touch: Back didn't close the bag"); ok = False
+sys.exit(0 if ok else 1)
+PYEOF
+else
+  err "touch: the game never reported (its world didn't open?)"; game_log touch 80
+fi
+
 # ---- 4. a start that dies on Vulkan (killed 15 s in, as a crashing driver would): the next start is OpenGL ES
 if [ $VULKAN_OK = 1 ]; then
   timeout 30 adb shell am force-stop $PKG; sleep 2

@@ -402,7 +402,7 @@ int App::run(int argc, char** argv) {
   // Android has no launcher to suggest the first settings: a phone starts on Low (Options → Video raises it). The
   // renderers there: Vulkan, and Legacy, which is the phone's OpenGL ES (also what a phone without Vulkan 1.3 gets).
   // Modern (desktop OpenGL 4) doesn't exist on phones.
-  if (settings.preset == "auto") { settings.applyPreset("low"); settings.save(); }
+  if (settings.preset == "auto") { settings.applyPreset("low"); settings.autoJump = true; settings.save(); }   // (and auto-jump: walking up steps with the on-screen stick)
   if (settings.renderer == RendererKind::Modern) settings.renderer = RendererKind::Vulkan;
   { std::error_code ec;
     if (settings.renderer == RendererKind::Vulkan && !args.rendererSet && fs::exists(vulkanMark(), ec)) {
@@ -482,7 +482,7 @@ void App::frameLoop() {
       if (e.type == SDL_APP_DIDENTERFOREGROUND && gfx.vulkan) gfxVulkanSurfaceChanged();
       if (e.type == SDL_APP_TERMINATING) quit = true;
 #endif
-      ImGui_ImplSDL2_ProcessEvent(&e);
+      if (!input.touchOwns(e)) ImGui_ImplSDL2_ProcessEvent(&e);   // (a finger playing with the on-screen controls isn't the menus' pointer)
       input.handle(e);
       if (e.type == SDL_QUIT) quit = true;
       if (e.type == SDL_WINDOWEVENT && (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)) {
@@ -510,6 +510,7 @@ void App::frameLoop() {
     glViewport(0, 0, dw, dh);
     glClearColor(0.05f, 0.04f, 0.035f, 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     if (session && (!topScreen() || topScreen()->showsWorld())) { session->render(); if (session->split()) session->splitUi(); else if (!bookUiOn(*this)) session->drawHud(); }   // (the journal up before you: the HUD put away)
+    if (session && !session->split() && !topScreen() && input.touch.enabled && input.touch.inUse && input.captured()) input.touch.draw(ImGui::GetForegroundDrawList(), (float)width, (float)height);   // a phone's on-screen controls (input/touch.h)
     // screens draw back to front (an overlay may sit over another menu)
     { static bool hid = false; const bool on = bookUiOn(*this); if (on != hid) { SDL_ShowCursor(on ? SDL_DISABLE : SDL_ENABLE); hid = on; } }   // (in the book: its own pointer, on the pages)
     if (session && !session->split() && !bookUiOn(*this)) session->uiWantsText = false;   // (only the journal's pages set it: off with them)

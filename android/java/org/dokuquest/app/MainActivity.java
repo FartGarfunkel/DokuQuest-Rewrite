@@ -23,7 +23,7 @@ public class MainActivity extends SDLActivity {
     // The game's start options, for tests (the Android workflow's emulator run):
     //   adb shell am start -n org.dokuquest.app/.MainActivity --esa args --create,Test,--smoke-frames,300
     // Only these, each with its value: any app can start this activity, so nothing that opens a port or reads a
-    // script from elsewhere.
+    // script from elsewhere. --smoke-script takes a bare file name, read from the game's own folder only.
     private static final Set<String> ALLOWED = new HashSet<>(Arrays.asList(
         "--create", "--seed", "--world", "--world-type", "--smoke-frames", "--smoke-shot", "--renderer"));
 
@@ -34,6 +34,14 @@ public class MainActivity extends SDLActivity {
         if (given == null) return new String[0];
         ArrayList<String> out = new ArrayList<>();
         for (int i = 0; i + 1 < given.length; i += 2) {
+            if (given[i].equals("--smoke-script")) {
+                String name = given[i + 1];
+                java.io.File dir = getExternalFilesDir(null);
+                if (dir == null || !name.matches("[A-Za-z0-9_.-]+") || name.contains("..")) break;
+                out.add(given[i]);
+                out.add(new java.io.File(dir, name).getAbsolutePath());
+                continue;
+            }
             if (!ALLOWED.contains(given[i])) break;
             out.add(given[i]);
             out.add(given[i + 1]);

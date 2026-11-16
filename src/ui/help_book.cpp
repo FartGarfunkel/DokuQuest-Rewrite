@@ -66,6 +66,8 @@ const std::vector<Section>& helpText() {
     {SUB, "Touch"},
     {KEY, "Left thumb", "Move (push to the top edge to sprint)"}, {KEY, "Drag right side", "Look around"}, {KEY, "Tap", "Place \xC2\xB7 use"},
     {KEY, "Press and hold", "Mine (or hold the Mine button)"},
+    {KEY, "Buttons", "Jump \xC2\xB7 Sneak (tap on, tap off) \xC2\xB7 Use (hold it to eat or draw a bow) \xC2\xB7 Bag \xC2\xB7 View \xC2\xB7 Pause"},
+    {KEY, "Tap the hotbar", "Hold that slot"},
   }},
   {"Surviving", "golden_apple", {
     {H, "Surviving"},
