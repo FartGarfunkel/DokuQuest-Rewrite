@@ -235,6 +235,8 @@ void NetClient::findMe() {
 }
 
 void NetClient::update(Level& level, double dt) {
+  // replicas are drawn 0.15 s behind the host's clock: between two of its 10-a-second positions, never waiting on the next
+  { dq::g_netViewTime = clockKnown ? nowSeconds() + clockOff - 0.15 : -1; }
   if (subMode) { updateSub(level, dt); return; }
   if (!lv) attach(level);
   if (!host || st != State::Ready) return;
@@ -488,6 +490,13 @@ void NetClient::applyEntities(const json& m) {
   Level& L = *lv;
   int realm = m.value("rl", 0);
   if (me && realm != me->realm) return;   // on the way through a portal: that land's news isn't for here
+  // the host's clock against ours (the fastest packets say it best: a late one only nudges it)
+  const double st = m.value("st", -1.0);
+  if (st >= 0) {
+    const double off = st - nowSeconds();
+    if (!clockKnown || off > clockOff + 1 || off < clockOff - 1) { clockOff = off; clockKnown = true; }
+    else clockOff = off > clockOff ? off : clockOff + (off - clockOff) * 0.02;
+  }
   for (auto& s : m["l"]) {
     u32 id = s.value("i", 0u);
     if (!id || id >= LOCAL_ID_BASE || hideEids.count(id)) continue;
@@ -503,6 +512,7 @@ void NetClient::applyEntities(const json& m) {
       ne->pos = ne->netPos = ne->prevPos = pos; ne->yaw = ne->netYaw = ne->prevYaw = yaw;
       e = L.spawn(std::move(ne));
     } else { e->netPos = pos; e->netYaw = yaw; }
+    if (st >= 0) e->netSample(st, pos, yaw);
     e->pitch = s.value("p", e->pitch); e->bodyYaw = s.value("b", e->bodyYaw);
     float hp = s.value("hp", e->hp);
     if (hp < e->hp) e->hurtTime = 0.5f;

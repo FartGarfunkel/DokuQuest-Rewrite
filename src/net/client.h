@@ -80,6 +80,7 @@ private:
   std::string err;
   JoinOptions opts;
   double startedAt = 0, t = 0, heardAt = 0;
+  double clockOff = 0; bool clockKnown = false;   // the host's clock minus ours (applyEntities): replicas are drawn by it
   json welcomeMsg;
   int expectRecords = -1, gotRecords = 0;
   Level* lv = nullptr;

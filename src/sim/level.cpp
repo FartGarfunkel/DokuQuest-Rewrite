@@ -8,6 +8,10 @@
 
 namespace dq {
 
+// the host's clock a little behind, for net replicas to be drawn at (net/client.cpp sets it; < 0: none)
+double g_netViewTime = -1;
+
+
 // ---- entities ----
 json Entity::save() const {
   return {{"type", type}, {"realm", realm}, {"pos", {pos.x, pos.y, pos.z}}, {"vel", {vel.x, vel.y, vel.z}}, {"yaw", yaw}, {"pitch", pitch},

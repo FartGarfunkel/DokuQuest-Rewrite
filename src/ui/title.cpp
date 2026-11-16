@@ -116,7 +116,7 @@ struct Panorama {
         }
       for (int dz = -40; dz <= 40; dz += 8) for (int dx = -40; dx <= 40; dx += 8) { ColumnSample s; g->sample((int)cx + dx, (int)cz + dz, s); top = std::max(top, std::max((int)s.height, 64)); }
     }
-    y = dimBase(DIM_OVERWORLD) + top + 10;
+    y = dimBase(DIM_OVERWORLD) + top + 26;   // (up over the trees, looking out across the land: just over the canopy a hill or the leaves filled the view)
     ok = true;
     return true;
   }
@@ -130,11 +130,11 @@ struct Panorama {
   void render(App& a) {
     if (!ok) return;
     yaw += (float)a.dt * 0.04f;
-    int R = std::min(a.settings.renderDist, 4);
+    int R = std::min(a.settings.renderDist, 8);   // (4 chunks: the fog closed in 64 blocks off, the land a white wall past the nearest hill)
     World& w = lv->world();
     Camera& cam = frame.cam;
     cam.pos = glm::dvec3(cx + std::sin(yaw) * 6, y, cz + std::cos(yaw) * 6);
-    cam.yaw = yaw + PI; cam.pitch = -0.28f; cam.fov = 70;
+    cam.yaw = yaw + PI; cam.pitch = -0.42f; cam.fov = 70;
     std::vector<StreamAnchor> anchors = {{vec3(cam.pos), R, false}};
     w.stream(anchors, 3.0);
     int dw, dh; SDL_GL_GetDrawableSize(a.window, &dw, &dh);
