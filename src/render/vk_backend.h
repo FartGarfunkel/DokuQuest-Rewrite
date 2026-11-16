@@ -12,5 +12,6 @@ void gfxVulkanNewFrame();
 void gfxVulkanPresent(SDL_Window* window);
 void gfxVulkanSetVsync(bool on);
 void gfxVulkanSurfaceChanged();   // Android: the app came back to the front with a new window surface
+void gfxVulkanSaveCache();        // writes the pipeline cache now (it's otherwise written at shutdown)
 
 } // namespace dq

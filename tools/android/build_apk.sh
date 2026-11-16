@@ -5,6 +5,7 @@
 #   (data.dqa, data/resourcepacks, data/sounds, assets/) that client/android_boot.cpp unpacks on the first start.
 #
 #   bash tools/android/build_apk.sh          → dist/android/DokuQuest-<version>-android-arm64.apk
+#   ABI=x86_64 bash tools/android/build_apk.sh   → ...-android-x86_64.apk (for the emulator test in CI)
 #
 # Needs: the Android SDK (ANDROID_HOME, with build-tools and a platform) and an NDK (ANDROID_NDK_HOME, or one in
 # $ANDROID_HOME/ndk/), cmake, ninja, a JDK 17+, zip, git.
@@ -14,10 +15,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 ROOT="$PWD"
+ABI="${ABI:-arm64-v8a}"
+case "$ABI" in arm64-v8a) ARCH=arm64 ;; x86_64) ARCH=x86_64 ;; *) echo "error: ABI is arm64-v8a or x86_64"; exit 1 ;; esac
 OUT="$ROOT/dist/android"
-WORK="$ROOT/build-android-apk"
-BUILD="${ANDROID_BUILD_DIR:-$ROOT/build-android}"
-ABI=arm64-v8a
+WORK="$ROOT/build-android-apk-$ARCH"
+BUILD="${ANDROID_BUILD_DIR:-$ROOT/build-android-$ARCH}"
 MIN_SDK=26      # Android 8: adaptive icons; the game itself needs Vulkan 1.3 (Android 13+) and says so when it's missing
 TARGET_SDK=33   # (SDL 2.30's Java registers its USB receiver without the flag Android 14 asks of apps targeting 34+)
 
@@ -110,10 +112,10 @@ cp "$WORK/game.apk" "$WORK/unaligned.apk"
 KS="${ANDROID_KEYSTORE:-android/debug.keystore}"
 PASS="${ANDROID_KEYSTORE_PASS:-android}"
 ALIAS="${ANDROID_KEY_ALIAS:-dokuquest}"
-APK="$OUT/DokuQuest-$VERSION-android-arm64.apk"
+APK="$OUT/DokuQuest-$VERSION-android-$ARCH.apk"
 rm -f "$APK"
 "$BT/apksigner" sign --ks "$KS" --ks-pass "pass:$PASS" --key-pass "pass:$PASS" --ks-key-alias "$ALIAS" --out "$APK" "$WORK/aligned.apk"
 "$BT/apksigner" verify --verbose "$APK" | grep -E "^Verifie|^Verified|DOES NOT|ERROR" || true
 "$BT/aapt2" dump badging "$APK" | grep -E "^(package|sdkVersion|targetSdkVersion|application-label:|application-icon-640|launchable-activity|native-code)" || true
-echo "$BUILD_NAME" > "$OUT/build.txt"
+echo "$BUILD_NAME" > "$OUT/build-$ARCH.txt"
 echo "APK: $APK ($(du -h "$APK" | cut -f1))"

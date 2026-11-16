@@ -274,13 +274,19 @@ static void loadPipeCache() {
     if (vkCreatePipelineCache(device, &ci, nullptr, &pipeCache) != VK_SUCCESS) pipeCache = VK_NULL_HANDLE;
   }
 }
-static void savePipeCache() {
+static void writePipeCache() {
   if (!pipeCache) return;
   size_t n = 0;
   if (vkGetPipelineCacheData(device, pipeCache, &n, nullptr) == VK_SUCCESS && n > 0) {
     std::string buf(n, '\0');
     if (vkGetPipelineCacheData(device, pipeCache, &n, buf.data()) == VK_SUCCESS) { buf.resize(n); writeFileAtomic(pipeCachePath(), buf); }
   }
+}
+// (Android closes games in the background without a word: the app saves the cache on its way there)
+void gfxVulkanSaveCache() { if (g_on) writePipeCache(); }
+static void savePipeCache() {
+  if (!pipeCache) return;
+  writePipeCache();
   vkDestroyPipelineCache(device, pipeCache, nullptr);
   pipeCache = VK_NULL_HANDLE;
 }

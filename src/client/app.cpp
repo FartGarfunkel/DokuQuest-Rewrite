@@ -389,8 +389,9 @@ void App::frameLoop() {
       if ((e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) && (e.key.keysym.sym == SDLK_AC_BACK || e.key.keysym.scancode == SDL_SCANCODE_AC_BACK)) {
         e.key.keysym.sym = SDLK_ESCAPE; e.key.keysym.scancode = SDL_SCANCODE_ESCAPE;
       }
-      // Android may close a game it sent to the background without asking: the world is saved on the way out
-      if (e.type == SDL_APP_DIDENTERBACKGROUND && session) session->save();
+      // Android may close a game it sent to the background without asking: the world is saved on the way out. The
+      // sound stops too (its thread keeps running while the game waits; each frame back sets the mute again).
+      if (e.type == SDL_APP_DIDENTERBACKGROUND) { if (session) session->save(); if (audio) audio->setMuted(true); if (gfx.vulkan) gfxVulkanSaveCache(); }
       // coming back, the window has a new surface: Vulkan draws to that one
       if (e.type == SDL_APP_DIDENTERFOREGROUND && gfx.vulkan) gfxVulkanSurfaceChanged();
       if (e.type == SDL_APP_TERMINATING) quit = true;
