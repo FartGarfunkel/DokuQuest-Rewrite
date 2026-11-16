@@ -212,7 +212,7 @@ jobs:
   attach:
     needs: [apk, emulator]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -224,6 +224,8 @@ jobs:
         run: |
           apk=$(ls dist/*.apk | head -1)
           v=$(basename "$apk" | sed -E 's/^DokuQuest-(.*)-android-arm64\.apk$/\1/')
+          # (the PC release may still be building: wait for it, up to 50 minutes)
+          for i in $(seq 1 50); do gh release view "v$v" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 && break; sleep 60; done
           if gh release view "v$v" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "v$v" "$apk" --clobber -R "$GITHUB_REPOSITORY"
             echo "::notice::added $(basename "$apk") to the v$v release"
