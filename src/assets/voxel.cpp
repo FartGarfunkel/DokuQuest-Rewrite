@@ -116,7 +116,7 @@ void VoxelMeshGL::upload(const VoxelMeshData& d) {
   if (!mesh) {
     mesh = std::make_unique<Mesh>();
     mesh->setup(sizeof(VoxelVertex), {
-      {0, 3, GL_UNSIGNED_SHORT, GL_FALSE, false, 0},
+      {0, 3, GL_UNSIGNED_SHORT, GL_FALSE, true, 0},   // (an integer input, voxel.glsl makes it float: see there)
       {1, 1, GL_UNSIGNED_BYTE, GL_FALSE, true, 6},
       {2, 4, GL_UNSIGNED_BYTE, GL_TRUE, false, 8},
     });

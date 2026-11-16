@@ -17,8 +17,8 @@ using namespace lod;
 
 namespace {
 const std::vector<VertexAttrib> LOD_ATTRS = {
-  {0, 2, GL_UNSIGNED_SHORT, GL_FALSE, false, 0},
-  {1, 1, GL_SHORT, GL_FALSE, false, 4},
+  {0, 2, GL_UNSIGNED_SHORT, GL_FALSE, true, 0},   // (integer inputs, distant.glsl makes them float: Vulkan on
+  {1, 1, GL_SHORT, GL_FALSE, true, 4},            // phones has no "scaled" 16-bit vertex formats)
   {2, 1, GL_UNSIGNED_SHORT, GL_FALSE, true, 6},
   {3, 1, GL_UNSIGNED_SHORT, GL_FALSE, true, 8},    // tint 5-6-5
   {4, 1, GL_UNSIGNED_SHORT, GL_FALSE, true, 10},   // flags | face << 4 | shade << 7

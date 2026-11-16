@@ -61,11 +61,13 @@ echo "  $(du -h "$BUILD/libmain.so" | cut -f1) built, $(du -h "$SO" | cut -f1) s
 
 # What Android checks when it loads the library: SDL's Java side has to find these, and every library it names must
 # be one Android gives apps (anything else, like libc++_shared.so, would have to be packed in as well).
+"$LLVM/llvm-nm" -D --defined-only "$SO" | awk '{print $3}' > "$WORK/exports.txt"   # (to a file: grep -q on a pipe ends it early)
 for sym in SDL_main JNI_OnLoad Java_org_libsdl_app_SDLActivity_nativeSetupJNI Java_org_libsdl_app_SDLActivity_nativeRunMain \
            Java_org_libsdl_app_SDLActivity_onNativeSurfaceCreated Java_org_libsdl_app_SDLControllerManager_nativeSetupJNI \
            Java_org_libsdl_app_SDLControllerManager_onNativePadDown Java_org_libsdl_app_SDLAudioManager_nativeSetupJNI; do
-  "$LLVM/llvm-nm" -D --defined-only "$SO" | awk '{print $3}' | grep -qx "$sym" || { echo "error: libmain.so does not export $sym"; exit 1; }
+  grep -qx "$sym" "$WORK/exports.txt" || { echo "error: libmain.so does not export $sym"; exit 1; }
 done
+echo "  exports $(wc -l < "$WORK/exports.txt") symbols, SDL's Java entry points among them"
 PUBLIC_LIBS=" libandroid.so libc.so libdl.so libEGL.so libGLESv1_CM.so libGLESv2.so libGLESv3.so libjnigraphics.so liblog.so libm.so libOpenSLES.so libvulkan.so libz.so libaaudio.so libnativewindow.so libmediandk.so libcamera2ndk.so libamidi.so libsync.so "
 NEEDED="$("$LLVM/llvm-readelf" -d "$SO" | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p')"
 echo "  needs: $(echo $NEEDED)"

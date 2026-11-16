@@ -4,7 +4,8 @@
 #ifdef VERTEX
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in uint aLayer;
-layout(location = 2) in vec2 aUV;
+layout(location = 2) in uvec2 aUVU;   // (whole numbers in, made float here: phone GPUs can't convert bytes as they read)
+#define aUV vec2(aUVU)
 layout(location = 3) in uint aLight;
 layout(location = 4) in vec3 aTint;
 layout(location = 5) in uint aFlags;

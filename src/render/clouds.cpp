@@ -141,7 +141,7 @@ void CloudRenderer::build() {
     glBindBuffer(GL_ARRAY_BUFFER, t.vbo);
     glBufferData(GL_ARRAY_BUFFER, v.size() * sizeof(CV), v.data(), GL_STATIC_DRAW);
     glEnableVertexAttribArray(0); glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(CV), (void*)0);
-    glEnableVertexAttribArray(1); glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(CV), (void*)12);
+    glEnableVertexAttribArray(1); glVertexAttribIPointer(1, 4, GL_UNSIGNED_BYTE, sizeof(CV), (void*)12);   // (clouds.glsl makes it float)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
     glBindBuffer(GL_ARRAY_BUFFER, inst);
     for (int i = 0; i < 3; i++) { glEnableVertexAttribArray(2 + i); glVertexAttribDivisor(2 + i, 1); }

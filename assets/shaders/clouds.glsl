@@ -5,7 +5,8 @@
 #include "common.glsl"
 #ifdef VERTEX
 layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec4 aKindShade;      // kind (0 top, 1 side, 2 bottom), shade 0..255, height up the heap 0..255, face 0..5
+layout(location = 1) in uvec4 aKindShadeU;   // kind (0 top, 1 side, 2 bottom), shade 0..255, height up the heap 0..255, face 0..5
+#define aKindShade vec4(aKindShadeU)           // (whole numbers in, made float here: phone GPUs can't convert bytes as they read)
 layout(location = 2) in vec4 iPosScale;       // camera-relative position, scale
 layout(location = 3) in vec4 iParams;         // y stretch (thunderheads), quarter turns, storm-fog mix, -
 layout(location = 4) in vec4 iTint;

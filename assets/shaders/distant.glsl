@@ -4,8 +4,11 @@
 // where the real chunks are drawn.
 #include "common.glsl"
 #ifdef VERTEX
-layout(location = 0) in vec2 aXZ;      // tile/32768 units
-layout(location = 1) in float aY;      // 1/8 block
+// (whole numbers in, made float here: phone GPUs can't turn 16-bit integers into floats as they read the vertex)
+layout(location = 0) in uvec2 aXZU;    // tile/32768 units
+layout(location = 1) in int aYI;       // 1/8 block
+#define aXZ vec2(aXZU)
+#define aY float(aYI)
 layout(location = 2) in uint aTile;    // the face's texture layer
 layout(location = 3) in uint aRgb;     // the tint, 5-6-5
 layout(location = 4) in uint aPk;      // bits 0..3: 1 water, 2 glowing (lava), 4 tint every pixel, 8 average colour only; 4..6 the face; 7..14 the shade

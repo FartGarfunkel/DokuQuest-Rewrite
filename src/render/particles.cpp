@@ -16,7 +16,7 @@ inline float rs() { return rnd() - 0.5f; }
 const std::vector<VertexAttrib> P_ATTRS = {
   {0, 3, GL_FLOAT, GL_FALSE, false, 0},
   {1, 1, GL_UNSIGNED_SHORT, GL_FALSE, true, 12},
-  {2, 2, GL_UNSIGNED_BYTE, GL_FALSE, false, 14},
+  {2, 2, GL_UNSIGNED_BYTE, GL_FALSE, true, 14},   // (integer input, particles.glsl makes it float)
   {3, 1, GL_UNSIGNED_BYTE, GL_FALSE, true, 16},
   {4, 3, GL_UNSIGNED_BYTE, GL_TRUE, false, 17},
   {5, 1, GL_UNSIGNED_BYTE, GL_FALSE, true, 20},
