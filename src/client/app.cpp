@@ -516,7 +516,7 @@ void App::frameLoop() {
     glViewport(0, 0, dw, dh);
     glClearColor(0.05f, 0.04f, 0.035f, 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     if (session && (!topScreen() || topScreen()->showsWorld())) { session->render(); if (session->split()) session->splitUi(); else if (!bookUiOn(*this)) session->drawHud(); }   // (the journal up before you: the HUD put away)
-    if (session && !session->split() && !topScreen() && input.touch.enabled && input.touch.inUse && input.captured()) input.touch.draw(ImGui::GetForegroundDrawList(), (float)width, (float)height);   // a phone's on-screen controls (input/touch.h)
+    if (session && !session->split() && !topScreen() && input.touch.visible() && input.captured()) input.touch.draw(ImGui::GetForegroundDrawList(), (float)width, (float)height);   // a phone's on-screen controls (input/touch.h)
     // screens draw back to front (an overlay may sit over another menu)
     { static bool hid = false; const bool on = bookUiOn(*this); if (on != hid) { SDL_ShowCursor(on ? SDL_DISABLE : SDL_ENABLE); hid = on; } }   // (in the book: its own pointer, on the pages)
     if (session && !session->split() && !bookUiOn(*this)) session->uiWantsText = false;   // (only the journal's pages set it: off with them)
