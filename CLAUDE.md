@@ -60,6 +60,9 @@ nlohmann json) — `tools/fetch_deps.sh` fetches it on a clean checkout.
 | `src/ui`, `src/input` | ImGui screens styled like styles.css, HUD, inventory; keyboard/mouse/controllers | client |
 | `src/client` | App (window, loop, screens), GameSession (open world, local player, render layers) | client |
 | `src/launcher` | launcher exe: news, play, profile/skin, options (renderer), mods, server, Mod Studio, updater | client |
+Android: `android/` (manifest, MainActivity, icons), `tools/android/` (build_apk.sh, emulator_test.sh),
+`client/android_boot.cpp`; the APK is built by `.github/workflows/android.yml` — see `docs/ANDROID.md`. Code behind
+`__ANDROID__` must keep the desktop paths unchanged.
 `dqcore` = common/core/world/gen/sim/net/mod/server (no GL; the server links only this).
 `dqclient` = render/audio/ui/input/assets/client. CMake globs `*.cpp` per directory — new files need no CMake edit.
 
