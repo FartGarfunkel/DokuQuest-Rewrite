@@ -5,6 +5,40 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.22 — Clear Skies (November 2026)
+
+**The land:**
+- **No more little chunks of land floating in the air.** New worlds keep their cliffs, overhangs, arches and spires, but scraps of rock hanging over nothing are gone.
+- **Every village gets its windmill,** its sails turning clear of the buildings, and the roads lie on the real ground up to the streets.
+- **Ferns stand as proper fern bushes** instead of solid panels.
+- **Ice on rivers and lakes is drawn whole** with the shaders on: floes no longer stand as broken brackets in the water.
+- **Flower pots** keep their plants' colours, and village pots have their poppies and saplings again.
+
+**Villages:**
+- **The smith's forge** is laid out properly: the lanterns hang clear of the armour stand and the bench, the bellows sits beside the fire, the blast furnace's front is clear and the Armor Bench faces the room.
+- **The big market stall's roof** rests on itself in solid steps, its striped cloth no longer floating.
+- **Ladders stop under the top floor's ceiling,** and a villager who can't get anywhere for fifteen seconds steps to where they were going: no more villagers stuck on roofs turning in circles.
+- **The smiths hold their hammer** full size, upright in the fist, and bring it down on the anvil.
+
+**Chests and stations:**
+- **Large chests work like the single ones,** with one sheet and one pair of buttons across both halves.
+- **A cupboard opened facing a wall** is no longer drawn black.
+- **The enchanting table's close-up** has a Take back button for what's over it.
+- **Potions and buckets in your hand** stand upright in first person.
+
+**Split screen and speed:**
+- **Split screen:** everyone past the first player had a black sky. Every view has its sky and clouds again, for two, three and four players.
+- **Faster on every machine:** shut chests and barrels no longer cost time each frame, the sky is only drawn where you can see it, and the clouds lighten their own work on slower graphics.
+- **The presets set the 3D plants and the game's shaders too,** so Low and Medium really are light, and computers with Intel HD graphics are offered Low instead of Potato.
+
+**Everywhere:**
+- **Icons** for the skill trees, the Tree of Magic, the skills, perks and the journal.
+- **Animals climb one-block steps** again, and spiders stand on their feet.
+- **Grass and leaf crumbs** keep the climate's green when broken.
+- **Fixed crashes** when loading a world and when meeting certain elite creatures.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.21 — Back on Track (November 2026)
 
 **Classic worlds are classic again:**
