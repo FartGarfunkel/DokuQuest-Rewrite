@@ -241,7 +241,7 @@ void ServerHost::sendEntities(Peer& p, const std::unordered_map<u32, Snap>& snap
   for (auto it = p.sent.begin(); it != p.sent.end();) {
     if (!seen.count(it->first)) { gone.push_back(it->first); it = p.sent.erase(it); } else ++it;
   }
-  if (!list.empty() || !gone.empty()) send(p.enet, ES, {{"rl", pl.realm}, {"l", list}, {"g", gone}}, 1);
+  if (!list.empty() || !gone.empty()) send(p.enet, ES, {{"rl", pl.realm}, {"l", list}, {"g", gone}, {"st", t}}, 1);   // (st: the host's clock, for smooth replicas)
 }
 
 // ---- time & weather ----

@@ -122,6 +122,34 @@ setTimeout(() => DQ.log('timer fired'), 50);
 #endif
 }
 
+// a replica's path under uneven delivery: the host walks a creature at 2 blocks a second and sends where it is ten
+// times a second; each packet arrives 0-80 ms late. The guest's view should move at a steady speed (sim/entity.h glide)
+static double replicaSpeedSpread(bool timed) {
+  using dq::g_netViewTime;
+  Entity e; e.ghost = true;
+  u32 seed = 12345; auto rnd01 = [&] { seed = seed * 1664525u + 1013904223u; return (seed >> 8) / 16777216.0; };
+  struct Pkt { double arrive, st; vec3 p; };
+  std::vector<Pkt> pkts;
+  for (double st = 0; st < 4.0; st += 0.1) pkts.push_back({st + 0.02 + rnd01() * 0.08 + 100.0, st, vec3((float)(st * 2.0), 0, 0)});
+  double off = 0; bool known = false; size_t next = 0;
+  std::vector<float> xs;
+  for (double now = 100.0; now < 104.0; now += 0.05) {
+    while (next < pkts.size() && pkts[next].arrive <= now) {
+      const Pkt& k = pkts[next++];
+      const double o = k.st - k.arrive; if (!known || o > off) off = o; known = true;
+      e.netPos = k.p; e.netYaw = 0;
+      if (timed) e.netSample(k.st, k.p, 0);
+    }
+    g_netViewTime = timed && known ? now + off - 0.15 : -1;
+    e.glide(0.05);
+    xs.push_back(e.pos.x);
+  }
+  g_netViewTime = -1;
+  float lo = 1e9f, hi = -1e9f;
+  for (size_t i = 20; i + 1 < xs.size() - 10; i++) { const float v = (xs[i + 1] - xs[i]) / 0.05f; lo = std::min(lo, v); hi = std::max(hi, v); }
+  return hi - lo;   // the spread of speeds seen (blocks a second): 0 is perfectly steady
+}
+
 int main(int argc, char** argv) {
   setvbuf(stdout, nullptr, _IOLBF, 0);
   std::string ud = "/tmp/dq-test-net";
@@ -157,6 +185,10 @@ int main(int argc, char** argv) {
   };
   std::string err;
   net::netSkinHook() = [](const std::string& ref, const json&) { g_skinsSeen.insert(ref); };
+  {   // replicas drawn steadily between the host's positions (net/client.cpp clock, sim/entity.h glide)
+    const double timed = replicaSpeedSpread(true), eased = replicaSpeedSpread(false);
+    check(timed < 0.5, "a creature walking at 2 b/s is seen at a steady speed despite late packets (speeds spread " + std::to_string(timed) + " b/s; easing alone: " + std::to_string(eased) + ")");
+  }
   check(srv.start(&err), "server starts " + err);
   if (!srv.running()) return 1;
   std::string addr = "127.0.0.1:" + std::to_string(port);
