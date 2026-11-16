@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
     w.setBlock(D.x, D.y, D.z, door, 0); w.setBlock(D.x, D.y + 1, D.z, door, 16);
     w.setBlock(D.x - 1, D.y, D.z, hingeB, 5);   // (facing east, toward the door)
     setGlue(w, D + ivec3(-1, 0, 0), 0, true);
-    Motion dm; dm.kind = 0; dm.machine = D + ivec3(-1, 0, 0); dm.face = 0;
+    Motion dm; dm.kind = 1; dm.machine = D + ivec3(-1, 0, 0); dm.face = 0; dm.distance = 1;   // (a slider: on a hinge on its side a door is refused outright)
     Piece dp; why.clear();
     const bool dOk = gatherPiece(w, dm, dp, &why);
     check(!dOk && why.find("both halves") != std::string::npos, "a door glued by one half only is refused: glue both halves (" + why + ")");
@@ -248,6 +248,21 @@ int main(int argc, char** argv) {
     check(!bus.emit("netAction", json::array({P->name, "movingUse", json::array({P->name, "", S.x, S.y, S.z, 2})})) && !movingBodiesList(*L).empty(), "a guest's use, sent to the host, starts it there");
     tick(2.0);
     check(bus.emit("itemUse", json::array({P->name, "", 0, 0, 0, -1})) && movingBodiesList(*L).empty(), "a use aimed at nothing does nothing");
+    // sneaking with a block in hand builds against a hinge (only an empty hand changes its setting)
+    const ivec3 H2(12, Y + 1, 12); w.setBlock(H2.x, H2.y, H2.z, hingeB, 1);
+    P->sneaking = true;
+    const json q0 = machineState(w, H2).value("quarters", 1);
+    use("planks", H2, 2);
+    check(machineState(w, H2).value("quarters", 1) == q0, "sneaking with planks in hand: the hinge's setting stays");
+    use("", H2, 2);
+    check(machineState(w, H2).value("quarters", 1) != q0, "sneaking with an empty hand: it changes");
+    P->sneaking = false;
+    // a door on a hinge on its side (a drawbridge) is refused: it would come apart
+    const ivec3 H3(14, Y + 2, 4); w.setBlock(H3.x, H3.y, H3.z, hingeB, 5);   // (facing east)
+    w.setBlock(H3.x + 1, H3.y, H3.z, planks); w.setBlock(H3.x + 1, H3.y + 1, H3.z, door, 0); w.setBlock(H3.x + 1, H3.y + 2, H3.z, door, 16);
+    setGlue(w, H3, 0, true); setGlue(w, H3 + ivec3(1, 0, 0), 2, true); setGlue(w, H3 + ivec3(1, 1, 0), 2, true);
+    std::string why;
+    check(!startMove(*L, REALM_MAIN, H3, &why) && w.getBlock(H3.x + 1, H3.y + 1, H3.z) == door, "a drawbridge carrying a door is refused (" + why + ")");
   }
 
   printf("[by hand]\n");

@@ -77,6 +77,7 @@ public:
       auto toHost = [&] { if (lv.net) lv.net->action(*p, "movingUse", a); return false; };   // (a guest: the host moves it)
       if (isMachine(id)) {
         if (lv.isRemote()) return toHost();
+        if (p->sneaking && !item.empty()) return true;   // (sneaking with something in hand: build against it as usual)
         if (p->sneaking) { cycle(w, *p, at, id); return false; }
         std::string why;
         if (!startMove(lv, p->realm, at, &why) && !why.empty()) toast(lv, *p, "It won't move: " + why);

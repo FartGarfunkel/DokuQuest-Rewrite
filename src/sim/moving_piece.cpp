@@ -53,6 +53,9 @@ bool gatherPiece(const World& w, const Motion& m, Piece& out, std::string* why) 
     ivec3 o;
     if (partnerOf(w, c, o) && !in.count(o) && w.getBlock(o.x, o.y, o.z) == w.getBlock(c.x, c.y, c.z)) return fail("glue both halves of a two-block thing");
   }
+  // turned about a sideways axis (a drawbridge, a hatch), a two-block thing would come apart: refused
+  if (m.kind == 0 && motionAxis(m) != 0)
+    for (const ivec3& c : q) { ivec3 o; if (partnerOf(w, c, o)) return fail("doors, beds and tall plants can't turn on their side"); }
   out.cells = std::move(q);
   return true;
 }
