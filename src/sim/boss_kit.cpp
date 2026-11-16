@@ -115,7 +115,7 @@ OptMove bossBrain(Level& lv, Creature& m, Entity* p, float dist, float dt) {
         lv.fx->particles("portal", m.pos + vec3(0, 1, 0), 30);
         const float a = frand() * TAU;
         m.pos = p->pos + vec3(std::cos(a) * 3, 0.1f, std::sin(a) * 3); m.prevPos = m.pos;
-        lv.fx->particles("portal", m.pos + vec3(0, 1, 0), 30); lv.fx->sound("teleport", m.pos, 32);
+        lv.fx->particles("portal", m.pos + vec3(0, 1, 0), 30); lv.fx->sound("ender_tp", m.pos, 32);
       }
       return Move{0, toTarget};
     }

@@ -480,7 +480,7 @@ OptMove npcJobWork(Level& lv, Creature& e, NpcMind& M, const Village& v, const V
     if (it[3].is_null()) { it[3] = ItemStack(rnd01() < 0.5f ? "nether_wart" : "glistering_melon_slice", 1).toJson(); changed = true; }
     if (it[4].is_null() && reg().item("cinder_powder")) { it[4] = ItemStack("cinder_powder", 4).toJson(); changed = true; }
     if (changed) w.blockEntityChanged(bp.x, bp.y, bp.z);
-    e.swingT = 0.3f; lv.fx->sound("bottle_fill", vec3(bp) + vec3(0.5f), 8);
+    e.swingT = 0.3f; lv.fx->sound("splash_small", vec3(bp) + vec3(0.5f), 8);
     T = 25;
     return Move{0, e.yaw};
   }
