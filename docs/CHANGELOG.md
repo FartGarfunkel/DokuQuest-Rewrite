@@ -5,6 +5,157 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.23 — Down Deep (November 2026)
+
+**The land:**
+- **A whole new Overworld for new worlds.** Continents, eroded valleys and ridges, real cliffs, overhangs and arches, and caves of every size, from great open caverns to long winding tunnels and narrow passages. Worlds you already have keep their terrain.
+- **Many more lands, each with its own ground and plants:** 66 new plant and ground blocks, among them anemones, irises, bluebells, heathers, succulents, new grasses, floating ferns, chert, kaolin clays, travertine, white chalk, sandy soil and pink sand and sandstone.
+- **Badlands spires, frozen-sea icebergs, cedar pillars and stratified desert pillars** rise from the land, in plain stone, kept clear of villages.
+- **The land's top is whole:** no crusted-over cave mouths, hollow hills, flat-cut hilltops, sheer broken cliff walls or scraps of land floating in the air, and no stripes or straight rows in bedrock, ice or rock.
+- **Cleaner shores and woods:** no lone grass columns standing in the shallows, and no ponds, rocks or plants sitting up in the treetops.
+- **Snowy villages and igloos only where it snows.**
+- **Every ore takes on its rock's colour** (all 34 of them, in every realm), and the specks no longer flicker out at an angle.
+- **Dripstone in 3D:** spikes that taper to a point and merge where two meet, clusters in the deep, and a slow drip of water off each hanging point. Vines and hanging strands are 3D too.
+- **Mushrooms are round,** with domed caps on round stalks, and great mushrooms' caps are whole.
+- **Ferns stand as proper fern bushes, and acacias' crooked tops join their trunks** (no more hanging logs).
+- **Fire with no floor under it burns on the walls it touches,** instead of hanging as a floating cube beside a trunk.
+- **Longer days:** new worlds start with 60-minute days and 10-minute nights (set in Create World, or change a world's with /daylength).
+- **A fresh start:** new worlds put you somewhere in the wilds, away from villages, so the story begins at the first village you find, and your first spawn is never inside the ground.
+- **/regen** builds the chunks around you again from the seed, handy for a village half-built by an older version.
+
+**The deep world:**
+- **The Underworld:** in new worlds the land runs on down under the Overworld into a thousand blocks of deep caverns, the rock changing as you go (slate, tuff, gabbro, basalt), with amethyst grottos, lush hollows, fungal halls of great mushrooms, dripstone and frozen caves, magma deeps, eerie echoing halls, deep ores, old tombs and, at the bottom, a lava sea over the Nether. Choose its depth (256 to 1024 blocks) in Create World.
+- **Open sky above:** two bands of open sky sit between the Overworld and the Skylands; portals lit down in the Underworld or up in the open sky lead on to the Nether or the Skylands.
+- **Down there it feels like down there:** the cave's dark instead of the sky, the caves' music, no rain or wind, and monsters coming out of the dark; the clouds stay with the Overworld.
+- **Deeper places:** mineshafts (far more of them, even under the sea), dungeons, the Deep Dark and its ancient cities lie at their proper depths in deep worlds.
+- **The Nether's lands** are painted without stripes, no tree grows on another's crown, and the warped woods finally appear.
+- **Coordinates match the deep layout,** with sea level at 63.
+
+**Places to explore:**
+- **114 new places across the Overworld:** towering dungeons, castles, graveyards, crypts, labyrinths, fortresses, palaces, manors, shrines and more, set into the land with its ground eased up to them, their rooms cleared, their loot chests and monster cages filled.
+- **Built as they were meant to be:** hidden piston doors, redstone, banners, lanterns, pools and fountains all come out as built, and no blocks are missing from the builds.
+- **Seventeen bosses wait in their places:** the Night Lord in the coliseum's arena, the Corrupted Champion in the walled graveyard and the Dead King in the ruined keep, plus the cinder golem, broodmother, hex matron, ember lord, valkyrie queen, minotaur, lich king, sand dragon, rot king, hollow archmage, gaoler, grave warden, verdant dragon and storm dragon. They fight with their own moves, phases, leaps, teleports and summoned servants, and stay dead once beaten.
+- **Fallen adventurers** are real skeletons lying in ten poses (some with arrows in them), only by the chests and cages of abandoned places, in every realm.
+- **The story's last fight** is simpler: ordinary blows glance off the great foe until it is worn down, and the old heart phase is gone.
+
+**Villages:**
+- **Sixteen new village styles,** chosen by the land: alpine, Romanian, Japanese, forest ruins, mushroom, swamp boats, tribal and island jungle, pueblo, taiga, Viking, Tudor, rustic, Swedish, Iberian and more, with no wall boxing in their long streets.
+- **Bigger towns:** a street further out with more homes and trades, and a market of stalls round the square.
+- **New buildings and pieces:** the smith's open forge, a red barn with a hay loft and silo, a garden bridge over a brook that runs out into the land, pergolas with benches, lamp posts, bakery, potion, garden and great striped market stalls, the weaponsmith's armoury, a town fountain, a wishing well, a cargo crane and more, every pool and well filled with water.
+- **Every village gets its windmill,** its sails turning clear of the buildings, and the roads lie on the real ground up to the streets.
+- **Furnished homes:** empty houses have a bed, their job block, a chest, a table, a chair and a lantern, and every style has proper chairs, benches, tables and stools.
+- **Villages sit on the land:** streets and plots are eased smoothly into hillsides, and no building is sunk in a pit with only its roof showing.
+- **Villagers at work:** smiths smelt ore over the fire and bring the hammer down on the anvil, masons cut stone, millers carry wheat to the millstone, lumberjacks fell whole trees and replant, and the healer's brewing stand stands on a table.
+- **New trades:** the leatherworker, and the cartographer sells a real map.
+- **The rift is news:** it opens in one village, and the others speak of it by that village's name. No two villages nearby share a name.
+- **Tidier villages:** armour stands stay out of doorways and face into the room (and a smith's stand isn't yours to strip), ladders stop under the top floor's ceiling, a villager stuck for fifteen seconds steps on to where they were going, and talk bubbles show every line.
+
+**Creatures:**
+- **69 new creatures,** from eagles and moose to snow leopards, crows and great segmented serpents, each with its own model, animations, sounds, drops and home lands.
+- **Livelier animation:** every creature has its own stride, breathes, flinches a different way with each hit and lands hard from a drop; zombie-kind raise their arms only when they're hunting you.
+- **Creatures stagger when a blow lands,** their hit boxes fit their bodies, more limbs can be severed, and a spider's glowing eyes stay glowing on the ground.
+- **Armed monsters:** some ghouls, husks and drowned carry weapons, and about one skeleton in seven comes at you with a sword or axe.
+- **Skeletons riding spiders** prowl some nights.
+- **Better on their feet:** spiders stand properly and keep walking up walls, animals climb one-block steps, lie down properly and are never pushed through walls.
+- **Horses, donkeys, camels, armadillos and mice have eyes,** and an Enderman's glow sits on its own eyes.
+- **An animal you pick up and set down** comes back as itself, with its coat, age, name and saddle.
+
+**Combat:**
+- **Stamina, dodging, blocking and parrying:** a dodge roll (Left Alt / D-pad left), a stamina ring, a shield to block with and a well-timed block to parry. Creatures have posture and can be staggered, shown on a plate with their level and health.
+- **The shield:** six planks around an iron ingot, strapped to your forearm, raised to guard; it stops arrows before they reach you, and every blow on it knocks your guard back.
+- **Real attack moves:** three-cut sword combos, a dash thrust, an air chop, and moves of their own for daggers, axes, fists and tools. A swing lands where the blade passes, with a trail behind it and a whoosh as it cuts the air.
+- **Two hands:** a shield slot of its own, dual-wielded swords, off-hand swings, and two swords carried crossed on your back.
+- **Levelled creatures:** each is levelled to the party near it, one hostile in fourteen is a tougher elite with double rewards and a gold star, and they grow tougher for each extra player nearby.
+
+**Skills and gear:**
+- **Skill trees:** warrior, ranger, rogue and mage trees with nearly a thousand nodes, a point every three skill levels, and six stats to spend, drawn in ink in your book.
+- **Gem sockets:** set a ruby, sapphire, emerald, diamond, amethyst, amber and more into gear for damage, spell power, mana, armour or criticals. The gem sits as a real stone at a blade's guard.
+- **Every metal mixes:** brass, bronzes, rose gold, sterling silver, zinc, bismuth and pig iron all work in tools, weapons and armour, each part's stats from its metal, and a mixed piece mends with any of its metals.
+- **3D armour sets:** each metal its own set with its own helmet, face showing through the visor, leather as a hooded set, and armour trims shown on every kind of armour.
+- **Better blades:** swords, daggers and tool heads look the same on both faces, points are filled out, and the hoe has a flat blade.
+
+**Magic:**
+- **Spells in your hands:** ready a spell in a free hand and cast with that hand's button; each hand has its own cooldown, the same spell in both is a dual cast, and hands start empty until you ready one.
+- **The quick spell:** Z, the mouse's back button or sneak + RB casts it whatever you hold, even a heal with a sword and shield.
+- **Spell rarity, scrolls, spellbooks and the inscription table,** with long casts that gather power first (Fireball, Call Lightning, Ice Nova, Stone Guardian) and continuous ones (Flames, Drain Life).
+- **New effects** for every school's spells, cast from the hand.
+- **Fire catches:** fire spells and flaming arrows light TNT, campfires, candles and what they hit.
+- **The Tree of Magic:** the spellbook's first page, ten schools branching out in their colours across the whole spread.
+
+**Hands-on stations:**
+- **Work stations right in the world** (Hands-on Stations, on by default in Options → Gameplay): lay what's in your hand on the grindstone, smithing table, loom, fletching table or cartography desk, see what it'll make, and strike it to do the work. Sneak + use opens the old screen.
+- **The anvil and smithing table:** set the work on it and strike with a hammer in your own hand.
+- **Furnaces, smokers and blast furnaces show their cooking:** ore glowing on the grill, meat browning, up to four things at once, the fire burning faster the more is in it, and molten metal running down to the mould.
+- **The grindstone** repairs worn gear for experience, its wheel turning; **the stonecutter's** blade spins.
+- **The enchanting table** takes the item over its socket and lapis into its tray, and brings its offers up over it.
+- **The jukebox** has a platter and a needle arm; **the still** has an open recipe book of every brew.
+- **The campfire:** sit by it and set food on its four spots by hand.
+- **The trommel, millstone, sawmill and crusher** are worked by hand.
+- **New blocks:** the chiseled bookshelf, the beacon and the crafter.
+
+**Chests and storage:**
+- **Chests worked by hand:** open the lid, put things in where you look, take them back, and press the buttons on the lid to sort or turn the page. Large chests, barrels, cupboards, the ender chest and the party chest work the same way.
+- **Open containers are hollow,** with what's inside lying on their floor, easy to see and lifted when chosen.
+- **Leave Chests Open** (on by default): a lid you lift stays up.
+- **Large chests are one chest,** drawn as one with one pair of buttons.
+
+**Your body:**
+- **Immersive first person:** you see your own body from its eyes everywhere: swinging, blocking, swimming, riding, rowing, gliding with your wings, and holding things as others see you hold them.
+- **Bed and campfire:** sit on the edge of the bed, swing your legs up and lie back (and look about while lying); sit by the fire with your knees up.
+- **Smooth stairs and jumps:** your body eases up each step with the feet finding the ground, and the view keeps up with you in a jump.
+- **The journal comes out by hand,** opened in front of you and read at chest height; menus opened in third person use the book in your hands.
+- **New standing, walking and running motions,** and a lean in over a lectern's book.
+- **Held torches** are proper torches with a living flame, held up from the fist.
+
+**Items:**
+- **Ingot piles in every world:** crouch and use an ingot on the ground to stack cast bars. Immersive Progression is no longer offered for new worlds (worlds made with it keep it), but its ores and metals are in every world.
+- **Crouch and use sets things down on the side of a block** too, and a potion is never drunk by mistake while crouched.
+- **The Explorer's Backpack** is a 3D pack in your hand and on the ground; **the lava boat** is an iron minecart that rides the lava.
+- **A felled tree's drops** land at the stump, and more cobbles smelt back to their stone.
+- **Framed maps** show the real map; candles and sea pickles are drawn properly; flower pots are hollow with soil, keep their plants' colours and have their poppies and saplings again.
+- **Potions and buckets in your hand** stand upright in first person.
+
+**The journal and menus:**
+- **The title screen looks out over the land,** high over the trees, instead of into white fog.
+- **The story as a tree** that grows as you play, with a riddle-like clue for each chapter and "Read closer" for the plain answer.
+- **The Compendium:** a page for every creature you've seen, turning in 3D, with more about it once you've beaten a few.
+- **The crafting guide:** a book of everything you could make from what you've found, every way it's made and what it's used for, and "Lay it out" to set a recipe on the crafting table for you.
+- **The map page is an atlas** that maps the world as you go, and a compass gives you a minimap in the corner.
+- **Icons** for the skill trees, the Tree of Magic, the skills, perks and the journal; the quest board is written on the book's pages; tooltips are no longer cut off at the page's edge.
+
+**Split screen and multiplayer:**
+- **Smooth co-op:** other players and creatures move smoothly instead of stopping and lurching, and players holding enchanted or mixed tools no longer make everyone stutter.
+- **Everything is shared:** other players' swings, rolls, shields, parries, off-hand weapons, sitting and journals are seen by everyone, and book writing works for guests.
+- **Split screen:** every player has their sky and clouds again.
+
+**Graphics and speed:**
+- **Blocks drawn from the resource pack's own 3D models,** with random looks for blocks that have them.
+- **Faster on every machine:** shut chests cost nothing, the sky is drawn only where you can see it, and the clouds go easier on slower graphics.
+- **The presets set the 3D plants and shaders too,** so Low and Medium really are light, and Intel HD graphics are offered Low instead of Potato.
+- **Ice in water is drawn whole** with the shaders on, a cupboard opened facing a wall is no longer black, and grass, leaf and block crumbs keep their colour and light.
+
+**Sounds:**
+- **Swings whoosh** (light for blades, heavy for axes and hammers), the new creatures have voices, the masons and smiths have their work sounds, a villager filling a bottle splashes and a boss's teleport whooshes.
+
+**Android:**
+- **DokuQuest on your phone:** an Android version for 64-bit phones, drawing with Vulkan, or OpenGL ES on phones whose Vulkan can't. If Vulkan fails at start, the next start switches to OpenGL ES (change it in Options → Video → Renderer).
+- **Touch controls:** a move stick, drag to look, tap where you aim to use or place, hold to mine, and buttons for jumping, sneaking, casting, dodging, the bag, map, journal, spells and chat, with a More panel for everything else. They hide by themselves while a controller is connected (Auto), and size, opacity, look speed and auto-jump are in Options → Controls → Touch.
+- **The bag by finger:** tap, hold, double tap and drag stacks; menus scroll with a drag, and the interface is sized for a phone screen.
+- **The on-screen keyboard** opens for chat, villager dialogue, the journal's text fields and book writing, and comes back when tapped after being closed.
+- **Skins and capes** are imported with Android's own file chooser.
+- **An Update button** on the title screen downloads the newest Android build and opens the installer.
+- **PC and Android always play together** (they're the same version).
+- **Phone niceties:** a loading screen instead of black, the game saves and goes quiet in the background, and tilting the phone isn't taken for a controller.
+
+**Fixes:**
+- **Fixed crashes** when loading a world, generating terrain, meeting certain elite creatures and taking from an armour stand with an empty hand.
+- **Item icons are no longer blank, and blocks no longer show the wrong pictures,** on the Vulkan renderer.
+- **Clicking a block digs it again,** /kill and the void always kill, leaving the inscription table ends its scene, and cupboards open properly among chests left open.
+- **No more slowdown a minute into a world** from lush cave plants.
+- Lots of behind-the-scenes cleanup and test coverage.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.22 — Clear Skies (November 2026)
 
 **The land:**
