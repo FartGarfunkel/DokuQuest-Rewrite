@@ -533,6 +533,17 @@ int main(int argc, char** argv) {
     p.stats["skills"] = keepSkills;
   }
 
+  printf("[spell ranks: a long road to mastery]\n");
+  {
+    json keepX = p.stats.contains("spellXp") ? p.stats["spellXp"] : json::object();
+    auto rankAfter = [&](double casts) { p.stats["spellXp"] = json{{"fireball", casts * 14 * 6}}; return spellRank(p, "fireball"); };
+    check(rankAfter(10) == 2, "ten fireballs: rank II (" + std::to_string(rankAfter(10)) + ")");
+    check(rankAfter(39) <= 4, "39 fireballs (mastery before): rank IV at most (" + std::to_string(rankAfter(39)) + ")");
+    check(rankAfter(150) < 10 && rankAfter(150) >= 5, "150: well along, not yet mastered (" + std::to_string(rankAfter(150)) + ")");
+    check(rankAfter(300) == 10, "about three hundred: mastered");
+    p.stats["spellXp"] = keepX;
+  }
+
   printf("\n%d passed, %d failed\n", passes, fails);
   lv->close();
   return fails ? 1 : 0;
