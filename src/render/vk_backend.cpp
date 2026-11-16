@@ -5126,6 +5126,23 @@ void gfxVulkanPresent(SDL_Window* window) {
   frameOpen = false;
 }
 
+// Draws outside a frame used to be dropped (drawCommonImpl needs frameOpen), while the blits after them still ran: the
+// item icons, drawn before the first frame, came out blank. A frame of its own (a new serial, so buffers it draws from
+// are retired, not freed, when they're replaced), submitted and waited for at the end.
+bool gfxVulkanBeginWork() {
+  if (!g_on || frameOpen || recording) return false;
+  ++curSerial;
+  beginOneShot();
+  frameOpen = true; skipFrame = false; rendering = false;
+  return true;
+}
+void gfxVulkanEndWork() {
+  if (!g_on || !frameOpen) return;
+  if (rendering) endRendering();
+  frameOpen = false;
+  submitOneShot();
+}
+
 // Android takes the window's surface away when the app goes to the background and hands out a new one when it comes
 // back. The old VkSurfaceKHR still points at the old one (presenting to it fails from then on), so the surface is made
 // again for the window as it is now; the next frame builds a swapchain for it.

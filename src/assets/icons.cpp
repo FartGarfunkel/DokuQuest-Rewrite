@@ -7,6 +7,7 @@
 #include "assets/item_models.h"
 #include "core/registry.h"
 #include "render/gl.h"
+#include "render/vk_backend.h"
 #include "client/app.h"
 #include <atomic>
 #include <thread>
@@ -87,7 +88,7 @@ void ItemIcons::build(const TileSet& ts) {
   // (keyed by the tiles' pixels, the items and the builders' version)
   u64 h = 1469598103934665603ull;
   auto mix = [&](const void* p, size_t k) { const u8* b = (const u8*)p; for (size_t q = 0; q < k; q++) { h ^= b[q]; h *= 1099511628211ull; } };
-  const char* VERSION = "dq-item-icons-31";   // 8: rods drawn from their sheets; 11: the modelled pottery, molds and hammers (assets/pottery3d)
+  const char* VERSION = "dq-item-icons-32";   // 8: rods drawn from their sheets; 11: the modelled pottery, molds and hammers (assets/pottery3d); 32: Vulkan's start-up atlas came out blank
   mix(VERSION, std::strlen(VERSION)); mix(&size, sizeof size); mix(ts.rgba.data(), ts.rgba.size()); mix(ts.res.data(), ts.res.size());
   for (auto& it : R.items) { mix(it.key.data(), it.key.size()); mix(it.icon.data(), it.icon.size()); mix(it.block.data(), it.block.size()); h ^= 0xFF; }
   fs::path cacheDir = userSub("cache"), cacheFile = cacheDir / strFormat("icons-%016llx.png", (unsigned long long)h);
@@ -159,6 +160,7 @@ void ItemIcons::render3D(const TileSet& ts, std::vector<u8>& px) {
       for (int h = 0; h < helpers; h++) pool->submit([&]() { work(); running--; }, -100.f);
       work();
       while (running > 0) std::this_thread::yield();   // every helper is out before the batch's state goes
+      const bool vkWork = gfx.vulkan && gfxVulkanBeginWork();   // (before the first frame: Vulkan needs one open)
       for (size_t i = 0; i < nb; i++) {
         VoxelModel& m = *models[i];
         if (m.data.verts.empty()) continue;
@@ -199,6 +201,7 @@ void ItemIcons::render3D(const TileSet& ts, std::vector<u8>& px) {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, src); glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst);
         glBlitFramebuffer(0, 0, SS, SS, x, y + size, x + size, y, GL_COLOR_BUFFER_BIT, GL_LINEAR);
       }
+      if (vkWork) gfxVulkanEndWork();
     }
     gm.release();
     voxelRenderer().end();
