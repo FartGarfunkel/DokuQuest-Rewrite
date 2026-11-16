@@ -10,7 +10,7 @@ Idempotent; data_patches.py runs it last.
 """
 import json, pathlib, sys
 
-WEARS = ('tool', 'armor', 'horseArmor', 'wolfArmor', 'shield', 'bow', 'durability', 'forged')
+WEARS = ('tool', 'armor', 'horseArmor', 'wolfArmor', 'shield', 'bow', 'durability', 'forged', 'cape')
 HOLDS = ('backpack', 'quiver', 'basket', 'bags')
 SINGLE = {'elytra', 'milk_bucket', 'water_bucket', 'lava_bucket', 'powder_snow_bucket', 'watering_can', 'steel_bucket',
           'beetroot_soup', 'mushroom_stew', 'rabbit_stew', 'suspicious_stew', 'tomato_soup', 'garden_salad', 'vegetable_stew',
