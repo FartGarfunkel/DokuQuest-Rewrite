@@ -25,7 +25,8 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **Only what a thing does:** pickaxes, axes, shovels and hoes show their mining speed; swords and staffs only their attack. Staffs say they cast your chosen spell, and show their spell power, element boosts and mana while held.
 
 **Fixes:**
-- **Windows and Linux downloads now use all of the game's data:** the new lands, 82 of the game's own block pictures, the stations' textures (the chest and barrel buttons), imported creatures and their voices had been left out of the downloaded game (the phone build was fine). New worlds get the new lands; the title screen shows them too.
+- **Windows and Linux downloads now use all of the game's data:** the new lands, 82 of the game's own block pictures, the stations' textures (the chest and barrel buttons), imported creatures and their voices had been left out of the downloaded game (the phone build was fine). New worlds get the new lands.
+- **The title screen looks out across the land again,** with the sky above, as it used to (it had sunk into fog).
 - **Windows:** a new version unzipped over an older one no longer keeps the old version's leftover pictures, models and data (old skins, the barrel buttons and more).
 - **Skins:** the game's own creature skins are used even with an old copy of the DokuQuest Base pack in your player folder.
 
