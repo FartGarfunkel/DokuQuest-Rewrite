@@ -1,0 +1,186 @@
+{
+	"temperature": 0.25,
+	"downfall": 0,
+	"has_precipitation": false,
+	"effects": {
+		"sky_color": 6269917,
+		"fog_color": 12638463,
+		"water_color": 6388580,
+		"water_fog_color": 2302743,
+		"grass_color": 16765810,
+		"foliage_color": 16765788,
+		"mood_sound": {
+			"sound": "main:ambient.cave",
+			"tick_delay": 6000,
+			"block_search_extent": 8,
+			"offset": 2
+		},
+		"music": {
+			"sound": "main:music.overworld.badlands",
+			"min_delay": 12000,
+			"max_delay": 24000,
+			"replace_current_music": false
+		}
+	},
+	"spawners": {
+		"ambient": [
+			{
+				"type": "main:bat",
+				"weight": 10,
+				"minCount": 8,
+				"maxCount": 8
+			}
+		],
+		"axolotls": [],
+		"creature": [],
+		"misc": [],
+		"monster": [
+			{
+				"type": "main:spider",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie",
+				"weight": 95,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie_villager",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			},
+			{
+				"type": "main:skeleton",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:creeper",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:slime",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:enderman",
+				"weight": 10,
+				"minCount": 1,
+				"maxCount": 4
+			},
+			{
+				"type": "main:witch",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			}
+		],
+		"underground_water_creature": [
+			{
+				"type": "main:glow_squid",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 6
+			}
+		],
+		"water_ambient": [],
+		"water_creature": []
+	},
+	"spawn_costs": { },
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"features": [
+		[
+			"wythers:terrain/extended/red_sand",
+			"wythers:terrain/local/badlands_plateau_red_sand",
+			"wythers:terrain/local/badlands_replace_some_red_sand_to_grass_block",
+			"wythers:terrain/local/badlands_replace_most_red_sand_to_grass_block"
+		],
+		[
+			"main:lake_lava_underground",
+			"wythers:terrain/feature/lake_salt"
+		],
+		[
+			"main:amethyst_geode",
+			"wythers:terrain/extended/terracotify_rooted_dirt"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[],
+		[],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper",
+			"main:underwater_magma",
+			"main:ore_gold_extra",
+			"main:disk_sand",
+			"main:disk_clay",
+			"main:disk_gravel"
+		],
+		[],
+		[
+			"main:spring_water",
+			"main:spring_lava"
+		],
+		[
+			"main:glow_lichen",
+			"wythers:vegetation/local/trees/pine_mesa",
+			"wythers:vegetation/extended/trees/oak_badlands",
+			"wythers:vegetation/local/patch/grass_badlands",
+			"wythers:vegetation/local/patch/grass_standard",
+			"main:patch_dead_bush_badlands",
+			"main:brown_mushroom_normal",
+			"main:red_mushroom_normal",
+			"main:patch_sugar_cane_badlands",
+			"main:patch_pumpkin",
+			"wythers:vegetation/local/patch/saguaros"
+		],
+		[
+			"main:freeze_top_layer",
+			"wythers:terrain/local/badlands_snow_blocks",
+			"wythers:vegetation/local/patch/flower_badlands",
+			"wythers:vegetation/local/patch/berries_badlands",
+			"wythers:decor/badlands",
+			"wythers:terrain/local/crust_salt",
+			"wythers:terrain/local/crust_packed_mud"
+		]
+	]
+}

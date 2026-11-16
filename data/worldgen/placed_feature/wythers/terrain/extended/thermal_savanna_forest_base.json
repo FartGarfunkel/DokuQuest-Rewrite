@@ -1,0 +1,47 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:coarse_dirt"
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": "main:rooted_dirt"
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 7,
+          "max_inclusive": 7
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": 0.6
+    },
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    }
+  ]
+}

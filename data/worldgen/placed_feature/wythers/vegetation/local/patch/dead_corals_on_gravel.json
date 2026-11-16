@@ -1,0 +1,15 @@
+{
+  "feature": "wythers:vegetation/patch_dead_corals_on_gravel",
+  "placement": [
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

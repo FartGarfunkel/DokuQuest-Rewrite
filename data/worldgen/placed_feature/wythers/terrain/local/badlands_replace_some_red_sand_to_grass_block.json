@@ -1,0 +1,48 @@
+{
+  "feature": {
+    "type": "main:ore",
+    "config": {
+      "size": 32,
+      "discard_chance_on_air_exposure": 0,
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:red_sand"
+          },
+          "state": {
+            "Name": "main:grass_block"
+          }
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": 0.4
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": -0.25
+    },
+    {
+      "type": "main:count",
+      "count": 4
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "feature": "nature:pumpkin_feature",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 170
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": {
+        "type": "main:uniform",
+				"value": {
+					"min_inclusive": 0,
+					"max_inclusive": 15
+				}
+        
+      },
+      "y_spread": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 0,
+          "max_inclusive": 1
+        }
+      }
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:dirt"
+            ]
+          },
+          {
+            "type": "main:any_of",
+            "predicates": [
+
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:oak_leaves"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:oak_leaves"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  1
+                ],
+                "blocks": [
+                  "main:oak_leaves"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  -1
+                ],
+                "blocks": [
+                  "main:oak_leaves"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:crimson_nylium"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:not",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": "main:air"
+              }
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:mud"
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:mud",
+          "main:grass_block"
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 1,
+          "max_inclusive": 6
+        }
+      },
+      "half_height": 2
+    }
+  },
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 4
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

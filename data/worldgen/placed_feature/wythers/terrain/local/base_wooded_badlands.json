@@ -1,0 +1,110 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:smooth_red_sandstone"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "blocks": "main:light_gray_terracotta"
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:orange_terracotta"
+              }
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "blocks": "main:yellow_terracotta"
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:orange_terracotta"
+              }
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "blocks": "main:white_terracotta"
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:orange_terracotta"
+              }
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "blocks": "main:red_terracotta"
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:brown_terracotta"
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:light_gray_terracotta",
+          "main:yellow_terracotta",
+          "main:white_terracotta",
+          "main:red_terracotta",
+          "main:terracotta"
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 8
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 90
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": -10,
+          "max_inclusive": 0
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:dead_brain_coral_block"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:any_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          0,
+                          0
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          0,
+                          0
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          1
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          -1
+                        ],
+                        "blocks": "main:air"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "blocks": "main:air"
+                }
+              ]
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:mycelium",
+                "Properties": {
+                  "snowy": "false"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:dead_brain_coral_block"
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 6
+        }
+      },
+      "half_height": 3
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 5
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "WORLD_SURFACE_WG",
+      "min_inclusive": -200,
+      "max_inclusive": -65
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

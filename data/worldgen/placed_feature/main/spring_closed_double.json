@@ -1,0 +1,27 @@
+{
+  "feature": "main:spring_nether_closed",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 32
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "below_top": 10
+        },
+        "min_inclusive": {
+          "above_bottom": 10
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

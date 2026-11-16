@@ -1,0 +1,291 @@
+{
+  "feature": {
+    "type": "main:simple_random_selector",
+    "config": {
+      "features": [
+        {
+          "feature": "wythers:vegetation/tree/fir_medium",
+          "placement": []
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 30,
+      "noise_factor": 100,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "MOTION_BLOCKING",
+      "min_inclusive": -70,
+      "max_inclusive": -63
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:grass_block"
+            ]
+          },
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:grass_block"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      -1,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:grass_block"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      -1,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:grass_block"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -1,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:air"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:grass_block"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -1,
+                      1
+                    ],
+                    "blocks": [
+                      "main:air"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:grass_block"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -2,
+                      -1,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:grass_block"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      2,
+                      -1,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:grass_block"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -1,
+                      -2
+                    ],
+                    "blocks": [
+                      "main:air"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:grass_block"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -1,
+                      2
+                    ],
+                    "blocks": [
+                      "main:air"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

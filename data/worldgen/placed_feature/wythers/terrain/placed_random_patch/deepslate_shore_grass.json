@@ -1,0 +1,27 @@
+{
+  "feature": "wythers:terrain/configured_random_patch/grass_in_stone",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 40
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": 67
+        },
+        "max_inclusive": {
+          "absolute": 87
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

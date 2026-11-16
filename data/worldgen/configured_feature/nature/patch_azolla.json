@@ -1,0 +1,218 @@
+{
+  "type": "main:flower",
+  "config": {
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:weighted_state_provider",
+            "entries": [
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "north",
+                    "flower_amount": "1"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "east",
+                    "flower_amount": "1"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "south",
+                    "flower_amount": "1"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "west",
+                    "flower_amount": "1"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "north",
+                    "flower_amount": "2"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "east",
+                    "flower_amount": "2"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "south",
+                    "flower_amount": "2"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "west",
+                    "flower_amount": "2"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "north",
+                    "flower_amount": "3"
+                  }
+                },
+                "weight": 3
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "east",
+                    "flower_amount": "3"
+                  }
+                },
+                "weight": 3
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "south",
+                    "flower_amount": "3"
+                  }
+                },
+                "weight": 3
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "west",
+                    "flower_amount": "3"
+                  }
+                },
+                "weight": 3
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "north",
+                    "flower_amount": "4"
+                  }
+                },
+                "weight": 7
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "east",
+                    "flower_amount": "4"
+                  }
+                },
+                "weight": 7
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "south",
+                    "flower_amount": "4"
+                  }
+                },
+                "weight": 7
+              },
+              {
+                "data": {
+                  "Name": "nature:azolla",
+                  "Properties": {
+                    "facing": "west",
+                    "flower_amount": "4"
+                  }
+                },
+                "weight": 7
+              }
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "blocks": "main:mud",
+                    "offset": [
+                      0, -1, 0
+                    ]
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "fluids": [
+                      "main:water",
+                      "main:flowing_water"
+                    ],
+                    "offset": [
+                      0,
+                      -1,
+                      0
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "blocks": "main:air"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "tries": 100,
+    "xz_spread": 5,
+    "y_spread": 2
+  }
+}

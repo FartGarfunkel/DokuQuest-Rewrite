@@ -1,0 +1,27 @@
+{
+  "feature": "main:spring_lava_nether",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 16
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "below_top": 4
+        },
+        "min_inclusive": {
+          "above_bottom": 4
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

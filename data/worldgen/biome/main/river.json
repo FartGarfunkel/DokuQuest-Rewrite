@@ -1,0 +1,191 @@
+{
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"downfall": 0.4,
+	"effects": {
+		"mood_sound": {
+			"block_search_extent": 8,
+			"offset": 2.0,
+			"sound": "main:ambient.cave",
+			"tick_delay": 6000
+		},
+		"sky_color": 6269917,
+		"fog_color": 12638463,
+		"water_color": 3570859,
+		"water_fog_color": 331305
+	},
+	"features": [
+		[
+			"wythers:terrain/carver/river",
+			"wythers:terrain/carver/river_water",
+			"wythers:terrain/local/stone_cliffs_surface",
+			"wythers:terrain/local/stone_cliffs",
+			"wythers:terrain/extended/scree",
+			"wythers:terrain/extended/riverside_forest_clearing"
+		],
+		[
+			"main:lake_lava_underground",
+			"main:lake_lava_surface"
+		],
+		[
+			"main:amethyst_geode",
+			"main:large_dripstone"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[],
+		[
+			"wythers:terrain/local/cave_disk_basalt",
+			"wythers:terrain/local/cave_disk_blackstone",
+			"wythers:terrain/local/cave_disk_magma"
+		],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper",
+			"main:underwater_magma",
+			"main:disk_sand",
+			"main:disk_clay",
+			"main:disk_gravel",
+			"wythers:terrain/local/river_grass"
+		],
+		[
+			"wythers:terrain/feature/dripstone_cluster",
+			"wythers:terrain/feature/pointed_dripstone"
+		],
+		[
+			"main:spring_water",
+			"main:spring_lava"
+		],
+		[
+			"main:glow_lichen",
+			"wythers:vegetation/local/patch/grass_standard",
+			"main:brown_mushroom_normal",
+			"main:red_mushroom_normal",
+			"main:seagrass_river",
+			"wythers:vegetation/extended/trees/river_oaks",
+			"wythers:vegetation/extended/trees/river_acacias",
+			"wythers:vegetation/extended/trees/river_tropical"
+		],
+		[
+			"main:freeze_top_layer"
+		]
+	],
+	"has_precipitation": true,
+	"spawn_costs": { },
+	"spawners": {
+		"ambient": [
+			{
+				"type": "main:bat",
+				"maxCount": 8,
+				"minCount": 8,
+				"weight": 10
+			}
+		],
+		"axolotls": [],
+		"creature": [],
+		"misc": [],
+		"monster": [
+			{
+				"type": "main:spider",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:zombie",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 95
+			},
+			{
+				"type": "main:zombie_villager",
+				"maxCount": 1,
+				"minCount": 1,
+				"weight": 5
+			},
+			{
+				"type": "main:skeleton",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:creeper",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:slime",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:enderman",
+				"maxCount": 4,
+				"minCount": 1,
+				"weight": 10
+			},
+			{
+				"type": "main:witch",
+				"maxCount": 1,
+				"minCount": 1,
+				"weight": 5
+			},
+			{
+				"type": "main:drowned",
+				"maxCount": 1,
+				"minCount": 1,
+				"weight": 100
+			}
+		],
+		"underground_water_creature": [
+			{
+				"type": "main:glow_squid",
+				"maxCount": 6,
+				"minCount": 4,
+				"weight": 10
+			}
+		],
+		"water_ambient": [
+			{
+				"type": "main:salmon",
+				"maxCount": 5,
+				"minCount": 1,
+				"weight": 5
+			}
+		],
+		"water_creature": []
+	},
+	"temperature": 0.7
+}

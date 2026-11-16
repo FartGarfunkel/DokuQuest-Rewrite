@@ -1,0 +1,38 @@
+{
+  "feature": {
+    "type": "main:random_selector",
+    "config": {
+      "features": [
+        {
+          "chance": 0.25,
+          "feature": "wythers:vegetation/placed_fungus/medium_sculk_muscaria"
+        },
+        {
+          "chance": 0.25,
+          "feature": "wythers:vegetation/placed_fungus/patch_sculk_morel"
+        },
+        {
+          "chance": 0.02,
+          "feature": "wythers:vegetation/placed_fungus/giant_sculk_omphalotus_illudens"
+        }
+      ],
+      "default": "wythers:vegetation/placed_fungus/giant_sculk_muscaria"
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 1
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

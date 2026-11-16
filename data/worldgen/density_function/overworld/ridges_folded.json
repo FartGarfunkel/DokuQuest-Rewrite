@@ -1,0 +1,19 @@
+{
+  "type": "main:mul",
+  "argument1": -3.0,
+  "argument2": {
+    "type": "main:add",
+    "argument1": -0.3333333333333333,
+    "argument2": {
+      "type": "main:abs",
+      "argument": {
+        "type": "main:add",
+        "argument1": -0.6666666666666666,
+        "argument2": {
+          "type": "main:abs",
+          "argument": "main:overworld/ridges"
+        }
+      }
+    }
+  }
+}

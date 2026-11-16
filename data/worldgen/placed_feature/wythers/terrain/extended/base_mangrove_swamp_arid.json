@@ -1,0 +1,181 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:packed_mud"
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "blocks": "main:mud"
+          },
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": "main:packed_mud"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:cobbled_deepslate",
+                  "main:smooth_sandstone",
+                  "main:packed_mud",
+                  "main:sand"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -2,
+                  0
+                ],
+                "blocks": [
+                  "main:smooth_basalt",
+                  "main:smooth_sandstone"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -3,
+                  0
+                ],
+                "blocks": [
+                  "main:smooth_basalt",
+                  "main:smooth_sandstone"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -4,
+                  0
+                ],
+                "blocks": [
+                  "main:smooth_basalt",
+                  "main:smooth_sandstone"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -5,
+                  0
+                ],
+                "blocks": [
+                  "main:smooth_basalt",
+                  "main:smooth_sandstone"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -6,
+                  0
+                ],
+                "blocks": [
+                  "main:smooth_basalt",
+                  "main:smooth_sandstone"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -7,
+                  0
+                ],
+                "blocks": [
+                  "main:smooth_basalt",
+                  "main:smooth_sandstone"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -8,
+                  0
+                ],
+                "blocks": [
+                  "main:smooth_basalt",
+                  "main:smooth_sandstone"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -9,
+                  0
+                ],
+                "blocks": [
+                  "main:smooth_basalt",
+                  "main:smooth_sandstone"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 8,
+          "max_inclusive": 8
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": 0.45
+    },
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": -5
+    }
+  ]
+}

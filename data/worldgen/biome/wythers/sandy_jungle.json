@@ -1,0 +1,189 @@
+{
+	"temperature": 0.7,
+	"downfall": 0.8,
+	"effects": {
+		"mood_sound": {
+			"sound": "main:ambient.cave",
+			"tick_delay": 6000,
+			"block_search_extent": 8,
+			"offset": 2
+		},
+		"sky_color": 5421806,
+		"fog_color": 12638463,
+		"water_color": 4112789,
+		"water_fog_color": 2326625,
+		"grass_color": 12250712,
+		"grass_color_modifier": "dark_forest"
+	},
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"features": [
+		[],
+		[
+			"main:lake_lava_underground",
+			"main:lake_lava_surface"
+		],
+		[
+			"main:amethyst_geode"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[],
+		[],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper",
+			"main:underwater_magma",
+			"wythers:terrain/disk_sand_shore"
+		],
+		[],
+		[
+			"main:spring_water",
+			"main:spring_lava"
+		],
+		[
+			"main:glow_lichen",
+			"wythers:vegetation/trees_sandy_jungle",
+			"wythers:vegetation/placed_random_patch/tropical_roses",
+			"main:patch_grass_jungle",
+			"main:brown_mushroom_normal",
+			"main:red_mushroom_normal",
+			"main:patch_sugar_cane",
+			"main:vines",
+			"main:patch_melon_sparse"
+		],
+		[
+			"main:freeze_top_layer",
+			"wythers:vegetation/placed_random_patch/sandy_jungle_cactus"
+		]
+	],
+	"spawners": {
+		"monster": [
+			{
+				"type": "main:spider",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie",
+				"weight": 95,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie_villager",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			},
+			{
+				"type": "main:skeleton",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:creeper",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:slime",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:enderman",
+				"weight": 10,
+				"minCount": 1,
+				"maxCount": 4
+			},
+			{
+				"type": "main:witch",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			}
+		],
+		"creature": [
+			{
+				"type": "main:pig",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:chicken",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:chicken",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:parrot",
+				"weight": 40,
+				"minCount": 1,
+				"maxCount": 2
+			}
+		],
+		"ambient": [
+			{
+				"type": "main:bat",
+				"weight": 10,
+				"minCount": 8,
+				"maxCount": 8
+			}
+		],
+		"axolotls": [],
+		"underground_water_creature": [
+			{
+				"type": "main:glow_squid",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 6
+			}
+		],
+		"water_creature": [],
+		"water_ambient": [],
+		"misc": []
+	},
+	"spawn_costs": { },
+	"has_precipitation": true
+}

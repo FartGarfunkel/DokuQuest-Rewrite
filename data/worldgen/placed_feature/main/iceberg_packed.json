@@ -1,0 +1,15 @@
+{
+  "feature": "main:iceberg_packed",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 16
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

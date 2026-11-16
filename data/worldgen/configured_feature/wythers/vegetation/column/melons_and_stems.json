@@ -1,0 +1,219 @@
+{
+  "type": "main:simple_random_selector",
+  "config": {
+    "features": [
+      {
+        "feature": "wythers:vegetation/column/melon_and_stem_north",
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    -1
+                  ],
+                  "blocks": [
+                    "main:grass_block",
+                    "main:moss_block",
+                    "main:sand",
+                    "main:coarse_dirt",
+                    "main:podzol",
+                    "main:dirt",
+                    "main:rooted_dirt",
+                    "main:red_sand"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    -1
+                  ],
+                  "blocks": [
+                    "main:air"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    -1
+                  ],
+                  "blocks": [
+                    "main:air"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "feature": "wythers:vegetation/column/melon_and_stem_south",
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    1
+                  ],
+                  "blocks": [
+                    "main:grass_block",
+                    "main:moss_block",
+                    "main:sand",
+                    "main:coarse_dirt",
+                    "main:podzol",
+                    "main:dirt",
+                    "main:rooted_dirt",
+                    "main:red_sand"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "blocks": [
+                    "main:air"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    1
+                  ],
+                  "blocks": [
+                    "main:air"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "feature": "wythers:vegetation/column/melon_and_stem_west",
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    -1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:grass_block",
+                    "main:moss_block",
+                    "main:sand",
+                    "main:coarse_dirt",
+                    "main:podzol",
+                    "main:dirt",
+                    "main:rooted_dirt",
+                    "main:red_sand"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    0,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "feature": "wythers:vegetation/column/melon_and_stem_east",
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    -1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:grass_block",
+                    "main:moss_block",
+                    "main:sand",
+                    "main:coarse_dirt",
+                    "main:podzol",
+                    "main:dirt",
+                    "main:rooted_dirt",
+                    "main:red_sand"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    0,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

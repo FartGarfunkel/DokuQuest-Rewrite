@@ -1,0 +1,31 @@
+{
+  "feature": "wythers:decor/patch_floating_lanterns",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": -0.3
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": 0.3
+    },
+    {
+      "type": "main:rarity_filter",
+      "chance": 5
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "feature": {
+    "type": "main:ore",
+    "config": {
+      "size": 64,
+      "discard_chance_on_air_exposure": 0,
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:calcite"
+          },
+          "state": {
+            "Name": "main:stone"
+          }
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "tries": 24,
+    "xz_spread": 5,
+    "y_spread": 3,
+    "feature": {
+      "feature": "wythers:vegetation/column/melons_and_stems",
+      "placement": [
+        {
+          "type": "main:heightmap",
+          "heightmap": "MOTION_BLOCKING_NO_LEAVES"
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:would_survive",
+            "state": {
+              "Name": "main:bamboo_sapling"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

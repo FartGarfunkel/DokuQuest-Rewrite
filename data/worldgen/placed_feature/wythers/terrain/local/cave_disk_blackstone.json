@@ -1,0 +1,171 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:weighted_state_provider",
+          "entries": [
+            {
+              "weight": 25,
+              "data": {
+                "Name": "main:blackstone"
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:gilded_blackstone"
+              }
+            }
+          ]
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "blocks": "main:lava"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    0,
+                    1
+                  ],
+                  "blocks": "main:lava"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    0,
+                    0
+                  ],
+                  "blocks": "main:lava"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    0,
+                    -1
+                  ],
+                  "blocks": "main:lava"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "blocks": "main:lava"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    -1
+                  ],
+                  "blocks": "main:lava"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    0,
+                    1
+                  ],
+                  "blocks": "main:lava"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    0,
+                    0
+                  ],
+                  "blocks": "main:lava"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    0,
+                    -1
+                  ],
+                  "blocks": "main:lava"
+                }
+              ]
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:magma_block"
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:smooth_basalt",
+          "main:deepslate_diamond_ore",
+          "main:deepslate_redstone_ore",
+          "main:deepslate_iron_ore",
+          "main:deepslate_gold_ore"
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 4,
+          "max_inclusive": 5
+        }
+      },
+      "half_height": 1
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": -55
+        },
+        "max_inclusive": {
+          "absolute": -60
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_fluids",
+        "fluids": "main:lava"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

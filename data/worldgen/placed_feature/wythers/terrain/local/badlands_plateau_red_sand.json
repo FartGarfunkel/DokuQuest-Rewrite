@@ -1,0 +1,117 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:red_sand"
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_block_tag",
+            "tag": "main:terracotta"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:dead_bush"
+            ]
+          },
+          {
+            "type": "main:not",
+            "predicate": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    -1,
+                    0
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    -1,
+                    0
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    1
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    -1
+                  ],
+                  "blocks": "main:air"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 7
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "WORLD_SURFACE_WG",
+      "min_inclusive": -115,
+      "max_inclusive": -80
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

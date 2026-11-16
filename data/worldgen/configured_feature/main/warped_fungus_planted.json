@@ -1,0 +1,83 @@
+{
+  "type": "main:huge_fungus",
+  "config": {
+    "decor_state": {
+      "Name": "main:shroomlight"
+    },
+    "hat_state": {
+      "Name": "main:warped_wart_block"
+    },
+    "planted": true,
+    "replaceable_blocks": {
+      "type": "main:matching_blocks",
+      "blocks": [
+        "main:oak_sapling",
+        "main:spruce_sapling",
+        "main:birch_sapling",
+        "main:jungle_sapling",
+        "main:acacia_sapling",
+        "main:cherry_sapling",
+        "main:dark_oak_sapling",
+        "main:mangrove_propagule",
+        "main:dandelion",
+        "main:torchflower",
+        "main:poppy",
+        "main:blue_orchid",
+        "main:allium",
+        "main:azure_bluet",
+        "main:red_tulip",
+        "main:orange_tulip",
+        "main:white_tulip",
+        "main:pink_tulip",
+        "main:oxeye_daisy",
+        "main:cornflower",
+        "main:wither_rose",
+        "main:lily_of_the_valley",
+        "main:brown_mushroom",
+        "main:red_mushroom",
+        "main:wheat",
+        "main:sugar_cane",
+        "main:attached_pumpkin_stem",
+        "main:attached_melon_stem",
+        "main:pumpkin_stem",
+        "main:melon_stem",
+        "main:lily_pad",
+        "main:nether_wart",
+        "main:cocoa",
+        "main:carrots",
+        "main:potatoes",
+        "main:chorus_plant",
+        "main:chorus_flower",
+        "main:torchflower_crop",
+        "main:pitcher_crop",
+        "main:beetroots",
+        "main:sweet_berry_bush",
+        "main:warped_fungus",
+        "main:crimson_fungus",
+        "main:weeping_vines",
+        "main:weeping_vines_plant",
+        "main:twisting_vines",
+        "main:twisting_vines_plant",
+        "main:cave_vines",
+        "main:cave_vines_plant",
+        "main:spore_blossom",
+        "main:azalea",
+        "main:flowering_azalea",
+        "main:moss_carpet",
+        "main:pink_petals",
+        "main:big_dripleaf",
+        "main:big_dripleaf_stem",
+        "main:small_dripleaf"
+      ]
+    },
+    "stem_state": {
+      "Name": "main:warped_stem",
+      "Properties": {
+        "axis": "y"
+      }
+    },
+    "valid_base_block": {
+      "Name": "main:warped_nylium"
+    }
+  }
+}

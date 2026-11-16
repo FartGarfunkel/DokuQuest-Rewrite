@@ -1,0 +1,727 @@
+{
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "config": {
+            "features": [
+              {
+                "feature": {
+                  "config": {
+                    "features": [
+                      {
+                        "feature": {
+                          "config": {
+                            "features": [
+                              {
+                                "feature": {
+                                  "config": {
+                                    "decorators": [],
+                                    "ignore_vines": true,
+                                    "force_dirt": false,
+                                    "dirt_provider": {
+                                      "state": {
+                                        "Name": "main:rooted_dirt"
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "minimum_size": {
+                                      "limit": 3,
+                                      "lower_size": 0,
+                                      "upper_size": 0,
+                                      "type": "main:two_layers_feature_size"
+                                    },
+                                    "trunk_provider": {
+                                      "state": {
+                                        "Properties": {
+                                          "axis": "y"
+                                        },
+                                        "Name": "main:stripped_acacia_log"
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "trunk_placer": {
+                                      "base_height": 5,
+                                      "height_rand_a": 2,
+                                      "height_rand_b": 0,
+                                      "type": "main:straight_trunk_placer"
+                                    },
+                                    "foliage_provider": {
+                                      "state": {
+                                        "Properties": {
+                                          "axis": "y"
+                                        },
+                                        "Name": "main:stripped_acacia_log"
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "foliage_placer": {
+                                      "radius": 2,
+                                      "offset": 0,
+                                      "height": 12,
+                                      "type": "main:fancy_foliage_placer"
+                                    }
+                                  },
+                                  "type": "main:tree"
+                                },
+                                "placement": [
+                                  {
+                                    "predicate": {
+                                      "type": "main:replaceable"
+                                    },
+                                    "type": "main:block_predicate_filter"
+                                  }
+                                ]
+                              },
+                              {
+                                "feature": {
+                                  "config": {
+                                    "vegetation_chance": 1.0,
+                                    "xz_radius": 2,
+                                    "extra_edge_column_chance": 0.0,
+                                    "extra_bottom_block_chance": 0.0,
+                                    "vertical_range": 2,
+                                    "vegetation_feature": {
+                                      "feature": {
+                                        "config": {
+                                          "layers": [
+                                            {
+                                              "height": 42,
+                                              "provider": {
+                                                "state": {
+                                                  "Properties": {
+                                                    "axis": "y"
+                                                  },
+                                                  "Name": "main:stripped_acacia_log"
+                                                },
+                                                "type": "main:simple_state_provider"
+                                              }
+                                            }
+                                          ],
+                                          "direction": "up",
+                                          "allowed_placement": {
+                                            "blocks": "#wythers:tree_branch_replaceable",
+                                            "type": "main:matching_blocks"
+                                          },
+                                          "prioritize_tip": false
+                                        },
+                                        "type": "main:block_column"
+                                      },
+                                      "placement": []
+                                    },
+                                    "surface": "floor",
+                                    "depth": 1,
+                                    "replaceable": "#wythers:spruce_stuff",
+                                    "ground_state": {
+                                      "state": {
+                                        "Properties": {
+                                          "axis": "y"
+                                        },
+                                        "Name": "main:stripped_acacia_log"
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    }
+                                  },
+                                  "type": "main:vegetation_patch"
+                                },
+                                "placement": [
+                                  {
+                                    "predicate": {
+                                      "predicates": [
+                                        {
+                                          "blocks": "main:stripped_acacia_log",
+                                          "type": "main:matching_blocks"
+                                        },
+                                        {
+                                          "offset": [
+                                            0,
+                                            10,
+                                            0
+                                          ],
+                                          "type": "main:replaceable"
+                                        }
+                                      ],
+                                      "type": "main:all_of"
+                                    },
+                                    "type": "main:block_predicate_filter"
+                                  },
+                                  {
+                                    "direction_of_search": "up",
+                                    "target_condition": {
+                                      "blocks": "main:air",
+                                      "offset": [
+                                        0,
+                                        1,
+                                        0
+                                      ],
+                                      "type": "main:matching_blocks"
+                                    },
+                                    "max_steps": 8,
+                                    "type": "main:environment_scan"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          "type": "main:simple_random_selector"
+                        },
+                        "placement": [
+                          {
+                            "predicate": {
+                              "type": "main:replaceable"
+                            },
+                            "type": "main:block_predicate_filter"
+                          },
+                          {
+                            "count": 28,
+                            "type": "main:count"
+                          }
+                        ]
+                      },
+                      {
+                        "feature": {
+                          "config": {
+                            "features": [
+                              {
+                                "feature": {
+                                  "config": {
+                                    "vegetation_chance": 1.0,
+                                    "xz_radius": 2,
+                                    "extra_edge_column_chance": 0.0,
+                                    "extra_bottom_block_chance": 0.0,
+                                    "vertical_range": 2,
+                                    "vegetation_feature": {
+                                      "feature": {
+                                        "config": {
+                                          "layers": [
+                                            {
+                                              "height": 5,
+                                              "provider": {
+                                                "state": {
+                                                  "Properties": {
+                                                    "axis": "y"
+                                                  },
+                                                  "Name": "main:stripped_acacia_log"
+                                                },
+                                                "type": "main:simple_state_provider"
+                                              }
+                                            }
+                                          ],
+                                          "direction": "up",
+                                          "allowed_placement": {
+                                            "blocks": "#wythers:tree_branch_replaceable",
+                                            "type": "main:matching_blocks"
+                                          },
+                                          "prioritize_tip": false
+                                        },
+                                        "type": "main:block_column"
+                                      },
+                                      "placement": [
+                                        {
+                                          "predicate": {
+                                            "predicates": [
+                                              {
+                                                "predicates": [
+                                                  {
+                                                    "blocks": "main:stripped_acacia_log",
+                                                    "offset": [
+                                                      1,
+                                                      -2,
+                                                      0
+                                                    ],
+                                                    "type": "main:matching_blocks"
+                                                  },
+                                                  {
+                                                    "blocks": "main:stripped_acacia_log",
+                                                    "offset": [
+                                                      -1,
+                                                      -2,
+                                                      0
+                                                    ],
+                                                    "type": "main:matching_blocks"
+                                                  }
+                                                ],
+                                                "type": "main:all_of"
+                                              },
+                                              {
+                                                "predicates": [
+                                                  {
+                                                    "blocks": "main:stripped_acacia_log",
+                                                    "offset": [
+                                                      0,
+                                                      -4,
+                                                      1
+                                                    ],
+                                                    "type": "main:matching_blocks"
+                                                  },
+                                                  {
+                                                    "blocks": "main:stripped_acacia_log",
+                                                    "offset": [
+                                                      0,
+                                                      -4,
+                                                      -1
+                                                    ],
+                                                    "type": "main:matching_blocks"
+                                                  }
+                                                ],
+                                                "type": "main:all_of"
+                                              }
+                                            ],
+                                            "type": "main:any_of"
+                                          },
+                                          "type": "main:block_predicate_filter"
+                                        }
+                                      ]
+                                    },
+                                    "surface": "floor",
+                                    "depth": 1,
+                                    "replaceable": "#wythers:spruce_stuff",
+                                    "ground_state": {
+                                      "state": {
+                                        "Properties": {
+                                          "axis": "y"
+                                        },
+                                        "Name": "main:stripped_acacia_log"
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    }
+                                  },
+                                  "type": "main:vegetation_patch"
+                                },
+                                "placement": [
+                                  {
+                                    "predicate": {
+                                      "offset": [
+                                        0,
+                                        1,
+                                        0
+                                      ],
+                                      "type": "main:replaceable"
+                                    },
+                                    "type": "main:block_predicate_filter"
+                                  }
+                                ]
+                              },
+                              {
+                                "feature": {
+                                  "config": {
+                                    "vegetation_chance": 1.0,
+                                    "xz_radius": 1,
+                                    "extra_edge_column_chance": 0.0,
+                                    "extra_bottom_block_chance": 0.0,
+                                    "vertical_range": 2,
+                                    "vegetation_feature": {
+                                      "feature": {
+                                        "config": {
+                                          "layers": [
+                                            {
+                                              "height": 15,
+                                              "provider": {
+                                                "state": {
+                                                  "Properties": {
+                                                    "axis": "y"
+                                                  },
+                                                  "Name": "main:stripped_acacia_log"
+                                                },
+                                                "type": "main:simple_state_provider"
+                                              }
+                                            }
+                                          ],
+                                          "direction": "up",
+                                          "allowed_placement": {
+                                            "blocks": "#wythers:tree_branch_replaceable",
+                                            "type": "main:matching_blocks"
+                                          },
+                                          "prioritize_tip": false
+                                        },
+                                        "type": "main:block_column"
+                                      },
+                                      "placement": []
+                                    },
+                                    "surface": "floor",
+                                    "depth": 1,
+                                    "replaceable": "#wythers:spruce_stuff",
+                                    "ground_state": {
+                                      "state": {
+                                        "Properties": {
+                                          "axis": "y"
+                                        },
+                                        "Name": "main:stripped_acacia_log"
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    }
+                                  },
+                                  "type": "main:vegetation_patch"
+                                },
+                                "placement": [
+                                  {
+                                    "predicate": {
+                                      "predicates": [
+                                        {
+                                          "blocks": "main:stripped_acacia_log",
+                                          "offset": [
+                                            0,
+                                            1,
+                                            0
+                                          ],
+                                          "type": "main:matching_blocks"
+                                        },
+                                        {
+                                          "offset": [
+                                            0,
+                                            10,
+                                            0
+                                          ],
+                                          "type": "main:replaceable"
+                                        }
+                                      ],
+                                      "type": "main:all_of"
+                                    },
+                                    "type": "main:block_predicate_filter"
+                                  },
+                                  {
+                                    "direction_of_search": "up",
+                                    "target_condition": {
+                                      "blocks": "main:air",
+                                      "offset": [
+                                        0,
+                                        1,
+                                        0
+                                      ],
+                                      "type": "main:matching_blocks"
+                                    },
+                                    "max_steps": 8,
+                                    "type": "main:environment_scan"
+                                  }
+                                ]
+                              },
+                              {
+                                "feature": {
+                                  "config": {
+                                    "features": [
+                                      {
+                                        "feature": {
+                                          "config": {
+                                            "decorators": [
+                                              {
+                                                "block_provider": {
+                                                  "state": {
+                                                    "Properties": {
+                                                      "persistent": "false",
+                                                      "distance": "2",
+                                                      "waterlogged": "false"
+                                                    },
+                                                    "Name": "main:acacia_leaves"
+                                                  },
+                                                  "type": "main:simple_state_provider"
+                                                },
+                                                "required_empty_blocks": 2,
+                                                "directions": [
+                                                  "down"
+                                                ],
+                                                "probability": 0.35,
+                                                "exclusion_radius_xz": 0,
+                                                "exclusion_radius_y": 0,
+                                                "type": "main:attached_to_leaves"
+                                              }
+                                            ],
+                                            "ignore_vines": true,
+                                            "force_dirt": false,
+                                            "dirt_provider": {
+                                              "state": {
+                                                "Properties": {
+                                                  "axis": "y"
+                                                },
+                                                "Name": "main:stripped_acacia_log"
+                                              },
+                                              "type": "main:simple_state_provider"
+                                            },
+                                            "minimum_size": {
+                                              "limit": 0,
+                                              "lower_size": 0,
+                                              "upper_size": 0,
+                                              "type": "main:two_layers_feature_size"
+                                            },
+                                            "trunk_provider": {
+                                              "state": {
+                                                "Properties": {
+                                                  "axis": "y"
+                                                },
+                                                "Name": "main:stripped_acacia_log"
+                                              },
+                                              "type": "main:simple_state_provider"
+                                            },
+                                            "trunk_placer": {
+                                              "base_height": 14,
+                                              "height_rand_a": 0,
+                                              "height_rand_b": 0,
+                                              "type": "main:straight_trunk_placer"
+                                            },
+                                            "foliage_provider": {
+                                              "state": {
+                                                "Properties": {
+                                                  "persistent": "false",
+                                                  "distance": "1",
+                                                  "waterlogged": "false"
+                                                },
+                                                "Name": "main:acacia_leaves"
+                                              },
+                                              "type": "main:simple_state_provider"
+                                            },
+                                            "foliage_placer": {
+                                              "radius": 3,
+                                              "offset": 2,
+                                              "crown_height": 9,
+                                              "type": "main:mega_pine_foliage_placer"
+                                            }
+                                          },
+                                          "type": "main:tree"
+                                        },
+                                        "placement": [
+                                          {
+                                            "xz_spread": 0,
+                                            "y_spread": 8,
+                                            "type": "main:random_offset"
+                                          },
+                                          {
+                                            "predicate": {
+                                              "predicate": {
+                                                "blocks": "main:acacia_leaves",
+                                                "offset": [
+                                                  0,
+                                                  15,
+                                                  0
+                                                ],
+                                                "type": "main:matching_blocks"
+                                              },
+                                              "type": "main:not"
+                                            },
+                                            "type": "main:block_predicate_filter"
+                                          }
+                                        ]
+                                      },
+                                      {
+                                        "feature": {
+                                          "config": {
+                                            "features": [
+                                              {
+                                                "feature": "wythers:vegetation/tree/huge_sequoia/branch_set/1",
+                                                "placement": [
+                                                  {
+                                                    "count": 2,
+                                                    "type": "main:count"
+                                                  },
+                                                  {
+                                                    "xz_spread": 0,
+                                                    "y_spread": {
+                                                      "value": {
+                                                        "min_inclusive": -8,
+                                                        "max_inclusive": -6
+                                                      },
+                                                      "type": "main:uniform"
+                                                    },
+                                                    "type": "main:random_offset"
+                                                  }
+                                                ]
+                                              },
+                                              {
+                                                "feature": "wythers:vegetation/tree/huge_sequoia/branch_set/2",
+                                                "placement": [
+                                                  {
+                                                    "xz_spread": 0,
+                                                    "y_spread": {
+                                                      "value": {
+                                                        "min_inclusive": -2,
+                                                        "max_inclusive": 5
+                                                      },
+                                                      "type": "main:uniform"
+                                                    },
+                                                    "type": "main:random_offset"
+                                                  }
+                                                ]
+                                              },
+                                              {
+                                                "feature": "wythers:vegetation/tree/huge_sequoia/branch_set/3",
+                                                "placement": [
+                                                  {
+                                                    "count": 2,
+                                                    "type": "main:count"
+                                                  },
+                                                  {
+                                                    "xz_spread": 0,
+                                                    "y_spread": {
+                                                      "value": {
+                                                        "min_inclusive": 3,
+                                                        "max_inclusive": 12
+                                                      },
+                                                      "type": "main:uniform"
+                                                    },
+                                                    "type": "main:random_offset"
+                                                  }
+                                                ]
+                                              },
+                                              {
+                                                "feature": "wythers:vegetation/tree/huge_sequoia/branch_set/4",
+                                                "placement": [
+                                                  {
+                                                    "xz_spread": 0,
+                                                    "y_spread": {
+                                                      "value": {
+                                                        "min_inclusive": 8,
+                                                        "max_inclusive": 15
+                                                      },
+                                                      "type": "main:uniform"
+                                                    },
+                                                    "type": "main:random_offset"
+                                                  }
+                                                ]
+                                              }
+                                            ]
+                                          },
+                                          "type": "main:simple_random_selector"
+                                        },
+                                        "placement": []
+                                      }
+                                    ]
+                                  },
+                                  "type": "main:simple_random_selector"
+                                },
+                                "placement": [
+                                  {
+                                    "predicate": {
+                                      "blocks": "main:stripped_acacia_log",
+                                      "offset": [
+                                        0,
+                                        10,
+                                        0
+                                      ],
+                                      "type": "main:matching_blocks"
+                                    },
+                                    "type": "main:block_predicate_filter"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          "type": "main:simple_random_selector"
+                        },
+                        "placement": [
+                          {
+                            "predicate": {
+                              "blocks": "main:stripped_acacia_log",
+                              "type": "main:matching_blocks"
+                            },
+                            "type": "main:block_predicate_filter"
+                          },
+                          {
+                            "xz_spread": 0,
+                            "y_spread": 15,
+                            "type": "main:random_offset"
+                          },
+                          {
+                            "xz_spread": 0,
+                            "y_spread": 15,
+                            "type": "main:random_offset"
+                          },
+                          {
+                            "xz_spread": 0,
+                            "y_spread": 15,
+                            "type": "main:random_offset"
+                          },
+                          {
+                            "direction_of_search": "up",
+                            "target_condition": {
+                              "predicates": [
+                                {
+                                  "blocks": "main:air",
+                                  "offset": [
+                                    0,
+                                    1,
+                                    0
+                                  ],
+                                  "type": "main:matching_blocks"
+                                },
+                                {
+                                  "blocks": "main:stripped_acacia_log",
+                                  "type": "main:matching_blocks"
+                                }
+                              ],
+                              "type": "main:all_of"
+                            },
+                            "max_steps": 8,
+                            "type": "main:environment_scan"
+                          },
+                          {
+                            "count": 144,
+                            "type": "main:count"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "main:simple_random_selector"
+                },
+                "placement": [
+                  {
+                    "predicate": {
+                      "type": "main:replaceable"
+                    },
+                    "type": "main:block_predicate_filter"
+                  },
+                  {
+                    "count": 28,
+                    "type": "main:count"
+                  }
+                ]
+              },
+              {
+                "feature": "wythers:vegetation/tree/huge_sequoia/roots/1",
+                "placement": [
+                  {
+                    "predicate": {
+                      "blocks": "main:stripped_acacia_log",
+                      "type": "main:matching_blocks"
+                    },
+                    "type": "main:block_predicate_filter"
+                  }
+                ]
+              },
+              {
+                "feature": "wythers:vegetation/tree/huge_sequoia/rooted_dirt/1",
+                "placement": [
+                  {
+                    "predicate": {
+                      "blocks": "main:stripped_acacia_log",
+                      "type": "main:matching_blocks"
+                    },
+                    "type": "main:block_predicate_filter"
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "main:simple_random_selector"
+        },
+        "placement": [
+          {
+            "predicate": {
+              "state": {
+                "Properties": {
+                  "stage": "0"
+                },
+                "Name": "main:spruce_sapling"
+              },
+              "type": "main:would_survive"
+            },
+            "type": "main:block_predicate_filter"
+          },
+          {
+            "count": 64,
+            "type": "main:count"
+          }
+        ]
+      }
+    ]
+  },
+  "type": "main:simple_random_selector"
+}

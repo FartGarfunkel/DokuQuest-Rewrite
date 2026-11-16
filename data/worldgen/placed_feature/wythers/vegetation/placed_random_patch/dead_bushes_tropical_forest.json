@@ -1,0 +1,19 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/dead_bushes",
+  "placement": [
+    {
+      "count": 5,
+      "type": "main:count"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "heightmap": "WORLD_SURFACE_WG",
+      "type": "main:heightmap"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "up",
+    "allowed_placement": {
+      "type": "main:matching_blocks",
+      "blocks": "main:air"
+    },
+    "prioritize_tip": true,
+    "layers": [
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:lantern",
+            "Properties": {
+              "hanging": "true",
+              "waterlogged": "false"
+            }
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:ochre_froglight",
+            "Properties": {
+              "axis": "y"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

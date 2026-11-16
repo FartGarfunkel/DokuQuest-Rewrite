@@ -1,0 +1,64 @@
+{
+  "type": "main:root_system",
+  "config": {
+    "allowed_tree_position": {
+      "type": "main:all_of",
+      "predicates": [
+        {
+          "type": "main:any_of",
+          "predicates": [
+            {
+              "type": "main:matching_blocks",
+              "blocks": [
+                "main:air",
+                "main:cave_air",
+                "main:void_air"
+              ]
+            },
+            {
+              "type": "main:matching_block_tag",
+              "tag": "main:replaceable_by_trees"
+            }
+          ]
+        },
+        {
+          "type": "main:matching_block_tag",
+          "offset": [
+            0,
+            -1,
+            0
+          ],
+          "tag": "main:azalea_grows_on"
+        }
+      ]
+    },
+    "allowed_vertical_water_for_tree": 2,
+    "feature": {
+      "feature": "main:azalea_tree",
+      "placement": []
+    },
+    "hanging_root_placement_attempts": 20,
+    "hanging_root_radius": 3,
+    "hanging_root_state_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:hanging_roots",
+        "Properties": {
+          "waterlogged": "false"
+        }
+      }
+    },
+    "hanging_roots_vertical_span": 2,
+    "required_vertical_space_for_tree": 3,
+    "root_column_max_height": 100,
+    "root_placement_attempts": 20,
+    "root_radius": 3,
+    "root_replaceable": "#main:azalea_root_replaceable",
+    "root_state_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:rooted_dirt"
+      }
+    }
+  }
+}

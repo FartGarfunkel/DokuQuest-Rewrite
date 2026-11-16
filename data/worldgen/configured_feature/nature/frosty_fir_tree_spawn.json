@@ -1,0 +1,12 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "default": "nature:frosty_fir_checked",
+    "features": [
+      {
+        "chance": 0.5,
+        "feature": "nature:frosty_fir_checked"
+      }
+    ]
+  }
+}

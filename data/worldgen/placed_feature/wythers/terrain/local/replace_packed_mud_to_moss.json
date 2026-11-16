@@ -1,0 +1,50 @@
+{
+  "feature": {
+    "type": "main:ore",
+    "config": {
+      "size": 64,
+      "discard_chance_on_air_exposure": 0,
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:packed_mud"
+          },
+          "state": {
+            "Name": "main:moss_block"
+          }
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": -0.6
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 80,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 63
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

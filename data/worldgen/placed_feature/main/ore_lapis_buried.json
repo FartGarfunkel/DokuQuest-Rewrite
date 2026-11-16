@@ -1,0 +1,27 @@
+{
+  "feature": "main:ore_lapis_buried",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 4
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "absolute": 64
+        },
+        "min_inclusive": {
+          "above_bottom": 0
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

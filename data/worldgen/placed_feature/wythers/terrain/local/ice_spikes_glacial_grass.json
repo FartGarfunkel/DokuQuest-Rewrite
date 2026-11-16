@@ -1,0 +1,76 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:packed_ice"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "blocks": "main:stone"
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:blue_ice"
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:grass_block",
+          "main:dirt",
+          "main:coarse_dirt",
+          "main:gravel",
+          "main:mud",
+          "main:snow_block"
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 7
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "WORLD_SURFACE_WG",
+      "min_inclusive": -250,
+      "max_inclusive": -84
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

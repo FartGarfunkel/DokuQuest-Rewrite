@@ -1,0 +1,7 @@
+{
+  "type": "main:add",
+  "argument1": {
+    "type": "main:end_islands"
+  },
+  "argument2": "main:end/base_3d_noise"
+}

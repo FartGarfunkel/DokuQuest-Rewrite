@@ -1,0 +1,17 @@
+{
+  "feature": "wythers:vegetation/configured_tree/eucalyptus_deanei_gray",
+  "placement": [
+    {
+      "predicate": {
+        "state": {
+          "Properties": {
+            "stage": "0"
+          },
+          "Name": "main:jungle_sapling"
+        },
+        "type": "main:would_survive"
+      },
+      "type": "main:block_predicate_filter"
+    }
+  ]
+}

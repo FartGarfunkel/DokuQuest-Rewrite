@@ -1,0 +1,181 @@
+{
+  "feature": {
+    "config": {
+      "default": {
+        "feature": "wythers:vegetation/tree/huge_sequoia/5",
+        "placement": []
+      },
+      "features": [
+        {
+          "chance": 0.005,
+          "feature": {
+            "feature": "wythers:vegetation/tree/huge_sequoia/dead",
+            "placement": []
+          }
+        },
+        {
+          "chance": 0.1,
+          "feature": {
+            "feature": "wythers:vegetation/tree/huge_sequoia/1",
+            "placement": []
+          }
+        },
+        {
+          "chance": 0.3,
+          "feature": {
+            "feature": "wythers:vegetation/tree/huge_sequoia/2",
+            "placement": []
+          }
+        },
+        {
+          "chance": 0.6,
+          "feature": {
+            "feature": "wythers:vegetation/tree/huge_sequoia/3",
+            "placement": []
+          }
+        },
+        {
+          "chance": 0.6,
+          "feature": {
+            "feature": "wythers:vegetation/tree/huge_sequoia/4",
+            "placement": []
+          }
+        }
+      ]
+    },
+    "type": "main:random_selector"
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": -0.5
+    },
+    {
+      "count": {
+        "distribution": [
+          {
+            "data": 1,
+            "weight": 5
+          },
+          {
+            "data": 2,
+            "weight": 3
+          }
+        ],
+        "type": "main:weighted_list"
+      },
+      "type": "main:count"
+    },
+    {
+      "xz_spread": {
+        "value": {
+          "min_inclusive": 4,
+          "max_inclusive": 11
+        },
+        "type": "main:uniform"
+      },
+      "y_spread": 0,
+      "type": "main:random_offset"
+    },
+    {
+      "heightmap": "MOTION_BLOCKING",
+      "type": "main:heightmap"
+    },
+    {
+      "predicate": {
+        "predicates": [
+          {
+            "type": "main:replaceable"
+          },
+          {
+            "predicate": {
+              "offset": [
+                2,
+                -2,
+                0
+              ],
+              "type": "main:replaceable"
+            },
+            "type": "main:not"
+          },
+          {
+            "predicate": {
+              "offset": [
+                0,
+                -2,
+                2
+              ],
+              "type": "main:replaceable"
+            },
+            "type": "main:not"
+          },
+          {
+            "predicate": {
+              "offset": [
+                -2,
+                -2,
+                0
+              ],
+              "type": "main:replaceable"
+            },
+            "type": "main:not"
+          },
+          {
+            "predicate": {
+              "offset": [
+                0,
+                -2,
+                -2
+              ],
+              "type": "main:replaceable"
+            },
+            "type": "main:not"
+          },
+          {
+            "offset": [
+              2,
+              3,
+              0
+            ],
+            "type": "main:replaceable"
+          },
+          {
+            "offset": [
+              0,
+              3,
+              2
+            ],
+            "type": "main:replaceable"
+          },
+          {
+            "offset": [
+              -2,
+              3,
+              0
+            ],
+            "type": "main:replaceable"
+          },
+          {
+            "offset": [
+              0,
+              3,
+              -2
+            ],
+            "type": "main:replaceable"
+          }
+        ],
+        "type": "main:all_of"
+      },
+      "type": "main:block_predicate_filter"
+    },
+    {
+      "max_water_depth": 0,
+      "type": "main:surface_water_depth_filter"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

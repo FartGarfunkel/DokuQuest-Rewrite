@@ -1,0 +1,788 @@
+{
+  "feature": {
+    "type": "main:simple_random_selector",
+    "config": {
+      "features": [
+        {
+          "feature": {
+            "type": "main:simple_block",
+            "config": {
+              "to_place": {
+                "type": "main:weighted_state_provider",
+                "entries": [
+                  {
+                    "weight": 1,
+                    "data": {
+                      "Name": "main:snow",
+                      "Properties": {
+                        "layers": "6"
+                      }
+                    }
+                  },
+                  {
+                    "weight": 1,
+                    "data": {
+                      "Name": "main:snow",
+                      "Properties": {
+                        "layers": "7"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:air",
+                  "main:snow"
+                ]
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:snow_block",
+                  "main:grass_block",
+                  "main:mud",
+                  "main:stone"
+                ]
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "feature": {
+            "type": "main:simple_block",
+            "config": {
+              "to_place": {
+                "type": "main:weighted_state_provider",
+                "entries": [
+                  {
+                    "weight": 1,
+                    "data": {
+                      "Name": "main:snow",
+                      "Properties": {
+                        "layers": "4"
+                      }
+                    }
+                  },
+                  {
+                    "weight": 1,
+                    "data": {
+                      "Name": "main:snow",
+                      "Properties": {
+                        "layers": "5"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:air",
+                  "main:snow"
+                ]
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:grass_block",
+                  "main:snow_block",
+                  "main:mud",
+                  "main:stone"
+                ]
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:not",
+                "predicate": {
+                  "type": "main:any_of",
+                  "predicates": [
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        1,
+                        0,
+                        0
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        -1,
+                        0,
+                        0
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        0,
+                        1
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        0,
+                        -1
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        1,
+                        -1,
+                        0
+                      ],
+                      "blocks": [
+                        "main:air"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        -1,
+                        -1,
+                        0
+                      ],
+                      "blocks": [
+                        "main:air"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        -1,
+                        1
+                      ],
+                      "blocks": [
+                        "main:air"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        -1,
+                        -1
+                      ],
+                      "blocks": [
+                        "main:air"
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      2,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -2,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      2
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -2
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "feature": {
+            "type": "main:simple_block",
+            "config": {
+              "to_place": {
+                "type": "main:weighted_state_provider",
+                "entries": [
+                  {
+                    "weight": 1,
+                    "data": {
+                      "Name": "main:snow",
+                      "Properties": {
+                        "layers": "2"
+                      }
+                    }
+                  },
+                  {
+                    "weight": 1,
+                    "data": {
+                      "Name": "main:snow",
+                      "Properties": {
+                        "layers": "3"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:air",
+                  "main:snow"
+                ]
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:grass_block",
+                  "main:snow_block",
+                  "main:mud",
+                  "main:stone"
+                ]
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:not",
+                "predicate": {
+                  "type": "main:any_of",
+                  "predicates": [
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        1,
+                        0,
+                        0
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        -1,
+                        0,
+                        0
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        0,
+                        1
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        0,
+                        -1
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        1,
+                        -1,
+                        0
+                      ],
+                      "blocks": [
+                        "main:air"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        -1,
+                        -1,
+                        0
+                      ],
+                      "blocks": [
+                        "main:air"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        -1,
+                        1
+                      ],
+                      "blocks": [
+                        "main:air"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        -1,
+                        -1
+                      ],
+                      "blocks": [
+                        "main:air"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        2,
+                        0,
+                        0
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        -2,
+                        0,
+                        0
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        0,
+                        2
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        0,
+                        -2
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        1,
+                        0,
+                        -1
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        -1,
+                        0,
+                        1
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        -1,
+                        0,
+                        -1
+                      ],
+                      "blocks": [
+                        "main:grass_block",
+                        "main:snow_block",
+                        "main:mud",
+                        "main:stone"
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      3,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -3,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      3
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -3
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:snow_block",
+                      "main:mud",
+                      "main:stone"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 240
+    },
+    {
+      "type": "main:count",
+      "count": 10
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

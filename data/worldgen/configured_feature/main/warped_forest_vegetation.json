@@ -1,0 +1,36 @@
+{
+  "type": "main:nether_forest_vegetation",
+  "config": {
+    "spread_height": 4,
+    "spread_width": 8,
+    "state_provider": {
+      "type": "main:weighted_state_provider",
+      "entries": [
+        {
+          "data": {
+            "Name": "main:warped_roots"
+          },
+          "weight": 85
+        },
+        {
+          "data": {
+            "Name": "main:crimson_roots"
+          },
+          "weight": 1
+        },
+        {
+          "data": {
+            "Name": "main:warped_fungus"
+          },
+          "weight": 13
+        },
+        {
+          "data": {
+            "Name": "main:crimson_fungus"
+          },
+          "weight": 1
+        }
+      ]
+    }
+  }
+}

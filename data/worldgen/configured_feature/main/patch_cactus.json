@@ -1,0 +1,64 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "feature": {
+      "feature": {
+        "type": "main:block_column",
+        "config": {
+          "allowed_placement": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          },
+          "direction": "up",
+          "layers": [
+            {
+              "height": {
+                "type": "main:biased_to_bottom",
+                "value": {
+                  "max_inclusive": 3,
+                  "min_inclusive": 1
+                }
+              },
+              "provider": {
+                "type": "main:simple_state_provider",
+                "state": {
+                  "Name": "main:cactus",
+                  "Properties": {
+                    "age": "0"
+                  }
+                }
+              }
+            }
+          ],
+          "prioritize_tip": false
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:would_survive",
+                "state": {
+                  "Name": "main:cactus",
+                  "Properties": {
+                    "age": "0"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "tries": 10,
+    "xz_spread": 7,
+    "y_spread": 3
+  }
+}

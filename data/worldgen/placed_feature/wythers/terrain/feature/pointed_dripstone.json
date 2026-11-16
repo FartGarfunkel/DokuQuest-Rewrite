@@ -1,0 +1,64 @@
+{
+  "feature": "main:pointed_dripstone",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:uniform",
+        "value": {
+          "max_inclusive": 50,
+          "min_inclusive": 40
+        }
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "absolute": 50
+        },
+        "min_inclusive": {
+          "above_bottom": 0
+        }
+      }
+    },
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:uniform",
+        "value": {
+          "max_inclusive": 5,
+          "min_inclusive": 1
+        }
+      }
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": {
+        "type": "main:clamped_normal",
+        "value": {
+          "deviation": 3.0,
+          "max_inclusive": 10,
+          "mean": 0.0,
+          "min_inclusive": -10
+        }
+      },
+      "y_spread": {
+        "type": "main:clamped_normal",
+        "value": {
+          "deviation": 0.6,
+          "max_inclusive": 2,
+          "mean": 0.0,
+          "min_inclusive": -2
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

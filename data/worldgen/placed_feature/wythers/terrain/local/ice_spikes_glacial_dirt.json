@@ -1,0 +1,72 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:packed_ice"
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": "main:packed_ice"
+          },
+          {
+            "type": "main:matching_blocks",
+            "blocks": [
+              "main:dirt",
+              "main:coarse_dirt",
+              "main:gravel",
+              "main:mud",
+              "main:snow_block"
+            ]
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 7,
+          "max_inclusive": 7
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 256
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": 65
+        },
+        "max_inclusive": {
+          "absolute": 165
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

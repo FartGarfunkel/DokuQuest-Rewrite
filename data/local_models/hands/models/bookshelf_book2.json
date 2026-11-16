@@ -1,0 +1,88 @@
+{
+ "textures": {
+  "0": "hands:block/chiseled_bookshelf_empty",
+  "1": "hands:block/chiseled_bookshelf_occupied",
+  "2": "hands:block/chiseled_bookshelf_side",
+  "3": "hands:block/chiseled_bookshelf_top",
+  "particle": "hands:block/chiseled_bookshelf_empty"
+ },
+ "elements": [
+  {
+   "from": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    4,
+    5,
+    6
+   ],
+   "rotation": {
+    "angle": 0,
+    "axis": "y",
+    "origin": [
+     2,
+     2.5,
+     3
+    ]
+   },
+   "faces": {
+    "north": {
+     "uv": [
+      6,
+      10,
+      10,
+      15
+     ],
+     "texture": "#1"
+    },
+    "east": {
+     "uv": [
+      6,
+      10,
+      10,
+      15
+     ],
+     "texture": "#1"
+    },
+    "south": {
+     "uv": [
+      6,
+      9,
+      9,
+      10
+     ],
+     "texture": "#1"
+    },
+    "west": {
+     "uv": [
+      6,
+      10,
+      10,
+      15
+     ],
+     "texture": "#1"
+    },
+    "up": {
+     "uv": [
+      6,
+      9,
+      9,
+      10
+     ],
+     "texture": "#1"
+    },
+    "down": {
+     "uv": [
+      6,
+      9,
+      9,
+      10
+     ],
+     "texture": "#1"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,56 @@
+{
+  "feature": "wythers:vegetation/tree/ancient_dark_oak",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 250,
+      "noise_offset": 0.05
+    },
+    {
+      "type": "main:count",
+      "count": 4
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING_NO_LEAVES"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:oak_sapling",
+          "Properties": {
+            "stage": "0"
+          }
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:matching_blocks",
+          "offset": [
+            0,
+            -2,
+            0
+          ],
+          "blocks": "main:rooted_dirt"
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

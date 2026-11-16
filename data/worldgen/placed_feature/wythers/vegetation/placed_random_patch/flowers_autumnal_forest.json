@@ -1,0 +1,19 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/flowers_autumnal",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 5
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

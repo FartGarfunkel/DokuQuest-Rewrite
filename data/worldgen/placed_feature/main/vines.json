@@ -1,0 +1,27 @@
+{
+  "feature": "main:vines",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 127
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "absolute": 100
+        },
+        "min_inclusive": {
+          "absolute": 64
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

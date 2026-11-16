@@ -1,0 +1,31 @@
+{
+  "feature": "main:patch_berry_bush",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 20
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": 62
+        },
+        "max_inclusive": {
+          "absolute": 160
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

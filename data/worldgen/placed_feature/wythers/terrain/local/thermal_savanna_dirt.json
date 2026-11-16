@@ -1,0 +1,254 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:coarse_dirt"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:not",
+              "predicate": {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:packed_mud",
+                      "main:coarse_dirt",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:packed_mud",
+                      "main:coarse_dirt",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:packed_mud",
+                      "main:coarse_dirt",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:packed_mud",
+                      "main:coarse_dirt",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:packed_mud",
+                      "main:coarse_dirt",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:packed_mud",
+                      "main:coarse_dirt",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      2,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:packed_mud",
+                      "main:coarse_dirt",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:packed_mud",
+                      "main:coarse_dirt",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:packed_mud",
+                      "main:coarse_dirt",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -2,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:packed_mud",
+                      "main:coarse_dirt",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      2
+                    ],
+                    "blocks": [
+                      "main:packed_mud",
+                      "main:coarse_dirt",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -2
+                    ],
+                    "blocks": [
+                      "main:packed_mud",
+                      "main:coarse_dirt",
+                      "main:air"
+                    ]
+                  }
+                ]
+              }
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:packed_mud"
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "blocks": "main:packed_mud"
+          },
+          {
+            "type": "main:not",
+            "predicate": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "blocks": "main:grass_block"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    2,
+                    0
+                  ],
+                  "blocks": "main:grass_block"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "radius": 4,
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": 0.6
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 80,
+      "noise_offset": 0.3
+    },
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

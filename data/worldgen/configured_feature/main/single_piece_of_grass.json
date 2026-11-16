@@ -1,0 +1,11 @@
+{
+  "type": "main:simple_block",
+  "config": {
+    "to_place": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:grass"
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "feature": "wythers:vegetation/configured_tree/bayou_cypress_surface",
+  "placement": [
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:mangrove_propagule",
+          "Properties": {
+            "waterlogged": "false",
+            "stage": "0",
+            "hanging": "false",
+            "age": "0"
+          }
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "blocks": "main:air"
+      }
+    }
+  ]
+}

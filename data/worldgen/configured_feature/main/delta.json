@@ -1,0 +1,28 @@
+{
+  "type": "main:delta_feature",
+  "config": {
+    "contents": {
+      "Name": "main:lava",
+      "Properties": {
+        "level": "0"
+      }
+    },
+    "rim": {
+      "Name": "main:magma_block"
+    },
+    "rim_size": {
+      "type": "main:uniform",
+      "value": {
+        "max_inclusive": 2,
+        "min_inclusive": 0
+      }
+    },
+    "size": {
+      "type": "main:uniform",
+      "value": {
+        "max_inclusive": 7,
+        "min_inclusive": 3
+      }
+    }
+  }
+}

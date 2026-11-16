@@ -1,0 +1,17 @@
+{
+  "feature": "main:briar",
+  "placement": [
+    {
+      "predicate": {
+        "state": {
+          "Properties": {
+            "stage": "0"
+          },
+          "Name": "main:birch_sapling"
+        },
+        "type": "main:would_survive"
+      },
+      "type": "main:block_predicate_filter"
+    }
+  ]
+}

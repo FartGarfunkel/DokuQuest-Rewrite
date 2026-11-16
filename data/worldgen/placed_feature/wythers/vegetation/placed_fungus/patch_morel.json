@@ -1,0 +1,17 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 12,
+      "xz_spread": 6,
+      "y_spread": 3,
+      "feature": "wythers:vegetation/placed_fungus/giant_morel"
+    }
+  },
+  "placement": [
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    }
+  ]
+}

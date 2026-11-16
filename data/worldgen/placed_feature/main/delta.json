@@ -1,0 +1,12 @@
+{
+  "feature": "main:delta",
+  "placement": [
+    {
+      "type": "main:count_on_every_layer",
+      "count": 40
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

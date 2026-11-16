@@ -1,0 +1,165 @@
+{
+  "feature": "wythers:vegetation/tree/forest_eucalyptus",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": -0.45
+    },
+    {
+      "type": "main:count",
+      "count": 1
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "WORLD_SURFACE_WG",
+      "min_inclusive": -150,
+      "max_inclusive": -64
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:fern"
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:any_of",
+          "predicates": [
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                1,
+                0,
+                1
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                1,
+                0,
+                -1
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                -1,
+                0,
+                1
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                -1,
+                0,
+                -1
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                2,
+                0,
+                0
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                1,
+                0,
+                0
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                -2,
+                0,
+                0
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                -1,
+                0,
+                0
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                0,
+                0,
+                2
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                0,
+                0,
+                1
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                0,
+                0,
+                -2
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                0,
+                0,
+                -1
+              ],
+              "tag": "main:logs_that_burn"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

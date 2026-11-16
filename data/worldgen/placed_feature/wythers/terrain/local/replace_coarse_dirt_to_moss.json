@@ -1,0 +1,44 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:moss_block"
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": "main:coarse_dirt"
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 8
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

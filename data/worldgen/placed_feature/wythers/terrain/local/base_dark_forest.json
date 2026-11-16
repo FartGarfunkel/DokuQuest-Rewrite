@@ -1,0 +1,101 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:mud"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    1,
+                    0,
+                    0
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -1,
+                    0,
+                    0
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    0,
+                    0,
+                    -1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                }
+              ]
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:muddy_mangrove_roots",
+                "Properties": {
+                  "axis": "y"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:calcite",
+          "main:diorite",
+          "main:gravel"
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 8
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 100
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,369 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 256,
+      "xz_spread": 1,
+      "y_spread": 1,
+      "feature": {
+        "feature": {
+          "type": "main:random_selector",
+          "config": {
+            "features": [
+              {
+                "chance": 0.3,
+                "feature": {
+                  "feature": {
+                    "type": "main:simple_block",
+                    "config": {
+                      "to_place": {
+                        "type": "main:simple_state_provider",
+                        "state": {
+                          "Name": "main:mud_brick_slab",
+                          "Properties": {
+                            "type": "bottom",
+                            "waterlogged": "false"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "placement": [
+                    {
+                      "type": "main:block_predicate_filter",
+                      "predicate": {
+                        "type": "main:any_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              1,
+                              0,
+                              0
+                            ],
+                            "blocks": [
+                              "main:air"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              -1,
+                              0,
+                              0
+                            ],
+                            "blocks": [
+                              "main:air"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              0,
+                              1
+                            ],
+                            "blocks": [
+                              "main:air"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              0,
+                              -1
+                            ],
+                            "blocks": [
+                              "main:air"
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "chance": 0.3,
+                "feature": {
+                  "feature": {
+                    "type": "main:simple_block",
+                    "config": {
+                      "to_place": {
+                        "type": "main:weighted_state_provider",
+                        "entries": [
+                          {
+                            "weight": 1,
+                            "data": {
+                              "Name": "main:packed_mud"
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "placement": [
+                    {
+                      "type": "main:block_predicate_filter",
+                      "predicate": {
+                        "type": "main:matching_blocks",
+                        "blocks": [
+                          "main:coarse_dirt",
+                          "main:packed_mud"
+                        ]
+                      }
+                    },
+                    {
+                      "type": "main:block_predicate_filter",
+                      "predicate": {
+                        "type": "main:not",
+                        "predicate": {
+                          "type": "main:any_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                1,
+                                0,
+                                0
+                              ],
+                              "blocks": "main:grass_block"
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                -1,
+                                0,
+                                0
+                              ],
+                              "blocks": "main:grass_block"
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                0,
+                                1
+                              ],
+                              "blocks": "main:grass_block"
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                0,
+                                -1
+                              ],
+                              "blocks": "main:grass_block"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "default": {
+              "feature": {
+                "type": "main:simple_block",
+                "config": {
+                  "to_place": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:coarse_dirt"
+                    }
+                  }
+                }
+              },
+              "placement": [
+                {
+                  "type": "main:block_predicate_filter",
+                  "predicate": {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "blocks": "main:grass_block"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "blocks": [
+                    "main:grass_block",
+                    "main:coarse_dirt",
+                    "main:packed_mud"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    2,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air",
+                    "main:grass"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    2,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    2,
+                    1
+                  ],
+                  "blocks": [
+                    "main:air",
+                    "main:grass"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    2,
+                    -1
+                  ],
+                  "blocks": [
+                    "main:air",
+                    "main:grass"
+                  ]
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      -1,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:grass"
+                    ]
+                  }
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      -1,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:grass"
+                    ]
+                  }
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -1,
+                      1
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:grass"
+                    ]
+                  }
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -1,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:grass"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 128
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 250,
+      "noise_offset": 0.03
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 250,
+      "noise_offset": -0.03
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

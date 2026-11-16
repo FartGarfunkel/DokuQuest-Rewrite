@@ -1,0 +1,26 @@
+{
+  "type": "main:disk",
+  "config": {
+    "state_provider": {
+      "fallback": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:yellow_terracotta"
+        }
+      },
+      "rules": []
+    },
+    "target": {
+      "type": "main:matching_blocks",
+      "blocks": "main:orange_terracotta"
+    },
+    "radius": {
+      "type": "main:uniform",
+      "value": {
+        "min_inclusive": 1,
+        "max_inclusive": 1
+      }
+    },
+    "half_height": 1
+  }
+}

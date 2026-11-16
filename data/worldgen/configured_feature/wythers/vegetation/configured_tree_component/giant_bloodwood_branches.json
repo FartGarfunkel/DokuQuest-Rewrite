@@ -1,0 +1,102 @@
+{
+  "type": "main:tree",
+  "config": {
+    "ignore_vines": true,
+    "force_dirt": false,
+    "minimum_size": {
+      "type": "main:two_layers_feature_size",
+      "limit": 0,
+      "lower_size": 0,
+      "upper_size": 0
+    },
+    "dirt_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:dirt"
+      }
+    },
+    "trunk_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:mangrove_wood",
+        "Properties": {
+          "axis": "y"
+        }
+      }
+    },
+    "foliage_provider": {
+      "type": "main:weighted_state_provider",
+      "entries": [
+        {
+          "weight": 0,
+          "data": {
+            "Name": "main:air"
+          }
+        },
+        {
+          "weight": 10,
+          "data": {
+            "Name": "main:mangrove_leaves",
+            "Properties": {
+              "distance": "7",
+              "persistent": "false"
+            }
+          }
+        }
+      ]
+    },
+    "trunk_placer": {
+      "type": "main:fancy_trunk_placer",
+      "base_height": 20,
+      "height_rand_a": 4,
+      "height_rand_b": 0
+    },
+    "foliage_placer": {
+      "type": "main:jungle_foliage_placer",
+      "radius": 2,
+      "offset": 1,
+      "height": 1
+    },
+    "decorators": [
+      {
+        "type": "main:attached_to_leaves",
+        "probability": 0.01,
+        "exclusion_radius_xz": 0,
+        "exclusion_radius_y": 0,
+        "required_empty_blocks": 2,
+        "block_provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:cobweb"
+          }
+        },
+        "directions": [
+          "down"
+        ]
+      },
+      {
+        "type": "main:alter_ground",
+        "provider": {
+          "type": "main:weighted_state_provider",
+          "entries": [
+            {
+              "weight": 0,
+              "data": {
+                "Name": "main:moss_block"
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:podzol",
+                "Properties": {
+                  "snowy": "false"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

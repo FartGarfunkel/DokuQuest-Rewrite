@@ -1,0 +1,161 @@
+{
+  "type": "main:simple_random_selector",
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:chert"
+            },
+            "target": {
+              "Name": "main:terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:white_kaolin"
+            },
+            "target": {
+              "Name": "main:white_terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:brown_kaolin"
+            },
+            "target": {
+              "Name": "main:light_gray_terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:light_gray_kaolin"
+            },
+            "target": {
+              "Name": "main:yellow_terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 4,
+                "max_inclusive": 6
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:yellow_kaolin"
+            },
+            "target": {
+              "Name": "main:orange_terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:white_kaolin"
+            },
+            "target": {
+              "Name": "main:red_terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:light_gray_kaolin"
+            },
+            "target": {
+              "Name": "main:brown_terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      }
+    ]
+  }
+}

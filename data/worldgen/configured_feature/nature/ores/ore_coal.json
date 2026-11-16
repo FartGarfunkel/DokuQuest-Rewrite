@@ -1,0 +1,36 @@
+{
+  "type": "main:ore",
+  "config": {
+    "discard_chance_on_air_exposure": 0.0,
+    "size": 17,
+    "targets": [
+      {
+        "state": {
+          "Name": "main:coal_ore"
+        },
+        "target": {
+          "predicate_type": "main:tag_match",
+          "tag": "main:stone_ore_replaceables"
+        }
+      },
+      {
+        "state": {
+          "Name": "main:deepslate_coal_ore"
+        },
+        "target": {
+          "predicate_type": "main:tag_match",
+          "tag": "main:deepslate_ore_replaceables"
+        }
+      },
+      {
+        "state": {
+          "Name": "nature:chert_coal_ore"
+        },
+        "target": {
+          "predicate_type": "main:tag_match",
+          "tag": "nature:chert_ore_replaceables"
+        }
+      }
+    ]
+  }
+}

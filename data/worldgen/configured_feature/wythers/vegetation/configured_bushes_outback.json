@@ -1,0 +1,78 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "features": [
+      {
+        "chance": 0.1,
+        "feature": {
+          "feature": "wythers:vegetation/configured_tree/birch_scrub",
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": "main:air"
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:grass_block",
+                  "main:packed_mud",
+                  "main:sand",
+                  "main:red_sand"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "default": {
+      "feature": "wythers:vegetation/configured_tree/acacia_scrub",
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": "main:air"
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:packed_mud",
+              "main:sand",
+              "main:red_sand"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

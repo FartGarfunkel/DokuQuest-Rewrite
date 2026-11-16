@@ -1,0 +1,55 @@
+{
+  "feature": "wythers:vegetation/tree/jungle_mangrove",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 2
+    },
+    {
+      "type": "main:count",
+      "count": 256
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "WORLD_SURFACE_WG",
+      "min_inclusive": -64,
+      "max_inclusive": -60
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE"
+    },
+    {
+      "type": "main:biome"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:any_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:mud",
+              "main:muddy_mangrove_roots"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

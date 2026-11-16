@@ -1,0 +1,55 @@
+{
+  "type": "main:simple_block",
+  "config": {
+    "to_place": {
+      "type": "main:noise_provider",
+      "noise": {
+        "amplitudes": [
+          3,
+          1.0
+        ],
+        "firstOctave": -3
+      },
+      "scale": 1,
+      "seed": 2445,
+      "states": [
+        {
+          "Name": "main:snow",
+          "Properties": {
+            "layers": "1"
+          }
+        },
+        {
+          "Name": "main:snow",
+          "Properties": {
+            "layers": "1"
+          }
+        },
+        {
+          "Name": "main:snow",
+          "Properties": {
+            "layers": "1"
+          }
+        },
+        {
+          "Name": "main:air"
+        },
+        {
+          "Name": "main:air"
+        },
+        {
+          "Name": "main:air"
+        },
+        {
+          "Name": "main:air"
+        },
+        {
+          "Name": "main:air"
+        },
+        {
+          "Name": "main:air"
+        }
+      ]
+    }
+  }
+}

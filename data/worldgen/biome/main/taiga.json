@@ -1,0 +1,236 @@
+{
+	"temperature": 0.25,
+	"downfall": 0.8,
+	"has_precipitation": true,
+	"effects": {
+		"sky_color": 6269917,
+		"fog_color": 12638463,
+		"water_color": 4562649,
+		"water_fog_color": 331305,
+		"grass_color": 7574355,
+		"foliage_color": 16764226,
+		"mood_sound": {
+			"sound": "main:ambient.cave",
+			"tick_delay": 6000,
+			"block_search_extent": 8,
+			"offset": 2
+		}
+	},
+	"spawners": {
+		"monster": [
+			{
+				"type": "main:spider",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie",
+				"weight": 95,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie_villager",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			},
+			{
+				"type": "main:skeleton",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:creeper",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:slime",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:enderman",
+				"weight": 10,
+				"minCount": 1,
+				"maxCount": 4
+			},
+			{
+				"type": "main:witch",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			}
+		],
+		"creature": [
+			{
+				"type": "main:sheep",
+				"weight": 12,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:pig",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:chicken",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:cow",
+				"weight": 8,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:wolf",
+				"weight": 8,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:rabbit",
+				"weight": 4,
+				"minCount": 2,
+				"maxCount": 3
+			},
+			{
+				"type": "main:fox",
+				"weight": 8,
+				"minCount": 2,
+				"maxCount": 4
+			}
+		],
+		"ambient": [
+			{
+				"type": "main:bat",
+				"weight": 10,
+				"minCount": 8,
+				"maxCount": 8
+			}
+		],
+		"axolotls": [],
+		"underground_water_creature": [
+			{
+				"type": "main:glow_squid",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 6
+			}
+		],
+		"water_creature": [],
+		"water_ambient": [],
+		"misc": []
+	},
+	"spawn_costs": { },
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"features": [
+		[
+			"wythers:terrain/feature/stone_pile",
+			"wythers:terrain/local/thermal_taiga_disk_terracotta_white",
+			"wythers:terrain/local/thermal_taiga_disk_terracotta_orange",
+			"wythers:terrain/local/thermal_taiga_disk_terracotta_yellow",
+			"wythers:terrain/local/stone_cliffs",
+			"wythers:terrain/extended/scree",
+			"wythers:terrain/local/yellowstone_white",
+			"wythers:terrain/local/yellowstone_orange",
+			"wythers:terrain/local/danakil_yellow",
+			"wythers:terrain/local/danakil_water",
+			"wythers:terrain/extended/base_taiga"
+		],
+		[
+			"main:lake_lava_underground",
+			"main:lake_lava_surface"
+		],
+		[
+			"main:amethyst_geode"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[],
+		[],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper",
+			"main:underwater_magma",
+			"main:disk_clay",
+			"wythers:terrain/local/disk_gravel_floor",
+			"wythers:terrain/local/disk_gravel_shore"
+		],
+		[],
+		[
+			"main:spring_water",
+			"main:spring_lava",
+			"wythers:terrain/local/thermal_taiga_white"
+		],
+		[
+			"main:glow_lichen",
+			"wythers:vegetation/local/other/fallen_log_mix_taiga",
+			"wythers:vegetation/extended/trees/boreal_forest",
+			"wythers:vegetation/local/trees/taiga_cold",
+			"wythers:vegetation/local/trees/taiga_cold_dwarf",
+			"wythers:vegetation/local/trees/taiga_spruce",
+			"wythers:vegetation/local/trees/taiga_spruce_highlands",
+			"wythers:vegetation/local/trees/taiga_spruce_mountains",
+			"wythers:vegetation/local/trees/taiga_dwarf_spruce",
+			"wythers:vegetation/local/trees/taiga_dwarf_spruce_highlands",
+			"wythers:vegetation/local/trees/taiga_dwarf_spruce_mountains",
+			"wythers:vegetation/local/trees/taiga_thermal_pine_woods",
+			"wythers:vegetation/local/trees/taiga_pine",
+			"wythers:vegetation/local/trees/taiga_birch",
+			"wythers:vegetation/local/trees/taiga_thermal_aspen_woods",
+			"wythers:vegetation/local/bushes/taiga",
+			"wythers:vegetation/local/patch/flower_taiga",
+			"main:brown_mushroom_taiga",
+			"main:red_mushroom_taiga"
+		],
+		[
+			"main:freeze_top_layer",
+			"wythers:terrain/local/snow_blocks",
+			"wythers:vegetation/local/patch/grass_and_ferns_range",
+			"wythers:vegetation/local/patch/berry_range",
+			"wythers:vegetation/local/patch/large_fern_taiga",
+			"wythers:decor/sparse_steam"
+		]
+	]
+}

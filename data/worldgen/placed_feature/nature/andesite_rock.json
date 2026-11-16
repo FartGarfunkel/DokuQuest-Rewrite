@@ -1,0 +1,16 @@
+{
+  "feature": "nature:andesite_rock",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 3
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,288 @@
+{
+  "feature": "wythers:other/configured_block_column/floating_lantern",
+  "placement": [
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          1,
+          1,
+          0
+        ],
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          -1,
+          1,
+          0
+        ],
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          1,
+          1
+        ],
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          1,
+          -1
+        ],
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          1,
+          0,
+          0
+        ],
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          -1,
+          0,
+          0
+        ],
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          0,
+          1
+        ],
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          0,
+          -1
+        ],
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -1,
+          0
+        ],
+        "blocks": [
+          "main:air"
+        ]
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -2,
+          0
+        ],
+        "blocks": [
+          "main:air"
+        ]
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -3,
+          0
+        ],
+        "blocks": [
+          "main:air"
+        ]
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -4,
+          0
+        ],
+        "blocks": [
+          "main:air"
+        ]
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:any_of",
+        "predicates": [
+          {
+            "type": "main:matching_fluids",
+            "offset": [
+              0,
+              -5,
+              0
+            ],
+            "fluids": "main:water"
+          },
+          {
+            "type": "main:matching_fluids",
+            "offset": [
+              0,
+              -6,
+              0
+            ],
+            "fluids": "main:water"
+          },
+          {
+            "type": "main:matching_fluids",
+            "offset": [
+              0,
+              -7,
+              0
+            ],
+            "fluids": "main:water"
+          },
+          {
+            "type": "main:matching_fluids",
+            "offset": [
+              0,
+              -8,
+              0
+            ],
+            "fluids": "main:water"
+          },
+          {
+            "type": "main:matching_fluids",
+            "offset": [
+              0,
+              -9,
+              0
+            ],
+            "fluids": "main:water"
+          },
+          {
+            "type": "main:matching_fluids",
+            "offset": [
+              0,
+              -10,
+              0
+            ],
+            "fluids": "main:water"
+          },
+          {
+            "type": "main:matching_fluids",
+            "offset": [
+              0,
+              -11,
+              0
+            ],
+            "fluids": "main:water"
+          },
+          {
+            "type": "main:matching_fluids",
+            "offset": [
+              0,
+              -12,
+              0
+            ],
+            "fluids": "main:water"
+          },
+          {
+            "type": "main:matching_fluids",
+            "offset": [
+              0,
+              -13,
+              0
+            ],
+            "fluids": "main:water"
+          },
+          {
+            "type": "main:matching_fluids",
+            "offset": [
+              0,
+              -14,
+              0
+            ],
+            "fluids": "main:water"
+          },
+          {
+            "type": "main:matching_fluids",
+            "offset": [
+              0,
+              -15,
+              0
+            ],
+            "fluids": "main:water"
+          }
+        ]
+      }
+    }
+  ]
+}

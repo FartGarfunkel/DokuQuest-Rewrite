@@ -1,0 +1,17 @@
+{
+  "feature": "wythers:vegetation/configured_tree_component/giant_birch_trunk",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 128
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+{
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"downfall": 0.4,
+	"effects": {
+		"fog_color": 12638463,
+		"mood_sound": {
+			"block_search_extent": 8,
+			"offset": 2,
+			"sound": "main:ambient.cave",
+			"tick_delay": 6000
+		},
+		"music": {
+			"max_delay": 24000,
+			"min_delay": 12000,
+			"replace_current_music": false,
+			"sound": "main:music.overworld.deep_dark"
+		},
+		"sky_color": 7907327,
+		"water_color": 139052,
+		"water_fog_color": 68883
+	},
+	"features": [
+		[],
+		[],
+		[
+			"main:amethyst_geode"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[],
+		[],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper_large",
+			"main:underwater_magma",
+			"main:disk_sand",
+			"main:disk_clay",
+			"main:disk_gravel"
+		],
+		[
+			"main:sculk_vein",
+			"main:sculk_patch_deep_dark"
+		],
+		[],
+		[
+			"main:glow_lichen",
+			"wythers:caves/emergent_deep_dark_vegetation"
+		],
+		[
+			"main:freeze_top_layer"
+		]
+	],
+	"spawn_costs": { },
+	"spawners": {
+		"ambient": [],
+		"axolotls": [],
+		"creature": [],
+		"misc": [],
+		"monster": [],
+		"underground_water_creature": [],
+		"water_ambient": [],
+		"water_creature": []
+	},
+	"temperature": 0.8,
+	"has_precipitation": true
+}

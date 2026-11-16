@@ -1,0 +1,98 @@
+{
+  "carvers": {
+    "air": "main:nether_cave"
+  },
+  "downfall": 0.0,
+  "effects": {
+    "additions_sound": {
+      "sound": "main:ambient.basalt_deltas.additions",
+      "tick_chance": 0.0111
+    },
+    "ambient_sound": "main:ambient.basalt_deltas.loop",
+    "fog_color": 6840176,
+    "mood_sound": {
+      "block_search_extent": 8,
+      "offset": 2.0,
+      "sound": "main:ambient.basalt_deltas.mood",
+      "tick_delay": 6000
+    },
+    "music": {
+      "max_delay": 24000,
+      "min_delay": 12000,
+      "replace_current_music": false,
+      "sound": "main:music.nether.basalt_deltas"
+    },
+    "particle": {
+      "options": {
+        "type": "main:white_ash"
+      },
+      "probability": 0.118093334
+    },
+    "sky_color": 7254527,
+    "water_color": 4159204,
+    "water_fog_color": 329011
+  },
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [
+      "main:delta",
+      "main:small_basalt_columns",
+      "main:large_basalt_columns"
+    ],
+    [],
+    [],
+    [
+      "main:basalt_blobs",
+      "main:blackstone_blobs",
+      "main:spring_delta",
+      "main:patch_fire",
+      "main:patch_soul_fire",
+      "main:glowstone_extra",
+      "main:glowstone",
+      "main:brown_mushroom_nether",
+      "main:red_mushroom_nether",
+      "main:ore_magma",
+      "main:spring_closed_double",
+      "main:ore_gold_deltas",
+      "main:ore_quartz_deltas",
+      "main:ore_ancient_debris_large",
+      "main:ore_debris_small"
+    ]
+  ],
+  "has_precipitation": false,
+  "spawn_costs": {},
+  "spawners": {
+    "ambient": [],
+    "axolotls": [],
+    "creature": [
+      {
+        "type": "main:strider",
+        "maxCount": 2,
+        "minCount": 1,
+        "weight": 60
+      }
+    ],
+    "misc": [],
+    "monster": [
+      {
+        "type": "main:ghast",
+        "maxCount": 1,
+        "minCount": 1,
+        "weight": 40
+      },
+      {
+        "type": "main:magma_cube",
+        "maxCount": 5,
+        "minCount": 2,
+        "weight": 100
+      }
+    ],
+    "underground_water_creature": [],
+    "water_ambient": [],
+    "water_creature": []
+  },
+  "temperature": 2.0
+}

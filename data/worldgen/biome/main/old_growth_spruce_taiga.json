@@ -1,0 +1,224 @@
+{
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"downfall": 0.8,
+	"effects": {
+		"mood_sound": {
+			"block_search_extent": 8,
+			"offset": 2.0,
+			"sound": "main:ambient.cave",
+			"tick_delay": 6000
+		},
+		"music": {
+			"max_delay": 24000,
+			"min_delay": 12000,
+			"replace_current_music": false,
+			"sound": "main:music.overworld.old_growth_taiga"
+		},
+		"sky_color": 11842740,
+		"fog_color": 13158600,
+		"water_color": 3156992,
+		"water_fog_color": 2302743
+	},
+	"features": [
+		[],
+		[
+			"main:lake_lava_underground",
+			"main:lake_lava_surface"
+		],
+		[
+			"main:amethyst_geode",
+			"main:forest_rock"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[],
+		[
+			"wythers:vegetation/extended/trees/giant_taiga_edge",
+			"wythers:vegetation/extended/trees/giant_taiga_meadow"
+		],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper",
+			"main:underwater_magma",
+			"wythers:terrain/local/disk_gravel_floor",
+			"wythers:terrain/local/disk_gravel_shore",
+			"wythers:terrain/local/disk_muddy_roots_in_podzol",
+			"wythers:terrain/local/disk_mud_in_muddy_roots",
+			"wythers:terrain/local/disk_mossy_cobblestone_in_gravel",
+			"wythers:terrain/local/disk_moss_in_mossy_cobblestone"
+		],
+		[],
+		[
+			"main:spring_water",
+			"main:spring_lava"
+		],
+		[
+			"main:glow_lichen",
+			"wythers:vegetation/local/patch/large_ferns_dense_forests",
+			"wythers:vegetation/local/trees/ogt_giant_redwood_woods",
+			"wythers:vegetation/local/trees/old_growth_spruce_taiga",
+			"main:patch_grass_taiga",
+			"main:patch_dead_bush",
+			"main:brown_mushroom_old_growth",
+			"main:red_mushroom_old_growth",
+			"main:brown_mushroom_normal",
+			"main:red_mushroom_normal",
+			"main:patch_berry_common",
+			"wythers:vegetation/local/patch/temperate_rainforest_undergrowth"
+		],
+		[
+			"main:freeze_top_layer",
+			"wythers:vegetation/local/patch/temperate_rainforest_vines",
+			"wythers:terrain/local/replace_coarse_dirt_to_moss"
+		]
+	],
+	"has_precipitation": true,
+	"spawn_costs": { },
+	"spawners": {
+		"ambient": [
+			{
+				"type": "main:bat",
+				"maxCount": 8,
+				"minCount": 8,
+				"weight": 10
+			}
+		],
+		"axolotls": [],
+		"creature": [
+			{
+				"type": "main:sheep",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 12
+			},
+			{
+				"type": "main:pig",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 10
+			},
+			{
+				"type": "main:chicken",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 10
+			},
+			{
+				"type": "main:cow",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 8
+			},
+			{
+				"type": "main:wolf",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 8
+			},
+			{
+				"type": "main:rabbit",
+				"maxCount": 3,
+				"minCount": 2,
+				"weight": 4
+			},
+			{
+				"type": "main:fox",
+				"maxCount": 4,
+				"minCount": 2,
+				"weight": 8
+			}
+		],
+		"misc": [],
+		"monster": [
+			{
+				"type": "main:spider",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:zombie",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 95
+			},
+			{
+				"type": "main:zombie_villager",
+				"maxCount": 1,
+				"minCount": 1,
+				"weight": 5
+			},
+			{
+				"type": "main:skeleton",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:creeper",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:slime",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:enderman",
+				"maxCount": 4,
+				"minCount": 1,
+				"weight": 10
+			},
+			{
+				"type": "main:witch",
+				"maxCount": 1,
+				"minCount": 1,
+				"weight": 5
+			}
+		],
+		"underground_water_creature": [
+			{
+				"type": "main:glow_squid",
+				"maxCount": 6,
+				"minCount": 4,
+				"weight": 10
+			}
+		],
+		"water_ambient": [],
+		"water_creature": []
+	},
+	"temperature": 0.7
+}

@@ -1,0 +1,56 @@
+{
+  "feature": "wythers:vegetation/configured_block_column/spanish_moss",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 5
+    },
+    {
+      "type": "main:count",
+      "count": 256
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "above_bottom": 65
+        },
+        "max_inclusive": {
+          "absolute": 90
+        }
+      }
+    },
+    {
+      "type": "main:environment_scan",
+      "direction_of_search": "up",
+      "max_steps": 12,
+      "target_condition": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:acacia_wood",
+          "main:acacia_leaves",
+          "main:oak_wood",
+          "main:oak_leaves",
+          "main:mangrove_roots",
+          "main:dark_oak_wood"
+        ]
+      },
+      "allowed_search_condition": {
+        "type": "main:matching_blocks",
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": -1
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

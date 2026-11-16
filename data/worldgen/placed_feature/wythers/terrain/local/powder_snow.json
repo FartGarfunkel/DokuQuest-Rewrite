@@ -1,0 +1,141 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 128,
+      "xz_spread": 5,
+      "y_spread": 5,
+      "feature": {
+        "feature": {
+          "type": "main:simple_block",
+          "config": {
+            "to_place": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:powder_snow"
+              }
+            }
+          }
+        },
+        "placement": [
+          {
+            "type": "main:count",
+            "count": 10
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:any_of",
+                  "predicates": [
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        0,
+                        0
+                      ],
+                      "blocks": "main:snow_block"
+                    },
+                    {
+                      "type": "main:matching_block_tag",
+                      "tag": "main:dirt"
+                    }
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:snow",
+                    "main:powder_snow"
+                  ]
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "fluids": "#main:water"
+                  }
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "fluids": "#main:water"
+                  }
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "fluids": "#main:water"
+                  }
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "fluids": "#main:water"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": 0.3
+    },
+    {
+      "type": "main:rarity_filter",
+      "chance": 3
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:count",
+      "count": 10
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

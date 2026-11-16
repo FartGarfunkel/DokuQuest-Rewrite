@@ -1,0 +1,83 @@
+{
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "config": {
+            "to_place": {
+              "state": {
+                "Name": "main:jungle_leaves",
+                "Properties": {
+                  "distance": "2",
+                  "persistent": "false",
+                  "waterlogged": "false"
+                }
+              },
+              "type": "main:simple_state_provider"
+            }
+          },
+          "type": "main:simple_block"
+        },
+        "placement": [
+          {
+            "direction_of_search": "up",
+            "max_steps": 6,
+            "target_condition": {
+              "predicates": [
+                {
+                  "blocks": "main:jungle_leaves",
+                  "offset": [
+                    1,
+                    0,
+                    0
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": "main:jungle_leaves",
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": "main:jungle_leaves",
+                  "offset": [
+                    -1,
+                    0,
+                    0
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": "main:jungle_leaves",
+                  "offset": [
+                    0,
+                    0,
+                    -1
+                  ],
+                  "type": "main:matching_blocks"
+                }
+              ],
+              "type": "main:all_of"
+            },
+            "type": "main:environment_scan"
+          },
+          {
+            "predicate": {
+              "blocks": [
+                "main:air",
+                "main:vine"
+              ],
+              "type": "main:matching_blocks"
+            },
+            "type": "main:block_predicate_filter"
+          }
+        ]
+      }
+    ]
+  },
+  "type": "main:simple_random_selector"
+}

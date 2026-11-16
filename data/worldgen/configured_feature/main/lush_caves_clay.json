@@ -1,0 +1,13 @@
+{
+  "type": "main:random_boolean_selector",
+  "config": {
+    "feature_false": {
+      "feature": "main:clay_pool_with_dripleaves",
+      "placement": []
+    },
+    "feature_true": {
+      "feature": "main:clay_with_dripleaves",
+      "placement": []
+    }
+  }
+}

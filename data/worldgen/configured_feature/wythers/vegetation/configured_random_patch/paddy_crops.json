@@ -1,0 +1,78 @@
+{
+  "type": "main:flower",
+  "config": {
+    "tries": 96,
+    "xz_spread": 6,
+    "y_spread": 2,
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:dual_noise_provider",
+            "seed": 2345,
+            "noise": {
+              "firstOctave": -2,
+              "amplitudes": [
+                1
+              ]
+            },
+            "scale": 1,
+            "variety": {
+              "min_inclusive": 1,
+              "max_inclusive": 1
+            },
+            "slow_noise": {
+              "firstOctave": -3,
+              "amplitudes": [
+                1
+              ]
+            },
+            "slow_scale": 1,
+            "states": [
+              {
+                "Name": "main:carrots",
+                "Properties": {
+                  "age": "2"
+                }
+              },
+              {
+                "Name": "main:beetroots",
+                "Properties": {
+                  "age": "2"
+                }
+              },
+              {
+                "Name": "main:potatoes",
+                "Properties": {
+                  "age": "2"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": "main:farmland"
+          }
+        }
+      ]
+    }
+  }
+}

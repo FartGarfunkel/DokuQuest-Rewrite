@@ -1,0 +1,52 @@
+{
+  "feature": "wythers:vegetation/configured_bushes_boreal_forest",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 5
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 250
+      }
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:grass_block"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:biome"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    }
+  ]
+}

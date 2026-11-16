@@ -1,0 +1,413 @@
+{
+  "feature": {
+    "type": "main:random_selector",
+    "config": {
+      "features": [
+        {
+          "chance": 0.5,
+          "feature": {
+            "feature": {
+              "type": "main:disk",
+              "config": {
+                "state_provider": {
+                  "fallback": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:air"
+                    }
+                  },
+                  "rules": []
+                },
+                "target": {
+                  "type": "main:all_of",
+                  "predicates": [
+                    {
+                      "type": "main:all_of",
+                      "predicates": [
+                        {
+                          "type": "main:any_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_block_tag",
+                              "tag": "wythers:river_carver_replaceables"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            1,
+                            2,
+                            0
+                          ],
+                          "blocks": [
+                            "main:air",
+                            "main:grass",
+                            "main:fern"
+                          ]
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            -1,
+                            2,
+                            0
+                          ],
+                          "blocks": [
+                            "main:air",
+                            "main:grass",
+                            "main:fern"
+                          ]
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            2,
+                            1
+                          ],
+                          "blocks": [
+                            "main:air",
+                            "main:grass",
+                            "main:fern"
+                          ]
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            2,
+                            -1
+                          ],
+                          "blocks": [
+                            "main:air",
+                            "main:grass",
+                            "main:fern"
+                          ]
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            1,
+                            0
+                          ],
+                          "blocks": [
+                            "main:air",
+                            "main:grass",
+                            "main:fern"
+                          ]
+                        },
+                        {
+                          "type": "main:any_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                1,
+                                0,
+                                0
+                              ],
+                              "blocks": "main:air"
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                -1,
+                                0,
+                                0
+                              ],
+                              "blocks": "main:air"
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                0,
+                                1
+                              ],
+                              "blocks": "main:air"
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                0,
+                                -1
+                              ],
+                              "blocks": "main:air"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:not",
+                          "predicate": {
+                            "type": "main:any_of",
+                            "predicates": [
+                              {
+                                "type": "main:matching_fluids",
+                                "offset": [
+                                  1,
+                                  0,
+                                  0
+                                ],
+                                "fluids": "main:water"
+                              },
+                              {
+                                "type": "main:matching_fluids",
+                                "offset": [
+                                  -1,
+                                  0,
+                                  0
+                                ],
+                                "fluids": "main:water"
+                              },
+                              {
+                                "type": "main:matching_fluids",
+                                "offset": [
+                                  0,
+                                  0,
+                                  1
+                                ],
+                                "fluids": "main:water"
+                              },
+                              {
+                                "type": "main:matching_fluids",
+                                "offset": [
+                                  0,
+                                  0,
+                                  -1
+                                ],
+                                "fluids": "main:water"
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "radius": {
+                  "type": "main:uniform",
+                  "value": {
+                    "min_inclusive": 5,
+                    "max_inclusive": 7
+                  }
+                },
+                "half_height": 4
+              }
+            },
+            "placement": []
+          }
+        }
+      ],
+      "default": {
+        "feature": {
+          "type": "main:disk",
+          "config": {
+            "state_provider": {
+              "fallback": {
+                "type": "main:simple_state_provider",
+                "state": {
+                  "Name": "main:air"
+                }
+              },
+              "rules": []
+            },
+            "target": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:all_of",
+                  "predicates": [
+                    {
+                      "type": "main:any_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_block_tag",
+                          "tag": "wythers:river_carver_replaceables"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        1,
+                        1,
+                        0
+                      ],
+                      "blocks": [
+                        "main:air",
+                        "main:grass",
+                        "main:fern"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        -1,
+                        1,
+                        0
+                      ],
+                      "blocks": [
+                        "main:air",
+                        "main:grass",
+                        "main:fern"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        1,
+                        1
+                      ],
+                      "blocks": [
+                        "main:air",
+                        "main:grass",
+                        "main:fern"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        1,
+                        -1
+                      ],
+                      "blocks": [
+                        "main:air",
+                        "main:grass",
+                        "main:fern"
+                      ]
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        1,
+                        0
+                      ],
+                      "blocks": [
+                        "main:air",
+                        "main:grass",
+                        "main:fern"
+                      ]
+                    },
+                    {
+                      "type": "main:any_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            1,
+                            0,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            -1,
+                            0,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            0,
+                            1
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            0,
+                            -1
+                          ],
+                          "blocks": "main:air"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "main:not",
+                      "predicate": {
+                        "type": "main:any_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_fluids",
+                            "offset": [
+                              1,
+                              0,
+                              0
+                            ],
+                            "fluids": "main:water"
+                          },
+                          {
+                            "type": "main:matching_fluids",
+                            "offset": [
+                              -1,
+                              0,
+                              0
+                            ],
+                            "fluids": "main:water"
+                          },
+                          {
+                            "type": "main:matching_fluids",
+                            "offset": [
+                              0,
+                              0,
+                              1
+                            ],
+                            "fluids": "main:water"
+                          },
+                          {
+                            "type": "main:matching_fluids",
+                            "offset": [
+                              0,
+                              0,
+                              -1
+                            ],
+                            "fluids": "main:water"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 5,
+                "max_inclusive": 7
+              }
+            },
+            "half_height": 4
+          }
+        },
+        "placement": []
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 0
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    }
+  ]
+}

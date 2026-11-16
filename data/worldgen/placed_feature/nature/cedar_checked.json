@@ -1,0 +1,17 @@
+{
+  "feature": "nature:cedar_tree",
+  "placement": [
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "nature:cedar_sapling",
+          "Properties": {
+            "stage": "0"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "feature": "wythers:vegetation/configured_tree/taiga_spruce",
+  "placement": [
+    {
+      "count": {
+        "distribution": [
+          {
+            "data": 5,
+            "weight": 9
+          },
+          {
+            "data": 6,
+            "weight": 1
+          }
+        ],
+        "type": "main:weighted_list"
+      },
+      "type": "main:count"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "max_water_depth": 0,
+      "type": "main:surface_water_depth_filter"
+    },
+    {
+      "heightmap": "OCEAN_FLOOR",
+      "type": "main:heightmap"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:spruce_sapling",
+          "Properties": {
+            "stage": "0"
+          }
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

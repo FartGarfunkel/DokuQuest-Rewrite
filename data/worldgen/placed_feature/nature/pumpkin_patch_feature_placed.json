@@ -1,0 +1,72 @@
+{
+  "feature": "nature:pumpkin_patch_feature",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_factor": 500.0,
+      "noise_offset": 0.0,
+      "noise_to_count_ratio": 4
+    },
+    {
+      "type": "main:rarity_filter",
+      "chance": 60
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": {
+        "type": "main:uniform",
+				"value": {
+					"min_inclusive": 0,
+					"max_inclusive": 15
+				}
+      },
+      "y_spread": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 0,
+          "max_inclusive": 1
+        }
+      }
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:any_of",
+        "predicates": [
+
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -1,
+                      0
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:dirt"
+                    ]
+                  },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:dirt"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

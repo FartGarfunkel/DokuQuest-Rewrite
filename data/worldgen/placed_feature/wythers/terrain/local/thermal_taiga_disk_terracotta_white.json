@@ -1,0 +1,66 @@
+{
+  "feature": {
+  "type": "main:disk",
+  "config": {
+    "state_provider": {
+      "fallback": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:white_terracotta"
+        }
+      },
+      "rules": []
+    },
+    "target": {
+      "type": "main:matching_blocks",
+      "blocks": [
+        "main:grass_block",
+        "main:dirt",
+        "main:coarse_dirt",
+        "main:rooted_dirt",
+        "main:mud",
+        "main:gravel",
+        "main:sand"
+      ]
+    },
+    "radius": {
+      "type": "main:uniform",
+      "value": {
+        "min_inclusive": 4,
+        "max_inclusive": 8
+      }
+    },
+    "half_height": 2
+  }
+}
+,
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": -0.45
+    },
+    {
+      "type": "main:count",
+      "count": 64
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_fluids",
+        "fluids": "main:water"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

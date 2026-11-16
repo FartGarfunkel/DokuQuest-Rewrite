@@ -1,0 +1,19 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/crimson_roots",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 1
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

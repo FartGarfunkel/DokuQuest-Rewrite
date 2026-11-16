@@ -1,0 +1,17 @@
+{
+  "feature": "nature:orange_maple_tree",
+  "placement": [
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "nature:orange_maple_sapling",
+          "Properties": {
+            "stage": "0"
+          }
+        }
+      }
+    }
+  ]
+}

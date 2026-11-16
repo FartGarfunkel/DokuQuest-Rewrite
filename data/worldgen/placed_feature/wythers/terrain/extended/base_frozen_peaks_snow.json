@@ -1,0 +1,166 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:snow_block"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                1,
+                0
+              ],
+              "blocks": "main:stone"
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:stone"
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:any_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "blocks": [
+              "main:grass_block",
+              "main:gravel"
+            ]
+          },
+          {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:coarse_dirt",
+                  "main:dirt"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:snow_block",
+                  "main:snow",
+                  "main:stone"
+                ]
+              },
+              {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:any_of",
+                    "predicates": []
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:snow"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:snow"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:snow"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:snow"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 8
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 60
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "WORLD_SURFACE_WG",
+      "min_inclusive": -250,
+      "max_inclusive": -125
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": -5
+    }
+  ]
+}

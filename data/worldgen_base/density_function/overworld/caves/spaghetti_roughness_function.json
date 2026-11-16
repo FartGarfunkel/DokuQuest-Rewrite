@@ -1,0 +1,33 @@
+{
+  "type": "main:cache_once",
+  "argument": {
+    "type": "main:mul",
+    "argument1": {
+      "type": "main:add",
+      "argument1": -0.05,
+      "argument2": {
+        "type": "main:mul",
+        "argument1": -0.05,
+        "argument2": {
+          "type": "main:noise",
+          "noise": "main:spaghetti_roughness_modulator",
+          "xz_scale": 1.0,
+          "y_scale": 1.0
+        }
+      }
+    },
+    "argument2": {
+      "type": "main:add",
+      "argument1": -0.4,
+      "argument2": {
+        "type": "main:abs",
+        "argument": {
+          "type": "main:noise",
+          "noise": "main:spaghetti_roughness",
+          "xz_scale": 1.0,
+          "y_scale": 1.0
+        }
+      }
+    }
+  }
+}

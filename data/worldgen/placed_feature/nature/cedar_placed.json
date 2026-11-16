@@ -1,0 +1,25 @@
+{
+  "feature": "nature:cedar_tree_spawn",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_factor": 60.0,
+      "noise_offset": -0.25,
+      "noise_to_count_ratio": 1
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

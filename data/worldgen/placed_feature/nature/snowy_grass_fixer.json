@@ -1,0 +1,43 @@
+{
+    "feature": "nature:snowy_grass_fixer",
+    "placement": [
+      {
+        "type": "main:count",
+        "count": 48
+      },
+      {
+        "type": "main:in_square"
+      },
+      {
+        "type": "main:heightmap",
+        "heightmap": "OCEAN_FLOOR_WG"
+      },
+      {
+        "type": "main:environment_scan",
+        "direction_of_search": "down",
+        "max_steps": 16,
+        "target_condition": {
+          "type": "main:all_of",
+          "predicates": [
+            {
+              "type": "main:matching_blocks",
+              "blocks": "main:snow"
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -1,
+                0
+              ],
+              "blocks": "main:grass_block"
+            }
+          ]
+        }
+      },
+      {
+        "type": "main:biome"
+      }
+    ]
+  }
+  

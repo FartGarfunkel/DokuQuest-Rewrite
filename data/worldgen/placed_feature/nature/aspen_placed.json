@@ -1,0 +1,25 @@
+{
+  "feature": "nature:aspen_tree_spawn",
+  "placement": [
+    {
+      "type": "main:noise_threshold_count",
+      "above_noise": 5,
+      "below_noise": 0,
+      "noise_level": 0.5
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

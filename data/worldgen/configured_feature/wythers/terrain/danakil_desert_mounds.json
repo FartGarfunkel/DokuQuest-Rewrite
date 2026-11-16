@@ -1,0 +1,100 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "features": [
+      {
+        "chance": 0.3,
+        "feature": {
+          "feature": "wythers:terrain/terracotta_mound_orange",
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": "main:orange_terracotta"
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": "main:air"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "chance": 0.2,
+        "feature": {
+          "feature": "wythers:terrain/terracotta_mound_red",
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": "main:red_terracotta"
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": "main:air"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "default": {
+      "feature": "wythers:terrain/terracotta_mound_yellow",
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": "main:yellow_terracotta"
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_fluids",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "fluids": "main:water"
+          }
+        }
+      ]
+    }
+  }
+}

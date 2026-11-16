@@ -1,0 +1,229 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:white_concrete_powder"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "blocks": "main:mushroom_stem"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    0,
+                    0
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    0,
+                    0
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    -1
+                  ],
+                  "blocks": "main:air"
+                }
+              ]
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:mushroom_stem",
+                "Properties": {
+                  "down": "false",
+                  "up": "false",
+                  "east": "true",
+                  "north": "true",
+                  "south": "true",
+                  "west": "true"
+                }
+              }
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "blocks": [
+                "main:basalt",
+                "main:dripstone_block",
+                "main:prismarine"
+              ]
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:calcite"
+              }
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:water",
+                    "main:air"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "blocks": "main:water"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    0,
+                    0
+                  ],
+                  "blocks": "main:water"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    0,
+                    0
+                  ],
+                  "blocks": "main:water"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "blocks": "main:water"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    -1
+                  ],
+                  "blocks": "main:water"
+                }
+              ]
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:calcite"
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:mycelium",
+          "main:dirt",
+          "main:prismarine",
+          "main:basalt",
+          "main:mushroom_stem",
+          "main:dripstone_block"
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 6
+        }
+      },
+      "half_height": 3
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 500,
+      "noise_offset": 0.5
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": 0.6
+    },
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "OCEAN_FLOOR_WG",
+      "min_inclusive": -200,
+      "max_inclusive": -1
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

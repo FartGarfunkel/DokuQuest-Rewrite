@@ -1,0 +1,82 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "features": [],
+    "default": {
+      "feature": {
+        "type": "main:ore",
+        "config": {
+          "discard_chance_on_air_exposure": 0.0,
+          "size": 10,
+          "targets": [
+            {
+              "state": {
+                "Name": "main:stone"
+              },
+              "target": {
+                "predicate_type": "main:always_true"
+              }
+            }
+          ]
+        }
+      },
+      "placement": [
+        {
+          "type": "main:random_offset",
+          "xz_spread": {
+            "type": "main:uniform",
+				"value": {
+					"min_inclusive": 0,
+					"max_inclusive": 15
+				}
+            
+          },
+          "y_spread": {
+            "type": "main:uniform",
+				"value": {
+					"min_inclusive": 2,
+					"max_inclusive": 3
+				}
+            
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:stone",
+                  "main:grass_block",
+                  "nature:red_moss_block",
+                  "main:dirt"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:stone",
+                  "main:grass_block",
+                  "nature:red_moss_block",
+                  "main:dirt"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

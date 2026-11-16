@@ -1,0 +1,25 @@
+{
+	"feature": "nature:terracotta_on_sandy_soil",
+	"placement": [
+		{
+			"type": "main:count",
+			"count": 22
+		},
+		{
+			"type": "main:count",
+			"count": 74
+		},
+		{
+			"type": "main:in_square"
+		},
+		{
+			"type": "main:surface_relative_threshold_filter",
+			"heightmap": "WORLD_SURFACE_WG",
+            "min": 20,
+            "max": 120
+		},
+		{
+			"type": "main:biome"
+		}
+	]
+}

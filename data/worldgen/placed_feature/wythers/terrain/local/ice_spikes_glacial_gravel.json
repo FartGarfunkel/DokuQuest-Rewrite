@@ -1,0 +1,370 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:gravel"
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:air",
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      2,
+                      0
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      1,
+                      0
+                    ],
+                    "blocks": "main:gravel"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "blocks": [
+              "main:grass_block",
+              "main:dirt"
+            ]
+          },
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  1,
+                  1
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  1,
+                  -1
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  1
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  -1
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  1,
+                  1
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  1,
+                  -1
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  1
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  -1
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  1
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  -1
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  1
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  -1
+                ],
+                "blocks": [
+                  "main:packed_ice",
+                  "main:blue_ice",
+                  "main:gravel"
+                ]
+              }
+            ]
+          },
+          {
+            "type": "main:not",
+            "predicate": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    0
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    -1,
+                    0
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    -1,
+                    0
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    1
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    -1
+                  ],
+                  "blocks": "main:air"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 7
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 128
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "WORLD_SURFACE_WG",
+      "min_inclusive": -85,
+      "max_inclusive": -77
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

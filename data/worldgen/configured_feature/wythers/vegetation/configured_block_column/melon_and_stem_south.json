@@ -1,0 +1,33 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "south",
+    "allowed_placement": {
+      "type": "main:true"
+    },
+    "prioritize_tip": true,
+    "layers": [
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:attached_melon_stem",
+            "Properties": {
+              "facing": "south"
+            }
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:melon"
+          }
+        }
+      }
+    ]
+  }
+}

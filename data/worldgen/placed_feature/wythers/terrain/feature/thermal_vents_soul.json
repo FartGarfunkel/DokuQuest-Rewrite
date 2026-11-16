@@ -1,0 +1,155 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:soul_sand"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:not",
+              "predicate": {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      1,
+                      0
+                    ],
+                    "blocks": [
+                      "main:water"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:dripstone_block",
+                      "main:soul_sand"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:dripstone_block",
+                      "main:soul_sand"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:dripstone_block",
+                      "main:soul_sand"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:dripstone_block",
+                      "main:soul_sand"
+                    ]
+                  },
+                  {
+                    "type": "main:any_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          2,
+                          0
+                        ],
+                        "blocks": "main:dripstone_block"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          2,
+                          0
+                        ],
+                        "blocks": "main:dripstone_block"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          2,
+                          1
+                        ],
+                        "blocks": "main:dripstone_block"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          2,
+                          -1
+                        ],
+                        "blocks": "main:dripstone_block"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:dripstone_block"
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": "main:dripstone_block"
+      },
+      "radius": 3,
+      "half_height": 1
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:biome"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    }
+  ]
+}

@@ -1,0 +1,2542 @@
+{
+  "aquifers_enabled": true,
+  "default_block": {
+    "Name": "main:stone"
+  },
+  "default_fluid": {
+    "Name": "main:water",
+    "Properties": {
+      "level": "0"
+    }
+  },
+  "disable_mob_generation": false,
+  "legacy_random_source": false,
+  "noise": {
+    "height": 384,
+    "min_y": -64,
+    "size_horizontal": 1,
+    "size_vertical": 2
+  },
+  "noise_router": {
+    "barrier": {
+      "type": "main:noise",
+      "noise": "main:aquifer_barrier",
+      "xz_scale": 1.0,
+      "y_scale": 0.5
+    },
+    "continents": "main:overworld/continents",
+    "depth": "main:overworld/depth",
+    "erosion": "main:overworld/erosion",
+    "final_density": {
+      "type": "main:min",
+      "argument1": {
+        "type": "main:squeeze",
+        "argument": {
+          "type": "main:mul",
+          "argument1": 0.64,
+          "argument2": {
+            "type": "main:interpolated",
+            "argument": {
+              "type": "main:blend_density",
+              "argument": {
+                "type": "main:add",
+                "argument1": 0.1171875,
+                "argument2": {
+                  "type": "main:mul",
+                  "argument1": {
+                    "type": "main:y_clamped_gradient",
+                    "from_value": 0.0,
+                    "from_y": -64,
+                    "to_value": 1.0,
+                    "to_y": -40
+                  },
+                  "argument2": {
+                    "type": "main:add",
+                    "argument1": -0.1171875,
+                    "argument2": {
+                      "type": "main:add",
+                      "argument1": -0.078125,
+                      "argument2": {
+                        "type": "main:mul",
+                        "argument1": {
+                          "type": "main:y_clamped_gradient",
+                          "from_value": 1.0,
+                          "from_y": 240,
+                          "to_value": 0.0,
+                          "to_y": 256
+                        },
+                        "argument2": {
+                          "type": "main:add",
+                          "argument1": 0.078125,
+                          "argument2": {
+                            "type": "main:range_choice",
+                            "input": "main:overworld/sloped_cheese",
+                            "max_exclusive": 1.5625,
+                            "min_inclusive": -1000000.0,
+                            "when_in_range": {
+                              "type": "main:min",
+                              "argument1": "main:overworld/sloped_cheese",
+                              "argument2": {
+                                "type": "main:mul",
+                                "argument1": 5.0,
+                                "argument2": "main:overworld/caves/entrances"
+                              }
+                            },
+                            "when_out_of_range": {
+                              "type": "main:max",
+                              "argument1": {
+                                "type": "main:min",
+                                "argument1": {
+                                  "type": "main:min",
+                                  "argument1": {
+                                    "type": "main:add",
+                                    "argument1": {
+                                      "type": "main:mul",
+                                      "argument1": 4.0,
+                                      "argument2": {
+                                        "type": "main:square",
+                                        "argument": {
+                                          "type": "main:noise",
+                                          "noise": "main:cave_layer",
+                                          "xz_scale": 1.0,
+                                          "y_scale": 8.0
+                                        }
+                                      }
+                                    },
+                                    "argument2": {
+                                      "type": "main:add",
+                                      "argument1": {
+                                        "type": "main:clamp",
+                                        "input": {
+                                          "type": "main:add",
+                                          "argument1": 0.27,
+                                          "argument2": {
+                                            "type": "main:noise",
+                                            "noise": "main:cave_cheese",
+                                            "xz_scale": 1.0,
+                                            "y_scale": 0.6666666666666666
+                                          }
+                                        },
+                                        "max": 1.0,
+                                        "min": -1.0
+                                      },
+                                      "argument2": {
+                                        "type": "main:clamp",
+                                        "input": {
+                                          "type": "main:add",
+                                          "argument1": 1.5,
+                                          "argument2": {
+                                            "type": "main:mul",
+                                            "argument1": -0.64,
+                                            "argument2": "main:overworld/sloped_cheese"
+                                          }
+                                        },
+                                        "max": 0.5,
+                                        "min": 0.0
+                                      }
+                                    }
+                                  },
+                                  "argument2": "main:overworld/caves/entrances"
+                                },
+                                "argument2": {
+                                  "type": "main:add",
+                                  "argument1": "main:overworld/caves/spaghetti_2d",
+                                  "argument2": "main:overworld/caves/spaghetti_roughness_function"
+                                }
+                              },
+                              "argument2": {
+                                "type": "main:range_choice",
+                                "input": "main:overworld/caves/pillars",
+                                "max_exclusive": 0.03,
+                                "min_inclusive": -1000000.0,
+                                "when_in_range": -1000000.0,
+                                "when_out_of_range": "main:overworld/caves/pillars"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "argument2": "main:overworld/caves/noodle"
+    },
+    "fluid_level_floodedness": {
+      "type": "main:noise",
+      "noise": "main:aquifer_fluid_level_floodedness",
+      "xz_scale": 1.0,
+      "y_scale": 0.67
+    },
+    "fluid_level_spread": {
+      "type": "main:noise",
+      "noise": "main:aquifer_fluid_level_spread",
+      "xz_scale": 1.0,
+      "y_scale": 0.7142857142857143
+    },
+    "initial_density_without_jaggedness": {
+      "type": "main:add",
+      "argument1": 0.1171875,
+      "argument2": {
+        "type": "main:mul",
+        "argument1": {
+          "type": "main:y_clamped_gradient",
+          "from_value": 0.0,
+          "from_y": -64,
+          "to_value": 1.0,
+          "to_y": -40
+        },
+        "argument2": {
+          "type": "main:add",
+          "argument1": -0.1171875,
+          "argument2": {
+            "type": "main:add",
+            "argument1": -0.078125,
+            "argument2": {
+              "type": "main:mul",
+              "argument1": {
+                "type": "main:y_clamped_gradient",
+                "from_value": 1.0,
+                "from_y": 240,
+                "to_value": 0.0,
+                "to_y": 256
+              },
+              "argument2": {
+                "type": "main:add",
+                "argument1": 0.078125,
+                "argument2": {
+                  "type": "main:clamp",
+                  "input": {
+                    "type": "main:add",
+                    "argument1": -0.703125,
+                    "argument2": {
+                      "type": "main:mul",
+                      "argument1": 4.0,
+                      "argument2": {
+                        "type": "main:quarter_negative",
+                        "argument": {
+                          "type": "main:mul",
+                          "argument1": "main:overworld/depth",
+                          "argument2": {
+                            "type": "main:cache_2d",
+                            "argument": "main:overworld/factor"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "max": 64.0,
+                  "min": -64.0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "lava": {
+      "type": "main:noise",
+      "noise": "main:aquifer_lava",
+      "xz_scale": 1.0,
+      "y_scale": 1.0
+    },
+    "ridges": "main:overworld/ridges",
+    "temperature": {
+      "type": "main:shifted_noise",
+      "noise": "main:temperature",
+      "shift_x": "main:shift_x",
+      "shift_y": 0.0,
+      "shift_z": "main:shift_z",
+      "xz_scale": 0.25,
+      "y_scale": 0.0
+    },
+    "vegetation": {
+      "type": "main:shifted_noise",
+      "noise": "main:vegetation",
+      "shift_x": "main:shift_x",
+      "shift_y": 0.0,
+      "shift_z": "main:shift_z",
+      "xz_scale": 0.25,
+      "y_scale": 0.0
+    },
+    "vein_gap": {
+      "type": "main:noise",
+      "noise": "main:ore_gap",
+      "xz_scale": 1.0,
+      "y_scale": 1.0
+    },
+    "vein_ridged": {
+      "type": "main:add",
+      "argument1": -0.07999999821186066,
+      "argument2": {
+        "type": "main:max",
+        "argument1": {
+          "type": "main:abs",
+          "argument": {
+            "type": "main:interpolated",
+            "argument": {
+              "type": "main:range_choice",
+              "input": "main:y",
+              "max_exclusive": 51.0,
+              "min_inclusive": -60.0,
+              "when_in_range": {
+                "type": "main:noise",
+                "noise": "main:ore_vein_a",
+                "xz_scale": 4.0,
+                "y_scale": 4.0
+              },
+              "when_out_of_range": 0.0
+            }
+          }
+        },
+        "argument2": {
+          "type": "main:abs",
+          "argument": {
+            "type": "main:interpolated",
+            "argument": {
+              "type": "main:range_choice",
+              "input": "main:y",
+              "max_exclusive": 51.0,
+              "min_inclusive": -60.0,
+              "when_in_range": {
+                "type": "main:noise",
+                "noise": "main:ore_vein_b",
+                "xz_scale": 4.0,
+                "y_scale": 4.0
+              },
+              "when_out_of_range": 0.0
+            }
+          }
+        }
+      }
+    },
+    "vein_toggle": {
+      "type": "main:interpolated",
+      "argument": {
+        "type": "main:range_choice",
+        "input": "main:y",
+        "max_exclusive": 51.0,
+        "min_inclusive": -60.0,
+        "when_in_range": {
+          "type": "main:noise",
+          "noise": "main:ore_veininess",
+          "xz_scale": 1.5,
+          "y_scale": 1.5
+        },
+        "when_out_of_range": 0.0
+      }
+    }
+  },
+  "ore_veins_enabled": true,
+  "sea_level": 63,
+  "spawn_target": [
+    {
+      "continentalness": [
+        -0.11,
+        1.0
+      ],
+      "depth": 0.0,
+      "erosion": [
+        -1.0,
+        1.0
+      ],
+      "humidity": [
+        -1.0,
+        1.0
+      ],
+      "offset": 0.0,
+      "temperature": [
+        -1.0,
+        1.0
+      ],
+      "weirdness": [
+        -1.0,
+        -0.16
+      ]
+    },
+    {
+      "continentalness": [
+        -0.11,
+        1.0
+      ],
+      "depth": 0.0,
+      "erosion": [
+        -1.0,
+        1.0
+      ],
+      "humidity": [
+        -1.0,
+        1.0
+      ],
+      "offset": 0.0,
+      "temperature": [
+        -1.0,
+        1.0
+      ],
+      "weirdness": [
+        0.16,
+        1.0
+      ]
+    }
+  ],
+  "surface_rule": {
+    "type": "main:sequence",
+    "sequence": [
+      {
+        "type": "main:condition",
+        "if_true": {
+          "type": "main:vertical_gradient",
+          "false_at_and_above": {
+            "above_bottom": 5
+          },
+          "random_name": "main:bedrock_floor","random_salt":"17087672379003036799",
+          "true_at_and_below": {
+            "above_bottom": 0
+          }
+        },
+        "then_run": {
+          "type": "main:block",
+          "result_state": {
+            "Name": "main:bedrock"
+          }
+        }
+      },
+      {
+        "type": "main:condition",
+        "if_true": {
+          "type": "main:above_preliminary_surface"
+        },
+        "then_run": {
+          "type": "main:sequence",
+          "sequence": [
+            {
+              "type": "main:condition",
+              "if_true": {
+                "type": "main:stone_depth",
+                "add_surface_depth": false,
+                "offset": 0,
+                "secondary_depth_range": 0,
+                "surface_type": "floor"
+              },
+              "then_run": {
+                "type": "main:sequence",
+                "sequence": [
+                  {
+                    "type": "main:condition",
+                    "if_true": {
+                      "type": "main:biome",
+                      "biome_is": [
+                        "main:wooded_badlands"
+                      ]
+                    },
+                    "then_run": {
+                      "type": "main:condition",
+                      "if_true": {
+                        "type": "main:y_above",
+                        "add_stone_depth": false,
+                        "anchor": {
+                          "absolute": 97
+                        },
+                        "surface_depth_multiplier": 2
+                      },
+                      "then_run": {
+                        "type": "main:sequence",
+                        "sequence": [
+                          {
+                            "type": "main:condition",
+                            "if_true": {
+                              "type": "main:noise_threshold",
+                              "max_threshold": -0.5454,
+                              "min_threshold": -0.909,
+                              "noise": "main:surface"
+                            },
+                            "then_run": {
+                              "type": "main:block",
+                              "result_state": {
+                                "Name": "main:coarse_dirt"
+                              }
+                            }
+                          },
+                          {
+                            "type": "main:condition",
+                            "if_true": {
+                              "type": "main:noise_threshold",
+                              "max_threshold": 0.1818,
+                              "min_threshold": -0.1818,
+                              "noise": "main:surface"
+                            },
+                            "then_run": {
+                              "type": "main:block",
+                              "result_state": {
+                                "Name": "main:coarse_dirt"
+                              }
+                            }
+                          },
+                          {
+                            "type": "main:condition",
+                            "if_true": {
+                              "type": "main:noise_threshold",
+                              "max_threshold": 0.909,
+                              "min_threshold": 0.5454,
+                              "noise": "main:surface"
+                            },
+                            "then_run": {
+                              "type": "main:block",
+                              "result_state": {
+                                "Name": "main:coarse_dirt"
+                              }
+                            }
+                          },
+                          {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:water",
+                                  "add_stone_depth": false,
+                                  "offset": 0,
+                                  "surface_depth_multiplier": 0
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:grass_block",
+                                    "Properties": {
+                                      "snowy": "false"
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:block",
+                                "result_state": {
+                                  "Name": "main:dirt"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  {
+                    "type": "main:condition",
+                    "if_true": {
+                      "type": "main:biome",
+                      "biome_is": [
+                        "main:swamp"
+                      ]
+                    },
+                    "then_run": {
+                      "type": "main:condition",
+                      "if_true": {
+                        "type": "main:y_above",
+                        "add_stone_depth": false,
+                        "anchor": {
+                          "absolute": 62
+                        },
+                        "surface_depth_multiplier": 0
+                      },
+                      "then_run": {
+                        "type": "main:condition",
+                        "if_true": {
+                          "type": "main:not",
+                          "invert": {
+                            "type": "main:y_above",
+                            "add_stone_depth": false,
+                            "anchor": {
+                              "absolute": 63
+                            },
+                            "surface_depth_multiplier": 0
+                          }
+                        },
+                        "then_run": {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:noise_threshold",
+                            "max_threshold": 1.7976931348623157E308,
+                            "min_threshold": 0.0,
+                            "noise": "main:surface_swamp"
+                          },
+                          "then_run": {
+                            "type": "main:block",
+                            "result_state": {
+                              "Name": "main:water",
+                              "Properties": {
+                                "level": "0"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "main:condition",
+                    "if_true": {
+                      "type": "main:biome",
+                      "biome_is": [
+                        "main:mangrove_swamp"
+                      ]
+                    },
+                    "then_run": {
+                      "type": "main:condition",
+                      "if_true": {
+                        "type": "main:y_above",
+                        "add_stone_depth": false,
+                        "anchor": {
+                          "absolute": 60
+                        },
+                        "surface_depth_multiplier": 0
+                      },
+                      "then_run": {
+                        "type": "main:condition",
+                        "if_true": {
+                          "type": "main:not",
+                          "invert": {
+                            "type": "main:y_above",
+                            "add_stone_depth": false,
+                            "anchor": {
+                              "absolute": 63
+                            },
+                            "surface_depth_multiplier": 0
+                          }
+                        },
+                        "then_run": {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:noise_threshold",
+                            "max_threshold": 1.7976931348623157E308,
+                            "min_threshold": 0.0,
+                            "noise": "main:surface_swamp"
+                          },
+                          "then_run": {
+                            "type": "main:block",
+                            "result_state": {
+                              "Name": "main:water",
+                              "Properties": {
+                                "level": "0"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "main:condition",
+              "if_true": {
+                "type": "main:biome",
+                "biome_is": [
+                  "main:badlands",
+                  "main:eroded_badlands",
+                  "main:wooded_badlands"
+                ]
+              },
+              "then_run": {
+                "type": "main:sequence",
+                "sequence": [
+                  {
+                    "type": "main:condition",
+                    "if_true": {
+                      "type": "main:stone_depth",
+                      "add_surface_depth": false,
+                      "offset": 0,
+                      "secondary_depth_range": 0,
+                      "surface_type": "floor"
+                    },
+                    "then_run": {
+                      "type": "main:sequence",
+                      "sequence": [
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:y_above",
+                            "add_stone_depth": false,
+                            "anchor": {
+                              "absolute": 256
+                            },
+                            "surface_depth_multiplier": 0
+                          },
+                          "then_run": {
+                            "type": "main:block",
+                            "result_state": {
+                              "Name": "main:orange_terracotta"
+                            }
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:y_above",
+                            "add_stone_depth": true,
+                            "anchor": {
+                              "absolute": 74
+                            },
+                            "surface_depth_multiplier": 1
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": -0.5454,
+                                  "min_threshold": -0.909,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:terracotta"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 0.1818,
+                                  "min_threshold": -0.1818,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:terracotta"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 0.909,
+                                  "min_threshold": 0.5454,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:terracotta"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:bandlands"
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:water",
+                            "add_stone_depth": false,
+                            "offset": -1,
+                            "surface_depth_multiplier": 0
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:stone_depth",
+                                  "add_surface_depth": false,
+                                  "offset": 0,
+                                  "secondary_depth_range": 0,
+                                  "surface_type": "ceiling"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:red_sandstone"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:block",
+                                "result_state": {
+                                  "Name": "main:red_sand"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:not",
+                            "invert": {
+                              "type": "main:hole"
+                            }
+                          },
+                          "then_run": {
+                            "type": "main:block",
+                            "result_state": {
+                              "Name": "main:orange_terracotta"
+                            }
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:water",
+                            "add_stone_depth": true,
+                            "offset": -6,
+                            "surface_depth_multiplier": -1
+                          },
+                          "then_run": {
+                            "type": "main:block",
+                            "result_state": {
+                              "Name": "main:white_terracotta"
+                            }
+                          }
+                        },
+                        {
+                          "type": "main:sequence",
+                          "sequence": [
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:stone_depth",
+                                "add_surface_depth": false,
+                                "offset": 0,
+                                "secondary_depth_range": 0,
+                                "surface_type": "ceiling"
+                              },
+                              "then_run": {
+                                "type": "main:block",
+                                "result_state": {
+                                  "Name": "main:stone"
+                                }
+                              }
+                            },
+                            {
+                              "type": "main:block",
+                              "result_state": {
+                                "Name": "main:gravel"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "main:condition",
+                    "if_true": {
+                      "type": "main:y_above",
+                      "add_stone_depth": true,
+                      "anchor": {
+                        "absolute": 63
+                      },
+                      "surface_depth_multiplier": -1
+                    },
+                    "then_run": {
+                      "type": "main:sequence",
+                      "sequence": [
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:y_above",
+                            "add_stone_depth": false,
+                            "anchor": {
+                              "absolute": 63
+                            },
+                            "surface_depth_multiplier": 0
+                          },
+                          "then_run": {
+                            "type": "main:condition",
+                            "if_true": {
+                              "type": "main:not",
+                              "invert": {
+                                "type": "main:y_above",
+                                "add_stone_depth": true,
+                                "anchor": {
+                                  "absolute": 74
+                                },
+                                "surface_depth_multiplier": 1
+                              }
+                            },
+                            "then_run": {
+                              "type": "main:block",
+                              "result_state": {
+                                "Name": "main:orange_terracotta"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "type": "main:bandlands"
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "main:condition",
+                    "if_true": {
+                      "type": "main:stone_depth",
+                      "add_surface_depth": true,
+                      "offset": 0,
+                      "secondary_depth_range": 0,
+                      "surface_type": "floor"
+                    },
+                    "then_run": {
+                      "type": "main:condition",
+                      "if_true": {
+                        "type": "main:water",
+                        "add_stone_depth": true,
+                        "offset": -6,
+                        "surface_depth_multiplier": -1
+                      },
+                      "then_run": {
+                        "type": "main:block",
+                        "result_state": {
+                          "Name": "main:white_terracotta"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "main:condition",
+              "if_true": {
+                "type": "main:stone_depth",
+                "add_surface_depth": false,
+                "offset": 0,
+                "secondary_depth_range": 0,
+                "surface_type": "floor"
+              },
+              "then_run": {
+                "type": "main:condition",
+                "if_true": {
+                  "type": "main:water",
+                  "add_stone_depth": false,
+                  "offset": -1,
+                  "surface_depth_multiplier": 0
+                },
+                "then_run": {
+                  "type": "main:sequence",
+                  "sequence": [
+                    {
+                      "type": "main:condition",
+                      "if_true": {
+                        "type": "main:biome",
+                        "biome_is": [
+                          "main:frozen_ocean",
+                          "main:deep_frozen_ocean"
+                        ]
+                      },
+                      "then_run": {
+                        "type": "main:condition",
+                        "if_true": {
+                          "type": "main:hole"
+                        },
+                        "then_run": {
+                          "type": "main:sequence",
+                          "sequence": [
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:water",
+                                "add_stone_depth": false,
+                                "offset": 0,
+                                "surface_depth_multiplier": 0
+                              },
+                              "then_run": {
+                                "type": "main:block",
+                                "result_state": {
+                                  "Name": "main:air"
+                                }
+                              }
+                            },
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:temperature"
+                              },
+                              "then_run": {
+                                "type": "main:block",
+                                "result_state": {
+                                  "Name": "main:ice"
+                                }
+                              }
+                            },
+                            {
+                              "type": "main:block",
+                              "result_state": {
+                                "Name": "main:water",
+                                "Properties": {
+                                  "level": "0"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "type": "main:sequence",
+                      "sequence": [
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:frozen_peaks"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:steep"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:packed_ice"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 0.2,
+                                  "min_threshold": 0.0,
+                                  "noise": "main:packed_ice"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:packed_ice"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 0.025,
+                                  "min_threshold": 0.0,
+                                  "noise": "main:ice"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:ice"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:water",
+                                  "add_stone_depth": false,
+                                  "offset": 0,
+                                  "surface_depth_multiplier": 0
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:snow_block"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:snowy_slopes"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:steep"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:stone"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 0.6,
+                                  "min_threshold": 0.35,
+                                  "noise": "main:powder_snow"
+                                },
+                                "then_run": {
+                                  "type": "main:condition",
+                                  "if_true": {
+                                    "type": "main:water",
+                                    "add_stone_depth": false,
+                                    "offset": 0,
+                                    "surface_depth_multiplier": 0
+                                  },
+                                  "then_run": {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:powder_snow"
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:water",
+                                  "add_stone_depth": false,
+                                  "offset": 0,
+                                  "surface_depth_multiplier": 0
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:snow_block"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:jagged_peaks"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:steep"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:stone"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:water",
+                                  "add_stone_depth": false,
+                                  "offset": 0,
+                                  "surface_depth_multiplier": 0
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:snow_block"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:grove"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 0.6,
+                                  "min_threshold": 0.35,
+                                  "noise": "main:powder_snow"
+                                },
+                                "then_run": {
+                                  "type": "main:condition",
+                                  "if_true": {
+                                    "type": "main:water",
+                                    "add_stone_depth": false,
+                                    "offset": 0,
+                                    "surface_depth_multiplier": 0
+                                  },
+                                  "then_run": {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:powder_snow"
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:water",
+                                  "add_stone_depth": false,
+                                  "offset": 0,
+                                  "surface_depth_multiplier": 0
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:snow_block"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:sequence",
+                          "sequence": [
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:biome",
+                                "biome_is": [
+                                  "main:stony_peaks"
+                                ]
+                              },
+                              "then_run": {
+                                "type": "main:sequence",
+                                "sequence": [
+                                  {
+                                    "type": "main:condition",
+                                    "if_true": {
+                                      "type": "main:noise_threshold",
+                                      "max_threshold": 0.0125,
+                                      "min_threshold": -0.0125,
+                                      "noise": "main:calcite"
+                                    },
+                                    "then_run": {
+                                      "type": "main:block",
+                                      "result_state": {
+                                        "Name": "main:calcite"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:stone"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:biome",
+                                "biome_is": [
+                                  "main:stony_shore"
+                                ]
+                              },
+                              "then_run": {
+                                "type": "main:sequence",
+                                "sequence": [
+                                  {
+                                    "type": "main:condition",
+                                    "if_true": {
+                                      "type": "main:noise_threshold",
+                                      "max_threshold": 0.05,
+                                      "min_threshold": -0.05,
+                                      "noise": "main:gravel"
+                                    },
+                                    "then_run": {
+                                      "type": "main:sequence",
+                                      "sequence": [
+                                        {
+                                          "type": "main:condition",
+                                          "if_true": {
+                                            "type": "main:stone_depth",
+                                            "add_surface_depth": false,
+                                            "offset": 0,
+                                            "secondary_depth_range": 0,
+                                            "surface_type": "ceiling"
+                                          },
+                                          "then_run": {
+                                            "type": "main:block",
+                                            "result_state": {
+                                              "Name": "main:stone"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "type": "main:block",
+                                          "result_state": {
+                                            "Name": "main:gravel"
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:stone"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:biome",
+                                "biome_is": [
+                                  "main:windswept_hills"
+                                ]
+                              },
+                              "then_run": {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 1.7976931348623157E308,
+                                  "min_threshold": 0.12121212121212122,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:stone"
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:biome",
+                                "biome_is": [
+                                  "main:warm_ocean",
+                                  "main:beach",
+                                  "main:snowy_beach"
+                                ]
+                              },
+                              "then_run": {
+                                "type": "main:sequence",
+                                "sequence": [
+                                  {
+                                    "type": "main:condition",
+                                    "if_true": {
+                                      "type": "main:stone_depth",
+                                      "add_surface_depth": false,
+                                      "offset": 0,
+                                      "secondary_depth_range": 0,
+                                      "surface_type": "ceiling"
+                                    },
+                                    "then_run": {
+                                      "type": "main:block",
+                                      "result_state": {
+                                        "Name": "main:sandstone"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:sand"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:biome",
+                                "biome_is": [
+                                  "main:desert"
+                                ]
+                              },
+                              "then_run": {
+                                "type": "main:sequence",
+                                "sequence": [
+                                  {
+                                    "type": "main:condition",
+                                    "if_true": {
+                                      "type": "main:stone_depth",
+                                      "add_surface_depth": false,
+                                      "offset": 0,
+                                      "secondary_depth_range": 0,
+                                      "surface_type": "ceiling"
+                                    },
+                                    "then_run": {
+                                      "type": "main:block",
+                                      "result_state": {
+                                        "Name": "main:sandstone"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:sand"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:biome",
+                                "biome_is": [
+                                  "main:dripstone_caves"
+                                ]
+                              },
+                              "then_run": {
+                                "type": "main:block",
+                                "result_state": {
+                                  "Name": "main:stone"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:windswept_savanna"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 1.7976931348623157E308,
+                                  "min_threshold": 0.21212121212121213,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:stone"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 1.7976931348623157E308,
+                                  "min_threshold": -0.06060606060606061,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:coarse_dirt"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:windswept_gravelly_hills"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 1.7976931348623157E308,
+                                  "min_threshold": 0.24242424242424243,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:sequence",
+                                  "sequence": [
+                                    {
+                                      "type": "main:condition",
+                                      "if_true": {
+                                        "type": "main:stone_depth",
+                                        "add_surface_depth": false,
+                                        "offset": 0,
+                                        "secondary_depth_range": 0,
+                                        "surface_type": "ceiling"
+                                      },
+                                      "then_run": {
+                                        "type": "main:block",
+                                        "result_state": {
+                                          "Name": "main:stone"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "main:block",
+                                      "result_state": {
+                                        "Name": "main:gravel"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 1.7976931348623157E308,
+                                  "min_threshold": 0.12121212121212122,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:stone"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 1.7976931348623157E308,
+                                  "min_threshold": -0.12121212121212122,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:sequence",
+                                  "sequence": [
+                                    {
+                                      "type": "main:condition",
+                                      "if_true": {
+                                        "type": "main:water",
+                                        "add_stone_depth": false,
+                                        "offset": 0,
+                                        "surface_depth_multiplier": 0
+                                      },
+                                      "then_run": {
+                                        "type": "main:block",
+                                        "result_state": {
+                                          "Name": "main:grass_block",
+                                          "Properties": {
+                                            "snowy": "false"
+                                          }
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "main:block",
+                                      "result_state": {
+                                        "Name": "main:dirt"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "type": "main:sequence",
+                                "sequence": [
+                                  {
+                                    "type": "main:condition",
+                                    "if_true": {
+                                      "type": "main:stone_depth",
+                                      "add_surface_depth": false,
+                                      "offset": 0,
+                                      "secondary_depth_range": 0,
+                                      "surface_type": "ceiling"
+                                    },
+                                    "then_run": {
+                                      "type": "main:block",
+                                      "result_state": {
+                                        "Name": "main:stone"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:gravel"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:old_growth_pine_taiga",
+                              "main:old_growth_spruce_taiga"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 1.7976931348623157E308,
+                                  "min_threshold": 0.21212121212121213,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:coarse_dirt"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 1.7976931348623157E308,
+                                  "min_threshold": -0.11515151515151514,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:podzol",
+                                    "Properties": {
+                                      "snowy": "false"
+                                    }
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:ice_spikes"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:condition",
+                            "if_true": {
+                              "type": "main:water",
+                              "add_stone_depth": false,
+                              "offset": 0,
+                              "surface_depth_multiplier": 0
+                            },
+                            "then_run": {
+                              "type": "main:block",
+                              "result_state": {
+                                "Name": "main:snow_block"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:mangrove_swamp"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:block",
+                            "result_state": {
+                              "Name": "main:mud"
+                            }
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:mushroom_fields"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:block",
+                            "result_state": {
+                              "Name": "main:mycelium",
+                              "Properties": {
+                                "snowy": "false"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "type": "main:sequence",
+                          "sequence": [
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:water",
+                                "add_stone_depth": false,
+                                "offset": 0,
+                                "surface_depth_multiplier": 0
+                              },
+                              "then_run": {
+                                "type": "main:block",
+                                "result_state": {
+                                  "Name": "main:grass_block",
+                                  "Properties": {
+                                    "snowy": "false"
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "main:block",
+                              "result_state": {
+                                "Name": "main:dirt"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "main:condition",
+              "if_true": {
+                "type": "main:water",
+                "add_stone_depth": true,
+                "offset": -6,
+                "surface_depth_multiplier": -1
+              },
+              "then_run": {
+                "type": "main:sequence",
+                "sequence": [
+                  {
+                    "type": "main:condition",
+                    "if_true": {
+                      "type": "main:stone_depth",
+                      "add_surface_depth": false,
+                      "offset": 0,
+                      "secondary_depth_range": 0,
+                      "surface_type": "floor"
+                    },
+                    "then_run": {
+                      "type": "main:condition",
+                      "if_true": {
+                        "type": "main:biome",
+                        "biome_is": [
+                          "main:frozen_ocean",
+                          "main:deep_frozen_ocean"
+                        ]
+                      },
+                      "then_run": {
+                        "type": "main:condition",
+                        "if_true": {
+                          "type": "main:hole"
+                        },
+                        "then_run": {
+                          "type": "main:block",
+                          "result_state": {
+                            "Name": "main:water",
+                            "Properties": {
+                              "level": "0"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "main:condition",
+                    "if_true": {
+                      "type": "main:stone_depth",
+                      "add_surface_depth": true,
+                      "offset": 0,
+                      "secondary_depth_range": 0,
+                      "surface_type": "floor"
+                    },
+                    "then_run": {
+                      "type": "main:sequence",
+                      "sequence": [
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:frozen_peaks"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:steep"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:packed_ice"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 0.2,
+                                  "min_threshold": -0.5,
+                                  "noise": "main:packed_ice"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:packed_ice"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 0.025,
+                                  "min_threshold": -0.0625,
+                                  "noise": "main:ice"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:ice"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:water",
+                                  "add_stone_depth": false,
+                                  "offset": 0,
+                                  "surface_depth_multiplier": 0
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:snow_block"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:snowy_slopes"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:steep"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:stone"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 0.58,
+                                  "min_threshold": 0.45,
+                                  "noise": "main:powder_snow"
+                                },
+                                "then_run": {
+                                  "type": "main:condition",
+                                  "if_true": {
+                                    "type": "main:water",
+                                    "add_stone_depth": false,
+                                    "offset": 0,
+                                    "surface_depth_multiplier": 0
+                                  },
+                                  "then_run": {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:powder_snow"
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:water",
+                                  "add_stone_depth": false,
+                                  "offset": 0,
+                                  "surface_depth_multiplier": 0
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:snow_block"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:jagged_peaks"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:block",
+                            "result_state": {
+                              "Name": "main:stone"
+                            }
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:grove"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 0.58,
+                                  "min_threshold": 0.45,
+                                  "noise": "main:powder_snow"
+                                },
+                                "then_run": {
+                                  "type": "main:condition",
+                                  "if_true": {
+                                    "type": "main:water",
+                                    "add_stone_depth": false,
+                                    "offset": 0,
+                                    "surface_depth_multiplier": 0
+                                  },
+                                  "then_run": {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:powder_snow"
+                                    }
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:block",
+                                "result_state": {
+                                  "Name": "main:dirt"
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:sequence",
+                          "sequence": [
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:biome",
+                                "biome_is": [
+                                  "main:stony_peaks"
+                                ]
+                              },
+                              "then_run": {
+                                "type": "main:sequence",
+                                "sequence": [
+                                  {
+                                    "type": "main:condition",
+                                    "if_true": {
+                                      "type": "main:noise_threshold",
+                                      "max_threshold": 0.0125,
+                                      "min_threshold": -0.0125,
+                                      "noise": "main:calcite"
+                                    },
+                                    "then_run": {
+                                      "type": "main:block",
+                                      "result_state": {
+                                        "Name": "main:calcite"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:stone"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:biome",
+                                "biome_is": [
+                                  "main:stony_shore"
+                                ]
+                              },
+                              "then_run": {
+                                "type": "main:sequence",
+                                "sequence": [
+                                  {
+                                    "type": "main:condition",
+                                    "if_true": {
+                                      "type": "main:noise_threshold",
+                                      "max_threshold": 0.05,
+                                      "min_threshold": -0.05,
+                                      "noise": "main:gravel"
+                                    },
+                                    "then_run": {
+                                      "type": "main:sequence",
+                                      "sequence": [
+                                        {
+                                          "type": "main:condition",
+                                          "if_true": {
+                                            "type": "main:stone_depth",
+                                            "add_surface_depth": false,
+                                            "offset": 0,
+                                            "secondary_depth_range": 0,
+                                            "surface_type": "ceiling"
+                                          },
+                                          "then_run": {
+                                            "type": "main:block",
+                                            "result_state": {
+                                              "Name": "main:stone"
+                                            }
+                                          }
+                                        },
+                                        {
+                                          "type": "main:block",
+                                          "result_state": {
+                                            "Name": "main:gravel"
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:stone"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:biome",
+                                "biome_is": [
+                                  "main:windswept_hills"
+                                ]
+                              },
+                              "then_run": {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 1.7976931348623157E308,
+                                  "min_threshold": 0.12121212121212122,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:stone"
+                                  }
+                                }
+                              }
+                            },
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:biome",
+                                "biome_is": [
+                                  "main:warm_ocean",
+                                  "main:beach",
+                                  "main:snowy_beach"
+                                ]
+                              },
+                              "then_run": {
+                                "type": "main:sequence",
+                                "sequence": [
+                                  {
+                                    "type": "main:condition",
+                                    "if_true": {
+                                      "type": "main:stone_depth",
+                                      "add_surface_depth": false,
+                                      "offset": 0,
+                                      "secondary_depth_range": 0,
+                                      "surface_type": "ceiling"
+                                    },
+                                    "then_run": {
+                                      "type": "main:block",
+                                      "result_state": {
+                                        "Name": "main:sandstone"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:sand"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:biome",
+                                "biome_is": [
+                                  "main:desert"
+                                ]
+                              },
+                              "then_run": {
+                                "type": "main:sequence",
+                                "sequence": [
+                                  {
+                                    "type": "main:condition",
+                                    "if_true": {
+                                      "type": "main:stone_depth",
+                                      "add_surface_depth": false,
+                                      "offset": 0,
+                                      "secondary_depth_range": 0,
+                                      "surface_type": "ceiling"
+                                    },
+                                    "then_run": {
+                                      "type": "main:block",
+                                      "result_state": {
+                                        "Name": "main:sandstone"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:sand"
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "type": "main:condition",
+                              "if_true": {
+                                "type": "main:biome",
+                                "biome_is": [
+                                  "main:dripstone_caves"
+                                ]
+                              },
+                              "then_run": {
+                                "type": "main:block",
+                                "result_state": {
+                                  "Name": "main:stone"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:windswept_savanna"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:condition",
+                            "if_true": {
+                              "type": "main:noise_threshold",
+                              "max_threshold": 1.7976931348623157E308,
+                              "min_threshold": 0.21212121212121213,
+                              "noise": "main:surface"
+                            },
+                            "then_run": {
+                              "type": "main:block",
+                              "result_state": {
+                                "Name": "main:stone"
+                              }
+                            }
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:windswept_gravelly_hills"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:sequence",
+                            "sequence": [
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 1.7976931348623157E308,
+                                  "min_threshold": 0.24242424242424243,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:sequence",
+                                  "sequence": [
+                                    {
+                                      "type": "main:condition",
+                                      "if_true": {
+                                        "type": "main:stone_depth",
+                                        "add_surface_depth": false,
+                                        "offset": 0,
+                                        "secondary_depth_range": 0,
+                                        "surface_type": "ceiling"
+                                      },
+                                      "then_run": {
+                                        "type": "main:block",
+                                        "result_state": {
+                                          "Name": "main:stone"
+                                        }
+                                      }
+                                    },
+                                    {
+                                      "type": "main:block",
+                                      "result_state": {
+                                        "Name": "main:gravel"
+                                      }
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 1.7976931348623157E308,
+                                  "min_threshold": 0.12121212121212122,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:stone"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:condition",
+                                "if_true": {
+                                  "type": "main:noise_threshold",
+                                  "max_threshold": 1.7976931348623157E308,
+                                  "min_threshold": -0.12121212121212122,
+                                  "noise": "main:surface"
+                                },
+                                "then_run": {
+                                  "type": "main:block",
+                                  "result_state": {
+                                    "Name": "main:dirt"
+                                  }
+                                }
+                              },
+                              {
+                                "type": "main:sequence",
+                                "sequence": [
+                                  {
+                                    "type": "main:condition",
+                                    "if_true": {
+                                      "type": "main:stone_depth",
+                                      "add_surface_depth": false,
+                                      "offset": 0,
+                                      "secondary_depth_range": 0,
+                                      "surface_type": "ceiling"
+                                    },
+                                    "then_run": {
+                                      "type": "main:block",
+                                      "result_state": {
+                                        "Name": "main:stone"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "type": "main:block",
+                                    "result_state": {
+                                      "Name": "main:gravel"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:biome",
+                            "biome_is": [
+                              "main:mangrove_swamp"
+                            ]
+                          },
+                          "then_run": {
+                            "type": "main:block",
+                            "result_state": {
+                              "Name": "main:mud"
+                            }
+                          }
+                        },
+                        {
+                          "type": "main:block",
+                          "result_state": {
+                            "Name": "main:dirt"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "main:condition",
+                    "if_true": {
+                      "type": "main:biome",
+                      "biome_is": [
+                        "main:warm_ocean",
+                        "main:beach",
+                        "main:snowy_beach"
+                      ]
+                    },
+                    "then_run": {
+                      "type": "main:condition",
+                      "if_true": {
+                        "type": "main:stone_depth",
+                        "add_surface_depth": true,
+                        "offset": 0,
+                        "secondary_depth_range": 6,
+                        "surface_type": "floor"
+                      },
+                      "then_run": {
+                        "type": "main:block",
+                        "result_state": {
+                          "Name": "main:sandstone"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "main:condition",
+                    "if_true": {
+                      "type": "main:biome",
+                      "biome_is": [
+                        "main:desert"
+                      ]
+                    },
+                    "then_run": {
+                      "type": "main:condition",
+                      "if_true": {
+                        "type": "main:stone_depth",
+                        "add_surface_depth": true,
+                        "offset": 0,
+                        "secondary_depth_range": 30,
+                        "surface_type": "floor"
+                      },
+                      "then_run": {
+                        "type": "main:block",
+                        "result_state": {
+                          "Name": "main:sandstone"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "main:condition",
+              "if_true": {
+                "type": "main:stone_depth",
+                "add_surface_depth": false,
+                "offset": 0,
+                "secondary_depth_range": 0,
+                "surface_type": "floor"
+              },
+              "then_run": {
+                "type": "main:sequence",
+                "sequence": [
+                  {
+                    "type": "main:condition",
+                    "if_true": {
+                      "type": "main:biome",
+                      "biome_is": [
+                        "main:frozen_peaks",
+                        "main:jagged_peaks"
+                      ]
+                    },
+                    "then_run": {
+                      "type": "main:block",
+                      "result_state": {
+                        "Name": "main:stone"
+                      }
+                    }
+                  },
+                  {
+                    "type": "main:condition",
+                    "if_true": {
+                      "type": "main:biome",
+                      "biome_is": [
+                        "main:warm_ocean",
+                        "main:lukewarm_ocean",
+                        "main:deep_lukewarm_ocean"
+                      ]
+                    },
+                    "then_run": {
+                      "type": "main:sequence",
+                      "sequence": [
+                        {
+                          "type": "main:condition",
+                          "if_true": {
+                            "type": "main:stone_depth",
+                            "add_surface_depth": false,
+                            "offset": 0,
+                            "secondary_depth_range": 0,
+                            "surface_type": "ceiling"
+                          },
+                          "then_run": {
+                            "type": "main:block",
+                            "result_state": {
+                              "Name": "main:sandstone"
+                            }
+                          }
+                        },
+                        {
+                          "type": "main:block",
+                          "result_state": {
+                            "Name": "main:sand"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "main:sequence",
+                    "sequence": [
+                      {
+                        "type": "main:condition",
+                        "if_true": {
+                          "type": "main:stone_depth",
+                          "add_surface_depth": false,
+                          "offset": 0,
+                          "secondary_depth_range": 0,
+                          "surface_type": "ceiling"
+                        },
+                        "then_run": {
+                          "type": "main:block",
+                          "result_state": {
+                            "Name": "main:stone"
+                          }
+                        }
+                      },
+                      {
+                        "type": "main:block",
+                        "result_state": {
+                          "Name": "main:gravel"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "type": "main:condition",
+        "if_true": {
+          "type": "main:vertical_gradient",
+          "false_at_and_above": {
+            "absolute": 8
+          },
+          "random_name": "main:deepslate","random_salt":"3331953379478673155",
+          "true_at_and_below": {
+            "absolute": 0
+          }
+        },
+        "then_run": {
+          "type": "main:block",
+          "result_state": {
+            "Name": "main:deepslate",
+            "Properties": {
+              "axis": "y"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

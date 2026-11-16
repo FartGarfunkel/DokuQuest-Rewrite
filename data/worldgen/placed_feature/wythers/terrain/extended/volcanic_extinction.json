@@ -1,0 +1,68 @@
+{
+  "feature": {
+    "type": "main:ore",
+    "config": {
+      "size": 64,
+      "discard_chance_on_air_exposure": 0,
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:blackstone"
+          },
+          "state": {
+            "Name": "main:smooth_basalt"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:magma_block"
+          },
+          "state": {
+            "Name": "main:blackstone_slab",
+            "Properties": {
+              "type": "double",
+              "waterlogged": "false"
+            }
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:lava"
+          },
+          "state": {
+            "Name": "main:blackstone_slab",
+            "Properties": {
+              "type": "double",
+              "waterlogged": "false"
+            }
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:gilded_blackstone"
+          },
+          "state": {
+            "Name": "main:deepslate_gold_ore"
+          }
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    }
+  ]
+}

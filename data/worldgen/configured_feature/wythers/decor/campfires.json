@@ -1,0 +1,58 @@
+{
+  "type": "main:simple_block",
+  "config": {
+    "to_place": {
+      "type": "main:weighted_state_provider",
+      "entries": [
+        {
+          "weight": 1,
+          "data": {
+            "Name": "main:campfire",
+            "Properties": {
+              "facing": "north",
+              "lit": "false",
+              "signal_fire": "false",
+              "waterlogged": "false"
+            }
+          }
+        },
+        {
+          "weight": 1,
+          "data": {
+            "Name": "main:campfire",
+            "Properties": {
+              "facing": "south",
+              "lit": "false",
+              "signal_fire": "false",
+              "waterlogged": "false"
+            }
+          }
+        },
+        {
+          "weight": 1,
+          "data": {
+            "Name": "main:campfire",
+            "Properties": {
+              "facing": "west",
+              "lit": "false",
+              "signal_fire": "false",
+              "waterlogged": "false"
+            }
+          }
+        },
+        {
+          "weight": 1,
+          "data": {
+            "Name": "main:campfire",
+            "Properties": {
+              "facing": "east",
+              "lit": "false",
+              "signal_fire": "false",
+              "waterlogged": "false"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

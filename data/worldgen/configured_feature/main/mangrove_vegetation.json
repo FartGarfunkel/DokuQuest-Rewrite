@@ -1,0 +1,12 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "default": "main:mangrove_checked",
+    "features": [
+      {
+        "chance": 0.85,
+        "feature": "main:tall_mangrove_checked"
+      }
+    ]
+  }
+}

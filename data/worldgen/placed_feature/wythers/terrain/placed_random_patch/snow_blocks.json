@@ -1,0 +1,19 @@
+{
+  "feature": "wythers:terrain/configured_random_patch/snow_blocks",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/sculk_growths_silent_forest",
+  "placement": [
+    {
+      "count": 4,
+      "type": "main:count"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "heightmap": "WORLD_SURFACE_WG",
+      "type": "main:heightmap"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

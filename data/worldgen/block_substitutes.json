@@ -1,0 +1,10 @@
+{
+"nature:chert": "red_sandstone",
+"nature:pink_sand": "sand",
+"nature:pink_sandstone": "desert_sandstone",
+"nature:red_moss_block": "coarse_dirt",
+"nature:sandy_soil": "dirt",
+"nature:travertine": "light_gray_terracotta",
+"nature:white_chalk": "calcite",
+"nature:white_kaolin": "sandstone"
+}

@@ -1,0 +1,17 @@
+{
+  "feature": "nature:large_sugi_spawn",
+  "placement": [
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "nature:sugi_sapling",
+          "Properties": {
+            "stage": "0"
+          }
+        }
+      }
+    }
+  ]
+}

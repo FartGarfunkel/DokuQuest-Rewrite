@@ -1,0 +1,232 @@
+{
+	"temperature": 0.3,
+	"downfall": 0.4,
+	"has_precipitation": true,
+	"effects": {
+		"sky_color": 6269917,
+		"fog_color": 12638463,
+		"water_color": 4562649,
+		"water_fog_color": 331305,
+		"grass_color": 6984520,
+		"foliage_color": 6984520,
+		"mood_sound": {
+			"sound": "main:ambient.cave",
+			"tick_delay": 6000,
+			"block_search_extent": 8,
+			"offset": 2
+		},
+		"music": {
+			"sound": "main:music.overworld.forest",
+			"min_delay": 12000,
+			"max_delay": 24000,
+			"replace_current_music": false
+		}
+	},
+	"spawners": {
+		"ambient": [
+			{
+				"type": "main:bat",
+				"weight": 10,
+				"minCount": 8,
+				"maxCount": 8
+			}
+		],
+		"axolotls": [],
+		"creature": [
+			{
+				"type": "main:sheep",
+				"weight": 12,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:pig",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:chicken",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:cow",
+				"weight": 8,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:wolf",
+				"weight": 5,
+				"minCount": 4,
+				"maxCount": 4
+			}
+		],
+		"misc": [],
+		"monster": [
+			{
+				"type": "main:spider",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie",
+				"weight": 95,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie_villager",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			},
+			{
+				"type": "main:skeleton",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:creeper",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:slime",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:enderman",
+				"weight": 10,
+				"minCount": 1,
+				"maxCount": 4
+			},
+			{
+				"type": "main:witch",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			}
+		],
+		"underground_water_creature": [
+			{
+				"type": "main:glow_squid",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 6
+			}
+		],
+		"water_ambient": [],
+		"water_creature": []
+	},
+	"spawn_costs": { },
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"features": [
+		[
+			"wythers:terrain/local/highland_stone_cliffs_surface",
+			"wythers:terrain/local/highland_stone_cliffs",
+			"wythers:terrain/local/stone_cliffs_sheer",
+			"wythers:terrain/extended/scree"
+		],
+		[
+			"main:lake_lava_underground",
+			"main:lake_lava_surface",
+			"wythers:terrain/extended/base_mangrove_swamp_forest"
+		],
+		[
+			"main:amethyst_geode"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[],
+		[],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper",
+			"main:underwater_magma",
+			"wythers:terrain/local/disk_sand_forest",
+			"wythers:terrain/local/disk_gravel_forest",
+			"main:disk_sand",
+			"main:disk_clay",
+			"main:disk_gravel",
+			"wythers:terrain/extended/desert_edge",
+			"wythers:terrain/extended/badlands_edge"
+		],
+		[],
+		[
+			"main:spring_water",
+			"main:spring_lava"
+		],
+		[
+			"main:glow_lichen",
+			"wythers:vegetation/local/trees/forest_birch_grove",
+			"wythers:vegetation/local/trees/forest_oak",
+			"wythers:vegetation/local/trees/forest_pine",
+			"wythers:vegetation/local/trees/forest_pine_2",
+			"wythers:vegetation/local/trees/forest_birch",
+			"wythers:vegetation/local/trees/forest_birch_2",
+			"wythers:vegetation/extended/trees/forest_birch",
+			"wythers:vegetation/local/trees/forest_eucalyptus",
+			"wythers:vegetation/local/trees/forest_montane",
+			"wythers:vegetation/local/trees/forest_tropical",
+			"wythers:vegetation/extended/trees/forest_cold",
+			"wythers:vegetation/extended/trees/forest_badlands",
+			"wythers:vegetation/extended/bushes/cold_forest",
+			"wythers:vegetation/extended/bushes/birch_forest",
+			"wythers:vegetation/extended/bushes/oak_forest",
+			"wythers:vegetation/extended/bushes/pine_forest",
+			"wythers:vegetation/local/patch/flower_taiga",
+			"main:brown_mushroom_normal",
+			"main:red_mushroom_normal",
+			"main:patch_sugar_cane",
+			"main:patch_pumpkin"
+		],
+		[
+			"main:freeze_top_layer",
+			"wythers:terrain/local/snow_blocks",
+			"wythers:vegetation/local/patch/grass_forest",
+			"wythers:vegetation/local/patch/fern_montane_forest",
+			"wythers:vegetation/local/patch/large_fern_forest",
+			"wythers:terrain/extended/volcanic_extinction",
+			"wythers:terrain/local/replace_basalt_to_deepslate",
+			"wythers:terrain/extended/volcano_snow_blocks"
+		]
+	]
+}

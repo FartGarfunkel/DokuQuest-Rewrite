@@ -1,0 +1,243 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:grass_block",
+            "Properties": {
+              "snowy": "false"
+            }
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:not",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "blocks": [
+                "main:brown_terracotta",
+                "main:gray_terracotta"
+              ]
+            }
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:matching_block_tag",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "tag": "main:terracotta"
+              },
+              {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:red_sand",
+                  "main:smooth_red_sandstone"
+                ]
+              }
+            ]
+          },
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      -1,
+                      0
+                    ],
+                    "tag": "main:terracotta"
+                  }
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:smooth_red_sandstone",
+                  "main:red_sand"
+                ]
+              }
+            ]
+          },
+          {
+            "type": "main:not",
+            "predicate": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    -1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air",
+                    "main:water",
+                    "main:yellow_terracotta",
+                    "main:smooth_basalt"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    -1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air",
+                    "main:water",
+                    "main:yellow_terracotta",
+                    "main:smooth_basalt"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    1
+                  ],
+                  "blocks": [
+                    "main:air",
+                    "main:water",
+                    "main:yellow_terracotta",
+                    "main:smooth_basalt"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    -1
+                  ],
+                  "blocks": [
+                    "main:air",
+                    "main:water",
+                    "main:yellow_terracotta",
+                    "main:smooth_basalt"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    0
+                  ],
+                  "blocks": "main:yellow_terracotta"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -2,
+                    0
+                  ],
+                  "blocks": "main:yellow_terracotta"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -3,
+                    0
+                  ],
+                  "blocks": "main:yellow_terracotta"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -4,
+                    0
+                  ],
+                  "blocks": "main:yellow_terracotta"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -5,
+                    0
+                  ],
+                  "blocks": "main:yellow_terracotta"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -6,
+                    0
+                  ],
+                  "blocks": "main:yellow_terracotta"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -7,
+                    0
+                  ],
+                  "blocks": "main:yellow_terracotta"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 2,
+          "max_inclusive": 7
+        }
+      },
+      "half_height": 3
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 20
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    }
+  ]
+}

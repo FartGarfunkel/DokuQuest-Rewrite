@@ -1,0 +1,385 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:water",
+            "Properties": {
+              "level": "0"
+            }
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      1,
+                      1,
+                      1
+                    ],
+                    "fluids": "main:water"
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      1,
+                      1,
+                      0
+                    ],
+                    "fluids": "main:water"
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      1,
+                      1,
+                      -1
+                    ],
+                    "fluids": "main:water"
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      0,
+                      1,
+                      1
+                    ],
+                    "fluids": "main:water"
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      0,
+                      1,
+                      0
+                    ],
+                    "fluids": "main:water"
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      0,
+                      1,
+                      -1
+                    ],
+                    "fluids": "main:water"
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      -1,
+                      1,
+                      1
+                    ],
+                    "fluids": "main:water"
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      -1,
+                      1,
+                      0
+                    ],
+                    "fluids": "main:water"
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "offset": [
+                      -1,
+                      1,
+                      -1
+                    ],
+                    "fluids": "main:water"
+                  }
+                ]
+              },
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      1,
+                      1,
+                      1
+                    ],
+                    "tag": "wythers:air_and_plants"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      1,
+                      1,
+                      0
+                    ],
+                    "tag": "wythers:air_and_plants"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      1,
+                      1,
+                      -1
+                    ],
+                    "tag": "wythers:air_and_plants"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      1,
+                      1
+                    ],
+                    "tag": "wythers:air_and_plants"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      1,
+                      0
+                    ],
+                    "tag": "wythers:air_and_plants"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      1,
+                      -1
+                    ],
+                    "tag": "wythers:air_and_plants"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      -1,
+                      1,
+                      1
+                    ],
+                    "tag": "wythers:air_and_plants"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      -1,
+                      1,
+                      0
+                    ],
+                    "tag": "wythers:air_and_plants"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      -1,
+                      1,
+                      -1
+                    ],
+                    "tag": "wythers:air_and_plants"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "blocks": [
+              "main:grass_block",
+              "main:dirt",
+              "main:stone",
+              "main:andesite"
+            ]
+          },
+          {
+            "type": "main:has_sturdy_face",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "direction": "up"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:mossy_cobblestone",
+              "main:moss_block",
+              "main:dirt",
+              "main:water",
+              "main:stone",
+              "main:andesite"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:mossy_cobblestone",
+              "main:moss_block",
+              "main:dirt",
+              "main:water",
+              "main:stone",
+              "main:andesite"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:mossy_cobblestone",
+              "main:moss_block",
+              "main:dirt",
+              "main:water",
+              "main:stone",
+              "main:andesite"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:mossy_cobblestone",
+              "main:moss_block",
+              "main:dirt",
+              "main:water",
+              "main:stone",
+              "main:andesite"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:mossy_cobblestone",
+              "main:moss_block",
+              "main:dirt",
+              "main:water",
+              "main:stone",
+              "main:andesite"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:mossy_cobblestone",
+              "main:moss_block",
+              "main:dirt",
+              "main:water",
+              "main:stone",
+              "main:andesite"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:mossy_cobblestone",
+              "main:moss_block",
+              "main:dirt",
+              "main:water",
+              "main:stone",
+              "main:andesite"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:mossy_cobblestone",
+              "main:moss_block",
+              "main:dirt",
+              "main:water",
+              "main:stone",
+              "main:andesite"
+            ]
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 5
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 100,
+      "noise_offset": 0.3
+    },
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

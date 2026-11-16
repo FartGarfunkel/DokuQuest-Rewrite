@@ -1,0 +1,26 @@
+{
+  "type": "main:disk",
+  "config": {
+    "state_provider": {
+      "fallback": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:red_sand"
+        }
+      },
+      "rules": []
+    },
+    "target": {
+      "type": "main:matching_block_tag",
+      "tag": "wythers:mud_replaceable"
+    },
+    "radius": {
+      "type": "main:uniform",
+      "value": {
+        "min_inclusive": 4,
+        "max_inclusive": 6
+      }
+    },
+    "half_height": 1
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "feature": "nature:willow_tree_spawn",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 1
+    },
+    {
+      "type": "main:rarity_filter",
+      "chance": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 3
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

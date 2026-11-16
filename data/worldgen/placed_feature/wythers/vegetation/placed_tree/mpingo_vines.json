@@ -1,0 +1,32 @@
+{
+  "feature": "wythers:vegetation/configured_tree/mpingo_vines",
+  "placement": [
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:acacia_sapling",
+          "Properties": {
+            "stage": "0"
+          }
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:matching_blocks",
+          "offset": [
+            0,
+            -1,
+            0
+          ],
+          "blocks": "main:mud"
+        }
+      }
+    }
+  ]
+}

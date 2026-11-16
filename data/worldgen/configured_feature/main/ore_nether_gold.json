@@ -1,0 +1,18 @@
+{
+  "type": "main:ore",
+  "config": {
+    "discard_chance_on_air_exposure": 0.0,
+    "size": 10,
+    "targets": [
+      {
+        "state": {
+          "Name": "main:nether_gold_ore"
+        },
+        "target": {
+          "block": "main:netherrack",
+          "predicate_type": "main:block_match"
+        }
+      }
+    ]
+  }
+}

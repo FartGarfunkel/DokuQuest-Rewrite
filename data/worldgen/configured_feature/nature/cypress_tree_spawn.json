@@ -1,0 +1,12 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "default": "nature:cypress_checked",
+    "features": [
+      {
+        "chance": 0.325,
+        "feature": "nature:cypress_checked"
+      }
+    ]
+  }
+}

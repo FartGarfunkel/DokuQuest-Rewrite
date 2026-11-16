@@ -1,0 +1,170 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:gravel"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "blocks": [
+                "main:sandstone",
+                "main:smooth_sandstone"
+              ]
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:sand"
+              }
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    1,
+                    0
+                  ],
+                  "blocks": "main:calcite"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    1,
+                    0
+                  ],
+                  "blocks": "main:calcite"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    1
+                  ],
+                  "blocks": "main:calcite"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    -1
+                  ],
+                  "blocks": "main:calcite"
+                }
+              ]
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:diorite"
+              }
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                1,
+                0
+              ],
+              "blocks": [
+                "main:grass",
+                "main:fern"
+              ]
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:grass_block"
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:matching_block_tag",
+                "tag": "main:base_stone_overworld"
+              },
+              {
+                "type": "main:matching_block_tag",
+                "tag": "main:dirt"
+              },
+              {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:packed_mud",
+                  "main:calcite",
+                  "main:sandstone",
+                  "main:smooth_sandstone"
+                ]
+              }
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:fern"
+            ]
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 7,
+          "max_inclusive": 7
+        }
+      },
+      "half_height": 0
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 100
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": 55
+        },
+        "max_inclusive": {
+          "absolute": 62
+        }
+      }
+    }
+  ]
+}

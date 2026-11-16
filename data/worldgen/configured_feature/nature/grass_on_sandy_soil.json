@@ -1,0 +1,160 @@
+{
+  "type": "main:disk",
+  "config": {
+    "half_height": 1,
+    "radius": {
+      "type": "main:uniform",
+      "value": {
+        "min_inclusive": 4,
+        "max_inclusive": 7
+      }
+      
+    },
+    "state_provider": {
+      "fallback": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:dirt"
+        }
+      },
+      "rules": [
+        {
+          "if_true": {
+            "type": "main:not",
+            "predicate": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:solid",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ]
+                },
+                {
+                  "type": "main:matching_fluids",
+                  "fluids": "main:water",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ]
+                }
+              ]
+            }
+          },
+          "then": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:grass_block",
+              "Properties": {
+                "snowy": "false"
+              }
+            }
+          }
+        },
+        {
+          "if_true": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "nature:chert"
+                ]
+              },
+              {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:solid",
+                    "offset": [
+                      0,
+                      1,
+                      0
+                    ]
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "fluids": "main:water",
+                    "offset": [
+                      0,
+                      1,
+                      0
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "then": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "nature:chert"
+            }
+          }
+        },
+        {
+          "if_true": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "nature:kaolin"
+                ]
+              },
+              {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:solid",
+                    "offset": [
+                      0,
+                      1,
+                      0
+                    ]
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "fluids": "main:water",
+                    "offset": [
+                      0,
+                      1,
+                      0
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "then": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "nature:kaolin"
+            }
+          }
+        }
+      ]
+    },
+    "target": {
+      "type": "main:matching_blocks",
+      "blocks": [
+        "nature:sandy_soil",
+        "nature:kaolin",
+        "nature:chert"
+      ]
+    }
+  }
+}

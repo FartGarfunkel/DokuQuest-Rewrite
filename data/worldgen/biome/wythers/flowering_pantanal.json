@@ -1,0 +1,207 @@
+{
+	"temperature": 1.2,
+	"downfall": 0.5,
+	"effects": {
+		"sky_color": 7907327,
+		"fog_color": 12638463,
+		"water_color": 3832426,
+		"water_fog_color": 5077600,
+		"grass_color": 11122488,
+		"foliage_color": 16751037,
+		"mood_sound": {
+			"sound": "main:ambient.cave",
+			"tick_delay": 6000,
+			"block_search_extent": 8,
+			"offset": 2
+		}
+	},
+	"spawners": {
+		"monster": [
+			{
+				"type": "main:spider",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie",
+				"weight": 95,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie_villager",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			},
+			{
+				"type": "main:skeleton",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:creeper",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:slime",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:enderman",
+				"weight": 10,
+				"minCount": 1,
+				"maxCount": 4
+			},
+			{
+				"type": "main:witch",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			}
+		],
+		"creature": [
+			{
+				"type": "main:sheep",
+				"weight": 12,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:pig",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:chicken",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:cow",
+				"weight": 8,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:horse",
+				"weight": 5,
+				"minCount": 2,
+				"maxCount": 6
+			},
+			{
+				"type": "main:donkey",
+				"weight": 1,
+				"minCount": 1,
+				"maxCount": 3
+			}
+		],
+		"ambient": [
+			{
+				"type": "main:bat",
+				"weight": 10,
+				"minCount": 8,
+				"maxCount": 8
+			}
+		],
+		"axolotls": [],
+		"underground_water_creature": [
+			{
+				"type": "main:glow_squid",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 6
+			}
+		],
+		"water_creature": [],
+		"water_ambient": [],
+		"misc": []
+	},
+	"spawn_costs": { },
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"features": [
+		[],
+		[
+			"main:lake_lava_underground",
+			"main:lake_lava_surface"
+		],
+		[
+			"main:amethyst_geode"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[],
+		[],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper",
+			"main:underwater_magma",
+			"main:disk_sand",
+			"main:disk_clay",
+			"main:disk_gravel",
+			"wythers:terrain/disk_sand_shore"
+		],
+		[],
+		[
+			"main:spring_water",
+			"main:spring_lava"
+		],
+		[
+			"main:glow_lichen",
+			"wythers:vegetation/placed_random_patch/floating_vegetation_patch",
+			"wythers:vegetation/placed_random_patch/floating_vegetation_plants",
+			"wythers:vegetation/placed_random_patch/flooded_savanna_water_plants",
+			"main:patch_tall_grass_2",
+			"wythers:vegetation/trees_flowering_pantanal",
+			"wythers:vegetation/placed_random_patch/fern_cane",
+			"main:patch_grass_plain",
+			"main:flower_warm",
+			"main:patch_waterlily",
+			"main:brown_mushroom_normal",
+			"main:red_mushroom_normal",
+			"main:patch_sugar_cane"
+		],
+		[
+			"main:freeze_top_layer"
+		]
+	],
+	"has_precipitation": true
+}

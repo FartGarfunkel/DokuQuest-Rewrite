@@ -1,0 +1,26 @@
+{
+  "feature": "main:disk_gravel",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 9
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_fluids",
+        "fluids": "main:water"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

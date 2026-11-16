@@ -1,0 +1,21 @@
+{
+  "feature": "main:patch_waterlily",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_factor": 5.0,
+      "noise_offset": -0.5,
+      "noise_to_count_ratio": 2
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

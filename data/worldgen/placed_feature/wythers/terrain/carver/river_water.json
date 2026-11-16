@@ -1,0 +1,290 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:water",
+            "Properties": {
+              "level": "0"
+            }
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:any_of",
+        "predicates": [
+          {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_block_tag",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "tag": "wythers:river_carver_replaceables"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  0
+                ],
+                "blocks": "main:water"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  0
+                ],
+                "blocks": "main:water"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  1
+                ],
+                "blocks": "main:water"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  -1
+                ],
+                "blocks": "main:water"
+              }
+            ]
+          },
+          {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  2,
+                  0
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_block_tag",
+                    "tag": "wythers:river_carver_replaceables"
+                  }
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  1,
+                  1
+                ],
+                "blocks": [
+                  "main:air",
+                  "main:water",
+                  "main:grass",
+                  "main:seagrass",
+                  "main:tall_seagrass",
+                  "main:tall_grass",
+                  "main:fern",
+                  "main:large_fern"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:air",
+                  "main:water",
+                  "main:grass",
+                  "main:seagrass",
+                  "main:tall_seagrass",
+                  "main:tall_grass",
+                  "main:fern",
+                  "main:large_fern"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  1,
+                  -1
+                ],
+                "blocks": [
+                  "main:air",
+                  "main:water",
+                  "main:grass",
+                  "main:seagrass",
+                  "main:tall_seagrass",
+                  "main:tall_grass",
+                  "main:fern",
+                  "main:large_fern"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  1
+                ],
+                "blocks": [
+                  "main:air",
+                  "main:water",
+                  "main:grass",
+                  "main:seagrass",
+                  "main:tall_seagrass",
+                  "main:tall_grass",
+                  "main:fern",
+                  "main:large_fern"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:air",
+                  "main:water",
+                  "main:grass",
+                  "main:seagrass",
+                  "main:tall_grass",
+                  "main:fern",
+                  "main:large_fern"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  -1
+                ],
+                "blocks": [
+                  "main:air",
+                  "main:water",
+                  "main:grass",
+                  "main:seagrass",
+                  "main:tall_seagrass",
+                  "main:tall_grass",
+                  "main:fern",
+                  "main:large_fern"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  1,
+                  1
+                ],
+                "blocks": [
+                  "main:air",
+                  "main:water",
+                  "main:grass",
+                  "main:seagrass",
+                  "main:tall_seagrass",
+                  "main:tall_grass",
+                  "main:fern",
+                  "main:large_fern"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:air",
+                  "main:water",
+                  "main:grass",
+                  "main:seagrass",
+                  "main:tall_seagrass",
+                  "main:tall_grass",
+                  "main:fern",
+                  "main:large_fern"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  1,
+                  -1
+                ],
+                "blocks": [
+                  "main:air",
+                  "main:water",
+                  "main:grass",
+                  "main:seagrass",
+                  "main:tall_seagrass",
+                  "main:tall_grass",
+                  "main:fern",
+                  "main:large_fern"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 5,
+          "max_inclusive": 7
+        }
+      },
+      "half_height": 0
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 0
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": 60
+        },
+        "max_inclusive": {
+          "absolute": 62
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

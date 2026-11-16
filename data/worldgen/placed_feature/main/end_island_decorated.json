@@ -1,0 +1,43 @@
+{
+  "feature": "main:end_island",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 14
+    },
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:weighted_list",
+        "distribution": [
+          {
+            "data": 1,
+            "weight": 3
+          },
+          {
+            "data": 2,
+            "weight": 1
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "absolute": 70
+        },
+        "min_inclusive": {
+          "absolute": 55
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

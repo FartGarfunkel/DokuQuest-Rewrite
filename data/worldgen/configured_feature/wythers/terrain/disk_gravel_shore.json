@@ -1,0 +1,28 @@
+{
+  "type": "main:disk",
+  "config": {
+    "state_provider": {
+      "fallback": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:gravel"
+        }
+      },
+      "rules": []
+    },
+    "target": {
+      "type": "main:matching_blocks",
+      "blocks": [
+        "main:grass_block"
+      ]
+    },
+    "radius": {
+      "type": "main:uniform",
+      "value": {
+        "min_inclusive": 5,
+        "max_inclusive": 7
+      }
+    },
+    "half_height": 1
+  }
+}

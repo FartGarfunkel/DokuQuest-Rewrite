@@ -1,0 +1,8 @@
+{
+  "type": "main:iceberg",
+  "config": {
+    "state": {
+      "Name": "main:packed_ice"
+    }
+  }
+}

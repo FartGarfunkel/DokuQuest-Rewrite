@@ -1,0 +1,11 @@
+{
+  "type": "main:simple_random_selector",
+  "config": {
+    "features": [
+      "nature:red_maple_checked",
+      "nature:orange_maple_checked",
+      "nature:yellow_maple_checked",
+      "main:fancy_oak_checked"
+    ]
+  }
+}

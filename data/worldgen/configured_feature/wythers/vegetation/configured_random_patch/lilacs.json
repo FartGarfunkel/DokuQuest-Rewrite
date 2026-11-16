@@ -1,0 +1,33 @@
+{
+  "config": {
+    "tries": 8,
+    "xz_spread": 3,
+    "y_spread": 1,
+    "feature": {
+      "feature": {
+        "config": {
+          "to_place": {
+            "state": {
+              "Properties": {
+                "half": "lower"
+              },
+              "Name": "main:lilac"
+            },
+            "type": "main:simple_state_provider"
+          }
+        },
+        "type": "main:simple_block"
+      },
+      "placement": [
+        {
+          "predicate": {
+            "blocks": "main:air",
+            "type": "main:matching_blocks"
+          },
+          "type": "main:block_predicate_filter"
+        }
+      ]
+    }
+  },
+  "type": "main:random_patch"
+}

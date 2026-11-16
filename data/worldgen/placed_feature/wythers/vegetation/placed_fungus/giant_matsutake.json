@@ -1,0 +1,18 @@
+{
+  "feature": "wythers:vegetation/configured_fungus/giant_matsutake",
+  "placement": [
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:fern"
+        }
+      }
+    }
+  ]
+}

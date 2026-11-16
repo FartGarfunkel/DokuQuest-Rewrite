@@ -1,0 +1,47 @@
+{
+  "type": "main:disk",
+  "config": {
+    "half_height": 2,
+    "radius": {
+      "type": "main:uniform",
+      "value": {
+        "max_inclusive": 6,
+        "min_inclusive": 2
+      }
+    },
+    "state_provider": {
+      "fallback": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:sand"
+        }
+      },
+      "rules": [
+        {
+          "if_true": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air",
+            "offset": [
+              0,
+              -1,
+              0
+            ]
+          },
+          "then": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:sandstone"
+            }
+          }
+        }
+      ]
+    },
+    "target": {
+      "type": "main:matching_blocks",
+      "blocks": [
+        "main:dirt",
+        "main:grass_block"
+      ]
+    }
+  }
+}

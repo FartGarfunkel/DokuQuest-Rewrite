@@ -1,0 +1,19 @@
+{
+  "type": "main:spring_feature",
+  "config": {
+    "hole_count": 1,
+    "requires_block_below": true,
+    "rock_count": 4,
+    "state": {
+      "Name": "main:lava",
+      "Properties": {
+        "falling": "true"
+      }
+    },
+    "valid_blocks": [
+      "main:snow_block",
+      "main:powder_snow",
+      "main:packed_ice"
+    ]
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "feature": {
+    "type": "main:random_selector",
+    "config": {
+      "features": [
+        {
+          "chance": 0.003,
+          "feature": {
+            "feature": "wythers:vegetation/tree/pandanus",
+            "placement": [
+              {
+                "type": "main:block_predicate_filter",
+                "predicate": {
+                  "type": "main:all_of",
+                  "predicates": [
+                    {
+                      "type": "main:matching_blocks",
+                      "blocks": "main:air"
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        -1,
+                        0
+                      ],
+                      "blocks": "main:sand"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "default": {
+        "feature": "wythers:palm/tall",
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:would_survive",
+              "state": {
+                "Name": "main:fern"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 15
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "feature": "main:ore_ancient_debris_small",
+  "placement": [
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "below_top": 8
+        },
+        "min_inclusive": {
+          "above_bottom": 8
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

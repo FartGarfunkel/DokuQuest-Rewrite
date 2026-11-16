@@ -1,0 +1,72 @@
+{
+  "feature": {
+  "type": "main:random_patch",
+  "config": {
+    "tries": 32,
+    "xz_spread": 7,
+    "y_spread": 3,
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:weighted_state_provider",
+            "entries": [
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:fern"
+                }
+              },
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:grass"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          }
+        }
+      ]
+    }
+  }
+}
+,
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 256
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": 62
+        },
+        "max_inclusive": {
+          "absolute": 160
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

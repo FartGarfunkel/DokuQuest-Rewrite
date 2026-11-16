@@ -1,0 +1,181 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:muddy_mangrove_roots"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:not",
+              "predicate": {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:muddy_mangrove_roots",
+                      "main:grass_block",
+                      "main:mud",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:muddy_mangrove_roots",
+                      "main:grass_block",
+                      "main:mud",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:muddy_mangrove_roots",
+                      "main:grass_block",
+                      "main:mud",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:muddy_mangrove_roots",
+                      "main:grass_block",
+                      "main:mud",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:muddy_mangrove_roots",
+                      "main:grass_block",
+                      "main:mud",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:muddy_mangrove_roots",
+                      "main:grass_block",
+                      "main:mud",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:muddy_mangrove_roots",
+                      "main:grass_block",
+                      "main:mud",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:muddy_mangrove_roots",
+                      "main:grass_block",
+                      "main:mud",
+                      "main:air"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      1,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air"
+                    ]
+                  }
+                ]
+              }
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:mud"
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": "main:mud"
+      },
+      "radius": 3,
+      "half_height": 3
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 80,
+      "noise_offset": 0.4
+    },
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    }
+  ]
+}

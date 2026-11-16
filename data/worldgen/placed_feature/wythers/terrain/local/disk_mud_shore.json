@@ -1,0 +1,49 @@
+{
+  "feature": {
+  "type": "main:disk",
+  "config": {
+    "state_provider": {
+      "fallback": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:mud"
+        }
+      },
+      "rules": []
+    },
+    "target": {
+      "type": "main:matching_blocks",
+      "blocks": [
+        "main:dirt",
+        "main:muddy_mangrove_roots"
+      ]
+    },
+    "radius": 4,
+    "half_height": 2
+  }
+}
+,
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_fluids",
+        "fluids": "main:water"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

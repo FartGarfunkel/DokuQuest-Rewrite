@@ -1,0 +1,52 @@
+{
+  "type": "main:simple_block",
+  "config": {
+    "to_place": {
+      "type": "main:weighted_state_provider",
+      "entries": [
+        {
+          "data": {
+            "Name": "nature:red_moss_carpet"
+          },
+          "weight": 25
+        },
+        {
+          "data": {
+            "Name": "nature:red_bearberries"
+          },
+          "weight": 40
+        },
+        {
+          "data": {
+            "Name": "nature:purple_bearberries"
+          },
+          "weight": 10
+        },
+        {
+          "data": {
+            "Name": "nature:purple_bitter_sprouts"
+          },
+          "weight": 10
+        },
+        {
+          "data": {
+            "Name": "nature:green_bearberries"
+          },
+          "weight": 10
+        },
+        {
+          "data": {
+            "Name": "nature:green_bitter_sprouts"
+          },
+          "weight": 10
+        },
+        {
+          "data": {
+            "Name": "nature:red_bitter_sprouts"
+          },
+          "weight": 25
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "feature": "nature:ores/ore_redstone",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 8
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:trapezoid",
+        "max_inclusive": {
+          "above_bottom": 32
+        },
+        "min_inclusive": {
+          "above_bottom": -32
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

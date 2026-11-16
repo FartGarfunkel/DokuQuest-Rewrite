@@ -1,0 +1,44 @@
+{
+  "feature": {
+    "type": "main:ore",
+    "config": {
+      "size": 4,
+      "discard_chance_on_air_exposure": 0.5,
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:basalt"
+          },
+          "state": {
+            "Name": "main:deepslate_diamond_ore"
+          }
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:trapezoid",
+        "min_inclusive": {
+          "absolute": 64
+        },
+        "max_inclusive": {
+          "absolute": 256
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

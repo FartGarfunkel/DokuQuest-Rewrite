@@ -1,0 +1,278 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:air"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "offset": [
+                1,
+                0,
+                0
+              ],
+              "blocks": "main:jungle_wood"
+            },
+            "then": {
+              "type": "main:weighted_state_provider",
+              "entries": [
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:cocoa",
+                    "Properties": {
+                      "age": "2",
+                      "facing": "east"
+                    }
+                  }
+                },
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:cocoa",
+                    "Properties": {
+                      "age": "1",
+                      "facing": "east"
+                    }
+                  }
+                },
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:cocoa",
+                    "Properties": {
+                      "age": "0",
+                      "facing": "east"
+                    }
+                  }
+                },
+                {
+                  "weight": 3,
+                  "data": {
+                    "Name": "main:air"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "offset": [
+                -1,
+                0,
+                0
+              ],
+              "blocks": "main:jungle_wood"
+            },
+            "then": {
+              "type": "main:weighted_state_provider",
+              "entries": [
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:cocoa",
+                    "Properties": {
+                      "age": "2",
+                      "facing": "west"
+                    }
+                  }
+                },
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:cocoa",
+                    "Properties": {
+                      "age": "1",
+                      "facing": "west"
+                    }
+                  }
+                },
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:cocoa",
+                    "Properties": {
+                      "age": "0",
+                      "facing": "west"
+                    }
+                  }
+                },
+                {
+                  "weight": 3,
+                  "data": {
+                    "Name": "main:air"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                0,
+                1
+              ],
+              "blocks": "main:jungle_wood"
+            },
+            "then": {
+              "type": "main:weighted_state_provider",
+              "entries": [
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:cocoa",
+                    "Properties": {
+                      "age": "2",
+                      "facing": "south"
+                    }
+                  }
+                },
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:cocoa",
+                    "Properties": {
+                      "age": "1",
+                      "facing": "south"
+                    }
+                  }
+                },
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:cocoa",
+                    "Properties": {
+                      "age": "0",
+                      "facing": "south"
+                    }
+                  }
+                },
+                {
+                  "weight": 3,
+                  "data": {
+                    "Name": "main:air"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                0,
+                -1
+              ],
+              "blocks": "main:jungle_wood"
+            },
+            "then": {
+              "type": "main:weighted_state_provider",
+              "entries": [
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:cocoa",
+                    "Properties": {
+                      "age": "2",
+                      "facing": "north"
+                    }
+                  }
+                },
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:cocoa",
+                    "Properties": {
+                      "age": "1",
+                      "facing": "north"
+                    }
+                  }
+                },
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:cocoa",
+                    "Properties": {
+                      "age": "0",
+                      "facing": "north"
+                    }
+                  }
+                },
+                {
+                  "weight": 3,
+                  "data": {
+                    "Name": "main:air"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": "main:azalea_leaves"
+          },
+          {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          }
+        ]
+      },
+      "radius": 8,
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -1,
+          0
+        ],
+        "blocks": "main:azalea_leaves"
+      }
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": -2
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

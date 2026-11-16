@@ -1,0 +1,23 @@
+{
+	"feature": "nature:kaolin_layers2",
+	"placement": [
+		{
+			"type": "main:count",
+			"count": 22
+		},
+		{
+			"type": "main:count",
+			"count": 74
+		},
+		{
+			"type": "main:in_square"
+		},
+		{
+			"type": "main:heightmap",
+			"heightmap": "WORLD_SURFACE_WG"
+		},
+		{
+			"type": "main:biome"
+		}
+	]
+}

@@ -1,0 +1,305 @@
+{
+  "feature": {
+    "type": "main:simple_random_selector",
+    "config": {
+      "features": [
+        {
+          "feature": {
+            "type": "main:block_column",
+            "config": {
+              "direction": "down",
+              "allowed_placement": {
+                "type": "main:matching_blocks",
+                "blocks": "main:air"
+              },
+              "prioritize_tip": true,
+              "layers": [
+                {
+                  "height": {
+                    "type": "main:uniform",
+                    "value": {
+                      "min_inclusive": 3,
+                      "max_inclusive": 10
+                    }
+                  },
+                  "provider": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:mangrove_roots",
+                      "Properties": {
+                        "waterlogged": "false"
+                      }
+                    }
+                  }
+                },
+                {
+                  "height": 0,
+                  "provider": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:hanging_roots",
+                      "Properties": {
+                        "waterlogged": "false"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:cave_vines_plant",
+                      "main:azalea_leaves",
+                      "main:vine"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:cave_vines_plant",
+                      "main:azalea_leaves",
+                      "main:vine"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:cave_vines_plant",
+                      "main:azalea_leaves",
+                      "main:vine"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:cave_vines_plant",
+                      "main:azalea_leaves",
+                      "main:vine"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "feature": {
+            "type": "main:block_column",
+            "config": {
+              "direction": "down",
+              "allowed_placement": {
+                "type": "main:matching_blocks",
+                "blocks": "main:air"
+              },
+              "prioritize_tip": true,
+              "layers": [
+                {
+                  "height": {
+                    "type": "main:uniform",
+                    "value": {
+                      "min_inclusive": 4,
+                      "max_inclusive": 10
+                    }
+                  },
+                  "provider": {
+                    "type": "main:weighted_state_provider",
+                    "entries": [
+                      {
+                        "weight": 10,
+                        "data": {
+                          "Name": "main:cave_vines_plant",
+                          "Properties": {
+                            "berries": "false"
+                          }
+                        }
+                      },
+                      {
+                        "weight": 1,
+                        "data": {
+                          "Name": "main:cave_vines_plant",
+                          "Properties": {
+                            "berries": "true"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "height": 1,
+                  "provider": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:cave_vines",
+                      "Properties": {
+                        "age": "0",
+                        "berries": "false"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:cave_vines_plant",
+                      "main:mangrove_roots",
+                      "main:azalea_leaves",
+                      "main:mangrove_wood",
+                      "main:vine"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:cave_vines_plant",
+                      "main:mangrove_roots",
+                      "main:azalea_leaves",
+                      "main:mangrove_wood",
+                      "main:vine"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:cave_vines_plant",
+                      "main:mangrove_roots",
+                      "main:azalea_leaves",
+                      "main:mangrove_wood",
+                      "main:vine"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:air",
+                      "main:cave_vines_plant",
+                      "main:mangrove_roots",
+                      "main:azalea_leaves",
+                      "main:mangrove_wood",
+                      "main:vine"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 1
+    },
+    {
+      "type": "main:count",
+      "count": 256
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 0,
+          "max_inclusive": 5
+        }
+      }
+    },
+    {
+      "type": "main:environment_scan",
+      "direction_of_search": "up",
+      "max_steps": 12,
+      "target_condition": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:mangrove_wood"
+        ]
+      },
+      "allowed_search_condition": {
+        "type": "main:matching_blocks",
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": -1
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

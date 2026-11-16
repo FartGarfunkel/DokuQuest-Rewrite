@@ -1,0 +1,48 @@
+{
+  "feature": "wythers:vegetation/tree/mediterranean_cypress",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 20,
+      "noise_factor": 130,
+      "noise_offset": -0.3
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:matching_blocks",
+          "offset": [
+            0,
+            -2,
+            0
+          ],
+          "blocks": "main:rooted_dirt"
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:matching_blocks",
+          "offset": [
+            0,
+            -3,
+            0
+          ],
+          "blocks": "main:packed_mud"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "feature": {
+    "type": "main:simple_random_selector",
+    "config": {
+      "features": [
+        "wythers:palm/coastal_palm_east",
+        "wythers:palm/coastal_palm_west",
+        "wythers:palm/coastal_palm_north",
+        "wythers:palm/coastal_palm_south"
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 40
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

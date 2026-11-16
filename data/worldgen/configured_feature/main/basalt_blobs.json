@@ -1,0 +1,21 @@
+{
+  "type": "main:netherrack_replace_blobs",
+  "config": {
+    "radius": {
+      "type": "main:uniform",
+      "value": {
+        "max_inclusive": 7,
+        "min_inclusive": 3
+      }
+    },
+    "state": {
+      "Name": "main:basalt",
+      "Properties": {
+        "axis": "y"
+      }
+    },
+    "target": {
+      "Name": "main:netherrack"
+    }
+  }
+}

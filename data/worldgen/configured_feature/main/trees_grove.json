@@ -1,0 +1,12 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "default": "main:spruce_on_snow",
+    "features": [
+      {
+        "chance": 0.33333334,
+        "feature": "main:pine_on_snow"
+      }
+    ]
+  }
+}

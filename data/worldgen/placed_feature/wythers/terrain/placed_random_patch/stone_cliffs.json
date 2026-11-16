@@ -1,0 +1,24 @@
+{
+  "feature": "wythers:terrain/configured_random_patch/stone_cliffs",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 128
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": 0
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,157 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:snow_block"
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:snow"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "blocks": [
+              "main:grass_block",
+              "main:gravel",
+              "main:stone"
+            ]
+          },
+          {
+            "type": "main:not",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "offset": [
+                1,
+                2,
+                0
+              ],
+              "blocks": [
+                "main:air",
+                "main:snow",
+                "main:grass"
+              ]
+            }
+          },
+          {
+            "type": "main:not",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                2,
+                1
+              ],
+              "blocks": [
+                "main:air",
+                "main:snow",
+                "main:grass"
+              ]
+            }
+          },
+          {
+            "type": "main:not",
+            "predicate": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    -1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air",
+                    "main:snow",
+                    "main:grass"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    -1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air",
+                    "main:snow",
+                    "main:grass"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    1
+                  ],
+                  "blocks": [
+                    "main:air",
+                    "main:snow",
+                    "main:grass"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    -1
+                  ],
+                  "blocks": [
+                    "main:air",
+                    "main:snow",
+                    "main:grass"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 7
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,276 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 64,
+      "xz_spread": 8,
+      "y_spread": 1,
+      "feature": {
+        "feature": {
+          "type": "main:random_selector",
+          "config": {
+            "features": [
+              {
+                "chance": 0.5,
+                "feature": {
+                  "feature": {
+                    "type": "main:block_column",
+                    "config": {
+                      "direction": "up",
+                      "allowed_placement": {
+                        "type": "main:matching_blocks",
+                        "blocks": "main:air"
+                      },
+                      "prioritize_tip": true,
+                      "layers": [
+                        {
+                          "height": 1,
+                          "provider": {
+                            "type": "main:weighted_state_provider",
+                            "entries": [
+                              {
+                                "weight": 5,
+                                "data": {
+                                  "Name": "main:mangrove_propagule",
+                                  "Properties": {
+                                    "age": "0",
+                                    "hanging": "false",
+                                    "stage": "0",
+                                    "waterlogged": "false"
+                                  }
+                                }
+                              },
+                              {
+                                "weight": 1,
+                                "data": {
+                                  "Name": "main:mangrove_propagule",
+                                  "Properties": {
+                                    "age": "1",
+                                    "hanging": "false",
+                                    "stage": "0",
+                                    "waterlogged": "false"
+                                  }
+                                }
+                              },
+                              {
+                                "weight": 1,
+                                "data": {
+                                  "Name": "main:mangrove_propagule",
+                                  "Properties": {
+                                    "age": "2",
+                                    "hanging": "false",
+                                    "stage": "0",
+                                    "waterlogged": "false"
+                                  }
+                                }
+                              },
+                              {
+                                "weight": 1,
+                                "data": {
+                                  "Name": "main:mangrove_propagule",
+                                  "Properties": {
+                                    "age": "3",
+                                    "hanging": "false",
+                                    "stage": "0",
+                                    "waterlogged": "false"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "height": 1,
+                          "provider": {
+                            "type": "main:simple_state_provider",
+                            "state": {
+                              "Name": "main:structure_void"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "placement": [
+                    {
+                      "type": "main:block_predicate_filter",
+                      "predicate": {
+                        "type": "main:all_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              1,
+                              0
+                            ],
+                            "blocks": "main:air"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "blocks": "main:air"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              -1,
+                              0
+                            ],
+                            "blocks": "main:grass_block"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              -2,
+                              0
+                            ],
+                            "blocks": "main:rooted_dirt"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "default": {
+              "feature": {
+                "type": "main:block_column",
+                "config": {
+                  "direction": "up",
+                  "allowed_placement": {
+                    "type": "main:matching_blocks",
+                    "blocks": "main:air"
+                  },
+                  "prioritize_tip": true,
+                  "layers": [
+                    {
+                      "height": 1,
+                      "provider": {
+                        "type": "main:weighted_state_provider",
+                        "entries": [
+                          {
+                            "weight": 5,
+                            "data": {
+                              "Name": "main:mangrove_propagule",
+                              "Properties": {
+                                "age": "0",
+                                "hanging": "false",
+                                "stage": "0",
+                                "waterlogged": "true"
+                              }
+                            }
+                          },
+                          {
+                            "weight": 1,
+                            "data": {
+                              "Name": "main:mangrove_propagule",
+                              "Properties": {
+                                "age": "1",
+                                "hanging": "false",
+                                "stage": "0",
+                                "waterlogged": "true"
+                              }
+                            }
+                          },
+                          {
+                            "weight": 1,
+                            "data": {
+                              "Name": "main:mangrove_propagule",
+                              "Properties": {
+                                "age": "2",
+                                "hanging": "false",
+                                "stage": "0",
+                                "waterlogged": "true"
+                              }
+                            }
+                          },
+                          {
+                            "weight": 1,
+                            "data": {
+                              "Name": "main:mangrove_propagule",
+                              "Properties": {
+                                "age": "3",
+                                "hanging": "false",
+                                "stage": "0",
+                                "waterlogged": "true"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "height": 1,
+                      "provider": {
+                        "type": "main:simple_state_provider",
+                        "state": {
+                          "Name": "main:structure_void"
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              "placement": [
+                {
+                  "type": "main:block_predicate_filter",
+                  "predicate": {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          1,
+                          0
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "blocks": "main:water"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          -1,
+                          0
+                        ],
+                        "blocks": [
+                          "main:rooted_dirt"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "placement": []
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 5
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 62
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

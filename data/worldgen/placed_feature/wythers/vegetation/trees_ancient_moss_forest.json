@@ -1,0 +1,58 @@
+{
+  "feature": {
+    "type": "main:random_selector",
+    "config": {
+      "features": [
+        {
+          "chance": 0,
+          "feature": "wythers:vegetation/placed_tree/giant_azalea_moss"
+        }
+      ],
+      "default": "wythers:vegetation/placed_tree/giant_dark_oak_moss"
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:weighted_list",
+        "distribution": [
+          {
+            "weight": 1,
+            "data": 1
+          },
+          {
+            "weight": 1,
+            "data": 2
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING_NO_LEAVES"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_block_tag",
+        "offset": [
+          0,
+          -1,
+          0
+        ],
+        "tag": "main:dirt"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

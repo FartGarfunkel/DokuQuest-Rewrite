@@ -1,0 +1,19 @@
+{
+  "feature": "nature:succulent_patch_2",
+  "placement": [
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:rarity_filter",
+      "chance": 14
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

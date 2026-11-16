@@ -1,0 +1,54 @@
+{
+  "type": "main:simple_block",
+  "config": {
+    "to_place": {
+      "type": "main:weighted_state_provider",
+      "entries": [
+        {
+          "weight": 1,
+          "data": {
+            "Name": "main:stone_button",
+            "Properties": {
+              "face": "floor",
+              "facing": "north",
+              "powered": "true"
+            }
+          }
+        },
+        {
+          "weight": 1,
+          "data": {
+            "Name": "main:stone_button",
+            "Properties": {
+              "face": "floor",
+              "facing": "south",
+              "powered": "true"
+            }
+          }
+        },
+        {
+          "weight": 1,
+          "data": {
+            "Name": "main:stone_button",
+            "Properties": {
+              "face": "floor",
+              "facing": "west",
+              "powered": "true"
+            }
+          }
+        },
+        {
+          "weight": 1,
+          "data": {
+            "Name": "main:stone_button",
+            "Properties": {
+              "face": "floor",
+              "facing": "east",
+              "powered": "true"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

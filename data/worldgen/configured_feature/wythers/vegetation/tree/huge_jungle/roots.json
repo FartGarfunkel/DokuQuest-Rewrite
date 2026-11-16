@@ -1,0 +1,194 @@
+{
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "config": {
+            "default": {
+              "feature": {
+                "config": {
+                  "to_place": {
+                    "state": {
+                      "Name": "main:jungle_wood",
+                      "Properties": {
+                        "axis": "y"
+                      }
+                    },
+                    "type": "main:simple_state_provider"
+                  }
+                },
+                "type": "main:simple_block"
+              },
+              "placement": [
+                {
+                  "predicate": {
+                    "predicates": [
+                      {
+                        "type": "main:replaceable"
+                      },
+                      {
+                        "predicates": [
+                          {
+                            "blocks": "#wythers:dirt",
+                            "offset": [
+                              0,
+                              -1,
+                              0
+                            ],
+                            "type": "main:matching_blocks"
+                          },
+                          {
+                            "blocks": "main:jungle_wood",
+                            "offset": [
+                              0,
+                              -1,
+                              0
+                            ],
+                            "type": "main:matching_blocks"
+                          }
+                        ],
+                        "type": "main:any_of"
+                      }
+                    ],
+                    "type": "main:all_of"
+                  },
+                  "type": "main:block_predicate_filter"
+                }
+              ]
+            },
+            "features": [
+              {
+                "chance": 0.075,
+                "feature": {
+                  "feature": {
+                    "config": {
+                      "to_place": {
+                        "state": {
+                          "Name": "main:moss_carpet"
+                        },
+                        "type": "main:simple_state_provider"
+                      }
+                    },
+                    "type": "main:simple_block"
+                  },
+                  "placement": [
+                    {
+                      "xz_spread": 0,
+                      "y_spread": 1,
+                      "type": "main:random_offset"
+                    },
+                    {
+                      "predicate": {
+                        "predicates": [
+                          {
+                            "blocks": [
+                              "main:air",
+                              "main:vine"
+                            ],
+                            "type": "main:matching_blocks"
+                          },
+                          {
+                            "blocks": "main:jungle_wood",
+                            "offset": [
+                              0,
+                              -1,
+                              0
+                            ],
+                            "type": "main:matching_blocks"
+                          }
+                        ],
+                        "type": "main:all_of"
+                      },
+                      "type": "main:block_predicate_filter"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "type": "main:random_selector"
+        },
+        "placement": [
+          {
+            "count": 36,
+            "type": "main:count"
+          },
+          {
+            "xz_spread": {
+              "value": {
+                "min_inclusive": -2,
+                "max_inclusive": 2
+              },
+              "type": "main:uniform"
+            },
+            "y_spread": {
+              "value": {
+                "min_inclusive": -2,
+                "max_inclusive": 3
+              },
+              "type": "main:uniform"
+            },
+            "type": "main:random_offset"
+          },
+          {
+            "predicate": {
+              "predicates": [
+                {
+                  "blocks": [
+                    "main:jungle_log",
+                    "main:jungle_wood"
+                  ],
+                  "offset": [
+                    1,
+                    2,
+                    0
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": [
+                    "main:jungle_log",
+                    "main:jungle_wood"
+                  ],
+                  "offset": [
+                    0,
+                    2,
+                    1
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": [
+                    "main:jungle_log",
+                    "main:jungle_wood"
+                  ],
+                  "offset": [
+                    -1,
+                    2,
+                    0
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": [
+                    "main:jungle_log",
+                    "main:jungle_wood"
+                  ],
+                  "offset": [
+                    0,
+                    2,
+                    -1
+                  ],
+                  "type": "main:matching_blocks"
+                }
+              ],
+              "type": "main:any_of"
+            },
+            "type": "main:block_predicate_filter"
+          }
+        ]
+      }
+    ]
+  },
+  "type": "main:simple_random_selector"
+}

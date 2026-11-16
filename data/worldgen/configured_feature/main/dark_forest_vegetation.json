@@ -1,0 +1,34 @@
+{
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "feature": "main:huge_brown_mushroom",
+          "placement": []
+        },
+        "chance": 0.025
+      },
+      {
+        "feature": {
+          "feature": "main:huge_red_mushroom",
+          "placement": []
+        },
+        "chance": 0.05
+      },
+      {
+        "feature": "main:dark_oak_checked",
+        "chance": 0.33333335
+      },
+      {
+        "feature": "main:blood_oak_checked",
+        "chance": 0.33333335
+      },
+      {
+        "feature": "main:briar_checked",
+        "chance": 0.3
+      }
+    ],
+    "default": "main:oak_checked"
+  },
+  "type": "main:random_selector"
+}

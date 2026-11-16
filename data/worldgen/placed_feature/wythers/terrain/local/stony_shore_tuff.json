@@ -1,0 +1,62 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:weighted_state_provider",
+          "entries": [
+            {
+              "weight": 10,
+              "data": {
+                "Name": "main:tuff"
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:mossy_cobblestone"
+              }
+            }
+          ]
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": "main:stone"
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 3
+        }
+      },
+      "half_height": 3
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_fluids",
+        "fluids": "main:water"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

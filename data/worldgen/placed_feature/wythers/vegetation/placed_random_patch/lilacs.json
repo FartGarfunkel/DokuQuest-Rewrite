@@ -1,0 +1,19 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/lilacs",
+  "placement": [
+    {
+      "chance": 5,
+      "type": "main:rarity_filter"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "heightmap": "MOTION_BLOCKING",
+      "type": "main:heightmap"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

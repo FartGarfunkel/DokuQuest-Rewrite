@@ -1,0 +1,128 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "tries": 64,
+    "xz_spread": 3,
+    "y_spread": 0,
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:weighted_state_provider",
+            "entries": [
+              {
+                "weight": 3,
+                "data": {
+                  "Name": "main:water",
+                  "Properties": {
+                    "level": "0"
+                  }
+                }
+              },
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:seagrass"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": "main:air"
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:deepslate",
+              "main:stone",
+              "main:mossy_cobblestone"
+            ]
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:deepslate",
+              "main:stone"
+            ]
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_block_tag",
+            "offset": [
+              1,
+              0,
+              0
+            ],
+            "tag": "wythers:rock_pools"
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_block_tag",
+            "offset": [
+              -1,
+              0,
+              0
+            ],
+            "tag": "wythers:rock_pools"
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_block_tag",
+            "offset": [
+              0,
+              0,
+              1
+            ],
+            "tag": "wythers:rock_pools"
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_block_tag",
+            "offset": [
+              0,
+              0,
+              -1
+            ],
+            "tag": "wythers:rock_pools"
+          }
+        }
+      ]
+    }
+  }
+}

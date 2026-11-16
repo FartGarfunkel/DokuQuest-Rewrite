@@ -1,0 +1,27 @@
+{
+  "feature": "nature:ores/ore_gold",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "absolute": 256
+        },
+        "min_inclusive": {
+          "absolute": 32
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

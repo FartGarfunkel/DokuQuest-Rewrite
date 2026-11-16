@@ -1,0 +1,32 @@
+{
+  "feature": {
+    "type": "main:random_selector",
+    "config": {
+      "features": [
+        {
+          "chance": 0.5,
+          "feature": "wythers:vegetation/placed_tree_component/giant_azalea_moss_a"
+        }
+      ],
+      "default": "wythers:vegetation/placed_tree_component/giant_azalea_moss_b"
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 2
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:oak_sapling",
+          "Properties": {
+            "stage": "0"
+          }
+        }
+      }
+    }
+  ]
+}

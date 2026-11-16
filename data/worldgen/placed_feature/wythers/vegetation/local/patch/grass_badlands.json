@@ -1,0 +1,110 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 32,
+      "xz_spread": 6,
+      "y_spread": 3,
+      "feature": {
+        "feature": {
+          "type": "main:random_selector",
+          "config": {
+            "features": [],
+            "default": {
+              "feature": "wythers:vegetation/column/grass",
+              "placement": [
+                {
+                  "type": "main:block_predicate_filter",
+                  "predicate": {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          0
+                        ],
+                        "blocks": [
+                          "main:air"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          -1,
+                          0
+                        ],
+                        "blocks": [
+                          "main:sand",
+                          "main:red_sand",
+                          "main:packed_mud"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          0,
+                          0
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          0,
+                          0
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          1
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          -1
+                        ],
+                        "blocks": "main:air"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "placement": []
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 5,
+      "noise_factor": 20,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

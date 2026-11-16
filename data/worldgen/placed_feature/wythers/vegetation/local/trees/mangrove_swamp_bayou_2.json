@@ -1,0 +1,54 @@
+{
+  "feature": "wythers:vegetation/tree/bayou",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": -0.45
+    },
+    {
+      "type": "main:count",
+      "count": 25
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:mangrove_propagule",
+          "Properties": {
+            "waterlogged": "false",
+            "stage": "0",
+            "hanging": "false",
+            "age": "0"
+          }
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -2,
+          0
+        ],
+        "blocks": [
+          "main:dirt"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,154 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:weighted_state_provider",
+          "entries": [
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:cobblestone"
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:moss_block"
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:mossy_cobblestone"
+              }
+            }
+          ]
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:any_of",
+        "predicates": [
+          {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": "main:water"
+              },
+              {
+                "type": "main:matching_blocks",
+                "blocks": "main:dirt"
+              }
+            ]
+          },
+          {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": "main:water"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": "main:water"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": "main:water"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": "main:water"
+                  }
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "blocks": "main:grass_block"
+              },
+              {
+                "type": "main:not",
+                "predicate": {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "blocks": "main:sugar_cane"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 2,
+          "max_inclusive": 4
+        }
+      },
+      "half_height": 2
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "WORLD_SURFACE_WG",
+      "min_inclusive": -121,
+      "max_inclusive": -65
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,391 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "tries": 96,
+    "xz_spread": 7,
+    "y_spread": 3,
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:weighted_state_provider",
+            "entries": [
+              {
+                "weight": 2,
+                "data": {
+                  "Name": "main:oak_log",
+                  "Properties": {
+                    "axis": "y"
+                  }
+                }
+              },
+              {
+                "weight": 2,
+                "data": {
+                  "Name": "main:stripped_oak_log",
+                  "Properties": {
+                    "axis": "y"
+                  }
+                }
+              },
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:birch_log",
+                  "Properties": {
+                    "axis": "y"
+                  }
+                }
+              },
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:stripped_birch_log",
+                  "Properties": {
+                    "axis": "y"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:grass_block"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:grass_block"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:grass_block"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  1
+                ],
+                "blocks": [
+                  "main:grass_block"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  -1
+                ],
+                "blocks": [
+                  "main:grass_block"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  2,
+                  0,
+                  2
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  2,
+                  0,
+                  1
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  2,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  2,
+                  0,
+                  -1
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  2,
+                  0,
+                  -2
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  2
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  1
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  -1
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  -2
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  2
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  1
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  -1
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  -2
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  2
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  1
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  -1
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  -2
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -2,
+                  0,
+                  2
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -2,
+                  0,
+                  1
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -2,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -2,
+                  0,
+                  -1
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -2,
+                  0,
+                  -2
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

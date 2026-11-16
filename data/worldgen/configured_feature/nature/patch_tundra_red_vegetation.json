@@ -1,0 +1,106 @@
+{
+  "type": "main:flower",
+  "config": {
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:noise_provider",
+            "noise": {
+              "amplitudes": [
+                1.0
+              ],
+              "firstOctave": 0
+            },
+            "scale": 0.030833334,
+            "seed": 2445,
+            "states": [
+              {
+                "Name": "main:air"
+              },
+              {
+                "Name": "nature:green_bitter_sprouts"
+              },
+              {
+                "Name": "nature:green_bearberries"
+              },
+              {
+                "Name": "nature:red_bearberries"
+              },
+              {
+                "Name": "nature:red_bitter_sprouts"
+              },
+              {
+                "Name": "main:air"
+              },
+              {
+                "Name": "nature:purple_bitter_sprouts"
+              },
+              {
+                "Name": "nature:purple_bearberries"
+              },
+              {
+                "Name": "nature:purple_bitter_sprouts"
+              },
+              {
+                "Name": "main:air"
+              },
+              {
+                "Name": "nature:red_bitter_sprouts"
+              },
+              {
+                "Name": "nature:red_bearberries"
+              },
+              {
+                "Name": "nature:red_bitter_sprouts"
+              },
+              {
+                "Name": "main:air"
+              },
+              {
+                "Name": "nature:green_bitter_sprouts"
+              },
+              {
+                "Name": "nature:green_bearberries"
+              },
+              {
+                "Name": "nature:green_bitter_sprouts"
+              },
+              {
+                "Name": "main:air"
+              },
+              {
+                "Name": "nature:red_bitter_sprouts"
+              },
+              {
+                "Name": "nature:red_bearberries"
+              },
+              {
+                "Name": "nature:purple_bearberries"
+              },
+              {
+                "Name": "nature:purple_bitter_sprouts"
+              },
+              {
+                "Name": "main:air"
+              }
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          }
+        }
+      ]
+    },
+    "tries": 100,
+    "xz_spread": 7,
+    "y_spread": 2
+  }
+}

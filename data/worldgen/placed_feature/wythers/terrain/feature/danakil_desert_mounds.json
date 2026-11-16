@@ -1,0 +1,23 @@
+{
+  "feature": "wythers:terrain/danakil_desert_mounds",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 48
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 1
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "config": {
+    "features": [
+      {
+        "feature": "main:mega_jungle_tree_checked",
+        "chance": 0.9
+      },
+      {
+        "feature": "main:jungle_bush",
+        "chance": 0.1
+      }
+    ],
+    "default": "main:jungle_tree"
+  },
+  "type": "main:random_selector"
+}

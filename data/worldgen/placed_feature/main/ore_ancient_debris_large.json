@@ -1,0 +1,23 @@
+{
+  "feature": "main:ore_ancient_debris_large",
+  "placement": [
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:trapezoid",
+        "max_inclusive": {
+          "absolute": 24
+        },
+        "min_inclusive": {
+          "absolute": 8
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

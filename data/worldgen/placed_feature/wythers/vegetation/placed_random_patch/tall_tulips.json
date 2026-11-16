@@ -1,0 +1,28 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/tall_tulips",
+  "placement": [
+    {
+      "chance": 2,
+      "type": "main:rarity_filter"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING_NO_LEAVES"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:fern"
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

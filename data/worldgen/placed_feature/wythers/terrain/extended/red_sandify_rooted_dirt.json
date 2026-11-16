@@ -1,0 +1,42 @@
+{
+  "feature": {
+    "type": "main:ore",
+    "config": {
+      "size": 64,
+      "discard_chance_on_air_exposure": 1,
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:rooted_dirt"
+          },
+          "state": {
+            "Name": "main:red_sand"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:dirt"
+          },
+          "state": {
+            "Name": "main:red_sand"
+          }
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 100
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    }
+  ]
+}

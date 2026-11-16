@@ -1,0 +1,12 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "default": "nature:large_frosty_redwood_checked",
+    "features": [
+      {
+        "chance": 0.5,
+        "feature": "nature:large_frosty_redwood_checked"
+      }
+    ]
+  }
+}

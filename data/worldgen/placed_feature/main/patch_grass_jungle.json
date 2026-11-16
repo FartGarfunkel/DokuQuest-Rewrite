@@ -1,0 +1,19 @@
+{
+  "feature": "main:patch_grass_jungle",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 25
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "feature": "nature:stone_block_feature",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_factor": 60.0,
+      "noise_offset": 0.0,
+      "noise_to_count_ratio": 1
+    },
+    {
+      "type": "main:rarity_filter",
+      "chance": 4
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": {
+        "type": "main:uniform",
+				"value": {
+					"min_inclusive": 0,
+					"max_inclusive": 15
+				}
+        
+      },
+      "y_spread": {
+        "type": "main:uniform",
+				"value": {
+					"min_inclusive": -1,
+					"max_inclusive": 1
+				}
+        
+      }
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:grass_block",
+              "nature:red_moss_block",
+              "main:dirt",
+              "main:stone"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

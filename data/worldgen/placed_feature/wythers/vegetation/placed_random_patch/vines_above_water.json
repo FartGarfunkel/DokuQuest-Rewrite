@@ -1,0 +1,21 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/vines_above_water",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 20
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 63
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

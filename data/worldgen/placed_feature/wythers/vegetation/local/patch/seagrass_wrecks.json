@@ -1,0 +1,85 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 32,
+      "xz_spread": 8,
+      "y_spread": 8,
+      "feature": {
+        "feature": {
+          "type": "main:simple_block",
+          "config": {
+            "to_place": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:seagrass"
+              }
+            }
+          }
+        },
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "blocks": "main:water"
+                },
+                {
+                  "type": "main:any_of",
+                  "predicates": [
+                    {
+                      "type": "main:matching_block_tag",
+                      "offset": [
+                        0,
+                        -1,
+                        0
+                      ],
+                      "tag": "main:logs_that_burn"
+                    },
+                    {
+                      "type": "main:matching_block_tag",
+                      "offset": [
+                        0,
+                        -1,
+                        0
+                      ],
+                      "tag": "main:planks"
+                    },
+                    {
+                      "type": "main:matching_block_tag",
+                      "offset": [
+                        0,
+                        -1,
+                        0
+                      ],
+                      "tag": "main:wooden_trapdoors"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:count",
+      "count": 80
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

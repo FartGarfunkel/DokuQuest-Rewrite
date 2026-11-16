@@ -1,0 +1,18 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "default": {
+      "feature": "main:oak_bees_005",
+      "placement": []
+    },
+    "features": [
+      {
+        "chance": 0.33333334,
+        "feature": {
+          "feature": "main:fancy_oak_bees_005",
+          "placement": []
+        }
+      }
+    ]
+  }
+}

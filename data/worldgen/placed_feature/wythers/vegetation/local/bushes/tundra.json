@@ -1,0 +1,74 @@
+{
+  "feature": {
+  "type": "main:random_selector",
+  "config": {
+    "features": [
+      {
+        "chance": 0.1,
+        "feature": {
+          "feature": "wythers:vegetation/tree/scrub_azalea",
+          "placement": []
+        }
+      },
+      {
+        "chance": 0.2,
+        "feature": {
+          "feature": "wythers:vegetation/tree/scrub_spruce",
+          "placement": []
+        }
+      }
+    ],
+    "default": {
+      "feature": "wythers:vegetation/tree/tundra_bush",
+      "placement": []
+    }
+  }
+}
+,
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 200,
+      "noise_offset": -0.25
+    },
+    {
+      "type": "main:count",
+      "count": 10
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "WORLD_SURFACE_WG",
+      "min_inclusive": -75,
+      "max_inclusive": -67
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:spruce_sapling",
+          "Properties": {
+            "stage": "0"
+          }
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

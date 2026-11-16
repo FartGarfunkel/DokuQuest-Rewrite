@@ -1,0 +1,25 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "north",
+    "allowed_placement": {
+      "type": "main:matching_blocks",
+      "blocks": "main:air"
+    },
+    "prioritize_tip": false,
+    "layers": [
+      {
+        "height": 5,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:stripped_dark_oak_log",
+            "Properties": {
+              "axis": "z"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

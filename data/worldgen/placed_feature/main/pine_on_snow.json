@@ -1,0 +1,32 @@
+{
+  "feature": "main:pine",
+  "placement": [
+    {
+      "type": "main:environment_scan",
+      "direction_of_search": "up",
+      "max_steps": 8,
+      "target_condition": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:matching_blocks",
+          "blocks": "main:powder_snow"
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:snow_block",
+          "main:powder_snow"
+        ],
+        "offset": [
+          0,
+          -1,
+          0
+        ]
+      }
+    }
+  ]
+}

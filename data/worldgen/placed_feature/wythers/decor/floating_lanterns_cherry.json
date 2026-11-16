@@ -1,0 +1,27 @@
+{
+  "feature": "wythers:decor/patch_floating_lanterns",
+  "placement": [
+   {
+      "type": "main:rarity_filter",
+      "chance": 1
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": 90
+        },
+        "max_inclusive": {
+          "absolute": 130
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

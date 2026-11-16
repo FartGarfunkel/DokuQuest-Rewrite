@@ -1,0 +1,21 @@
+{
+  "feature": "main:flower_cherry",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_factor": 70.0,
+      "noise_offset": 0.0,
+      "noise_to_count_ratio": 8
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

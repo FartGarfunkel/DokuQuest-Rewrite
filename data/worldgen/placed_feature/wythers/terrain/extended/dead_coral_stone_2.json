@@ -1,0 +1,64 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:weighted_state_provider",
+          "entries": [
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:dead_brain_coral_block"
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:dead_bubble_coral_block"
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:dead_fire_coral_block"
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:dead_horn_coral_block"
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:dead_tube_coral_block"
+              }
+            }
+          ]
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": "main:stone"
+      },
+      "radius": 8,
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 60
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    }
+  ]
+}

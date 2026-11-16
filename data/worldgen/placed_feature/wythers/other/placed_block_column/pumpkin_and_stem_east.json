@@ -1,0 +1,80 @@
+{
+  "feature": "wythers:other/configured_block_column/pumpkin_and_stem_east",
+  "placement": [
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:moss_block",
+              "main:sand",
+              "main:coarse_dirt",
+              "main:podzol",
+              "main:dirt",
+              "main:rooted_dirt",
+              "main:red_sand"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:moss_block",
+              "main:coarse_dirt",
+              "main:podzol",
+              "main:dirt",
+              "main:rooted_dirt"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              1,
+              0
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,136 @@
+{
+  "type": "main:tree",
+  "config": {
+    "ignore_vines": true,
+    "force_dirt": false,
+    "minimum_size": {
+      "type": "main:two_layers_feature_size",
+      "limit": 1,
+      "lower_size": 0,
+      "upper_size": 2
+    },
+    "dirt_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:mangrove_wood",
+        "Properties": {
+          "axis": "y"
+        }
+      }
+    },
+    "trunk_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:mangrove_log",
+        "Properties": {
+          "axis": "y"
+        }
+      }
+    },
+    "foliage_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:birch_leaves",
+        "Properties": {
+          "waterlogged": "false",
+          "persistent": "false",
+          "distance": "7"
+        }
+      }
+    },
+    "root_placer": {
+      "trunk_offset_y": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 1,
+          "max_inclusive": 2
+        }
+      },
+      "root_provider": {
+        "state": {
+          "Properties": {
+            "waterlogged": "false"
+          },
+          "Name": "main:mangrove_roots"
+        },
+        "type": "main:simple_state_provider"
+      },
+      "above_root_placement": {
+        "above_root_provider": {
+          "state": {
+            "Name": "main:moss_carpet"
+          },
+          "type": "main:simple_state_provider"
+        },
+        "above_root_placement_chance": 0
+      },
+      "mangrove_root_placement": {
+        "max_root_width": 4,
+        "max_root_length": 5,
+        "random_skew_chance": 0.5,
+        "can_grow_through": "#main:mangrove_roots_can_grow_through",
+        "muddy_roots_in": [
+          "main:mud",
+          "main:muddy_mangrove_roots"
+        ],
+        "muddy_roots_provider": {
+          "state": {
+            "Properties": {
+              "axis": "y"
+            },
+            "Name": "main:muddy_mangrove_roots"
+          },
+          "type": "main:simple_state_provider"
+        }
+      },
+      "type": "main:mangrove_root_placer"
+    },
+    "trunk_placer": {
+      "type": "main:straight_trunk_placer",
+      "base_height": 1,
+      "height_rand_a": 1,
+      "height_rand_b": 1
+    },
+    "foliage_placer": {
+      "type": "main:bush_foliage_placer",
+      "radius": 2,
+      "offset": 1,
+      "height": 2
+    },
+    "decorators": [
+      {
+        "type": "main:attached_to_leaves",
+        "probability": 0.14,
+        "exclusion_radius_xz": 1,
+        "exclusion_radius_y": 0,
+        "required_empty_blocks": 2,
+        "block_provider": {
+          "type": "main:randomized_int_state_provider",
+          "property": "age",
+          "values": {
+            "type": "main:uniform",
+            "value": {
+              "min_inclusive": 0,
+              "max_inclusive": 4
+            }
+          },
+          "source": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:mangrove_propagule",
+              "Properties": {
+                "waterlogged": "false",
+                "stage": "0",
+                "hanging": "true",
+                "age": "0"
+              }
+            }
+          }
+        },
+        "directions": [
+          "down"
+        ]
+      }
+    ]
+  }
+}

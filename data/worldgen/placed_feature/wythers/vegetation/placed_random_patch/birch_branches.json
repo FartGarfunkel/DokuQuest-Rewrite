@@ -1,0 +1,293 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 64,
+      "xz_spread": 5,
+      "y_spread": 10,
+      "feature": {
+        "feature": {
+          "type": "main:simple_random_selector",
+          "config": {
+            "features": [
+              {
+                "feature": {
+                  "type": "main:simple_block",
+                  "config": {
+                    "to_place": {
+                      "type": "main:simple_state_provider",
+                      "state": {
+                        "Name": "main:birch_log",
+                        "Properties": {
+                          "axis": "x"
+                        }
+                      }
+                    }
+                  }
+                },
+                "placement": [
+                  {
+                    "type": "main:block_predicate_filter",
+                    "predicate": {
+                      "type": "main:all_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_blocks",
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            1,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            2,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            -1,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            -2,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            -3,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:any_of",
+                          "predicates": [
+                            {
+                              "type": "main:all_of",
+                              "predicates": [
+                                {
+                                  "type": "main:matching_blocks",
+                                  "offset": [
+                                    1,
+                                    0,
+                                    0
+                                  ],
+                                  "blocks": "main:birch_wood"
+                                },
+                                {
+                                  "type": "main:matching_blocks",
+                                  "offset": [
+                                    2,
+                                    0,
+                                    0
+                                  ],
+                                  "blocks": "main:air"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "main:all_of",
+                              "predicates": [
+                                {
+                                  "type": "main:matching_blocks",
+                                  "offset": [
+                                    -1,
+                                    0,
+                                    0
+                                  ],
+                                  "blocks": "main:birch_wood"
+                                },
+                                {
+                                  "type": "main:matching_blocks",
+                                  "offset": [
+                                    -2,
+                                    0,
+                                    0
+                                  ],
+                                  "blocks": "main:air"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "feature": {
+                  "type": "main:simple_block",
+                  "config": {
+                    "to_place": {
+                      "type": "main:simple_state_provider",
+                      "state": {
+                        "Name": "main:birch_log",
+                        "Properties": {
+                          "axis": "z"
+                        }
+                      }
+                    }
+                  }
+                },
+                "placement": [
+                  {
+                    "type": "main:block_predicate_filter",
+                    "predicate": {
+                      "type": "main:all_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_blocks",
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            1,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            2,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            -1,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            -2,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            -3,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        },
+                        {
+                          "type": "main:any_of",
+                          "predicates": [
+                            {
+                              "type": "main:all_of",
+                              "predicates": [
+                                {
+                                  "type": "main:matching_blocks",
+                                  "offset": [
+                                    0,
+                                    0,
+                                    1
+                                  ],
+                                  "blocks": "main:birch_wood"
+                                },
+                                {
+                                  "type": "main:matching_blocks",
+                                  "offset": [
+                                    0,
+                                    0,
+                                    2
+                                  ],
+                                  "blocks": "main:air"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "main:all_of",
+                              "predicates": [
+                                {
+                                  "type": "main:matching_blocks",
+                                  "offset": [
+                                    0,
+                                    0,
+                                    -1
+                                  ],
+                                  "blocks": "main:birch_wood"
+                                },
+                                {
+                                  "type": "main:matching_blocks",
+                                  "offset": [
+                                    0,
+                                    0,
+                                    -2
+                                  ],
+                                  "blocks": "main:air"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "placement": []
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 5
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": 5
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

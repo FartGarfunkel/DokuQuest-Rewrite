@@ -1,0 +1,124 @@
+{
+  "feature": "nature:snow_patch",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 70
+    },
+    {
+      "type": "main:count",
+      "count": 10
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 1,
+      "y_spread": 0
+    },
+    {
+      "type": "heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:grass_block",
+              "main:stone",
+              "main:snow_block",
+              "main:andesite",
+              "main:spruce_leaves",
+              "nature:larch_leaves",
+              "nature:fir_leaves"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:snow",
+              "main:spruce_leaves",
+              "nature:larch_leaves",
+              "nature:fir_leaves"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:air",
+              "main:snow",
+              "main:spruce_leaves",
+              "nature:larch_leaves",
+              "nature:fir_leaves"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:snow",
+              "main:spruce_leaves",
+              "nature:larch_leaves",
+              "nature:fir_leaves"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:air",
+              "main:snow",
+              "main:spruce_leaves",
+              "nature:larch_leaves",
+              "nature:fir_leaves"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

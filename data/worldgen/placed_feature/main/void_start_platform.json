@@ -1,0 +1,8 @@
+{
+  "feature": "main:void_start_platform",
+  "placement": [
+    {
+      "type": "main:biome"
+    }
+  ]
+}

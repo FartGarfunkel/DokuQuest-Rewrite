@@ -1,0 +1,30 @@
+{
+  "type": "main:ore",
+  "config": {
+    "discard_chance_on_air_exposure": 0.0,
+    "size": 9,
+    "targets": [
+      {
+        "state": {
+          "Name": "main:infested_stone"
+        },
+        "target": {
+          "predicate_type": "main:tag_match",
+          "tag": "main:stone_ore_replaceables"
+        }
+      },
+      {
+        "state": {
+          "Name": "main:infested_deepslate",
+          "Properties": {
+            "axis": "y"
+          }
+        },
+        "target": {
+          "predicate_type": "main:tag_match",
+          "tag": "main:deepslate_ore_replaceables"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,298 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:deepslate"
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:any_of",
+        "predicates": [
+          {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:air",
+                  "main:grass",
+                  "main:fern"
+                ]
+              },
+              {
+                "type": "main:matching_block_tag",
+                "tag": "main:dirt"
+              },
+              {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          -1,
+                          0
+                        ],
+                        "blocks": [
+                          "main:grass",
+                          "main:air"
+                        ]
+                      },
+                      {
+                        "type": "main:not",
+                        "predicate": {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            -1,
+                            0,
+                            0
+                          ],
+                          "blocks": "main:grass_block"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          -1,
+                          0
+                        ],
+                        "blocks": [
+                          "main:grass",
+                          "main:air"
+                        ]
+                      },
+                      {
+                        "type": "main:not",
+                        "predicate": {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            1,
+                            0,
+                            0
+                          ],
+                          "blocks": "main:grass_block"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          -1,
+                          1
+                        ],
+                        "blocks": [
+                          "main:grass",
+                          "main:air"
+                        ]
+                      },
+                      {
+                        "type": "main:not",
+                        "predicate": {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            0,
+                            -1
+                          ],
+                          "blocks": "main:grass_block"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          -1,
+                          -1
+                        ],
+                        "blocks": [
+                          "main:grass",
+                          "main:air"
+                        ]
+                      },
+                      {
+                        "type": "main:not",
+                        "predicate": {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            0,
+                            1
+                          ],
+                          "blocks": "main:grass_block"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:not",
+                "predicate": {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air",
+                    "main:grass"
+                  ]
+                }
+              },
+              {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:dirt",
+                  "main:rooted_dirt",
+                  "main:coarse_dirt"
+                ]
+              },
+              {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      1,
+                      0
+                    ],
+                    "blocks": [
+                  "main:stone",
+                  "main:deepslate"
+                ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "blocks": "main:packed_mud"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:stone",
+                  "main:deepslate"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 7
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 128
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": 80
+        },
+        "max_inclusive": {
+          "absolute": 250
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

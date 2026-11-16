@@ -1,0 +1,30 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:brown_mushroom"
+            }
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          }
+        }
+      ]
+    },
+    "tries": 96,
+    "xz_spread": 7,
+    "y_spread": 3
+  }
+}

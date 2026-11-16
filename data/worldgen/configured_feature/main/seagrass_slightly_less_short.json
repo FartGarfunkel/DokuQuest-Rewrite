@@ -1,0 +1,6 @@
+{
+  "type": "main:seagrass",
+  "config": {
+    "probability": 0.4
+  }
+}

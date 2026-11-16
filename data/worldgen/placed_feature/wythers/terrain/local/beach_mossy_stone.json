@@ -1,0 +1,154 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:weighted_state_provider",
+          "entries": [
+            {
+              "weight": 10,
+              "data": {
+                "Name": "main:mossy_cobblestone"
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:moss_block"
+              }
+            }
+          ]
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "blocks": [
+              "main:stone",
+              "main:andesite",
+              "main:diorite",
+              "main:granite",
+              "main:dead_brain_coral_block",
+              "main:dead_bubble_coral_block",
+              "main:dead_fire_coral_block",
+              "main:dead_horn_coral_block",
+              "main:dead_tube_coral_block"
+            ]
+          },
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:water",
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:water",
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:water",
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  1
+                ],
+                "blocks": [
+                  "main:water",
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  -1
+                ],
+                "blocks": [
+                  "main:water",
+                  "main:air"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:water",
+                  "main:air"
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 3
+        }
+      },
+      "half_height": 2
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 100
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_fluids",
+        "fluids": "main:water"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

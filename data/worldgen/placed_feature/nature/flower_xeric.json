@@ -1,0 +1,19 @@
+{
+  "feature": "nature:flower_xeric",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 12
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

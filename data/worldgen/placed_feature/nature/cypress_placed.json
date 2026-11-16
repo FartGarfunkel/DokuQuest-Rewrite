@@ -1,0 +1,27 @@
+{
+  "feature": "nature:cypress_tree_spawn",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 20
+    },
+    {
+      "type": "main:rarity_filter",
+      "chance": 110
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

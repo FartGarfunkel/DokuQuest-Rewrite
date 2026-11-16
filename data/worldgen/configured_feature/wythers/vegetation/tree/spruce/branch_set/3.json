@@ -1,0 +1,171 @@
+{
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "config": {
+            "to_place": {
+              "state": {
+                "Name": "main:spruce_log",
+                "Properties": {
+                  "axis": "x"
+                }
+              },
+              "type": "main:simple_state_provider"
+            }
+          },
+          "type": "main:simple_block"
+        },
+        "placement": [
+          {
+            "xz_spread": {
+              "value": {
+                "min_inclusive": 0,
+                "max_inclusive": 1
+              },
+              "type": "main:uniform"
+            },
+            "y_spread": 0,
+            "type": "main:random_offset"
+          },
+          {
+            "predicate": {
+              "blocks": "main:spruce_log",
+              "offset": [
+                -1,
+                -1,
+                0
+              ],
+              "type": "main:matching_blocks"
+            },
+            "type": "main:block_predicate_filter"
+          }
+        ]
+      },
+      {
+        "feature": {
+          "config": {
+            "to_place": {
+              "state": {
+                "Name": "main:spruce_log",
+                "Properties": {
+                  "axis": "z"
+                }
+              },
+              "type": "main:simple_state_provider"
+            }
+          },
+          "type": "main:simple_block"
+        },
+        "placement": [
+          {
+            "xz_spread": {
+              "value": {
+                "min_inclusive": 0,
+                "max_inclusive": 1
+              },
+              "type": "main:uniform"
+            },
+            "y_spread": 0,
+            "type": "main:random_offset"
+          },
+          {
+            "predicate": {
+              "blocks": "main:spruce_log",
+              "offset": [
+                0,
+                -1,
+                -1
+              ],
+              "type": "main:matching_blocks"
+            },
+            "type": "main:block_predicate_filter"
+          }
+        ]
+      },
+      {
+        "feature": {
+          "config": {
+            "to_place": {
+              "state": {
+                "Name": "main:spruce_log",
+                "Properties": {
+                  "axis": "x"
+                }
+              },
+              "type": "main:simple_state_provider"
+            }
+          },
+          "type": "main:simple_block"
+        },
+        "placement": [
+          {
+            "xz_spread": {
+              "value": {
+                "min_inclusive": -1,
+                "max_inclusive": 0
+              },
+              "type": "main:uniform"
+            },
+            "y_spread": 0,
+            "type": "main:random_offset"
+          },
+          {
+            "predicate": {
+              "blocks": "main:spruce_log",
+              "offset": [
+                1,
+                -1,
+                0
+              ],
+              "type": "main:matching_blocks"
+            },
+            "type": "main:block_predicate_filter"
+          }
+        ]
+      },
+      {
+        "feature": {
+          "config": {
+            "to_place": {
+              "state": {
+                "Name": "main:spruce_log",
+                "Properties": {
+                  "axis": "z"
+                }
+              },
+              "type": "main:simple_state_provider"
+            }
+          },
+          "type": "main:simple_block"
+        },
+        "placement": [
+          {
+            "xz_spread": {
+              "value": {
+                "min_inclusive": -1,
+                "max_inclusive": 0
+              },
+              "type": "main:uniform"
+            },
+            "y_spread": 0,
+            "type": "main:random_offset"
+          },
+          {
+            "predicate": {
+              "blocks": "main:spruce_log",
+              "offset": [
+                0,
+                -1,
+                1
+              ],
+              "type": "main:matching_blocks"
+            },
+            "type": "main:block_predicate_filter"
+          }
+        ]
+      }
+    ]
+  },
+  "type": "main:simple_random_selector"
+}

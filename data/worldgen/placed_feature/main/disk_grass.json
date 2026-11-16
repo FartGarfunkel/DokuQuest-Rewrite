@@ -1,0 +1,31 @@
+{
+  "feature": "main:disk_grass",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 1
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": -1
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "blocks": "main:mud"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

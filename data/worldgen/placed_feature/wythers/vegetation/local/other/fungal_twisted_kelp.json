@@ -1,0 +1,136 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 16,
+      "xz_spread": 8,
+      "y_spread": 8,
+      "feature": {
+        "feature": {
+          "type": "main:block_column",
+          "config": {
+            "direction": "up",
+            "allowed_placement": {
+              "type": "main:matching_blocks",
+              "blocks": "main:air"
+            },
+            "prioritize_tip": true,
+            "layers": [
+              {
+                "height": {
+                  "type": "main:uniform",
+                  "value": {
+                    "min_inclusive": 15,
+                    "max_inclusive": 20
+                  }
+                },
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:twisting_vines_plant"
+                  }
+                }
+              },
+              {
+                "height": 1,
+                "provider": {
+                  "type": "main:weighted_state_provider",
+                  "entries": [
+                    {
+                      "weight": 5,
+                      "data": {
+                        "Name": "main:warped_roots"
+                      }
+                    },
+                    {
+                      "weight": 5,
+                      "data": {
+                        "Name": "main:twisting_vines",
+                        "Properties": {
+                          "age": "0"
+                        }
+                      }
+                    },
+                    {
+                      "weight": 5,
+                      "data": {
+                        "Name": "main:warped_wart_block"
+                      }
+                    },
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:verdant_froglight",
+                        "Properties": {
+                          "axis": "y"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "placement": [
+          {
+            "type": "main:heightmap",
+            "heightmap": "OCEAN_FLOOR"
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -1,
+                0
+              ],
+              "blocks": [
+                "main:dead_brain_coral_block",
+                "main:dead_bubble_coral_block",
+                "main:dead_fire_coral_block",
+                "main:dead_horn_coral_block",
+                "main:dead_tube_coral_block"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 150,
+      "noise_offset": -0.5
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": -0.2
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": -0.41
+    },
+    {
+      "type": "main:count",
+      "count": 3
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

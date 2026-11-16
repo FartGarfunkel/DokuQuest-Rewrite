@@ -1,0 +1,8 @@
+{
+  "type": "main:forest_rock",
+  "config": {
+    "state": {
+      "Name": "main:stone"
+    }
+  }
+}

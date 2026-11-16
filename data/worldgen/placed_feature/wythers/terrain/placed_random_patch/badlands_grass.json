@@ -1,0 +1,27 @@
+{
+  "feature": "wythers:terrain/configured_random_patch/badlands_grass",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 150
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": 95
+        },
+        "max_inclusive": {
+          "absolute": 115
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

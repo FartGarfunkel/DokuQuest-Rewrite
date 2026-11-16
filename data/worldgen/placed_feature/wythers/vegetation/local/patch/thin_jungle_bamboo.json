@@ -1,0 +1,18 @@
+{
+  "feature": "wythers:vegetation/thin_jungle_bamboo_patch",
+  "placement": [
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING_NO_LEAVES"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:bamboo_sapling"
+        }
+      }
+    }
+  ]
+}

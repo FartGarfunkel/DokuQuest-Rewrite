@@ -1,0 +1,63 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "tries": 32,
+    "xz_spread": 7,
+    "y_spread": 3,
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:weighted_state_provider",
+            "entries": [
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:dead_brain_coral",
+                  "Properties": {
+                    "waterlogged": "false"
+                  }
+                }
+              },
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:dead_fire_coral",
+                  "Properties": {
+                    "waterlogged": "false"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:gravel",
+              "main:mud",
+              "main:smooth_basalt"
+            ]
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          }
+        }
+      ]
+    }
+  }
+}

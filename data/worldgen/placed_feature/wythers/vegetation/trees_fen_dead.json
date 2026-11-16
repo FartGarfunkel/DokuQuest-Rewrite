@@ -1,0 +1,73 @@
+{
+  "feature": "wythers:vegetation/configured_tree/dead_spruce",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:weighted_list",
+        "distribution": [
+          {
+            "weight": 3,
+            "data": 2
+          },
+          {
+            "weight": 1,
+            "data": 1
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 1
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": 60
+        },
+        "max_inclusive": {
+          "absolute": 66
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "blocks": [
+          "main:air",
+          "main:water"
+        ]
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:mangrove_propagule",
+          "Properties": {
+            "age": "0",
+            "hanging": "false",
+            "stage": "0",
+            "waterlogged": "false"
+          }
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

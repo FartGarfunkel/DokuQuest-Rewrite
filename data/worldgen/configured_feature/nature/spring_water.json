@@ -1,0 +1,30 @@
+{
+  "type": "nature:water_delta_feature",
+  "config": {
+    "contents": {
+      "Name": "main:water",
+      "Properties": {
+        "level": "0"
+      }
+    },
+    "rim": {
+      "Name": "main:stone"
+    },
+    "rim_size": {
+      "type": "main:uniform",
+
+      "value": {
+        "min_inclusive": 0,
+        "max_inclusive": 4
+      }
+      
+    },
+    "size": {
+      "type": "main:uniform",
+      "value": {
+        "min_inclusive": 8,
+        "max_inclusive": 12
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "feature": "main:forest_flowers",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 7
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:clamped",
+        "value": {
+          "max_inclusive": 3,
+          "min_inclusive": 0,
+          "source": {
+            "type": "main:uniform",
+            "value": {
+              "max_inclusive": 3,
+              "min_inclusive": -1
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

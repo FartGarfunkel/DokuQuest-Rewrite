@@ -1,0 +1,76 @@
+{
+  "feature": "wythers:vegetation/tree/montane_forest_spruce",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 15
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "WORLD_SURFACE_WG",
+      "min_inclusive": -200,
+      "max_inclusive": -125
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:fern"
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:matching_blocks",
+          "offset": [
+            0,
+            -2,
+            0
+          ],
+          "blocks": [
+            "main:rooted_dirt",
+            "main:coarse_dirt",
+            "main:red_sand"
+          ]
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:matching_blocks",
+          "offset": [
+            0,
+            -3,
+            0
+          ],
+          "blocks": [
+            "main:smooth_basalt"
+          ]
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

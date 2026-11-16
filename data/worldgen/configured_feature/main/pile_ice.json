@@ -1,0 +1,22 @@
+{
+  "type": "main:block_pile",
+  "config": {
+    "state_provider": {
+      "type": "main:weighted_state_provider",
+      "entries": [
+        {
+          "data": {
+            "Name": "main:blue_ice"
+          },
+          "weight": 1
+        },
+        {
+          "data": {
+            "Name": "main:packed_ice"
+          },
+          "weight": 5
+        }
+      ]
+    }
+  }
+}

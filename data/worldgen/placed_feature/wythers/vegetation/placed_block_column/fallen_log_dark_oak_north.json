@@ -1,0 +1,130 @@
+{
+  "feature": "wythers:vegetation/configured_block_column/fallen_log_dark_oak_north",
+  "placement": [
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              1
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              -1
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              -2
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              -3
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              -4
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              -5
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_block_tag",
+            "offset": [
+              0,
+              -1,
+              1
+            ],
+            "tag": "main:dirt"
+          },
+          {
+            "type": "main:matching_block_tag",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "tag": "main:dirt"
+          },
+          {
+            "type": "main:matching_block_tag",
+            "offset": [
+              0,
+              -1,
+              -1
+            ],
+            "tag": "main:dirt"
+          },
+          {
+            "type": "main:matching_block_tag",
+            "offset": [
+              0,
+              -1,
+              -2
+            ],
+            "tag": "main:dirt"
+          },
+          {
+            "type": "main:matching_block_tag",
+            "offset": [
+              0,
+              -1,
+              -3
+            ],
+            "tag": "main:dirt"
+          },
+          {
+            "type": "main:matching_block_tag",
+            "offset": [
+              0,
+              -1,
+              -4
+            ],
+            "tag": "main:dirt"
+          }
+        ]
+      }
+    }
+  ]
+}

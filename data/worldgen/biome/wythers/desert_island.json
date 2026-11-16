@@ -1,0 +1,195 @@
+{
+	"temperature": 0.3,
+	"downfall": 0,
+	"effects": {
+		"sky_color": 7788235,
+		"fog_color": 13880215,
+		"water_color": 4445678,
+		"water_fog_color": 270131,
+		"grass_color": 16765810,
+		"foliage_color": 9285927,
+		"mood_sound": {
+			"sound": "main:ambient.cave",
+			"tick_delay": 6000,
+			"block_search_extent": 8,
+			"offset": 2
+		}
+	},
+	"spawners": {
+		"monster": [
+			{
+				"type": "main:spider",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie",
+				"weight": 95,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie_villager",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			},
+			{
+				"type": "main:skeleton",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:creeper",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:slime",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:enderman",
+				"weight": 10,
+				"minCount": 1,
+				"maxCount": 4
+			},
+			{
+				"type": "main:witch",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			}
+		],
+		"creature": [
+			{
+				"type": "main:chicken",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:cow",
+				"weight": 8,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:horse",
+				"weight": 5,
+				"minCount": 2,
+				"maxCount": 6
+			},
+			{
+				"type": "main:donkey",
+				"weight": 1,
+				"minCount": 1,
+				"maxCount": 3
+			}
+		],
+		"ambient": [
+			{
+				"type": "main:bat",
+				"weight": 10,
+				"minCount": 8,
+				"maxCount": 8
+			}
+		],
+		"axolotls": [],
+		"underground_water_creature": [
+			{
+				"type": "main:glow_squid",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 6
+			}
+		],
+		"water_creature": [],
+		"water_ambient": [],
+		"misc": []
+	},
+	"spawn_costs": { },
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"features": [
+		[
+			"wythers:terrain/placed_random_patch/packed_mud_cliffs",
+			"wythers:terrain/placed_random_patch/packed_mud_spread"
+		],
+		[
+			"main:lake_lava_underground",
+			"main:lake_lava_surface"
+		],
+		[
+			"main:amethyst_geode"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[],
+		[],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper",
+			"main:underwater_magma",
+			"wythers:terrain/placed_random_patch/chaparral_sand",
+			"main:disk_sand",
+			"main:disk_clay",
+			"main:disk_gravel"
+		],
+		[],
+		[
+			"main:spring_water",
+			"main:spring_lava"
+		],
+		[
+			"wythers:vegetation/bushes_chaparral",
+			"main:glow_lichen",
+			"main:patch_tall_grass_2",
+			"wythers:vegetation/trees_warm_mediterranean",
+			"wythers:vegetation/placed_random_patch/dead_bushes_tropical_forest",
+			"main:patch_grass_savanna",
+			"main:brown_mushroom_normal",
+			"main:red_mushroom_normal",
+			"main:patch_sugar_cane"
+		],
+		[
+			"main:freeze_top_layer",
+			"wythers:vegetation/placed_random_patch/desert_island_cactus"
+		]
+	],
+	"has_precipitation": true
+}

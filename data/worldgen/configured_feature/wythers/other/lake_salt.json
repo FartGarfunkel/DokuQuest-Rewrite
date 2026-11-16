@@ -1,0 +1,17 @@
+{
+  "type": "main:lake",
+  "config": {
+    "barrier": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:calcite"
+      }
+    },
+    "fluid": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:white_concrete_powder"
+      }
+    }
+  }
+}

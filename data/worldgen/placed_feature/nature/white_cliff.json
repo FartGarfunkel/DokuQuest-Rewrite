@@ -1,0 +1,19 @@
+{
+	"feature": "nature:white_cliff",
+	"placement": [
+		{
+			"type": "main:count",
+			"count": 256
+		},
+		{
+			"type": "main:in_square"
+		},
+		{
+			"type": "heightmap",
+			"heightmap": "WORLD_SURFACE_WG"
+		},
+		{
+			"type": "main:biome"
+		}
+	]
+}

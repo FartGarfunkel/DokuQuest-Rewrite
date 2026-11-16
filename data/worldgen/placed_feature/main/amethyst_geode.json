@@ -1,0 +1,27 @@
+{
+  "feature": "main:amethyst_geode",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 24
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "absolute": 30
+        },
+        "min_inclusive": {
+          "above_bottom": 6
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

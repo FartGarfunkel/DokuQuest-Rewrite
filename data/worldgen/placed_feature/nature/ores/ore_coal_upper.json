@@ -1,0 +1,27 @@
+{
+  "feature": "nature:ores/ore_coal",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "below_top": 0
+        },
+        "min_inclusive": {
+          "absolute": 136
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

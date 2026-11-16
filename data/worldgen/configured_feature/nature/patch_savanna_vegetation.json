@@ -1,0 +1,61 @@
+{
+  "type": "main:flower",
+  "config": {
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:noise_provider",
+            "noise": {
+              "amplitudes": [
+                1.0
+              ],
+              "firstOctave": 0
+            },
+            "scale": 0.030833334,
+            "seed": 2445,
+            "states": [
+              {
+                "Name": "main:air"
+              },
+              {
+                "Name": "nature:oat_grass"
+              },
+              {
+                "Name": "nature:oat_grass"
+              },
+              {
+                "Name": "nature:tall_oat_grass",
+                "Properties": {
+                  "half": "lower"
+                }
+              },
+              {
+                "Name": "nature:oat_grass"
+              },
+              {
+                "Name": "nature:oat_grass"
+              },
+              {
+                "Name": "main:air"
+              }
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          }
+        }
+      ]
+    },
+    "tries": 300,
+    "xz_spread": 9,
+    "y_spread": 1
+  }
+}

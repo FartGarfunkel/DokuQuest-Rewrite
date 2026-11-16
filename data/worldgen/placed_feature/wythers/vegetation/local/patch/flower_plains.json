@@ -1,0 +1,89 @@
+{
+  "feature": {
+  "type": "main:flower",
+  "config": {
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:dual_noise_provider",
+            "noise": {
+              "amplitudes": [
+                1.0
+              ],
+              "firstOctave": -3
+            },
+            "scale": 1.0,
+            "seed": 2345,
+            "slow_noise": {
+              "amplitudes": [
+                1.0
+              ],
+              "firstOctave": -10
+            },
+            "slow_scale": 1.0,
+            "states": [
+              {
+                "Name": "main:tall_grass",
+                "Properties": {
+                  "half": "lower"
+                }
+              },
+              {
+                "Name": "main:allium"
+              },
+              {
+                "Name": "main:poppy"
+              },
+              {
+                "Name": "main:azure_bluet"
+              },
+              {
+                "Name": "main:dandelion"
+              },
+              {
+                "Name": "main:cornflower"
+              },
+              {
+                "Name": "main:oxeye_daisy"
+              },
+              {
+                "Name": "main:grass"
+              }
+            ],
+            "variety": [
+              1,
+              3
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          }
+        }
+      ]
+    },
+    "tries": 96,
+    "xz_spread": 6,
+    "y_spread": 2
+  }
+},
+  "placement": [
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,159 @@
+{
+  "feature": "wythers:vegetation/tree/forest_pine",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 10
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:fern"
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -2,
+          0
+        ],
+        "blocks": "main:coarse_dirt"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -3,
+          0
+        ],
+        "blocks": "main:dirt"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:any_of",
+          "predicates": [
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -2,
+                0
+              ],
+              "blocks": [
+                "main:granite",
+                "main:andesite"
+              ]
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -3,
+                0
+              ],
+              "blocks": [
+                "main:granite",
+                "main:andesite"
+              ]
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -4,
+                0
+              ],
+              "blocks": [
+                "main:granite",
+                "main:andesite"
+              ]
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -5,
+                0
+              ],
+              "blocks": [
+                "main:granite",
+                "main:andesite"
+              ]
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -6,
+                0
+              ],
+              "blocks": [
+                "main:granite",
+                "main:andesite"
+              ]
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -7,
+                0
+              ],
+              "blocks": [
+                "main:granite",
+                "main:andesite"
+              ]
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -8,
+                0
+              ],
+              "blocks": [
+                "main:granite",
+                "main:andesite"
+              ]
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -9,
+                0
+              ],
+              "blocks": [
+                "main:granite",
+                "main:andesite"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

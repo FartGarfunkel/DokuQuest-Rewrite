@@ -1,0 +1,53 @@
+{
+  "config": {
+    "tries": 64,
+    "xz_spread": 7,
+    "y_spread": 3,
+    "feature": {
+      "feature": {
+        "config": {
+          "to_place": {
+            "entries": [
+              {
+                "data": {
+                  "Name": "main:orange_tulip"
+                },
+                "weight": 2
+              },
+              {
+                "data": {
+                  "Name": "main:red_tulip"
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "main:poppy"
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "main:dead_bush"
+                },
+                "weight": 2
+              }
+            ],
+            "type": "main:weighted_state_provider"
+          }
+        },
+        "type": "main:simple_block"
+      },
+      "placement": [
+        {
+          "predicate": {
+            "blocks": "main:air",
+            "type": "main:matching_blocks"
+          },
+          "type": "main:block_predicate_filter"
+        }
+      ]
+    }
+  },
+  "type": "main:flower"
+}

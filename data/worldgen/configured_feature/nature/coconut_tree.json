@@ -1,0 +1,66 @@
+{
+  "type": "main:tree",
+  "config": {
+    "decorators": [
+      {
+        "type": "nature:coconut_tree_decorator",
+        "probability": 1.0
+      }
+    ],
+    "dirt_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:dirt"
+      }
+    },
+    "foliage_placer": {
+      "type": "nature:coconut_foliage_placer",
+      "offset": 0,
+      "radius": 0
+    },
+    "foliage_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "nature:coconut_leaves",
+        "Properties": {
+          "distance": "7",
+          "persistent": "false",
+          "waterlogged": "false"
+        }
+      }
+    },
+    "force_dirt": false,
+    "ignore_vines": true,
+    "minimum_size": {
+      "type": "main:two_layers_feature_size",
+      "limit": 1,
+      "lower_size": 0,
+      "min_clipped_height": 6,
+      "upper_size": 1
+    },
+    "trunk_placer": {
+      "type": "nature:coconut_trunk_placer",
+      "base_height": 6,
+      "can_grow_through": "#main:mangrove_logs_can_grow_through",
+      "fork_probability": 0.35,
+      "height_rand_a": 2,
+      "height_rand_b": 3,
+      "trunk_steps": {
+        "type": "main:uniform",
+        "value": {
+          "max_inclusive": 3,
+          "min_inclusive": 1
+        }
+      }
+    },
+    "trunk_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "nature:coconut_log",
+        "Properties": {
+          "axis": "y"
+        }
+      }
+    }
+  }
+}

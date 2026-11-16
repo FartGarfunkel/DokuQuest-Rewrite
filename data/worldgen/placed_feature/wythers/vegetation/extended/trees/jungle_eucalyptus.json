@@ -1,0 +1,160 @@
+{
+  "feature": "wythers:vegetation/tree/forest_eucalyptus",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 10
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:fern"
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:any_of",
+          "predicates": [
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                1,
+                0,
+                1
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                1,
+                0,
+                -1
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                -1,
+                0,
+                1
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                -1,
+                0,
+                -1
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                2,
+                0,
+                0
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                1,
+                0,
+                0
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                -2,
+                0,
+                0
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                -1,
+                0,
+                0
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                0,
+                0,
+                2
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                0,
+                0,
+                1
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                0,
+                0,
+                -2
+              ],
+              "tag": "main:logs_that_burn"
+            },
+            {
+              "type": "main:matching_block_tag",
+              "offset": [
+                0,
+                0,
+                -1
+              ],
+              "tag": "main:logs_that_burn"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -2,
+          0
+        ],
+        "blocks": [
+          "main:orange_terracotta",
+          "main:smooth_red_sandstone",
+          "main:brown_terracotta"
+        ]
+      }
+    }
+  ]
+}

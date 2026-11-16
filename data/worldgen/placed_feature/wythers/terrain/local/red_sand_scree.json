@@ -1,0 +1,267 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 128,
+      "xz_spread": 4,
+      "y_spread": 4,
+      "feature": {
+        "feature": {
+          "type": "main:simple_block",
+          "config": {
+            "to_place": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:red_sand"
+              }
+            }
+          }
+        },
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:matching_block_tag",
+              "offset": [
+                0,
+                0,
+                0
+              ],
+              "tag": "main:dirt"
+            }
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                1,
+                0
+              ],
+              "blocks": [
+                "main:air"
+              ]
+            }
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    2,
+                    0
+                  ],
+                  "blocks": [
+                    "main:smooth_red_sandstone",
+                    "main:orange_terracotta",
+                    "main:terracotta",
+                    "main:red_sand",
+                    "main:brown_terracotta",
+                    "main:red_terracotta",
+                    "main:white_terracotta"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    2,
+                    0
+                  ],
+                  "blocks": [
+                    "main:smooth_red_sandstone",
+                    "main:orange_terracotta",
+                    "main:terracotta",
+                    "main:red_sand",
+                    "main:brown_terracotta",
+                    "main:red_terracotta",
+                    "main:white_terracotta"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    2,
+                    1
+                  ],
+                  "blocks": [
+                    "main:smooth_red_sandstone",
+                    "main:orange_terracotta",
+                    "main:terracotta",
+                    "main:red_sand",
+                    "main:brown_terracotta",
+                    "main:red_terracotta",
+                    "main:white_terracotta"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    2,
+                    -1
+                  ],
+                  "blocks": [
+                    "main:smooth_red_sandstone",
+                    "main:orange_terracotta",
+                    "main:terracotta",
+                    "main:red_sand",
+                    "main:brown_terracotta",
+                    "main:red_terracotta",
+                    "main:white_terracotta"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    1,
+                    1
+                  ],
+                  "blocks": "main:red_sand"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    1,
+                    0
+                  ],
+                  "blocks": "main:red_sand"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    1,
+                    -1
+                  ],
+                  "blocks": "main:red_sand"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    1
+                  ],
+                  "blocks": "main:red_sand"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    -1
+                  ],
+                  "blocks": "main:red_sand"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    1,
+                    1
+                  ],
+                  "blocks": "main:red_sand"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    1,
+                    0
+                  ],
+                  "blocks": "main:red_sand"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    1,
+                    -1
+                  ],
+                  "blocks": "main:red_sand"
+                }
+              ]
+            }
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:not",
+              "predicate": {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      -1,
+                      0
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      -1,
+                      0
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -1,
+                      1
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -1,
+                      -1
+                    ],
+                    "blocks": "main:air"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 128
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": 0
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

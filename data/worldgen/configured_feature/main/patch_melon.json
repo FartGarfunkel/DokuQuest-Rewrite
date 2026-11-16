@@ -1,0 +1,47 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:melon"
+            }
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:replaceable"
+              },
+              {
+                "type": "main:matching_fluids",
+                "fluids": "main:empty"
+              },
+              {
+                "type": "main:matching_blocks",
+                "blocks": "main:grass_block",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "tries": 64,
+    "xz_spread": 7,
+    "y_spread": 3
+  }
+}

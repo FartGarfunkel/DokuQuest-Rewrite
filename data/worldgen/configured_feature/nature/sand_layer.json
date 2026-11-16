@@ -1,0 +1,29 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "features": [],
+    "default": {
+      "feature": {
+        "type": "main:netherrack_replace_blobs",
+        "config": {
+          "state": {
+            "Name": "main:sand"
+          },
+          "target": {
+            "Name": "nature:light_gray_kaolin"
+          },
+          "radius": {
+            "type": "main:uniform",
+            "value": {
+              "min_inclusive": 3,
+              "max_inclusive": 5
+            }
+            
+          }
+        }
+      },
+      "placement": [
+      ]
+    }
+  }
+}

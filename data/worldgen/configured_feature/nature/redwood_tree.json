@@ -1,0 +1,115 @@
+{
+  "type": "main:tree",
+  "config": {
+    "decorators": [
+      {
+        "type": "nature:redwood_branch_decorator",
+        "leaf_provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "nature:redwood_leaves",
+            "Properties": {
+              "distance": "7",
+              "persistent": "false",
+              "waterlogged": "false"
+            }
+          }
+        },
+        "probability": 0.1
+      },
+      {
+        "type": "nature:polypore_decorator",
+        "big_probability": 0.3,
+        "block_provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "nature:gray_polypore_block",
+            "Properties": {
+              "down": "true",
+              "east": "true",
+              "north": "true",
+              "south": "true",
+              "up": "true",
+              "west": "true"
+            }
+          }
+        },
+        "chance": 0.05,
+        "polypore_provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "nature:gray_polypore",
+            "Properties": {
+              "facing": "north"
+            }
+          }
+        },
+        "small_probability": 0.2
+      }
+    ],
+    "dirt_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:dirt"
+      }
+    },
+    "foliage_placer": {
+      "type": "nature:redwood_foliage_placer",
+      "offset": {
+        "type": "main:uniform",
+        "value": {
+          "max_inclusive": 2,
+          "min_inclusive": 1
+        }
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "max_inclusive": 3,
+          "min_inclusive": 1
+        }
+      },
+      "trunk_height": {
+        "type": "main:uniform",
+        "value": {
+          "max_inclusive": 32,
+          "min_inclusive": 22
+        }
+      }
+    },
+    "foliage_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "nature:redwood_leaves",
+        "Properties": {
+          "distance": "7",
+          "persistent": "false",
+          "waterlogged": "false"
+        }
+      }
+    },
+    "force_dirt": false,
+    "ignore_vines": true,
+    "minimum_size": {
+      "type": "main:two_layers_feature_size",
+      "limit": 2,
+      "lower_size": 0,
+      "upper_size": 2
+    },
+    "trunk_placer": {
+      "type": "main:straight_trunk_placer",
+      "base_height": 20,
+      "height_rand_a": 1,
+      "height_rand_b": 10
+    },
+    "trunk_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "nature:redwood_log",
+        "Properties": {
+          "axis": "y"
+        }
+      }
+    }
+  }
+}

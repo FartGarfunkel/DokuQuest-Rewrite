@@ -1,0 +1,93 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "up",
+    "allowed_placement": {
+      "type": "main:matching_blocks",
+      "blocks": [
+        "main:air"
+      ]
+    },
+    "prioritize_tip": true,
+    "layers": [
+      {
+        "height": {
+          "type": "main:uniform",
+          "value": {
+            "min_inclusive": 1,
+            "max_inclusive": 2
+          }
+        },
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:cactus",
+            "Properties": {
+              "age": "0"
+            }
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:cactus",
+            "Properties": {
+              "age": "4"
+            }
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:cactus",
+            "Properties": {
+              "age": "0"
+            }
+          }
+        }
+      },
+      {
+        "height": {
+          "type": "main:uniform",
+          "value": {
+            "min_inclusive": 0,
+            "max_inclusive": 2
+          }
+        },
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:cactus",
+            "Properties": {
+              "age": "10"
+            }
+          }
+        }
+      },
+      {
+        "height": {
+          "type": "main:uniform",
+          "value": {
+            "min_inclusive": 1,
+            "max_inclusive": 2
+          }
+        },
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:cactus",
+            "Properties": {
+              "age": "0"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

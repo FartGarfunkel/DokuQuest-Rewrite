@@ -1,0 +1,21 @@
+{
+  "type": "main:spring_feature",
+  "config": {
+    "hole_count": 1,
+    "requires_block_below": true,
+    "rock_count": 4,
+    "state": {
+      "Name": "main:lava",
+      "Properties": {
+        "falling": "true"
+      }
+    },
+    "valid_blocks": [
+      "main:netherrack",
+      "main:soul_sand",
+      "main:gravel",
+      "main:magma_block",
+      "main:blackstone"
+    ]
+  }
+}

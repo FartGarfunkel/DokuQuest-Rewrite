@@ -1,0 +1,84 @@
+{
+  "feature": "nature:oak_bush",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 200
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 1
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "absolute": 100
+        },
+        "min_inclusive": {
+          "absolute": 64
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:any_of",
+        "predicates": [
+          {
+            "type": "main:matching_block_tag",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "tag": "main:base_stone_overworld"
+          },
+          {
+            "type": "main:matching_block_tag",
+            "offset": [
+              1,
+              0,
+              0
+            ],
+            "tag": "main:base_stone_overworld"
+          },
+          {
+            "type": "main:matching_block_tag",
+            "offset": [
+              -1,
+              0,
+              0
+            ],
+            "tag": "main:base_stone_overworld"
+          },
+          {
+            "type": "main:matching_block_tag",
+            "offset": [
+              0,
+              0,
+              1
+            ],
+            "tag": "main:base_stone_overworld"
+          },
+          {
+            "type": "main:matching_block_tag",
+            "offset": [
+              0,
+              0,
+              -1
+            ],
+            "tag": "main:base_stone_overworld"
+          }
+        ]
+      }
+    }
+  ]
+}

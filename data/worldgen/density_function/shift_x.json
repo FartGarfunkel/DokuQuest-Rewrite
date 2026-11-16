@@ -1,0 +1,10 @@
+{
+  "type": "main:flat_cache",
+  "argument": {
+    "type": "main:cache_2d",
+    "argument": {
+      "type": "main:shift_a",
+      "argument": "main:offset"
+    }
+  }
+}

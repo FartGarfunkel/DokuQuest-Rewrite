@@ -1,0 +1,132 @@
+{
+  "feature": {
+    "type": "main:ore",
+    "config": {
+      "size": 64,
+      "discard_chance_on_air_exposure": 0,
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:grass_block"
+          },
+          "state": {
+            "Name": "main:smooth_basalt"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:dirt"
+          },
+          "state": {
+            "Name": "main:smooth_basalt"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:coarse_dirt"
+          },
+          "state": {
+            "Name": "main:smooth_basalt"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:podzol"
+          },
+          "state": {
+            "Name": "main:smooth_basalt"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:packed_mud"
+          },
+          "state": {
+            "Name": "main:smooth_basalt"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:rooted_dirt"
+          },
+          "state": {
+            "Name": "main:smooth_basalt"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:sand"
+          },
+          "state": {
+            "Name": "main:smooth_basalt"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:stone"
+          },
+          "state": {
+            "Name": "main:smooth_basalt"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:terracotta"
+          },
+          "state": {
+            "Name": "main:gray_terracotta"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:orange_terracotta"
+          },
+          "state": {
+            "Name": "main:brown_terracotta"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:red_terracotta"
+          },
+          "state": {
+            "Name": "main:black_terracotta"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:yellow_terracotta"
+          },
+          "state": {
+            "Name": "main:light_gray_terracotta"
+          }
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    }
+  ]
+}

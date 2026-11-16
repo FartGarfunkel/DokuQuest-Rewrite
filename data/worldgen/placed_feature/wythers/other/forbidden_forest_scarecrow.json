@@ -1,0 +1,61 @@
+{
+  "feature": "wythers:other/configured_block_column/hay_scarecrow",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:podzol",
+              "main:grass_block"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              2,
+              0
+            ],
+            "blocks": "main:air"
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

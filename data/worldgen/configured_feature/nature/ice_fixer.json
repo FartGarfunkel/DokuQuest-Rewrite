@@ -1,0 +1,63 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "features": [],
+    "default": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:ice"
+            }
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "count",
+          "count": 256
+        },
+        {
+          "type": "main:random_offset",
+          "xz_spread": {
+            "type": "main:uniform",
+				"value": {
+					"min_inclusive": 0,
+					"max_inclusive": 16
+				}
+            
+          },
+          "y_spread": {
+            "type": "main:uniform",
+            "value": {
+              "min_inclusive": -1,
+              "max_inclusive": 1
+            }
+            
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:water"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

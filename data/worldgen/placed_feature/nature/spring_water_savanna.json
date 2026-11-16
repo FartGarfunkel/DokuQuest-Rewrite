@@ -1,0 +1,27 @@
+{
+  "feature": "main:spring_water",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "absolute": 100
+        },
+        "min_inclusive": {
+          "above_bottom": 60
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "feature": "main:small_basalt_columns",
+  "placement": [
+    {
+      "type": "main:count_on_every_layer",
+      "count": 4
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

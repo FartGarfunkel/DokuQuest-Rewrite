@@ -1,0 +1,26 @@
+{
+  "type": "main:disk",
+  "config": {
+    "state_provider": {
+      "fallback": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:packed_mud"
+        }
+      },
+      "rules": []
+    },
+    "target": {
+      "type": "main:matching_blocks",
+      "blocks": "main:grass_block"
+    },
+    "radius": {
+      "type": "main:uniform",
+      "value": {
+        "min_inclusive": 3,
+        "max_inclusive": 4
+      }
+    },
+    "half_height": 0.5
+  }
+}

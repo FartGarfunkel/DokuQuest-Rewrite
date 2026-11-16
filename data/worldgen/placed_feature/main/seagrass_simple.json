@@ -1,0 +1,46 @@
+{
+  "feature": "main:seagrass_simple",
+  "placement": [
+    {
+      "type": "main:carving_mask",
+      "step": "liquid"
+    },
+    {
+      "type": "main:rarity_filter",
+      "chance": 10
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "blocks": "main:stone",
+            "offset": [
+              0,
+              -1,
+              0
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "blocks": "main:water"
+          },
+          {
+            "type": "main:matching_blocks",
+            "blocks": "main:water",
+            "offset": [
+              0,
+              1,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

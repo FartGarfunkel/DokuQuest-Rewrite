@@ -1,0 +1,77 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "tries": 75,
+    "xz_spread": 5,
+    "y_spread": 5,
+    "feature": {
+      "feature": {
+        "type": "main:random_selector",
+        "config": {
+          "features": [
+            {
+              "chance": 0.085,
+              "feature": "wythers:vegetation/placed_block_column/big_dripleaf_north_1"
+            },
+            {
+              "chance": 0.085,
+              "feature": "wythers:vegetation/placed_block_column/big_dripleaf_north_2"
+            },
+            {
+              "chance": 0.085,
+              "feature": "wythers:vegetation/placed_block_column/big_dripleaf_north_3"
+            },
+            {
+              "chance": 0.085,
+              "feature": "wythers:vegetation/placed_block_column/big_dripleaf_south_1"
+            },
+            {
+              "chance": 0.085,
+              "feature": "wythers:vegetation/placed_block_column/big_dripleaf_south_2"
+            },
+            {
+              "chance": 0.085,
+              "feature": "wythers:vegetation/placed_block_column/big_dripleaf_south_3"
+            },
+            {
+              "chance": 0.085,
+              "feature": "wythers:vegetation/placed_block_column/big_dripleaf_east_1"
+            },
+            {
+              "chance": 0.085,
+              "feature": "wythers:vegetation/placed_block_column/big_dripleaf_east_2"
+            },
+            {
+              "chance": 0.085,
+              "feature": "wythers:vegetation/placed_block_column/big_dripleaf_east_3"
+            },
+            {
+              "chance": 0.085,
+              "feature": "wythers:vegetation/placed_block_column/big_dripleaf_west_1"
+            },
+            {
+              "chance": 0.085,
+              "feature": "wythers:vegetation/placed_block_column/big_dripleaf_west_2"
+            }
+          ],
+          "default": "wythers:vegetation/placed_block_column/big_dripleaf_west_3"
+        }
+      },
+      "placement": [
+        {
+          "type": "main:heightmap",
+          "heightmap": "OCEAN_FLOOR"
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "blocks": [
+              "main:water"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

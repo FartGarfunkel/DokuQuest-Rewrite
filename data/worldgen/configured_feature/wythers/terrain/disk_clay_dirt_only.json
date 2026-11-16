@@ -1,0 +1,26 @@
+{
+  "type": "main:disk",
+  "config": {
+    "state_provider": {
+      "fallback": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:clay"
+        }
+      },
+      "rules": []
+    },
+    "target": {
+      "type": "main:matching_blocks",
+      "blocks": "main:dirt"
+    },
+    "radius": {
+      "type": "main:uniform",
+      "value": {
+        "min_inclusive": 5,
+        "max_inclusive": 7
+      }
+    },
+    "half_height": 2
+  }
+}

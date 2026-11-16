@@ -1,0 +1,28 @@
+{
+  "type": "nature:water_delta_feature",
+  "config": {
+    "contents": {
+      "Name": "main:water",
+      "Properties": {
+        "level": "0"
+      }
+    },
+    "rim": {
+      "Name": "nature:pink_sandstone"
+    },
+    "rim_size": {
+      "type": "main:uniform",
+      "value": {
+        "min_inclusive": 0,
+        "max_inclusive": 1
+      }
+    },
+    "size": {
+      "type": "main:uniform",
+      "value": {
+        "min_inclusive": 6,
+        "max_inclusive": 9
+      }
+    }
+  }
+}

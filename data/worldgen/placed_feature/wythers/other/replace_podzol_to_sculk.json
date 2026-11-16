@@ -1,0 +1,48 @@
+{
+  "feature": {
+    "type": "main:netherrack_replace_blobs",
+    "config": {
+      "state": {
+        "Name": "main:sculk"
+      },
+      "target": {
+        "Name": "main:podzol",
+        "Properties": {
+          "snowy": "false"
+        }
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 7,
+          "max_inclusive": 12
+        }
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 2
+    },
+    {
+      "type": "main:count",
+      "count": 200
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": 5
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

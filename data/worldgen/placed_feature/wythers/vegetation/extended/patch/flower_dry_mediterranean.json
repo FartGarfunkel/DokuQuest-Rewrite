@@ -1,0 +1,86 @@
+{
+  "feature": {
+    "type": "main:flower",
+    "config": {
+      "tries": 64,
+      "xz_spread": 7,
+      "y_spread": 3,
+      "feature": {
+        "feature": {
+          "type": "main:simple_block",
+          "config": {
+            "to_place": {
+              "type": "main:weighted_state_provider",
+              "entries": [
+                {
+                  "weight": 3,
+                  "data": {
+                    "Name": "main:pink_tulip"
+                  }
+                },
+                {
+                  "weight": 3,
+                  "data": {
+                    "Name": "main:white_tulip"
+                  }
+                },
+                {
+                  "weight": 2,
+                  "data": {
+                    "Name": "main:allium"
+                  }
+                },
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:oxeye_daisy"
+                  }
+                },
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:azure_bluet"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -1,
+                0
+              ],
+              "blocks": "main:grass_block"
+            }
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "blocks": "main:air"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 6
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    }
+  ]
+}

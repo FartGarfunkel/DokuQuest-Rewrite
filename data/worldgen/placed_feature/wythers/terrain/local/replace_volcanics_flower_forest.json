@@ -1,0 +1,148 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:light_gray_concrete_powder"
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "blocks": [
+                "main:blackstone",
+                "main:deepslate",
+                "main:lava",
+                "main:magma_block"
+              ]
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:tuff"
+              }
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "blocks": "main:gilded_blackstone"
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:deepslate_gold_ore"
+              }
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "blocks": "main:mud"
+                },
+                {
+                  "type": "main:any_of",
+                  "predicates": [
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        1,
+                        0
+                      ],
+                      "blocks": "main:water"
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        1,
+                        0,
+                        0
+                      ],
+                      "blocks": "main:water"
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        -1,
+                        0,
+                        0
+                      ],
+                      "blocks": "main:water"
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        0,
+                        1
+                      ],
+                      "blocks": "main:water"
+                    },
+                    {
+                      "type": "main:matching_blocks",
+                      "offset": [
+                        0,
+                        0,
+                        -1
+                      ],
+                      "blocks": "main:water"
+                    }
+                  ]
+                }
+              ]
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:clay"
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:mud",
+          "main:blackstone",
+          "main:gilded_blackstone",
+          "main:deepslate",
+          "main:lava",
+          "main:magma_block"
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 7
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

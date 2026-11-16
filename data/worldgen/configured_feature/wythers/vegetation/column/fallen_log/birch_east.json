@@ -1,0 +1,25 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "east",
+    "allowed_placement": {
+      "type": "main:matching_blocks",
+      "blocks": "main:air"
+    },
+    "prioritize_tip": false,
+    "layers": [
+      {
+        "height": 5,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:birch_log",
+            "Properties": {
+              "axis": "x"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

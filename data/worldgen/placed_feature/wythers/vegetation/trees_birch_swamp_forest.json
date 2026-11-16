@@ -1,0 +1,47 @@
+{
+  "feature": "wythers:vegetation/configured_tree/swamp_forest_birch",
+  "placement": [
+    {
+      "count": {
+        "distribution": [
+          {
+            "data": 5,
+            "weight": 9
+          },
+          {
+            "data": 5,
+            "weight": 1
+          }
+        ],
+        "type": "main:weighted_list"
+      },
+      "type": "main:count"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "max_water_depth": 1,
+      "type": "main:surface_water_depth_filter"
+    },
+    {
+      "heightmap": "OCEAN_FLOOR",
+      "type": "main:heightmap"
+    },
+    {
+      "type": "main:biome"
+    },
+    {
+      "predicate": {
+        "state": {
+          "Properties": {
+            "stage": "0"
+          },
+          "Name": "main:oak_sapling"
+        },
+        "type": "main:would_survive"
+      },
+      "type": "main:block_predicate_filter"
+    }
+  ]
+}

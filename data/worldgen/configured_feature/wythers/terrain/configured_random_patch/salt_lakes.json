@@ -1,0 +1,410 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "tries": 128,
+    "xz_spread": 5,
+    "y_spread": 0,
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:calcite"
+            }
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": "main:air"
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:white_concrete_powder",
+              "main:white_concrete"
+            ]
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  2,
+                  0,
+                  0
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  3,
+                  0,
+                  0
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  4,
+                  0,
+                  0
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  5,
+                  0,
+                  0
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  1,
+                  0,
+                  1
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  2,
+                  0,
+                  2
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  3,
+                  0,
+                  3
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  4,
+                  0,
+                  4
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  -2,
+                  0,
+                  0
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  -3,
+                  0,
+                  0
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  -4,
+                  0,
+                  0
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  -5,
+                  0,
+                  0
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  -1,
+                  0,
+                  1
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  -2,
+                  0,
+                  2
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  -3,
+                  0,
+                  3
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  -4,
+                  0,
+                  4
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  0,
+                  0,
+                  2
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  0,
+                  0,
+                  3
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  0,
+                  0,
+                  4
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  0,
+                  0,
+                  5
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  1,
+                  0,
+                  -1
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  2,
+                  0,
+                  -2
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  3,
+                  0,
+                  -3
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  4,
+                  0,
+                  -4
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  0,
+                  0,
+                  -2
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  0,
+                  0,
+                  -3
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  0,
+                  0,
+                  -4
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  0,
+                  0,
+                  -5
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  -1,
+                  0,
+                  -1
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  -2,
+                  0,
+                  -2
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  -3,
+                  0,
+                  -3
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "offset": [
+                  -4,
+                  0,
+                  -4
+                ],
+                "fluids": [
+                  "main:water"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

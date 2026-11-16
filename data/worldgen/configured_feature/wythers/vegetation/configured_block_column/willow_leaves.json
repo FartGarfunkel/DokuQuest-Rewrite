@@ -1,0 +1,33 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "down",
+    "allowed_placement": {
+      "type": "main:matching_blocks",
+      "blocks": "main:air"
+    },
+    "prioritize_tip": false,
+    "layers": [
+      {
+        "height": {
+          "type": "main:uniform",
+          "value": {
+            "min_inclusive": 2,
+            "max_inclusive": 3
+          }
+        },
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:oak_leaves",
+            "Properties": {
+              "waterlogged": "false",
+              "distance": "7",
+              "persistent": "true"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

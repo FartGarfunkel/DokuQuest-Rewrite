@@ -1,0 +1,12 @@
+{
+  "feature": "main:crimson_fungus",
+  "placement": [
+    {
+      "type": "main:count_on_every_layer",
+      "count": 8
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

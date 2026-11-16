@@ -1,0 +1,92 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "features": [
+      {
+        "chance": 0.2,
+        "feature": {
+          "feature": {
+            "type": "main:simple_block",
+            "config": {
+              "to_place": {
+                "type": "main:simple_state_provider",
+                "state": {
+                  "Name": "main:azalea"
+                }
+              }
+            }
+          },
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:would_survive",
+                "state": {
+                  "Name": "main:fern"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "chance": 0.1,
+        "feature": {
+          "feature": {
+            "type": "main:simple_block",
+            "config": {
+              "to_place": {
+                "type": "main:simple_state_provider",
+                "state": {
+                  "Name": "main:flowering_azalea"
+                }
+              }
+            }
+          },
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:would_survive",
+                "state": {
+                  "Name": "main:fern"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "chance": 0.25,
+        "feature": {
+          "feature": "wythers:vegetation/configured_tree/flowering_azalea_scrub",
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:would_survive",
+                "state": {
+                  "Name": "main:fern"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "default": {
+      "feature": "wythers:vegetation/configured_tree/azalea_scrub",
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:would_survive",
+            "state": {
+              "Name": "main:fern"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

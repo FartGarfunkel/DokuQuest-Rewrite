@@ -1,0 +1,41 @@
+{
+  "config": {
+    "tries": 64,
+    "xz_spread": 7,
+    "y_spread": 3,
+    "feature": {
+      "feature": {
+        "config": {
+          "to_place": {
+            "entries": [
+              {
+                "data": {
+                  "Name": "main:dandelion"
+                },
+                "weight": 4
+              },
+              {
+                "data": {
+                  "Name": "main:oxeye_daisy"
+                },
+                "weight": 1
+              }
+            ],
+            "type": "main:weighted_state_provider"
+          }
+        },
+        "type": "main:simple_block"
+      },
+      "placement": [
+        {
+          "predicate": {
+            "blocks": "main:air",
+            "type": "main:matching_blocks"
+          },
+          "type": "main:block_predicate_filter"
+        }
+      ]
+    }
+  },
+  "type": "main:flower"
+}

@@ -1,0 +1,25 @@
+{
+  "feature": "nature:patch_savanna_vegetation",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_factor": 20.0,
+      "noise_offset": 0.0,
+      "noise_to_count_ratio": 10
+    },
+    {
+      "type": "main:rarity_filter",
+      "chance": 2
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

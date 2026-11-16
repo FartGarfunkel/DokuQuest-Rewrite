@@ -1,0 +1,33 @@
+{
+  "feature": "main:sculk_vein",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:uniform",
+        "value": {
+          "max_inclusive": 250,
+          "min_inclusive": 204
+        }
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "absolute": 256
+        },
+        "min_inclusive": {
+          "above_bottom": 0
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "type": "main:simple_random_selector",
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "type": "main:random_patch",
+          "config": {
+            "tries": 96,
+            "xz_spread": 7,
+            "y_spread": 3,
+            "feature": {
+              "feature": {
+                "type": "main:simple_block",
+                "config": {
+                  "to_place": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:rose_bush",
+                      "Properties": {
+                        "half": "lower"
+                      }
+                    }
+                  }
+                }
+              },
+              "placement": [
+                {
+                  "type": "main:block_predicate_filter",
+                  "predicate": {
+                    "type": "main:matching_blocks",
+                    "blocks": "main:air"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:no_bonemeal_flower",
+          "config": {
+            "tries": 96,
+            "xz_spread": 7,
+            "y_spread": 3,
+            "feature": {
+              "feature": {
+                "type": "main:simple_block",
+                "config": {
+                  "to_place": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:lily_of_the_valley"
+                    }
+                  }
+                }
+              },
+              "placement": [
+                {
+                  "type": "main:block_predicate_filter",
+                  "predicate": {
+                    "type": "main:matching_blocks",
+                    "blocks": "main:air"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "placement": []
+      }
+    ]
+  }
+}

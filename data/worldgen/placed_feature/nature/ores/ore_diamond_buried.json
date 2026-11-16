@@ -1,0 +1,27 @@
+{
+  "feature": "nature:ores/ore_diamond_buried",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 4
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:trapezoid",
+        "max_inclusive": {
+          "above_bottom": 80
+        },
+        "min_inclusive": {
+          "above_bottom": -80
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

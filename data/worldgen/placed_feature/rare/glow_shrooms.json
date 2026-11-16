@@ -1,0 +1,47 @@
+{
+  "feature":   {
+    "config": {},
+    "type": "rare:glow_shrooms"
+  },
+  "placement": [
+    {
+      "count": 125,
+      "type": "main:count"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "height": {
+        "min_inclusive": {
+          "above_bottom": 0
+        },
+        "max_inclusive": {
+          "absolute": 256
+        },
+        "type": "main:uniform"
+      },
+      "type": "main:height_range"
+    },
+    {
+      "direction_of_search": "down",
+      "target_condition": {
+        "type": "main:solid"
+      },
+      "allowed_search_condition": {
+        "blocks": "main:air",
+        "type": "main:matching_blocks"
+      },
+      "max_steps": 12,
+      "type": "main:environment_scan"
+    },
+    {
+      "xz_spread": 0,
+      "y_spread": 1,
+      "type": "main:random_offset"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

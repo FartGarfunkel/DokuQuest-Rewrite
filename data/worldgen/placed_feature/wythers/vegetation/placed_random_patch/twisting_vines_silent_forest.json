@@ -1,0 +1,19 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/silent_forest_twisting_vines",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 2
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

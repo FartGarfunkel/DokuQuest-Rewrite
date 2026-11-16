@@ -1,0 +1,50 @@
+{
+  "feature": "main:rooted_azalea_tree",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:uniform",
+        "value": {
+          "max_inclusive": 2,
+          "min_inclusive": 1
+        }
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "absolute": 256
+        },
+        "min_inclusive": {
+          "above_bottom": 0
+        }
+      }
+    },
+    {
+      "type": "main:environment_scan",
+      "allowed_search_condition": {
+        "type": "main:matching_blocks",
+        "blocks": "main:air"
+      },
+      "direction_of_search": "up",
+      "max_steps": 12,
+      "target_condition": {
+        "type": "main:solid"
+      }
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": -1
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

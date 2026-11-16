@@ -1,0 +1,64 @@
+{
+  "config": {
+    "tries": 32,
+    "xz_spread": 3,
+    "y_spread": 3,
+    "feature": {
+      "feature": {
+        "config": {
+          "layers": [
+            {
+              "height": {
+                "value": {
+                  "min_inclusive": 1,
+                  "max_inclusive": 2
+                },
+                "type": "main:uniform"
+              },
+              "provider": {
+                "state": {
+                  "Name": "main:rooted_dirt"
+                },
+                "type": "main:simple_state_provider"
+              }
+            }
+          ],
+          "direction": "down",
+          "allowed_placement": {
+            "blocks": "#wythers:dirt",
+            "type": "main:matching_blocks"
+          },
+          "prioritize_tip": false
+        },
+        "type": "main:block_column"
+      },
+      "placement": [
+        {
+          "predicate": {
+            "predicates": [
+              {
+                "blocks": "#wythers:dirt",
+                "type": "main:matching_blocks"
+              },
+              {
+                "predicate": {
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "blocks": "#wythers:dirt",
+                  "type": "main:matching_blocks"
+                },
+                "type": "main:not"
+              }
+            ],
+            "type": "main:all_of"
+          },
+          "type": "main:block_predicate_filter"
+        }
+      ]
+    }
+  },
+  "type": "main:random_patch"
+}

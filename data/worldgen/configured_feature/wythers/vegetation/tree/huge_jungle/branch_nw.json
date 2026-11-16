@@ -1,0 +1,429 @@
+{
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "config": {
+            "features": [
+              {
+                "feature": {
+                  "config": {
+                    "allowed_placement": {
+                      "blocks": "#wythers:tree_branch_replaceable",
+                      "type": "main:matching_blocks"
+                    },
+                    "direction": "up",
+                    "layers": [
+                      {
+                        "height": 2,
+                        "provider": {
+                          "state": {
+                            "Name": "main:jungle_log",
+                            "Properties": {
+                              "axis": "y"
+                            }
+                          },
+                          "type": "main:simple_state_provider"
+                        }
+                      }
+                    ],
+                    "prioritize_tip": false
+                  },
+                  "type": "main:block_column"
+                },
+                "placement": [
+                  {
+                    "predicate": {
+                      "blocks": "#wythers:tree_branch_replaceable",
+                      "type": "main:matching_blocks"
+                    },
+                    "type": "main:block_predicate_filter"
+                  }
+                ]
+              },
+              {
+                "feature": {
+                  "config": {
+                    "features": [
+                      {
+                        "feature": {
+                          "config": {
+                            "allowed_placement": {
+                              "blocks": "#wythers:tree_branch_replaceable",
+                              "type": "main:matching_blocks"
+                            },
+                            "direction": "up",
+                            "layers": [
+                              {
+                                "height": 2,
+                                "provider": {
+                                  "state": {
+                                    "Name": "main:jungle_log",
+                                    "Properties": {
+                                      "axis": "y"
+                                    }
+                                  },
+                                  "type": "main:simple_state_provider"
+                                }
+                              }
+                            ],
+                            "prioritize_tip": false
+                          },
+                          "type": "main:block_column"
+                        },
+                        "placement": [
+                          {
+                            "predicate": {
+                              "blocks": "#wythers:tree_branch_replaceable",
+                              "type": "main:matching_blocks"
+                            },
+                            "type": "main:block_predicate_filter"
+                          }
+                        ]
+                      },
+                      {
+                        "feature": {
+                          "config": {
+                            "default": {
+                              "feature": {
+                                "config": {
+                                  "decorators": [
+                                    {
+                                      "probability": 0.2,
+                                      "type": "main:leave_vine"
+                                    },
+                                    {
+                                      "block_provider": {
+                                        "state": {
+                                          "Name": "main:jungle_leaves",
+                                          "Properties": {
+                                            "distance": "2",
+                                            "persistent": "false",
+                                            "waterlogged": "false"
+                                          }
+                                        },
+                                        "type": "main:simple_state_provider"
+                                      },
+                                      "directions": [
+                                        "down"
+                                      ],
+                                      "exclusion_radius_xz": 0,
+                                      "exclusion_radius_y": 0,
+                                      "probability": 0.25,
+                                      "required_empty_blocks": 2,
+                                      "type": "main:attached_to_leaves"
+                                    }
+                                  ],
+                                  "dirt_provider": {
+                                    "state": {
+                                      "Name": "main:air"
+                                    },
+                                    "type": "main:simple_state_provider"
+                                  },
+                                  "foliage_placer": {
+                                    "offset": 0,
+                                    "radius": 3,
+                                    "type": "main:acacia_foliage_placer"
+                                  },
+                                  "foliage_provider": {
+                                    "state": {
+                                      "Name": "main:jungle_leaves",
+                                      "Properties": {
+                                        "distance": "1",
+                                        "persistent": "false",
+                                        "waterlogged": "false"
+                                      }
+                                    },
+                                    "type": "main:simple_state_provider"
+                                  },
+                                  "force_dirt": false,
+                                  "ignore_vines": true,
+                                  "minimum_size": {
+                                    "limit": 0,
+                                    "lower_size": 0,
+                                    "upper_size": 0,
+                                    "type": "main:two_layers_feature_size"
+                                  },
+                                  "trunk_placer": {
+                                    "base_height": 3,
+                                    "height_rand_a": 0,
+                                    "height_rand_b": 0,
+                                    "type": "main:straight_trunk_placer"
+                                  },
+                                  "trunk_provider": {
+                                    "state": {
+                                      "Name": "main:jungle_log",
+                                      "Properties": {
+                                        "axis": "y"
+                                      }
+                                    },
+                                    "type": "main:simple_state_provider"
+                                  }
+                                },
+                                "type": "main:tree"
+                              },
+                              "placement": []
+                            },
+                            "features": [
+                              {
+                                "chance": 0.5,
+                                "feature": {
+                                  "feature": {
+                                    "config": {
+                                      "decorators": [
+                                        {
+                                          "probability": 0.2,
+                                          "type": "main:leave_vine"
+                                        },
+                                        {
+                                          "block_provider": {
+                                            "state": {
+                                              "Name": "main:jungle_leaves",
+                                              "Properties": {
+                                                "distance": "2",
+                                                "persistent": "false",
+                                                "waterlogged": "false"
+                                              }
+                                            },
+                                            "type": "main:simple_state_provider"
+                                          },
+                                          "directions": [
+                                            "down"
+                                          ],
+                                          "exclusion_radius_xz": 0,
+                                          "exclusion_radius_y": 0,
+                                          "probability": 0.25,
+                                          "required_empty_blocks": 2,
+                                          "type": "main:attached_to_leaves"
+                                        }
+                                      ],
+                                      "dirt_provider": {
+                                        "state": {
+                                          "Name": "main:air"
+                                        },
+                                        "type": "main:simple_state_provider"
+                                      },
+                                      "foliage_placer": {
+                                        "offset": 0,
+                                        "radius": 1,
+                                        "type": "main:dark_oak_foliage_placer"
+                                      },
+                                      "foliage_provider": {
+                                        "state": {
+                                          "Name": "main:jungle_leaves",
+                                          "Properties": {
+                                            "distance": "1",
+                                            "persistent": "false",
+                                            "waterlogged": "false"
+                                          }
+                                        },
+                                        "type": "main:simple_state_provider"
+                                      },
+                                      "force_dirt": false,
+                                      "ignore_vines": true,
+                                      "minimum_size": {
+                                        "limit": 0,
+                                        "lower_size": 0,
+                                        "upper_size": 0,
+                                        "type": "main:two_layers_feature_size"
+                                      },
+                                      "trunk_placer": {
+                                        "base_height": 3,
+                                        "height_rand_a": 0,
+                                        "height_rand_b": 0,
+                                        "type": "main:straight_trunk_placer"
+                                      },
+                                      "trunk_provider": {
+                                        "state": {
+                                          "Name": "main:jungle_log",
+                                          "Properties": {
+                                            "axis": "y"
+                                          }
+                                        },
+                                        "type": "main:simple_state_provider"
+                                      }
+                                    },
+                                    "type": "main:tree"
+                                  },
+                                  "placement": []
+                                }
+                              }
+                            ]
+                          },
+                          "type": "main:random_selector"
+                        },
+                        "placement": [
+                          {
+                            "predicate": {
+                              "blocks": "main:jungle_log",
+                              "type": "main:matching_blocks"
+                            },
+                            "type": "main:block_predicate_filter"
+                          },
+                          {
+                            "xz_spread": -1,
+                            "y_spread": 1,
+                            "type": "main:random_offset"
+                          },
+                          {
+                            "predicate": {
+                              "predicates": [
+                                {
+                                  "blocks": "#wythers:tree_branch_replaceable",
+                                  "type": "main:matching_blocks"
+                                },
+                                {
+                                  "blocks": "main:jungle_log",
+                                  "offset": [
+                                    1,
+                                    0,
+                                    1
+                                  ],
+                                  "type": "main:matching_blocks"
+                                },
+                                {
+                                  "blocks": "#wythers:tree_branch_replaceable",
+                                  "offset": [
+                                    1,
+                                    0,
+                                    0
+                                  ],
+                                  "type": "main:matching_blocks"
+                                },
+                                {
+                                  "blocks": "#wythers:tree_branch_replaceable",
+                                  "offset": [
+                                    0,
+                                    0,
+                                    1
+                                  ],
+                                  "type": "main:matching_blocks"
+                                }
+                              ],
+                              "type": "main:all_of"
+                            },
+                            "type": "main:block_predicate_filter"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "main:simple_random_selector"
+                },
+                "placement": [
+                  {
+                    "predicate": {
+                      "blocks": "main:jungle_log",
+                      "type": "main:matching_blocks"
+                    },
+                    "type": "main:block_predicate_filter"
+                  },
+                  {
+                    "xz_spread": -1,
+                    "y_spread": 1,
+                    "type": "main:random_offset"
+                  },
+                  {
+                    "predicate": {
+                      "predicates": [
+                        {
+                          "blocks": "#wythers:tree_branch_replaceable",
+                          "type": "main:matching_blocks"
+                        },
+                        {
+                          "blocks": "main:jungle_log",
+                          "offset": [
+                            1,
+                            0,
+                            1
+                          ],
+                          "type": "main:matching_blocks"
+                        },
+                        {
+                          "blocks": "#wythers:tree_branch_replaceable",
+                          "offset": [
+                            1,
+                            0,
+                            0
+                          ],
+                          "type": "main:matching_blocks"
+                        },
+                        {
+                          "blocks": "#wythers:tree_branch_replaceable",
+                          "offset": [
+                            0,
+                            0,
+                            1
+                          ],
+                          "type": "main:matching_blocks"
+                        }
+                      ],
+                      "type": "main:all_of"
+                    },
+                    "type": "main:block_predicate_filter"
+                  },
+                  {
+                    "count": 28,
+                    "type": "main:count"
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "main:simple_random_selector"
+        },
+        "placement": [
+          {
+            "xz_spread": -1,
+            "y_spread": -1,
+            "type": "main:random_offset"
+          },
+          {
+            "predicate": {
+              "predicates": [
+                {
+                  "blocks": "#wythers:tree_branch_replaceable",
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": "main:jungle_log",
+                  "offset": [
+                    1,
+                    0,
+                    1
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": "#wythers:tree_branch_replaceable",
+                  "offset": [
+                    1,
+                    0,
+                    0
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": "#wythers:tree_branch_replaceable",
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "type": "main:matching_blocks"
+                }
+              ],
+              "type": "main:all_of"
+            },
+            "type": "main:block_predicate_filter"
+          },
+          {
+            "count": 28,
+            "type": "main:count"
+          }
+        ]
+      }
+    ]
+  },
+  "type": "main:simple_random_selector"
+}

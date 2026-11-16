@@ -1,0 +1,43 @@
+{
+  "feature": "wythers:vegetation/configured_tree/oak",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 25,
+      "noise_factor": 70,
+      "noise_offset": 0.75
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 250
+      }
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:biome"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -1,
+          0
+        ],
+        "blocks": "main:grass_block"
+      }
+    }
+  ]
+}

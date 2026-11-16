@@ -1,0 +1,27 @@
+{
+  "feature": "nature:ores/ore_iron",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 10
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:trapezoid",
+        "max_inclusive": {
+          "absolute": 56
+        },
+        "min_inclusive": {
+          "absolute": -24
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

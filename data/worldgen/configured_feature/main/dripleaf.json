@@ -1,0 +1,320 @@
+{
+  "type": "main:simple_random_selector",
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "type": "main:simple_block",
+          "config": {
+            "to_place": {
+              "type": "main:weighted_state_provider",
+              "entries": [
+                {
+                  "data": {
+                    "Name": "main:small_dripleaf",
+                    "Properties": {
+                      "facing": "east",
+                      "half": "lower",
+                      "waterlogged": "false"
+                    }
+                  },
+                  "weight": 1
+                },
+                {
+                  "data": {
+                    "Name": "main:small_dripleaf",
+                    "Properties": {
+                      "facing": "west",
+                      "half": "lower",
+                      "waterlogged": "false"
+                    }
+                  },
+                  "weight": 1
+                },
+                {
+                  "data": {
+                    "Name": "main:small_dripleaf",
+                    "Properties": {
+                      "facing": "north",
+                      "half": "lower",
+                      "waterlogged": "false"
+                    }
+                  },
+                  "weight": 1
+                },
+                {
+                  "data": {
+                    "Name": "main:small_dripleaf",
+                    "Properties": {
+                      "facing": "south",
+                      "half": "lower",
+                      "waterlogged": "false"
+                    }
+                  },
+                  "weight": 1
+                }
+              ]
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:block_column",
+          "config": {
+            "allowed_placement": {
+              "type": "main:matching_blocks",
+              "blocks": [
+                "main:air",
+                "main:water"
+              ]
+            },
+            "direction": "up",
+            "layers": [
+              {
+                "height": {
+                  "type": "main:weighted_list",
+                  "distribution": [
+                    {
+                      "data": {
+                        "type": "main:uniform",
+                        "value": {
+                          "max_inclusive": 4,
+                          "min_inclusive": 0
+                        }
+                      },
+                      "weight": 2
+                    },
+                    {
+                      "data": 0,
+                      "weight": 1
+                    }
+                  ]
+                },
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:big_dripleaf_stem",
+                    "Properties": {
+                      "facing": "east",
+                      "waterlogged": "false"
+                    }
+                  }
+                }
+              },
+              {
+                "height": 1,
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:big_dripleaf",
+                    "Properties": {
+                      "facing": "east",
+                      "tilt": "none",
+                      "waterlogged": "false"
+                    }
+                  }
+                }
+              }
+            ],
+            "prioritize_tip": true
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:block_column",
+          "config": {
+            "allowed_placement": {
+              "type": "main:matching_blocks",
+              "blocks": [
+                "main:air",
+                "main:water"
+              ]
+            },
+            "direction": "up",
+            "layers": [
+              {
+                "height": {
+                  "type": "main:weighted_list",
+                  "distribution": [
+                    {
+                      "data": {
+                        "type": "main:uniform",
+                        "value": {
+                          "max_inclusive": 4,
+                          "min_inclusive": 0
+                        }
+                      },
+                      "weight": 2
+                    },
+                    {
+                      "data": 0,
+                      "weight": 1
+                    }
+                  ]
+                },
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:big_dripleaf_stem",
+                    "Properties": {
+                      "facing": "west",
+                      "waterlogged": "false"
+                    }
+                  }
+                }
+              },
+              {
+                "height": 1,
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:big_dripleaf",
+                    "Properties": {
+                      "facing": "west",
+                      "tilt": "none",
+                      "waterlogged": "false"
+                    }
+                  }
+                }
+              }
+            ],
+            "prioritize_tip": true
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:block_column",
+          "config": {
+            "allowed_placement": {
+              "type": "main:matching_blocks",
+              "blocks": [
+                "main:air",
+                "main:water"
+              ]
+            },
+            "direction": "up",
+            "layers": [
+              {
+                "height": {
+                  "type": "main:weighted_list",
+                  "distribution": [
+                    {
+                      "data": {
+                        "type": "main:uniform",
+                        "value": {
+                          "max_inclusive": 4,
+                          "min_inclusive": 0
+                        }
+                      },
+                      "weight": 2
+                    },
+                    {
+                      "data": 0,
+                      "weight": 1
+                    }
+                  ]
+                },
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:big_dripleaf_stem",
+                    "Properties": {
+                      "facing": "south",
+                      "waterlogged": "false"
+                    }
+                  }
+                }
+              },
+              {
+                "height": 1,
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:big_dripleaf",
+                    "Properties": {
+                      "facing": "south",
+                      "tilt": "none",
+                      "waterlogged": "false"
+                    }
+                  }
+                }
+              }
+            ],
+            "prioritize_tip": true
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:block_column",
+          "config": {
+            "allowed_placement": {
+              "type": "main:matching_blocks",
+              "blocks": [
+                "main:air",
+                "main:water"
+              ]
+            },
+            "direction": "up",
+            "layers": [
+              {
+                "height": {
+                  "type": "main:weighted_list",
+                  "distribution": [
+                    {
+                      "data": {
+                        "type": "main:uniform",
+                        "value": {
+                          "max_inclusive": 4,
+                          "min_inclusive": 0
+                        }
+                      },
+                      "weight": 2
+                    },
+                    {
+                      "data": 0,
+                      "weight": 1
+                    }
+                  ]
+                },
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:big_dripleaf_stem",
+                    "Properties": {
+                      "facing": "north",
+                      "waterlogged": "false"
+                    }
+                  }
+                }
+              },
+              {
+                "height": 1,
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:big_dripleaf",
+                    "Properties": {
+                      "facing": "north",
+                      "tilt": "none",
+                      "waterlogged": "false"
+                    }
+                  }
+                }
+              }
+            ],
+            "prioritize_tip": true
+          }
+        },
+        "placement": []
+      }
+    ]
+  }
+}

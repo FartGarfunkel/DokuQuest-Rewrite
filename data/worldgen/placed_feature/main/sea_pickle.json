@@ -1,0 +1,19 @@
+{
+  "feature": "main:sea_pickle",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 16
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

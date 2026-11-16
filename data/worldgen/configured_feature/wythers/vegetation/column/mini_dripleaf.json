@@ -1,0 +1,74 @@
+{
+  "type": "main:simple_random_selector",
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "type": "main:block_column",
+          "config": {
+            "direction": "up",
+            "allowed_placement": {
+              "type": "main:true"
+            },
+            "prioritize_tip": true,
+            "layers": [
+              {
+                "height": 1,
+                "provider": {
+                  "type": "main:weighted_state_provider",
+                  "entries": [
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:small_dripleaf",
+                        "Properties": {
+                          "facing": "north",
+                          "half": "upper",
+                          "waterlogged": "false"
+                        }
+                      }
+                    },
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:small_dripleaf",
+                        "Properties": {
+                          "facing": "south",
+                          "half": "upper",
+                          "waterlogged": "false"
+                        }
+                      }
+                    },
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:small_dripleaf",
+                        "Properties": {
+                          "facing": "west",
+                          "half": "upper",
+                          "waterlogged": "false"
+                        }
+                      }
+                    },
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:small_dripleaf",
+                        "Properties": {
+                          "facing": "east",
+                          "half": "upper",
+                          "waterlogged": "false"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "placement": []
+      }
+    ]
+  }
+}

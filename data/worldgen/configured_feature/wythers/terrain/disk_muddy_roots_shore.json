@@ -1,0 +1,26 @@
+{
+  "type": "main:disk",
+  "config": {
+    "state_provider": {
+      "fallback": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:muddy_mangrove_roots",
+          "Properties": {
+            "axis": "y"
+          }
+        }
+      },
+      "rules": []
+    },
+    "target": {
+      "type": "main:matching_blocks",
+      "blocks": [
+        "main:grass_block",
+        "main:podzol"
+      ]
+    },
+    "radius": 6,
+    "half_height": 2
+  }
+}

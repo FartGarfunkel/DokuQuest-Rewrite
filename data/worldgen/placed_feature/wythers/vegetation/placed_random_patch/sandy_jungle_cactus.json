@@ -1,0 +1,31 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/sandy_jungle_cactus",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 2
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:cactus",
+          "Properties": {
+            "age": "0"
+          }
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

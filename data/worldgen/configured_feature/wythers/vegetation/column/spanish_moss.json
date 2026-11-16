@@ -1,0 +1,432 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "features": [
+      {
+        "chance": 0.25,
+        "feature": {
+          "feature": {
+            "type": "main:block_column",
+            "config": {
+              "direction": "down",
+              "allowed_placement": {
+                "type": "main:matching_blocks",
+                "blocks": "main:air"
+              },
+              "prioritize_tip": false,
+              "layers": [
+                {
+                  "height": 1,
+                  "provider": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:glow_lichen",
+                      "Properties": {
+                        "down": "false",
+                        "east": "true",
+                        "north": "false",
+                        "south": "false",
+                        "up": "true",
+                        "waterlogged": "false",
+                        "west": "false"
+                      }
+                    }
+                  }
+                },
+                {
+                  "height": {
+                    "type": "main:uniform",
+                    "value": {
+                      "min_inclusive": 1,
+                      "max_inclusive": 2
+                    }
+                  },
+                  "provider": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:glow_lichen",
+                      "Properties": {
+                        "down": "false",
+                        "east": "true",
+                        "north": "false",
+                        "south": "false",
+                        "up": "false",
+                        "waterlogged": "false",
+                        "west": "false"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:acacia_leaves",
+                  "main:acacia_wood",
+                  "main:oak_wood",
+                  "main:oak_leaves",
+                  "main:mangrove_roots",
+                  "main:dark_oak_wood"
+                ]
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": "main:air"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "chance": 0.25,
+        "feature": {
+          "feature": {
+            "type": "main:block_column",
+            "config": {
+              "direction": "down",
+              "allowed_placement": {
+                "type": "main:matching_blocks",
+                "blocks": "main:air"
+              },
+              "prioritize_tip": false,
+              "layers": [
+                {
+                  "height": 1,
+                  "provider": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:glow_lichen",
+                      "Properties": {
+                        "down": "false",
+                        "east": "false",
+                        "north": "false",
+                        "south": "false",
+                        "up": "true",
+                        "waterlogged": "false",
+                        "west": "true"
+                      }
+                    }
+                  }
+                },
+                {
+                  "height": {
+                    "type": "main:uniform",
+                    "value": {
+                      "min_inclusive": 1,
+                      "max_inclusive": 2
+                    }
+                  },
+                  "provider": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:glow_lichen",
+                      "Properties": {
+                        "down": "false",
+                        "east": "false",
+                        "north": "false",
+                        "south": "false",
+                        "up": "false",
+                        "waterlogged": "false",
+                        "west": "true"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:acacia_leaves",
+                  "main:acacia_wood",
+                  "main:oak_wood",
+                  "main:oak_leaves",
+                  "main:mangrove_roots",
+                  "main:dark_oak_wood"
+                ]
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": "main:air"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "chance": 0.25,
+        "feature": {
+          "feature": {
+            "type": "main:block_column",
+            "config": {
+              "direction": "down",
+              "allowed_placement": {
+                "type": "main:matching_blocks",
+                "blocks": "main:air"
+              },
+              "prioritize_tip": false,
+              "layers": [
+                {
+                  "height": 1,
+                  "provider": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:glow_lichen",
+                      "Properties": {
+                        "down": "false",
+                        "east": "false",
+                        "north": "true",
+                        "south": "false",
+                        "up": "true",
+                        "waterlogged": "false",
+                        "west": "false"
+                      }
+                    }
+                  }
+                },
+                {
+                  "height": {
+                    "type": "main:uniform",
+                    "value": {
+                      "min_inclusive": 1,
+                      "max_inclusive": 2
+                    }
+                  },
+                  "provider": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:glow_lichen",
+                      "Properties": {
+                        "down": "false",
+                        "east": "false",
+                        "north": "true",
+                        "south": "false",
+                        "up": "false",
+                        "waterlogged": "false",
+                        "west": "false"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:acacia_leaves",
+                  "main:acacia_wood",
+                  "main:oak_wood",
+                  "main:oak_leaves",
+                  "main:mangrove_roots",
+                  "main:dark_oak_wood"
+                ]
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              }
+            },
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": "main:air"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "default": {
+      "feature": {
+        "type": "main:block_column",
+        "config": {
+          "direction": "down",
+          "allowed_placement": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          },
+          "prioritize_tip": false,
+          "layers": [
+            {
+              "height": 1,
+              "provider": {
+                "type": "main:simple_state_provider",
+                "state": {
+                  "Name": "main:glow_lichen",
+                  "Properties": {
+                    "down": "false",
+                    "east": "false",
+                    "north": "false",
+                    "south": "true",
+                    "up": "true",
+                    "waterlogged": "false",
+                    "west": "false"
+                  }
+                }
+              }
+            },
+            {
+              "height": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 1,
+                  "max_inclusive": 2
+                }
+              },
+              "provider": {
+                "type": "main:simple_state_provider",
+                "state": {
+                  "Name": "main:glow_lichen",
+                  "Properties": {
+                    "down": "false",
+                    "east": "false",
+                    "north": "false",
+                    "south": "true",
+                    "up": "false",
+                    "waterlogged": "false",
+                    "west": "false"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": [
+              "main:acacia_leaves",
+              "main:acacia_wood",
+              "main:oak_wood",
+              "main:oak_leaves",
+              "main:mangrove_roots",
+              "main:dark_oak_wood"
+            ]
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": "main:air"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "feature": "main:mangrove_vegetation",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 25
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 5
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:mangrove_propagule",
+          "Properties": {
+            "age": "0",
+            "hanging": "false",
+            "stage": "0",
+            "waterlogged": "false"
+          }
+        }
+      }
+    }
+  ]
+}

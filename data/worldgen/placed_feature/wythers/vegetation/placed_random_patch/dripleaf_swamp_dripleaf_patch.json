@@ -1,0 +1,35 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/big_dripleaf_patch",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:weighted_list",
+        "distribution": [
+          {
+            "weight": 1,
+            "data": 0
+          },
+          {
+            "weight": 3,
+            "data": 1
+          },
+          {
+            "weight": 2,
+            "data": 2
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

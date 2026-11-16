@@ -1,0 +1,14 @@
+{
+  "type": "main:block_pile",
+  "config": {
+    "state_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:snow",
+        "Properties": {
+          "layers": "1"
+        }
+      }
+    }
+  }
+}

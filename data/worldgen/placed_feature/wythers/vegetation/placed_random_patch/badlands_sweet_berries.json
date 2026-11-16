@@ -1,0 +1,19 @@
+{
+  "feature": "main:patch_berry_bush",
+  "placement": [
+    {
+      "chance": 3,
+      "type": "main:rarity_filter"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "heightmap": "WORLD_SURFACE_WG",
+      "type": "main:heightmap"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

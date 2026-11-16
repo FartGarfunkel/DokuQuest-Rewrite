@@ -1,0 +1,30 @@
+{
+  "feature": "wythers:vegetation/fungus/bracket_fungus",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 10
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 0,
+          "max_inclusive": 5
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

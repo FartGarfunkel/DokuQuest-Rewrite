@@ -1,0 +1,35 @@
+{
+  "feature": {
+    "config": {},
+    "type": "rare:glow_shrooms_extras"
+  },
+  "placement": [
+    {
+      "count": 200,
+      "type": "main:count"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "height": {
+        "min_inclusive": {
+          "above_bottom": 0
+        },
+        "max_inclusive": {
+          "absolute": 256
+        },
+        "type": "main:uniform"
+      },
+      "type": "main:height_range"
+    },
+    {
+      "xz_spread": 0,
+      "y_spread": 1,
+      "type": "main:random_offset"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

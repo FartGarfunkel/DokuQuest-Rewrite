@@ -1,0 +1,123 @@
+{
+  "carvers": {
+    "air": "main:nether_cave"
+  },
+  "downfall": 0.0,
+  "effects": {
+    "additions_sound": {
+      "sound": "main:ambient.soul_sand_valley.additions",
+      "tick_chance": 0.0111
+    },
+    "ambient_sound": "main:ambient.soul_sand_valley.loop",
+    "fog_color": 1787717,
+    "mood_sound": {
+      "block_search_extent": 8,
+      "offset": 2.0,
+      "sound": "main:ambient.soul_sand_valley.mood",
+      "tick_delay": 6000
+    },
+    "music": {
+      "max_delay": 24000,
+      "min_delay": 12000,
+      "replace_current_music": false,
+      "sound": "main:music.nether.soul_sand_valley"
+    },
+    "particle": {
+      "options": {
+        "type": "main:ash"
+      },
+      "probability": 0.00625
+    },
+    "sky_color": 7254527,
+    "water_color": 4159204,
+    "water_fog_color": 329011
+  },
+  "features": [
+    [],
+    [],
+    [
+      "main:basalt_pillar"
+    ],
+    [],
+    [],
+    [],
+    [],
+    [
+      "main:spring_open",
+      "main:patch_fire",
+      "main:patch_soul_fire",
+      "main:glowstone_extra",
+      "main:glowstone",
+      "main:patch_crimson_roots",
+      "main:ore_magma",
+      "main:spring_closed",
+      "main:ore_soul_sand",
+      "main:ore_gravel_nether",
+      "main:ore_blackstone",
+      "main:ore_gold_nether",
+      "main:ore_quartz_nether",
+      "main:ore_ancient_debris_large",
+      "main:ore_debris_small"
+    ],
+    [],
+    [
+      "main:spring_lava"
+    ]
+  ],
+  "has_precipitation": false,
+  "spawn_costs": {
+    "main:enderman": {
+      "charge": 0.7,
+      "energy_budget": 0.15
+    },
+    "main:ghast": {
+      "charge": 0.7,
+      "energy_budget": 0.15
+    },
+    "main:skeleton": {
+      "charge": 0.7,
+      "energy_budget": 0.15
+    },
+    "main:strider": {
+      "charge": 0.7,
+      "energy_budget": 0.15
+    }
+  },
+  "spawners": {
+    "ambient": [],
+    "axolotls": [],
+    "creature": [
+      {
+        "type": "main:strider",
+        "maxCount": 2,
+        "minCount": 1,
+        "weight": 60
+      }
+    ],
+    "misc": [],
+    "monster": [
+      {
+        "type": "main:skeleton",
+        "maxCount": 5,
+        "minCount": 5,
+        "weight": 20
+      },
+      {
+        "type": "main:ghast",
+        "maxCount": 4,
+        "minCount": 4,
+        "weight": 50
+      },
+      {
+        "type": "main:enderman",
+        "maxCount": 4,
+        "minCount": 4,
+        "weight": 1
+      }
+    ],
+    "underground_water_creature": [],
+    "water_ambient": [],
+    "water_creature": []
+  },
+  "temperature": 2.0
+}

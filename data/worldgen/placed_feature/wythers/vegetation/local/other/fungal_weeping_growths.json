@@ -1,0 +1,415 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 16,
+      "xz_spread": 8,
+      "y_spread": 8,
+      "feature": {
+        "feature": {
+          "type": "main:random_selector",
+          "config": {
+            "features": [
+              {
+                "chance": 0.1,
+                "feature": {
+                  "feature": {
+                    "type": "main:multiface_growth",
+                    "config": {
+                      "block": "main:glow_lichen",
+                      "search_range": 20,
+                      "chance_of_spreading": 1,
+                      "can_place_on_floor": true,
+                      "can_place_on_ceiling": true,
+                      "can_place_on_wall": true,
+                      "can_be_placed_on": [
+                        "main:basalt",
+                        "main:mycelium"
+                      ]
+                    }
+                  },
+                  "placement": [
+                    {
+                      "type": "main:count",
+                      "count": 10
+                    },
+                    {
+                      "type": "main:heightmap",
+                      "heightmap": "WORLD_SURFACE_WG"
+                    }
+                  ]
+                }
+              },
+              {
+                "chance": 0.02,
+                "feature": {
+                  "feature": {
+                    "type": "main:tree",
+                    "config": {
+                      "ignore_vines": true,
+                      "force_dirt": false,
+                      "minimum_size": {
+                        "type": "main:two_layers_feature_size",
+                        "limit": 1,
+                        "lower_size": 1,
+                        "upper_size": 1
+                      },
+                      "dirt_provider": {
+                        "type": "main:simple_state_provider",
+                        "state": {
+                          "Name": "main:nether_wart_block"
+                        }
+                      },
+                      "trunk_provider": {
+                        "type": "main:simple_state_provider",
+                        "state": {
+                          "Name": "main:nether_wart_block"
+                        }
+                      },
+                      "foliage_provider": {
+                        "type": "main:weighted_state_provider",
+                        "entries": [
+                          {
+                            "weight": 10,
+                            "data": {
+                              "Name": "main:air"
+                            }
+                          },
+                          {
+                            "weight": 1,
+                            "data": {
+                              "Name": "main:ochre_froglight",
+                              "Properties": {
+                                "axis": "y"
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      "trunk_placer": {
+                        "type": "main:straight_trunk_placer",
+                        "base_height": 13,
+                        "height_rand_a": 20,
+                        "height_rand_b": 5
+                      },
+                      "foliage_placer": {
+                        "type": "main:fancy_foliage_placer",
+                        "radius": 1,
+                        "offset": 1,
+                        "height": 15
+                      },
+                      "decorators": []
+                    }
+                  },
+                  "placement": [
+                    {
+                      "type": "main:heightmap",
+                      "heightmap": "WORLD_SURFACE_WG"
+                    },
+                    {
+                      "type": "main:block_predicate_filter",
+                      "predicate": {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          -1,
+                          0
+                        ],
+                        "blocks": "main:mycelium"
+                      }
+                    },
+                    {
+                      "type": "main:block_predicate_filter",
+                      "predicate": {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          0
+                        ],
+                        "blocks": "main:air"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "chance": 0.05,
+                "feature": {
+                  "feature": {
+                    "type": "main:block_column",
+                    "config": {
+                      "direction": "up",
+                      "allowed_placement": {
+                        "type": "main:matching_blocks",
+                        "blocks": "main:air"
+                      },
+                      "prioritize_tip": true,
+                      "layers": [
+                        {
+                          "height": {
+                            "type": "main:uniform",
+                            "value": {
+                              "min_inclusive": 15,
+                              "max_inclusive": 30
+                            }
+                          },
+                          "provider": {
+                            "type": "main:simple_state_provider",
+                            "state": {
+                              "Name": "main:weeping_vines_plant"
+                            }
+                          }
+                        },
+                        {
+                          "height": 1,
+                          "provider": {
+                            "type": "main:weighted_state_provider",
+                            "entries": [
+                              {
+                                "weight": 1,
+                                "data": {
+                                  "Name": "main:nether_wart_block"
+                                }
+                              },
+                              {
+                                "weight": 1,
+                                "data": {
+                                  "Name": "main:ochre_froglight",
+                                  "Properties": {
+                                    "axis": "y"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "height": 1,
+                          "provider": {
+                            "type": "main:simple_state_provider",
+                            "state": {
+                              "Name": "main:light",
+                              "Properties": {
+                                "level": "15",
+                                "waterlogged": "false"
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "placement": [
+                    {
+                      "type": "main:heightmap",
+                      "heightmap": "WORLD_SURFACE_WG"
+                    },
+                    {
+                      "type": "main:block_predicate_filter",
+                      "predicate": {
+                        "type": "main:all_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              -1,
+                              0
+                            ],
+                            "blocks": "main:mycelium"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "blocks": "main:air"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "chance": 0.2,
+                "feature": {
+                  "feature": {
+                    "type": "main:block_column",
+                    "config": {
+                      "direction": "up",
+                      "allowed_placement": {
+                        "type": "main:matching_blocks",
+                        "blocks": "main:air"
+                      },
+                      "prioritize_tip": true,
+                      "layers": [
+                        {
+                          "height": {
+                            "type": "main:uniform",
+                            "value": {
+                              "min_inclusive": 3,
+                              "max_inclusive": 20
+                            }
+                          },
+                          "provider": {
+                            "type": "main:simple_state_provider",
+                            "state": {
+                              "Name": "main:weeping_vines_plant"
+                            }
+                          }
+                        },
+                        {
+                          "height": 1,
+                          "provider": {
+                            "type": "main:weighted_state_provider",
+                            "entries": [
+                              {
+                                "weight": 20,
+                                "data": {
+                                  "Name": "main:nether_wart_block"
+                                }
+                              },
+                              {
+                                "weight": 1,
+                                "data": {
+                                  "Name": "main:ochre_froglight",
+                                  "Properties": {
+                                    "axis": "y"
+                                  }
+                                }
+                              }
+                            ]
+                          }
+                        },
+                        {
+                          "height": 1,
+                          "provider": {
+                            "type": "main:simple_state_provider",
+                            "state": {
+                              "Name": "main:light",
+                              "Properties": {
+                                "level": "15",
+                                "waterlogged": "false"
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "placement": [
+                    {
+                      "type": "main:heightmap",
+                      "heightmap": "WORLD_SURFACE_WG"
+                    },
+                    {
+                      "type": "main:block_predicate_filter",
+                      "predicate": {
+                        "type": "main:all_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              -1,
+                              0
+                            ],
+                            "blocks": "main:mycelium"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "blocks": "main:air"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "default": {
+              "feature": {
+                "type": "main:simple_block",
+                "config": {
+                  "to_place": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:crimson_roots"
+                    }
+                  }
+                }
+              },
+              "placement": [
+                {
+                  "type": "main:heightmap",
+                  "heightmap": "OCEAN_FLOOR"
+                },
+                {
+                  "type": "main:block_predicate_filter",
+                  "predicate": {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          -1,
+                          0
+                        ],
+                        "blocks": "main:mycelium"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "blocks": "main:air"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "placement": []
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 200,
+      "noise_offset": -0.2
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 500,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": 0.6
+    },
+    {
+      "type": "main:count",
+      "count": 5
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

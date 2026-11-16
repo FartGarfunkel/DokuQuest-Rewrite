@@ -1,0 +1,25 @@
+{
+  "feature": "main:patch_tall_grass",
+  "placement": [
+    {
+      "type": "main:noise_threshold_count",
+      "above_noise": 7,
+      "below_noise": 0,
+      "noise_level": -0.8
+    },
+    {
+      "type": "main:rarity_filter",
+      "chance": 32
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

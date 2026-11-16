@@ -1,0 +1,258 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:light",
+            "Properties": {
+              "level": "1",
+              "waterlogged": "true"
+            }
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:deepslate",
+              "main:calcite",
+              "main:light"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:deepslate",
+              "main:calcite",
+              "main:light"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:deepslate",
+              "main:calcite"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:deepslate",
+              "main:calcite",
+              "main:light"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:deepslate",
+              "main:calcite",
+              "main:light"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:deepslate",
+              "main:calcite",
+              "main:light"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:deepslate",
+              "main:calcite",
+              "main:light"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:deepslate",
+              "main:calcite",
+              "main:light"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:deepslate",
+              "main:calcite",
+              "main:light"
+            ]
+          },
+          {
+            "type": "main:has_sturdy_face",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "direction": "up"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              1,
+              1
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              1,
+              0
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              1,
+              -1
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              1
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              -1
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              1,
+              1
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              1,
+              0
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              1,
+              -1
+            ],
+            "blocks": "main:air"
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 2,
+          "max_inclusive": 4
+        }
+      },
+      "half_height": 1
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 100,
+      "noise_offset": -0.3
+    },
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "feature": "main:sea_pickle",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 16
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:biome"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:matching_blocks",
+          "offset": [
+            0,
+            -1,
+            0
+          ],
+          "blocks": "main:sculk"
+        }
+      }
+    }
+  ]
+}

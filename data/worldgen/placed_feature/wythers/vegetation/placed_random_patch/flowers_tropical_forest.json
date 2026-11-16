@@ -1,0 +1,36 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/flowers_tropical_forest",
+  "placement": [
+    {
+      "chance": 7,
+      "type": "main:rarity_filter"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "heightmap": "MOTION_BLOCKING",
+      "type": "main:heightmap"
+    },
+    {
+      "count": {
+        "type": "main:clamped",
+        "value": {
+          "source": {
+            "type": "main:uniform",
+            "value": {
+              "min_inclusive": -3,
+              "max_inclusive": 1
+            }
+          },
+          "min_inclusive": 0,
+          "max_inclusive": 1
+        }
+      },
+      "type": "main:count"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

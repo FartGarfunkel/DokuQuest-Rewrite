@@ -1,0 +1,55 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "up",
+    "allowed_placement": {
+      "type": "main:matching_blocks",
+      "blocks": "main:air"
+    },
+    "prioritize_tip": true,
+    "layers": [
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:pointed_dripstone",
+            "Properties": {
+              "thickness": "base",
+              "vertical_direction": "up",
+              "waterlogged": "false"
+            }
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:pointed_dripstone",
+            "Properties": {
+              "thickness": "frustum",
+              "vertical_direction": "up",
+              "waterlogged": "false"
+            }
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:pointed_dripstone",
+            "Properties": {
+              "thickness": "tip",
+              "vertical_direction": "up",
+              "waterlogged": "false"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

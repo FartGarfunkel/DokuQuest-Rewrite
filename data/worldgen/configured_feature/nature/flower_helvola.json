@@ -1,0 +1,240 @@
+{
+  "type": "main:flower",
+  "config": {
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:weighted_state_provider",
+            "entries": [              {
+              "data": {
+                "Name": "nature:helvola",
+                "Properties": {
+                  "facing": "north",
+                  "water_flower_amount": "0"
+                }
+              },
+              "weight": 5
+            },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "east",
+                    "water_flower_amount": "0"
+                  }
+                },
+                "weight": 5
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "south",
+                    "water_flower_amount": "0"
+                  }
+                },
+                "weight": 5
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "west",
+                    "water_flower_amount": "0"
+                  }
+                },
+                "weight": 5
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "north",
+                    "water_flower_amount": "1"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "east",
+                    "water_flower_amount": "1"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "south",
+                    "water_flower_amount": "1"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "west",
+                    "water_flower_amount": "1"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "north",
+                    "water_flower_amount": "2"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "east",
+                    "water_flower_amount": "2"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "south",
+                    "water_flower_amount": "2"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "west",
+                    "water_flower_amount": "2"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "north",
+                    "water_flower_amount": "3"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "east",
+                    "water_flower_amount": "3"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "south",
+                    "water_flower_amount": "3"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "west",
+                    "water_flower_amount": "3"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "north",
+                    "water_flower_amount": "4"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "east",
+                    "water_flower_amount": "4"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "south",
+                    "water_flower_amount": "4"
+                  }
+                },
+                "weight": 1
+              },
+              {
+                "data": {
+                  "Name": "nature:helvola",
+                  "Properties": {
+                    "facing": "west",
+                    "water_flower_amount": "4"
+                  }
+                },
+                "weight": 1
+              }
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "blocks": "main:water",
+                "offset": [
+                  0, -1, 0
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "blocks": "main:air"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "tries": 30,
+    "xz_spread": 4,
+    "y_spread": 2
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "feature": "wythers:vegetation/tree/tropical_forest",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "WORLD_SURFACE_WG",
+      "min_inclusive": -250,
+      "max_inclusive": -65
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -2,
+          0
+        ],
+        "blocks": "main:rooted_dirt"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

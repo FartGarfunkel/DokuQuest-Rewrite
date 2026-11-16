@@ -1,0 +1,23 @@
+{
+  "feature": "wythers:other/block_pile_stone",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 5
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:count",
+      "count": 8
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

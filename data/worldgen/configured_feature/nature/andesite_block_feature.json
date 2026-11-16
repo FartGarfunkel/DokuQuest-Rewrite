@@ -1,0 +1,11 @@
+{
+  "type": "nature:large_pumpkin_feature",
+  "config": {
+    "state_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:andesite"
+      }
+    }
+  }
+}

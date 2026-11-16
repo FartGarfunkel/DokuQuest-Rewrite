@@ -1,0 +1,56 @@
+{
+  "feature": "wythers:vegetation/tree/blue_gum_forest",
+  "placement": [
+    {
+      "count": {
+        "distribution": [
+          {
+            "data": 50,
+            "weight": 9
+          },
+          {
+            "data": 55,
+            "weight": 1
+          }
+        ],
+        "type": "main:weighted_list"
+      },
+      "type": "main:count"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:fern"
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -2,
+          0
+        ],
+        "blocks": "main:red_sand"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

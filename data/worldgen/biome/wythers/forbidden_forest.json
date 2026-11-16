@@ -1,0 +1,199 @@
+{
+	"temperature": 0.7,
+	"downfall": 0.8,
+	"effects": {
+		"mood_sound": {
+			"sound": "main:ambient.cave",
+			"tick_delay": 6000,
+			"block_search_extent": 8,
+			"offset": 2
+		},
+		"grass_color": 9989699,
+		"foliage_color": 11749943,
+		"sky_color": 11842740,
+		"fog_color": 13158600,
+		"water_color": 6388580,
+		"water_fog_color": 2302743
+	},
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"features": [
+		[],
+		[
+			"main:lake_lava_underground",
+			"main:lake_lava_surface"
+		],
+		[
+			"main:amethyst_geode"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[],
+		[],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper",
+			"main:underwater_magma",
+			"wythers:caves/rooted_dirt"
+		],
+		[
+			"wythers:vegetation/trees_forbidden_autumnal_forest"
+		],
+		[
+			"main:spring_water",
+			"main:spring_lava"
+		],
+		[
+			"wythers:vegetation/placed_random_patch/forbidden_forest_dark_oak_leaf_piles",
+			"wythers:vegetation/placed_random_patch/carved_pumpkins",
+			"main:glow_lichen",
+			"wythers:other/forbidden_forest_scarecrow",
+			"wythers:caves/hanging_roots",
+			"main:patch_large_fern",
+			"main:patch_grass_savanna",
+			"main:brown_mushroom_normal",
+			"main:red_mushroom_normal",
+			"main:patch_berry_common"
+		],
+		[
+			"wythers:vegetation/bracket_fungi",
+			"wythers:terrain/disk_muddy_roots_shore",
+			"wythers:terrain/disk_mud_shore",
+			"main:freeze_top_layer"
+		]
+	],
+	"spawners": {
+		"monster": [
+			{
+				"type": "main:spider",
+				"weight": 50,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:cave_spider",
+				"weight": 50,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie",
+				"weight": 50,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:zombie_villager",
+				"weight": 5,
+				"minCount": 1,
+				"maxCount": 1
+			},
+			{
+				"type": "main:skeleton",
+				"weight": 50,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:stray",
+				"weight": 50,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:creeper",
+				"weight": 20,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:slime",
+				"weight": 100,
+				"minCount": 4,
+				"maxCount": 4
+			},
+			{
+				"type": "main:enderman",
+				"weight": 10,
+				"minCount": 1,
+				"maxCount": 4
+			},
+			{
+				"type": "main:vex",
+				"weight": 10,
+				"minCount": 2,
+				"maxCount": 2
+			},
+			{
+				"type": "main:vindicator",
+				"weight": 30,
+				"minCount": 1,
+				"maxCount": 2
+			},
+			{
+				"type": "main:ravager",
+				"weight": 10,
+				"minCount": 1,
+				"maxCount": 1
+			},
+			{
+				"type": "main:witch",
+				"weight": 30,
+				"minCount": 3,
+				"maxCount": 4
+			}
+		],
+		"creature": [],
+		"ambient": [
+			{
+				"type": "main:bat",
+				"weight": 10,
+				"minCount": 8,
+				"maxCount": 8
+			}
+		],
+		"axolotls": [],
+		"underground_water_creature": [
+			{
+				"type": "main:glow_squid",
+				"weight": 10,
+				"minCount": 4,
+				"maxCount": 6
+			}
+		],
+		"water_creature": [],
+		"water_ambient": [],
+		"misc": []
+	},
+	"spawn_costs": { },
+	"has_precipitation": true
+}

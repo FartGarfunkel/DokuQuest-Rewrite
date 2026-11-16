@@ -1,0 +1,54 @@
+{
+  "feature": "wythers:vegetation/configured_tree/bristlecone_pine",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:weighted_list",
+        "distribution": [
+          {
+            "weight": 9,
+            "data": 0
+          },
+          {
+            "weight": 1,
+            "data": 1
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_block_tag",
+        "offset": [
+          0,
+          -1,
+          0
+        ],
+        "tag": "main:terracotta"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

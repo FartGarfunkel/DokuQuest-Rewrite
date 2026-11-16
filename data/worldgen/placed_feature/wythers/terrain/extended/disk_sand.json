@@ -1,0 +1,23 @@
+{
+  "feature": "main:disk_sand",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 15
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_fluids",
+        "fluids": "main:water"
+      }
+    }
+  ]
+}

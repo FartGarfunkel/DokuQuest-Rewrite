@@ -1,0 +1,69 @@
+{
+  "feature": {
+    "type": "main:ore",
+    "config": {
+      "size": 64,
+      "discard_chance_on_air_exposure": 0,
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:packed_mud"
+          },
+          "state": {
+            "Name": "main:gravel"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:brown_terracotta"
+          },
+          "state": {
+            "Name": "main:gravel"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:gray_terracotta"
+          },
+          "state": {
+            "Name": "main:gravel"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:soul_sand"
+          },
+          "state": {
+            "Name": "main:gravel"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:dripstone_block"
+          },
+          "state": {
+            "Name": "main:gravel"
+          }
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 100
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    }
+  ]
+}

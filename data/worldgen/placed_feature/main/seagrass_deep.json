@@ -1,0 +1,19 @@
+{
+  "feature": "main:seagrass_tall",
+  "placement": [
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:count",
+      "count": 48
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

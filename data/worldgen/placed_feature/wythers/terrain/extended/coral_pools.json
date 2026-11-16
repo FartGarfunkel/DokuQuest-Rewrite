@@ -1,0 +1,335 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:weighted_state_provider",
+          "entries": [
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:sea_pickle"
+              }
+            },
+            {
+              "weight": 5,
+              "data": {
+                "Name": "main:seagrass"
+              }
+            },
+            {
+              "weight": 30,
+              "data": {
+                "Name": "main:water",
+                "Properties": {
+                  "level": "0"
+                }
+              }
+            }
+          ]
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:dead_brain_coral_block",
+              "main:dead_bubble_coral_block",
+              "main:dead_fire_coral_block",
+              "main:dead_horn_coral_block",
+              "main:dead_tube_coral_block",
+              "main:water",
+              "main:mossy_cobblestone",
+              "main:sea_pickle",
+              "main:seagrass"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:dead_brain_coral_block",
+              "main:dead_bubble_coral_block",
+              "main:dead_fire_coral_block",
+              "main:dead_horn_coral_block",
+              "main:dead_tube_coral_block",
+              "main:water",
+              "main:mossy_cobblestone",
+              "main:sea_pickle",
+              "main:seagrass"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:dead_brain_coral_block",
+              "main:dead_bubble_coral_block",
+              "main:dead_fire_coral_block",
+              "main:dead_horn_coral_block",
+              "main:dead_tube_coral_block",
+              "main:water",
+              "main:mossy_cobblestone",
+              "main:sea_pickle",
+              "main:seagrass"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:dead_brain_coral_block",
+              "main:dead_bubble_coral_block",
+              "main:dead_fire_coral_block",
+              "main:dead_horn_coral_block",
+              "main:dead_tube_coral_block",
+              "main:water",
+              "main:mossy_cobblestone",
+              "main:sea_pickle",
+              "main:seagrass"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:dead_brain_coral_block",
+              "main:dead_bubble_coral_block",
+              "main:dead_fire_coral_block",
+              "main:dead_horn_coral_block",
+              "main:dead_tube_coral_block",
+              "main:water",
+              "main:mossy_cobblestone",
+              "main:sea_pickle",
+              "main:seagrass"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:dead_brain_coral_block",
+              "main:dead_bubble_coral_block",
+              "main:dead_fire_coral_block",
+              "main:dead_horn_coral_block",
+              "main:dead_tube_coral_block",
+              "main:water",
+              "main:mossy_cobblestone",
+              "main:sea_pickle",
+              "main:seagrass"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:dead_brain_coral_block",
+              "main:dead_bubble_coral_block",
+              "main:dead_fire_coral_block",
+              "main:dead_horn_coral_block",
+              "main:dead_tube_coral_block",
+              "main:water",
+              "main:mossy_cobblestone",
+              "main:sea_pickle",
+              "main:seagrass"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:dead_brain_coral_block",
+              "main:dead_bubble_coral_block",
+              "main:dead_fire_coral_block",
+              "main:dead_horn_coral_block",
+              "main:dead_tube_coral_block",
+              "main:water",
+              "main:mossy_cobblestone",
+              "main:sea_pickle",
+              "main:seagrass"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:dead_brain_coral_block",
+              "main:dead_bubble_coral_block",
+              "main:dead_fire_coral_block",
+              "main:dead_horn_coral_block",
+              "main:dead_tube_coral_block",
+              "main:water",
+              "main:mossy_cobblestone",
+              "main:sea_pickle",
+              "main:seagrass"
+            ]
+          },
+          {
+            "type": "main:has_sturdy_face",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "direction": "up"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              1,
+              1
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              1,
+              0
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              1,
+              -1
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              1
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              -1
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              1,
+              1
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              1,
+              0
+            ],
+            "blocks": "main:air"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              1,
+              -1
+            ],
+            "blocks": "main:air"
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 2,
+          "max_inclusive": 4
+        }
+      },
+      "half_height": 1
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 0
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "WORLD_SURFACE_WG",
+      "min_inclusive": -75,
+      "max_inclusive": -60
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    }
+  ]
+}

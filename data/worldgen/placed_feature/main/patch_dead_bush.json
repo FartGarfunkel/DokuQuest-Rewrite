@@ -1,0 +1,15 @@
+{
+  "feature": "main:patch_dead_bush",
+  "placement": [
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

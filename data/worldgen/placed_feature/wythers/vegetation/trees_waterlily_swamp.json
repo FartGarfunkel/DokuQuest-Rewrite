@@ -1,0 +1,25 @@
+{
+  "feature": "wythers:vegetation/configured_trees_waterlily_swamp",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 10,
+      "noise_factor": 70,
+      "noise_offset": 0.75
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "max_water_depth": 0,
+      "type": "main:surface_water_depth_filter"
+    },
+    {
+      "heightmap": "OCEAN_FLOOR",
+      "type": "main:heightmap"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

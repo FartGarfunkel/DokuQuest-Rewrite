@@ -1,0 +1,11 @@
+{
+  "type": "main:add",
+  "argument1": {
+    "type": "main:y_clamped_gradient",
+    "from_value": 1.5,
+    "from_y": -64,
+    "to_value": -1.5,
+    "to_y": 320
+  },
+  "argument2": "main:overworld_amplified/offset"
+}

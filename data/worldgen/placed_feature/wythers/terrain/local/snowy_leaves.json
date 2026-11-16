@@ -1,0 +1,145 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:snow",
+            "Properties": {
+              "layers": "1"
+            }
+          }
+        },
+        "rules": [
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "blocks": "main:grass_block"
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:grass_block",
+                "Properties": {
+                  "snowy": "true"
+                }
+              }
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "blocks": "main:podzol"
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:podzol",
+                "Properties": {
+                  "snowy": "true"
+                }
+              }
+            }
+          },
+          {
+            "if_true": {
+              "type": "main:matching_blocks",
+              "blocks": "main:mycelium"
+            },
+            "then": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:mycelium",
+                "Properties": {
+                  "snowy": "true"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "target": {
+        "type": "main:any_of",
+        "predicates": [
+          {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:grass_block",
+                  "main:podzol",
+                  "main:mycelium"
+                ]
+              }
+            ]
+          },
+          {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:air",
+                  "main:grass",
+                  "main:fern",
+                  "main:red_mushroom",
+                  "main:brown_mushroom"
+                ]
+              },
+              {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:has_sturdy_face",
+                    "offset": [
+                      0,
+                      -1,
+                      0
+                    ],
+                    "direction": "up"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      -1,
+                      0
+                    ],
+                    "tag": "main:leaves"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 3,
+          "max_inclusive": 8
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,218 @@
+{
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "config": {
+            "features": [
+              {
+                "feature": {
+                  "config": {
+                    "allowed_placement": {
+                      "blocks": "#wythers:tree_branch_replaceable",
+                      "type": "main:matching_blocks"
+                    },
+                    "direction": "up",
+                    "layers": [
+                      {
+                        "height": {
+                          "value": {
+                            "min_inclusive": 3,
+                            "max_inclusive": 5
+                          },
+                          "type": "main:biased_to_bottom"
+                        },
+                        "provider": {
+                          "state": {
+                            "Name": "main:jungle_wood",
+                            "Properties": {
+                              "axis": "y"
+                            }
+                          },
+                          "type": "main:simple_state_provider"
+                        }
+                      }
+                    ],
+                    "prioritize_tip": false
+                  },
+                  "type": "main:block_column"
+                },
+                "placement": [
+                  {
+                    "predicate": {
+                      "blocks": "#wythers:tree_branch_replaceable",
+                      "type": "main:matching_blocks"
+                    },
+                    "type": "main:block_predicate_filter"
+                  }
+                ]
+              },
+              {
+                "feature": "wythers:palm/branch/tall_top",
+                "placement": [
+                  {
+                    "predicate": {
+                      "blocks": "main:jungle_wood",
+                      "type": "main:matching_blocks"
+                    },
+                    "type": "main:block_predicate_filter"
+                  },
+                  {
+                    "direction_of_search": "up",
+                    "max_steps": 6,
+                    "target_condition": {
+                      "predicate": {
+                        "blocks": "main:jungle_wood",
+                        "type": "main:matching_blocks"
+                      },
+                      "type": "main:not"
+                    },
+                    "type": "main:environment_scan"
+                  },
+                  {
+                    "count": 8,
+                    "type": "main:count"
+                  },
+                  {
+                    "xz_spread": {
+                      "value": {
+                        "min_inclusive": -1,
+                        "max_inclusive": 0
+                      },
+                      "type": "main:uniform"
+                    },
+                    "y_spread": 0,
+                    "type": "main:random_offset"
+                  },
+                  {
+                    "predicate": {
+                      "predicates": [
+                        {
+                          "blocks": "#wythers:tree_branch_replaceable",
+                          "type": "main:matching_blocks"
+                        },
+                        {
+                          "blocks": "main:jungle_wood",
+                          "offset": [
+                            0,
+                            -1,
+                            1
+                          ],
+                          "type": "main:matching_blocks"
+                        },
+                        {
+                          "blocks": "#wythers:tree_branch_replaceable",
+                          "offset": [
+                            0,
+                            0,
+                            1
+                          ],
+                          "type": "main:matching_blocks"
+                        },
+                        {
+                          "blocks": "#wythers:tree_branch_replaceable",
+                          "offset": [
+                            0,
+                            -1,
+                            0
+                          ],
+                          "type": "main:matching_blocks"
+                        }
+                      ],
+                      "type": "main:all_of"
+                    },
+                    "type": "main:block_predicate_filter"
+                  },
+                  {
+                    "count": 28,
+                    "type": "main:count"
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "main:simple_random_selector"
+        },
+        "placement": [
+          {
+            "count": 16,
+            "type": "main:count"
+          },
+          {
+            "xz_spread": {
+              "value": {
+                "min_inclusive": -1,
+                "max_inclusive": 0
+              },
+              "type": "main:uniform"
+            },
+            "y_spread": 0,
+            "type": "main:random_offset"
+          },
+          {
+            "predicate": {
+              "predicates": [
+                {
+                  "blocks": "#wythers:tree_branch_replaceable",
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": "main:jungle_wood",
+                  "offset": [
+                    0,
+                    -1,
+                    1
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": "main:jungle_wood",
+                  "offset": [
+                    0,
+                    -2,
+                    1
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": "main:jungle_wood",
+                  "offset": [
+                    0,
+                    -3,
+                    1
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": "#wythers:tree_branch_replaceable",
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                {
+                  "blocks": "#wythers:tree_branch_replaceable",
+                  "offset": [
+                    0,
+                    -1,
+                    0
+                  ],
+                  "type": "main:matching_blocks"
+                }
+              ],
+              "type": "main:all_of"
+            },
+            "type": "main:block_predicate_filter"
+          },
+          {
+            "count": 28,
+            "type": "main:count"
+          }
+        ]
+      }
+    ]
+  },
+  "type": "main:simple_random_selector"
+}

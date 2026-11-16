@@ -1,0 +1,51 @@
+{
+  "feature": {
+    "type": "main:ore",
+    "config": {
+      "size": 64,
+      "discard_chance_on_air_exposure": 0,
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:sand"
+          },
+          "state": {
+            "Name": "main:red_sand"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:sandstone"
+          },
+          "state": {
+            "Name": "main:red_sandstone"
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:block_match",
+            "block": "main:smooth_sandstone"
+          },
+          "state": {
+            "Name": "main:smooth_red_sandstone"
+          }
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    }
+  ]
+}

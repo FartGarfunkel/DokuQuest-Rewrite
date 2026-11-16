@@ -1,0 +1,33 @@
+{
+  "feature": "main:blue_ice",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:uniform",
+        "value": {
+          "max_inclusive": 19,
+          "min_inclusive": 0
+        }
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "absolute": 61
+        },
+        "min_inclusive": {
+          "absolute": 30
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

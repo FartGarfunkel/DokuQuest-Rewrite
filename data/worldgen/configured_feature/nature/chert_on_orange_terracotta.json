@@ -1,0 +1,73 @@
+{
+  "type": "main:simple_random_selector",
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:chert"
+            },
+            "target": {
+              "Name": "main:orange_terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:chert"
+            },
+            "target": {
+              "Name": "main:stone"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:sandy_soil"
+            },
+            "target": {
+              "Name": "main:coarse_dirt"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      }
+    ]
+  }
+}

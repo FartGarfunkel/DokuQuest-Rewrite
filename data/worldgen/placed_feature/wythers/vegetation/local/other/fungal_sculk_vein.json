@@ -1,0 +1,54 @@
+{
+  "feature": {
+    "type": "main:multiface_growth",
+    "config": {
+      "block": "main:sculk_vein",
+      "search_range": 20,
+      "chance_of_spreading": 1,
+      "can_place_on_floor": true,
+      "can_place_on_ceiling": true,
+      "can_place_on_wall": true,
+      "can_be_placed_on": [
+        "main:basalt",
+        "main:mycelium",
+        "main:prismarine",
+        "main:dead_bubble_coral_block",
+        "main:dead_brain_coral_block",
+        "main:dead_horn_coral_block",
+        "main:dead_fire_coral_block",
+        "main:dead_tube_coral_block",
+        "main:mossy_cobblestone",
+        "main:moss_block",
+        "main:warped_wart_block"
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": -0.38
+    },
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 204,
+          "max_inclusive": 250
+        }
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

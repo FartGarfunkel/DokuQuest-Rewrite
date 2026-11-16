@@ -1,0 +1,78 @@
+{
+  "feature": {
+    "type": "main:block_column",
+    "config": {
+      "direction": "down",
+      "allowed_placement": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:air"
+        ]
+      },
+      "prioritize_tip": false,
+      "layers": [
+        {
+          "height": 1,
+          "provider": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:light",
+              "Properties": {
+                "level": "15",
+                "waterlogged": "false"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 3
+    },
+    {
+      "type": "main:count",
+      "count": 256
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "above_bottom": 60
+        },
+        "max_inclusive": {
+          "absolute": 100
+        }
+      }
+    },
+    {
+      "type": "main:environment_scan",
+      "direction_of_search": "up",
+      "max_steps": 16,
+      "target_condition": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "blocks": [
+          "main:sculk"
+        ]
+      },
+      "allowed_search_condition": {
+        "type": "main:matching_blocks",
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

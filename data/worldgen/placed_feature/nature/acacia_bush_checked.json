@@ -1,0 +1,40 @@
+{
+  "feature": "nature:acacia_bush",
+  "placement": [
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:any_of",
+        "predicates": [
+          {
+            "type": "main:would_survive",
+            "state": {
+              "Name": "main:acacia_sapling",
+              "Properties": {
+                "stage": "0"
+              }
+            }
+          },
+          {
+            "type": "main:matching_block_tag",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "tag": "nature:kaolin"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": ["main:red_sand"]
+          }
+        ]
+      }
+    }
+  ]
+}

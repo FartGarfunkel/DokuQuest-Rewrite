@@ -1,0 +1,28 @@
+{
+  "type": "main:simple_random_selector",
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "main:stone"
+            },
+            "target": {
+              "Name": "nature:chert"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 12,
+                "max_inclusive": 12
+              }
+            }
+          }
+        },
+        "placement": []
+      }
+    ]
+  }
+}

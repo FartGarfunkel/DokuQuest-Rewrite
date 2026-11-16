@@ -1,0 +1,137 @@
+{
+  "feature": {
+    "type": "main:huge_fungus",
+    "config": {
+      "hat_state": {
+        "Name": "main:warped_wart_block"
+      },
+      "decor_state": {
+        "Name": "main:verdant_froglight",
+        "Properties": {
+          "axis": "y"
+        }
+      },
+      "stem_state": {
+        "Name": "main:stripped_warped_stem",
+        "Properties": {
+          "axis": "y"
+        }
+      },
+      "valid_base_block": {
+        "Name": "main:mycelium",
+        "Properties": {
+          "snowy": "false"
+        }
+      },
+      "replaceable_blocks": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:oak_sapling",
+          "main:spruce_sapling",
+          "main:birch_sapling",
+          "main:jungle_sapling",
+          "main:acacia_sapling",
+          "main:cherry_sapling",
+          "main:dark_oak_sapling",
+          "main:mangrove_propagule",
+          "main:dandelion",
+          "main:torchflower",
+          "main:poppy",
+          "main:blue_orchid",
+          "main:allium",
+          "main:azure_bluet",
+          "main:red_tulip",
+          "main:orange_tulip",
+          "main:white_tulip",
+          "main:pink_tulip",
+          "main:oxeye_daisy",
+          "main:cornflower",
+          "main:wither_rose",
+          "main:lily_of_the_valley",
+          "main:brown_mushroom",
+          "main:red_mushroom",
+          "main:wheat",
+          "main:sugar_cane",
+          "main:attached_pumpkin_stem",
+          "main:attached_melon_stem",
+          "main:pumpkin_stem",
+          "main:melon_stem",
+          "main:lily_pad",
+          "main:nether_wart",
+          "main:cocoa",
+          "main:carrots",
+          "main:potatoes",
+          "main:chorus_plant",
+          "main:chorus_flower",
+          "main:torchflower_crop",
+          "main:pitcher_crop",
+          "main:beetroots",
+          "main:sweet_berry_bush",
+          "main:warped_fungus",
+          "main:crimson_fungus",
+          "main:weeping_vines",
+          "main:weeping_vines_plant",
+          "main:twisting_vines",
+          "main:twisting_vines_plant",
+          "main:cave_vines",
+          "main:cave_vines_plant",
+          "main:spore_blossom",
+          "main:azalea",
+          "main:flowering_azalea",
+          "main:moss_carpet",
+          "main:pink_petals",
+          "main:big_dripleaf",
+          "main:big_dripleaf_stem",
+          "main:small_dripleaf"
+        ]
+      },
+      "planted": false
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 500,
+      "noise_offset": 0.3
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": 0.0
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": -0.4
+    },
+    {
+      "type": "main:count",
+      "count": 3
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -1,
+          0
+        ],
+        "blocks": "main:mycelium"
+      }
+    }
+  ]
+}

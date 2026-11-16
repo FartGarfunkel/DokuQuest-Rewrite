@@ -1,0 +1,95 @@
+{
+  "feature": {
+    "type": "main:simple_random_selector",
+    "config": {
+      "features": [
+        {
+          "feature": {
+            "type": "main:simple_block",
+            "config": {
+              "to_place": {
+                "type": "main:simple_state_provider",
+                "state": {
+                  "Name": "main:brown_mushroom"
+                }
+              }
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:simple_block",
+            "config": {
+              "to_place": {
+                "type": "main:simple_state_provider",
+                "state": {
+                  "Name": "main:glow_lichen",
+                  "Properties": {
+                    "down": "true",
+                    "east": "false",
+                    "north": "false",
+                    "south": "false",
+                    "up": "false",
+                    "waterlogged": "true",
+                    "west": "false"
+                  }
+                }
+              }
+            }
+          },
+          "placement": []
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 2
+    },
+    {
+      "type": "main:count",
+      "count": 256
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "above_bottom": 0
+        },
+        "max_inclusive": {
+          "absolute": 80
+        }
+      }
+    },
+    {
+      "type": "main:environment_scan",
+      "direction_of_search": "down",
+      "max_steps": 12,
+      "target_condition": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:calcite",
+          "main:diorite"
+        ]
+      },
+      "allowed_search_condition": {
+        "type": "main:matching_blocks",
+        "blocks": "main:water"
+      }
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": 1
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

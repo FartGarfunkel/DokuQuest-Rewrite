@@ -1,0 +1,71 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "tries": 24,
+    "xz_spread": 7,
+    "y_spread": 3,
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:weighted_state_provider",
+            "entries": [
+              {
+                "weight": 5,
+                "data": {
+                  "Name": "main:large_fern",
+                  "Properties": {
+                    "half": "lower"
+                  }
+                }
+              },
+              {
+                "weight": 0,
+                "data": {
+                  "Name": "main:jungle_sapling",
+                  "Properties": {
+                    "stage": "1"
+                  }
+                }
+              },
+              {
+                "weight": 2,
+                "data": {
+                  "Name": "main:grass"
+                }
+              },
+              {
+                "weight": 30,
+                "data": {
+                  "Name": "main:fern"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:air"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

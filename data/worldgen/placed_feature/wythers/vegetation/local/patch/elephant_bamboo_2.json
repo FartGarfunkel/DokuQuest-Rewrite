@@ -1,0 +1,170 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 48,
+      "xz_spread": 3,
+      "y_spread": 3,
+      "feature": {
+        "feature": {
+          "type": "main:block_column",
+          "config": {
+            "direction": "up",
+            "allowed_placement": {
+              "type": "main:matching_blocks",
+              "blocks": [
+                "main:air"
+              ]
+            },
+            "prioritize_tip": true,
+            "layers": [
+              {
+                "height": {
+                  "type": "main:uniform",
+                  "value": {
+                    "min_inclusive": 3,
+                    "max_inclusive": 13
+                  }
+                },
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:bamboo",
+                    "Properties": {
+                      "age": "1",
+                      "leaves": "none",
+                      "stage": "1"
+                    }
+                  }
+                }
+              },
+              {
+                "height": 1,
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:bamboo",
+                    "Properties": {
+                      "age": "1",
+                      "leaves": "small",
+                      "stage": "1"
+                    }
+                  }
+                }
+              },
+              {
+                "height": 2,
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:bamboo",
+                    "Properties": {
+                      "age": "1",
+                      "leaves": "large",
+                      "stage": "1"
+                    }
+                  }
+                }
+              },
+              {
+                "height": {
+                  "type": "main:uniform",
+                  "value": {
+                    "min_inclusive": 3,
+                    "max_inclusive": 4
+                  }
+                },
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:azalea_leaves",
+                    "Properties": {
+                      "distance": "1",
+                      "persistent": "false",
+                      "waterlogged": "false"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -1,
+                0
+              ],
+              "blocks": [
+                "main:grass_block",
+                "main:podzol"
+              ]
+            }
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "blocks": "main:air"
+            }
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:not",
+              "predicate": {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -2,
+                  0
+                ],
+                "blocks": "main:packed_mud"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": -0.32
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": 0.32
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 100,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 10,
+      "noise_factor": 80,
+      "noise_offset": 0.3
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

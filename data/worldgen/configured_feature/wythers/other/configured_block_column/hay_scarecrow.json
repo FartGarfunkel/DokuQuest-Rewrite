@@ -1,0 +1,92 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "up",
+    "allowed_placement": {
+      "type": "main:matching_blocks",
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "blocks": [
+        "main:air"
+      ]
+    },
+    "prioritize_tip": true,
+    "layers": [
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:dark_oak_fence",
+            "Properties": {
+              "east": "false",
+              "north": "false",
+              "south": "false",
+              "waterlogged": "false",
+              "west": "false"
+            }
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:hay_block",
+            "Properties": {
+              "axis": "y"
+            }
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:weighted_state_provider",
+          "entries": [
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:jack_o_lantern",
+                "Properties": {
+                  "facing": "north"
+                }
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:jack_o_lantern",
+                "Properties": {
+                  "facing": "south"
+                }
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:jack_o_lantern",
+                "Properties": {
+                  "facing": "west"
+                }
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:jack_o_lantern",
+                "Properties": {
+                  "facing": "east"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

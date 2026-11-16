@@ -1,0 +1,41 @@
+{
+	"feature": "nature:sand_layer",
+	"placement": [
+		{
+			"type": "main:count",
+			"count": {
+				"type": "main:constant",
+				"value": 128
+			}
+		},
+		{
+			"type": "main:random_offset",
+			"xz_spread": {
+				"type": "main:uniform",
+				"value": {
+					"min_inclusive": -16,
+					"max_inclusive": 16
+				}
+			},
+			"y_spread": {
+				"type": "main:uniform",
+				"value": {
+					"min_inclusive": 0,
+					"max_inclusive": 0
+				}
+			}
+		},
+		{
+			"type": "main:height_range",
+			"height": {
+				"type": "main:constant",
+				
+					"absolute": 80
+				
+			}
+		},
+		{
+			"type": "main:biome"
+		}
+	]
+}

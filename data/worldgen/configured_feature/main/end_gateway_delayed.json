@@ -1,0 +1,6 @@
+{
+  "type": "main:end_gateway",
+  "config": {
+    "exact": false
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "feature": "wythers:vegetation/configured_trees_fen",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:weighted_list",
+        "distribution": [
+          {
+            "weight": 5,
+            "data": 100
+          },
+          {
+            "weight": 1,
+            "data": 20
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": 65
+        },
+        "max_inclusive": {
+          "absolute": 85
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

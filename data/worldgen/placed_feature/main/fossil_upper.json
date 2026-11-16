@@ -1,0 +1,27 @@
+{
+  "feature": "main:fossil_coal",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 64
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "below_top": 0
+        },
+        "min_inclusive": {
+          "absolute": 0
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

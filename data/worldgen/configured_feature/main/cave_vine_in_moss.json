@@ -1,0 +1,102 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "allowed_placement": {
+      "type": "main:matching_blocks",
+      "blocks": "main:air"
+    },
+    "direction": "down",
+    "layers": [
+      {
+        "height": {
+          "type": "main:weighted_list",
+          "distribution": [
+            {
+              "data": {
+                "type": "main:uniform",
+                "value": {
+                  "max_inclusive": 3,
+                  "min_inclusive": 0
+                }
+              },
+              "weight": 5
+            },
+            {
+              "data": {
+                "type": "main:uniform",
+                "value": {
+                  "max_inclusive": 7,
+                  "min_inclusive": 1
+                }
+              },
+              "weight": 1
+            }
+          ]
+        },
+        "provider": {
+          "type": "main:weighted_state_provider",
+          "entries": [
+            {
+              "data": {
+                "Name": "main:cave_vines_plant",
+                "Properties": {
+                  "berries": "false"
+                }
+              },
+              "weight": 4
+            },
+            {
+              "data": {
+                "Name": "main:cave_vines_plant",
+                "Properties": {
+                  "berries": "true"
+                }
+              },
+              "weight": 1
+            }
+          ]
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:randomized_int_state_provider",
+          "property": "age",
+          "source": {
+            "type": "main:weighted_state_provider",
+            "entries": [
+              {
+                "data": {
+                  "Name": "main:cave_vines",
+                  "Properties": {
+                    "age": "0",
+                    "berries": "false"
+                  }
+                },
+                "weight": 4
+              },
+              {
+                "data": {
+                  "Name": "main:cave_vines",
+                  "Properties": {
+                    "age": "0",
+                    "berries": "true"
+                  }
+                },
+                "weight": 1
+              }
+            ]
+          },
+          "values": {
+            "type": "main:uniform",
+            "value": {
+              "max_inclusive": 25,
+              "min_inclusive": 23
+            }
+          }
+        }
+      }
+    ],
+    "prioritize_tip": true
+  }
+}

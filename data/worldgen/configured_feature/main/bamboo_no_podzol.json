@@ -1,0 +1,6 @@
+{
+  "type": "main:bamboo",
+  "config": {
+    "probability": 0.0
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "feature": "wythers:vegetation/configured_block_column/spanish_moss_east",
+  "placement": [
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_block_tag",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "tag": "main:base_stone_overworld"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "blocks": [
+          "main:air"
+        ]
+      }
+    }
+  ]
+}

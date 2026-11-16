@@ -1,0 +1,527 @@
+{
+ "smithing_table": {
+  "state": "smithing",
+  "model": [
+   "smithing",
+   "smithing",
+   "smithing",
+   "smithing"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "cartography_table": {
+  "state": "cartography",
+  "model": [
+   "cartography_block",
+   "cartography_block",
+   "cartography_block",
+   "cartography_block"
+  ],
+  "y": [
+   270,
+   180,
+   90,
+   0
+  ]
+ },
+ "brewing_stand": {
+  "state": "still",
+  "model": [
+   "still",
+   "still",
+   "still",
+   "still"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "furnace": {
+  "state": "furnace",
+  "model": [
+   "furnace",
+   "furnace",
+   "furnace",
+   "furnace"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "lit_furnace": {
+  "state": "furnace",
+  "model": [
+   "furnace",
+   "furnace",
+   "furnace",
+   "furnace"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "smoker": {
+  "state": "smoker",
+  "model": [
+   "smoker",
+   "smoker",
+   "smoker",
+   "smoker"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "lit_smoker": {
+  "state": "smoker",
+  "model": [
+   "smoker",
+   "smoker",
+   "smoker",
+   "smoker"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "blast_furnace": {
+  "state": "blast_furnace",
+  "model": [
+   "blast_furnace",
+   "blast_furnace",
+   "blast_furnace",
+   "blast_furnace"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "lit_blast_furnace": {
+  "state": "blast_furnace",
+  "model": [
+   "blast_furnace",
+   "blast_furnace",
+   "blast_furnace",
+   "blast_furnace"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "grindstone": {
+  "state": "grindstone",
+  "model": [
+   "grindstone_static",
+   "grindstone_static",
+   "grindstone_static",
+   "grindstone_static"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "white_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "orange_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "magenta_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "light_blue_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "yellow_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "lime_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "pink_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "gray_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "light_gray_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "cyan_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "purple_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "blue_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "brown_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "green_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "red_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "black_painted_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "party_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "ender_chest": {
+  "state": "chest",
+  "model": [
+   "chest",
+   "chest",
+   "chest",
+   "chest"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "anvil": {
+  "state": "anvil",
+  "model": [
+   "anvil",
+   "anvil",
+   "anvil",
+   "anvil"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "chipped_anvil": {
+  "state": "anvil",
+  "model": [
+   "anvil",
+   "anvil",
+   "anvil",
+   "anvil"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "damaged_anvil": {
+  "state": "anvil",
+  "model": [
+   "anvil",
+   "anvil",
+   "anvil",
+   "anvil"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "enchanting_table": {
+  "state": "enchanting",
+  "model": [
+   "enchanting",
+   "enchanting",
+   "enchanting",
+   "enchanting"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "jukebox": {
+  "state": "jukebox",
+  "model": [
+   "jukebox",
+   "jukebox",
+   "jukebox",
+   "jukebox"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ },
+ "bookshelf": {
+  "state": "bookshelf",
+  "model": [
+   "bookshelf",
+   "bookshelf",
+   "bookshelf",
+   "bookshelf"
+  ],
+  "y": [
+   180,
+   90,
+   0,
+   270
+  ]
+ }
+}

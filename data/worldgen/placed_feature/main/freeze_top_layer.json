@@ -1,0 +1,8 @@
+{
+  "feature": "main:freeze_top_layer",
+  "placement": [
+    {
+      "type": "main:biome"
+    }
+  ]
+}

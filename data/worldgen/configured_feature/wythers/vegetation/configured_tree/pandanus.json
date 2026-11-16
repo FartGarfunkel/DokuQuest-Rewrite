@@ -1,0 +1,119 @@
+{
+  "config": {
+    "decorators": [
+      {
+        "type": "main:attached_to_leaves",
+        "probability": 0.05,
+        "exclusion_radius_xz": 0,
+        "exclusion_radius_y": 0,
+        "required_empty_blocks": 2,
+        "block_provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:honeycomb_block"
+          }
+        },
+        "directions": [
+          "down"
+        ]
+      },
+      {
+        "probability": 0.1,
+        "type": "main:beehive"
+      }
+    ],
+    "ignore_vines": true,
+    "force_dirt": true,
+    "dirt_provider": {
+      "state": {
+        "Name": "main:mangrove_roots"
+      },
+      "type": "main:simple_state_provider"
+    },
+    "minimum_size": {
+      "limit": 1,
+      "lower_size": 0,
+      "upper_size": 2,
+      "type": "main:two_layers_feature_size"
+    },
+    "foliage_provider": {
+      "state": {
+        "Properties": {
+          "waterlogged": "false",
+          "persistent": "false",
+          "distance": "7"
+        },
+        "Name": "main:azalea_leaves"
+      },
+      "type": "main:simple_state_provider"
+    },
+    "foliage_placer": {
+      "radius": 1,
+      "offset": 0,
+      "type": "main:acacia_foliage_placer"
+    },
+    "root_placer": {
+      "trunk_offset_y": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 0,
+          "max_inclusive": 2
+        }
+      },
+      "root_provider": {
+        "state": {
+          "Properties": {
+            "waterlogged": "false"
+          },
+          "Name": "main:mangrove_roots"
+        },
+        "type": "main:simple_state_provider"
+      },
+      "above_root_placement": {
+        "above_root_provider": {
+          "state": {
+            "Name": "main:moss_carpet"
+          },
+          "type": "main:simple_state_provider"
+        },
+        "above_root_placement_chance": 0
+      },
+      "mangrove_root_placement": {
+        "max_root_width": 3,
+        "max_root_length": 5,
+        "random_skew_chance": 0.25,
+        "can_grow_through": "#main:mangrove_roots_can_grow_through",
+        "muddy_roots_in": [
+          "main:mud",
+          "main:muddy_mangrove_roots"
+        ],
+        "muddy_roots_provider": {
+          "state": {
+            "Properties": {
+              "axis": "y"
+            },
+            "Name": "main:muddy_mangrove_roots"
+          },
+          "type": "main:simple_state_provider"
+        }
+      },
+      "type": "main:mangrove_root_placer"
+    },
+    "trunk_provider": {
+      "state": {
+        "Properties": {
+          "axis": "y"
+        },
+        "Name": "main:mangrove_wood"
+      },
+      "type": "main:simple_state_provider"
+    },
+    "trunk_placer": {
+      "base_height": 4,
+      "height_rand_a": 2,
+      "height_rand_b": 2,
+      "type": "main:forking_trunk_placer"
+    }
+  },
+  "type": "main:tree"
+}

@@ -1,0 +1,12 @@
+{
+  "feature": "main:crimson_forest_vegetation",
+  "placement": [
+    {
+      "type": "main:count_on_every_layer",
+      "count": 6
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

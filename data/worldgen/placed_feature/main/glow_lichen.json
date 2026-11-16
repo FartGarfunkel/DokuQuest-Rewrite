@@ -1,0 +1,38 @@
+{
+  "feature": "main:glow_lichen",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": {
+        "type": "main:uniform",
+        "value": {
+          "max_inclusive": 157,
+          "min_inclusive": 104
+        }
+      }
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "absolute": 256
+        },
+        "min_inclusive": {
+          "above_bottom": 0
+        }
+      }
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "OCEAN_FLOOR_WG",
+      "max_inclusive": -13
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

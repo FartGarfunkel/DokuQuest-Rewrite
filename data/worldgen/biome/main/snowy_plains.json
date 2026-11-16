@@ -1,0 +1,191 @@
+{
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"creature_spawn_probability": 0.07,
+	"downfall": 0.5,
+	"effects": {
+		"mood_sound": {
+			"block_search_extent": 8,
+			"offset": 2.0,
+			"sound": "main:ambient.cave",
+			"tick_delay": 6000
+		},
+		"sky_color": 16777215,
+		"fog_color": 13224393,
+		"water_color": 5334160,
+		"water_fog_color": 2171215,
+		"grass_color": 13081978,
+		"foliage_color": 15405056
+	},
+	"features": [
+		[
+			"wythers:terrain/local/stone_cliffs",
+			"wythers:terrain/extended/coarsify_dirt",
+			"wythers:terrain/extended/gravelify_packed_mud"
+		],
+		[
+			"main:lake_lava_underground",
+			"main:lake_lava_surface"
+		],
+		[
+			"main:amethyst_geode"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[],
+		[],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper",
+			"main:underwater_magma",
+			"main:disk_clay",
+			"wythers:terrain/local/disk_gravel_river",
+			"wythers:terrain/extended/windswept_snow"
+		],
+		[],
+		[
+			"main:spring_water",
+			"main:spring_lava"
+		],
+		[
+			"main:glow_lichen",
+			"wythers:vegetation/local/trees/tundra_woods",
+			"wythers:vegetation/local/trees/tundra_dwarf_woods",
+			"wythers:vegetation/local/bushes/tundra",
+			"main:brown_mushroom_normal",
+			"main:red_mushroom_normal"
+		],
+		[
+			"main:freeze_top_layer",
+			"wythers:terrain/local/snowy_ground",
+			"wythers:terrain/local/snowy_leaves",
+			"wythers:terrain/local/snowy_slopes",
+			"wythers:terrain/local/snow_blocks_disk"
+		]
+	],
+	"has_precipitation": true,
+	"spawn_costs": { },
+	"spawners": {
+		"ambient": [
+			{
+				"type": "main:bat",
+				"maxCount": 8,
+				"minCount": 8,
+				"weight": 10
+			}
+		],
+		"axolotls": [],
+		"creature": [
+			{
+				"type": "main:rabbit",
+				"maxCount": 3,
+				"minCount": 2,
+				"weight": 10
+			},
+			{
+				"type": "main:polar_bear",
+				"maxCount": 2,
+				"minCount": 1,
+				"weight": 1
+			}
+		],
+		"misc": [],
+		"monster": [
+			{
+				"type": "main:spider",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:zombie",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 95
+			},
+			{
+				"type": "main:zombie_villager",
+				"maxCount": 1,
+				"minCount": 1,
+				"weight": 5
+			},
+			{
+				"type": "main:skeleton",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 20
+			},
+			{
+				"type": "main:creeper",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:slime",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:enderman",
+				"maxCount": 4,
+				"minCount": 1,
+				"weight": 10
+			},
+			{
+				"type": "main:witch",
+				"maxCount": 1,
+				"minCount": 1,
+				"weight": 5
+			},
+			{
+				"type": "main:stray",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 80
+			}
+		],
+		"underground_water_creature": [
+			{
+				"type": "main:glow_squid",
+				"maxCount": 6,
+				"minCount": 4,
+				"weight": 10
+			}
+		],
+		"water_ambient": [],
+		"water_creature": []
+	},
+	"temperature": 0.0,
+	"temperature_modifier": "frozen"
+}

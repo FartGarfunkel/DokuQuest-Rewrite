@@ -1,0 +1,47 @@
+{
+  "config": {
+    "feature": {
+      "feature": {
+        "config": {
+          "to_place": {
+            "state": {
+              "Name": "main:rooted_dirt"
+            },
+            "type": "main:simple_state_provider"
+          }
+        },
+        "type": "main:simple_block"
+      },
+      "placement": [
+        {
+          "predicate": {
+            "predicates": [
+              {
+                "blocks": "#wythers:dirt",
+                "type": "main:matching_blocks"
+              },
+              {
+                "predicate": {
+                  "blocks": "#wythers:dirt",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "type": "main:matching_blocks"
+                },
+                "type": "main:not"
+              }
+            ],
+            "type": "main:all_of"
+          },
+          "type": "main:block_predicate_filter"
+        }
+      ]
+    },
+    "tries": 16,
+    "xz_spread": 2,
+    "y_spread": 2
+  },
+  "type": "main:random_patch"
+}

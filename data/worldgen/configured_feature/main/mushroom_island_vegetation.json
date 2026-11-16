@@ -1,0 +1,13 @@
+{
+  "type": "main:random_boolean_selector",
+  "config": {
+    "feature_false": {
+      "feature": "main:huge_brown_mushroom",
+      "placement": []
+    },
+    "feature_true": {
+      "feature": "main:huge_red_mushroom",
+      "placement": []
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "feature": "main:trees_sparse_jungle",
+  "placement": [
+    {
+      "count": {
+        "distribution": [
+          {
+            "data": 2,
+            "weight": 9
+          },
+          {
+            "data": 3,
+            "weight": 1
+          }
+        ],
+        "type": "main:weighted_list"
+      },
+      "type": "main:count"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "max_water_depth": 0,
+      "type": "main:surface_water_depth_filter"
+    },
+    {
+      "heightmap": "OCEAN_FLOOR",
+      "type": "main:heightmap"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

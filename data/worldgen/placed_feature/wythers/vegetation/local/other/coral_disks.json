@@ -1,0 +1,269 @@
+{
+  "feature": {
+    "type": "main:simple_random_selector",
+    "config": {
+      "features": [
+        {
+          "feature": {
+            "type": "main:disk",
+            "config": {
+              "state_provider": {
+                "fallback": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:brain_coral_block"
+                  }
+                },
+                "rules": []
+              },
+              "target": {
+                "type": "main:matching_fluids",
+                "fluids": "#main:water"
+              },
+              "radius": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 2,
+                  "max_inclusive": 5
+                }
+              },
+              "half_height": 0
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:disk",
+            "config": {
+              "state_provider": {
+                "fallback": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:fire_coral_block"
+                  }
+                },
+                "rules": []
+              },
+              "target": {
+                "type": "main:matching_fluids",
+                "fluids": "#main:water"
+              },
+              "radius": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 2,
+                  "max_inclusive": 5
+                }
+              },
+              "half_height": 0
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:disk",
+            "config": {
+              "state_provider": {
+                "fallback": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:horn_coral_block"
+                  }
+                },
+                "rules": []
+              },
+              "target": {
+                "type": "main:matching_fluids",
+                "fluids": "#main:water"
+              },
+              "radius": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 2,
+                  "max_inclusive": 5
+                }
+              },
+              "half_height": 0
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:disk",
+            "config": {
+              "state_provider": {
+                "fallback": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:bubble_coral_block"
+                  }
+                },
+                "rules": []
+              },
+              "target": {
+                "type": "main:matching_fluids",
+                "fluids": "#main:water"
+              },
+              "radius": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 2,
+                  "max_inclusive": 5
+                }
+              },
+              "half_height": 0
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:disk",
+            "config": {
+              "state_provider": {
+                "fallback": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:tube_coral_block"
+                  }
+                },
+                "rules": []
+              },
+              "target": {
+                "type": "main:matching_fluids",
+                "fluids": "#main:water"
+              },
+              "radius": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 2,
+                  "max_inclusive": 5
+                }
+              },
+              "half_height": 0
+            }
+          },
+          "placement": []
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 5
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": "main:water"
+          },
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  0
+                ],
+                "blocks": "main:sand"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  0
+                ],
+                "blocks": "main:sand"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  1
+                ],
+                "blocks": "main:sand"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  -1
+                ],
+                "blocks": "main:sand"
+              }
+            ]
+          },
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  2,
+                  -1,
+                  0
+                ],
+                "blocks": "main:water"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -2,
+                  -1,
+                  0
+                ],
+                "blocks": "main:water"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  2
+                ],
+                "blocks": "main:water"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  -2
+                ],
+                "blocks": "main:water"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 16,
+      "xz_spread": 8,
+      "y_spread": 8,
+      "feature": {
+        "feature": {
+          "type": "main:block_column",
+          "config": {
+            "direction": "up",
+            "allowed_placement": {
+              "type": "main:matching_blocks",
+              "blocks": "main:water"
+            },
+            "prioritize_tip": true,
+            "layers": [
+              {
+                "height": 1,
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:dead_fire_coral",
+                    "Properties": {
+                      "waterlogged": "true"
+                    }
+                  }
+                }
+              },
+              {
+                "height": {
+                  "type": "main:uniform",
+                  "value": {
+                    "min_inclusive": 1,
+                    "max_inclusive": 10
+                  }
+                },
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:fire_coral",
+                    "Properties": {
+                      "waterlogged": "true"
+                    }
+                  }
+                }
+              },
+              {
+                "height": 1,
+                "provider": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:fire_coral_fan",
+                    "Properties": {
+                      "waterlogged": "true"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    0
+                  ],
+                  "blocks": "main:sand"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "blocks": "main:water"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    0,
+                    0
+                  ],
+                  "blocks": "main:water"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    0,
+                    0
+                  ],
+                  "blocks": "main:water"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "blocks": "main:water"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    -1
+                  ],
+                  "blocks": "main:water"
+                }
+              ]
+            }
+          },
+          {
+            "type": "main:heightmap",
+            "heightmap": "OCEAN_FLOOR"
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 5,
+      "noise_factor": 150,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "feature": "nature:river_delta",
+  "placement": [
+    {
+      "type": "main:count_on_every_layer",
+      "count": 20
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "feature": "wythers:terrain/configured_random_patch/atoll_sand",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 10
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 62
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

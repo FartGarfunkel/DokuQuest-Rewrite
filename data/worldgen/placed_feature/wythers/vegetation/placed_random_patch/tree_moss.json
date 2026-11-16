@@ -1,0 +1,19 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/tree_moss",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 20
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING_NO_LEAVES"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

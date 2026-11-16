@@ -1,0 +1,122 @@
+{
+	"temperature": 0.7,
+	"downfall": 0.8,
+	"effects": {
+		"mood_sound": {
+			"sound": "main:ambient.soul_sand_valley.mood",
+			"tick_delay": 6000,
+			"block_search_extent": 8,
+			"offset": 2
+		},
+		"additions_sound": {
+			"sound": "main:ambient.soul_sand_valley.additions",
+			"tick_chance": 0.0111
+		},
+		"music": {
+			"sound": "main:music.nether.soul_sand_valley",
+			"min_delay": 12000,
+			"max_delay": 24000,
+			"replace_current_music": false
+		},
+		"particle": {
+			"options": {
+				"type": "main:ash"
+			},
+			"probability": 0.00625
+		},
+		"ambient_sound": "main:ambient.soul_sand_valley.loop",
+		"sky_color": 68883,
+		"fog_color": 139052,
+		"water_color": 139052,
+		"water_fog_color": 68883,
+		"grass_color": 1881499,
+		"foliage_color": 620388
+	},
+	"spawners": {
+		"monster": [],
+		"creature": [],
+		"ambient": [],
+		"axolotls": [],
+		"underground_water_creature": [],
+		"water_creature": [],
+		"water_ambient": [],
+		"misc": []
+	},
+	"spawn_costs": { },
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"features": [
+		[],
+		[
+			"main:lake_lava_underground",
+			"main:lake_lava_surface"
+		],
+		[
+			"main:amethyst_geode"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[],
+		[],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper",
+			"main:underwater_magma",
+			"main:disk_sand",
+			"main:disk_clay",
+			"main:disk_gravel"
+		],
+		[
+			"wythers:vegetation/trees_silent_forest"
+		],
+		[
+			"main:spring_water",
+			"main:spring_lava"
+		],
+		[
+			"wythers:vegetation/giant_fruiting_sculk",
+			"main:glow_lichen",
+			"wythers:vegetation/placed_random_patch/grass_silent_forest",
+			"wythers:vegetation/placed_random_patch/sculk_growths_silent_forest",
+			"wythers:vegetation/placed_random_patch/twisting_vines_silent_forest"
+		],
+		[
+			"wythers:vegetation/bracket_sculk",
+			"wythers:other/replace_podzol_to_sculk",
+			"wythers:other/warp_oak_leaves",
+			"wythers:other/warp_oak_log",
+			"wythers:other/warp_oak_wood",
+			"main:freeze_top_layer"
+		]
+	],
+	"has_precipitation": true
+}

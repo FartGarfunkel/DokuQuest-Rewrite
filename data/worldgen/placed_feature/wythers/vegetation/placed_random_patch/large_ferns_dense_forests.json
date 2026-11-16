@@ -1,0 +1,19 @@
+{
+  "feature": "main:patch_large_fern",
+  "placement": [
+    {
+      "chance": 2,
+      "type": "main:rarity_filter"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "heightmap": "MOTION_BLOCKING",
+      "type": "main:heightmap"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

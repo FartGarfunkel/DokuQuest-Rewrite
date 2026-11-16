@@ -1,0 +1,168 @@
+{
+  "feature": "wythers:vegetation/configured_block_column/saguaros",
+  "placement": [
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:red_sand",
+              "main:sand"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              2,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -2,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              2
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              -2
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              1,
+              -1
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:air"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

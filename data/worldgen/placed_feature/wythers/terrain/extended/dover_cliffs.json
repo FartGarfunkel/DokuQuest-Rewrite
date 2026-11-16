@@ -1,0 +1,265 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:calcite"
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:not",
+            "predicate": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:matching_fluids",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "fluids": "main:water"
+                },
+                {
+                  "type": "main:matching_fluids",
+                  "offset": [
+                    1,
+                    0,
+                    0
+                  ],
+                  "fluids": "main:water"
+                },
+                {
+                  "type": "main:matching_fluids",
+                  "offset": [
+                    -1,
+                    0,
+                    0
+                  ],
+                  "fluids": "main:water"
+                },
+                {
+                  "type": "main:matching_fluids",
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "fluids": "main:water"
+                },
+                {
+                  "type": "main:matching_fluids",
+                  "offset": [
+                    0,
+                    0,
+                    -1
+                  ],
+                  "fluids": "main:water"
+                }
+              ]
+            }
+          },
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:dirt"
+                    ]
+                  },
+                  {
+                    "type": "main:any_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          1,
+                          0
+                        ],
+                        "blocks": [
+                          "main:air",
+                          "main:calcite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          0,
+                          0
+                        ],
+                        "blocks": [
+                          "main:air",
+                          "main:calcite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          0,
+                          0
+                        ],
+                        "blocks": [
+                          "main:air",
+                          "main:calcite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          1
+                        ],
+                        "blocks": [
+                          "main:air",
+                          "main:calcite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          -1
+                        ],
+                        "blocks": [
+                          "main:air",
+                          "main:calcite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          -1,
+                          0
+                        ],
+                        "blocks": "main:calcite"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:stone"
+                    ]
+                  },
+                  {
+                    "type": "main:any_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          1,
+                          0
+                        ],
+                        "blocks": [
+                          "main:air",
+                          "main:calcite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          0,
+                          0
+                        ],
+                        "blocks": [
+                          "main:air",
+                          "main:calcite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          0,
+                          0
+                        ],
+                        "blocks": [
+                          "main:air",
+                          "main:calcite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          1
+                        ],
+                        "blocks": [
+                          "main:air",
+                          "main:calcite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          -1
+                        ],
+                        "blocks": [
+                          "main:air",
+                          "main:calcite"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "radius": 8,
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 50
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    }
+  ]
+}

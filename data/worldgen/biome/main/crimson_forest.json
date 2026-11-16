@@ -1,0 +1,106 @@
+{
+  "carvers": {
+    "air": "main:nether_cave"
+  },
+  "downfall": 0.0,
+  "effects": {
+    "additions_sound": {
+      "sound": "main:ambient.crimson_forest.additions",
+      "tick_chance": 0.0111
+    },
+    "ambient_sound": "main:ambient.crimson_forest.loop",
+    "fog_color": 3343107,
+    "mood_sound": {
+      "block_search_extent": 8,
+      "offset": 2.0,
+      "sound": "main:ambient.crimson_forest.mood",
+      "tick_delay": 6000
+    },
+    "music": {
+      "max_delay": 24000,
+      "min_delay": 12000,
+      "replace_current_music": false,
+      "sound": "main:music.nether.crimson_forest"
+    },
+    "particle": {
+      "options": {
+        "type": "main:crimson_spore"
+      },
+      "probability": 0.025
+    },
+    "sky_color": 7254527,
+    "water_color": 4159204,
+    "water_fog_color": 329011
+  },
+  "features": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [],
+    [
+      "main:spring_open",
+      "main:patch_fire",
+      "main:glowstone_extra",
+      "main:glowstone",
+      "main:ore_magma",
+      "main:spring_closed",
+      "main:ore_gravel_nether",
+      "main:ore_blackstone",
+      "main:ore_gold_nether",
+      "main:ore_quartz_nether",
+      "main:ore_ancient_debris_large",
+      "main:ore_debris_small"
+    ],
+    [],
+    [
+      "main:spring_lava",
+      "main:brown_mushroom_normal",
+      "main:red_mushroom_normal",
+      "main:weeping_vines",
+      "main:crimson_fungi",
+      "main:crimson_forest_vegetation"
+    ]
+  ],
+  "has_precipitation": false,
+  "spawn_costs": {},
+  "spawners": {
+    "ambient": [],
+    "axolotls": [],
+    "creature": [
+      {
+        "type": "main:strider",
+        "maxCount": 2,
+        "minCount": 1,
+        "weight": 60
+      }
+    ],
+    "misc": [],
+    "monster": [
+      {
+        "type": "main:zombified_piglin",
+        "maxCount": 4,
+        "minCount": 2,
+        "weight": 1
+      },
+      {
+        "type": "main:hoglin",
+        "maxCount": 4,
+        "minCount": 3,
+        "weight": 9
+      },
+      {
+        "type": "main:piglin",
+        "maxCount": 4,
+        "minCount": 3,
+        "weight": 5
+      }
+    ],
+    "underground_water_creature": [],
+    "water_ambient": [],
+    "water_creature": []
+  },
+  "temperature": 2.0
+}

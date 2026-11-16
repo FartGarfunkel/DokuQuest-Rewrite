@@ -1,0 +1,56 @@
+{
+  "feature": {
+    "type": "main:random_selector",
+    "config": {
+      "features": [
+        {
+          "chance": 0.3,
+          "feature": "wythers:vegetation/placed_tree_component/giant_spruce_medium_base_1"
+        },
+        {
+          "chance": 0.3,
+          "feature": "wythers:vegetation/placed_tree_component/giant_spruce_medium_base_2"
+        },
+        {
+          "chance": 0.05,
+          "feature": "wythers:vegetation/placed_tree_component/giant_spruce_medium_crown_1"
+        },
+        {
+          "chance": 0.05,
+          "feature": "wythers:vegetation/placed_tree_component/giant_spruce_medium_crown_2"
+        },
+        {
+          "chance": 0.05,
+          "feature": "wythers:vegetation/placed_tree_component/giant_spruce_medium_crown_3"
+        },
+        {
+          "chance": 0.3,
+          "feature": "wythers:vegetation/placed_tree_component/giant_spruce_medium_base_4"
+        }
+      ],
+      "default": "wythers:vegetation/placed_tree_component/giant_spruce_medium_base"
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 10
+    },
+    {
+      "type": "main:count",
+      "count": 30
+    },
+    {
+      "predicate": {
+        "state": {
+          "Properties": {
+            "stage": "0"
+          },
+          "Name": "main:spruce_sapling"
+        },
+        "type": "main:would_survive"
+      },
+      "type": "main:block_predicate_filter"
+    }
+  ]
+}

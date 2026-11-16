@@ -1,0 +1,66 @@
+{
+  "type": "main:disk",
+  "config": {
+    "half_height": 2,
+    "radius": {
+      "type": "main:uniform",
+      "value": {
+        "max_inclusive": 6,
+        "min_inclusive": 2
+      }
+    },
+    "state_provider": {
+      "fallback": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:dirt"
+        }
+      },
+      "rules": [
+        {
+          "if_true": {
+            "type": "main:not",
+            "predicate": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:solid",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ]
+                },
+                {
+                  "type": "main:matching_fluids",
+                  "fluids": "main:water",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ]
+                }
+              ]
+            }
+          },
+          "then": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:grass_block",
+              "Properties": {
+                "snowy": "false"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "target": {
+      "type": "main:matching_blocks",
+      "blocks": [
+        "main:dirt",
+        "main:mud"
+      ]
+    }
+  }
+}

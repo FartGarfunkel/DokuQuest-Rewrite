@@ -1,0 +1,466 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "features": [
+      {
+        "chance": 0.2,
+        "feature": {
+          "feature": {
+            "type": "main:tree",
+            "config": {
+              "minimum_size": {
+                "type": "main:two_layers_feature_size"
+              },
+              "dirt_provider": {
+                "type": "main:simple_state_provider",
+                "state": {
+                  "Name": "main:dark_oak_log",
+                  "Properties": {
+                    "axis": "y"
+                  }
+                }
+              },
+              "trunk_provider": {
+                "type": "main:simple_state_provider",
+                "state": {
+                  "Name": "main:air"
+                }
+              },
+              "foliage_provider": {
+                "type": "main:simple_state_provider",
+                "state": {
+                  "Name": "main:mushroom_stem",
+                  "Properties": {
+                    "down": "false",
+                    "east": "true",
+                    "north": "true",
+                    "south": "true",
+                    "up": "true",
+                    "west": "true"
+                  }
+                }
+              },
+              "trunk_placer": {
+                "type": "main:straight_trunk_placer",
+                "base_height": 0,
+                "height_rand_a": 0,
+                "height_rand_b": 0
+              },
+              "foliage_placer": {
+                "type": "main:fancy_foliage_placer",
+                "radius": 3,
+                "offset": 0,
+                "height": 0
+              },
+              "decorators": [
+                {
+                  "type": "main:attached_to_leaves",
+                  "probability": 1,
+                  "exclusion_radius_xz": 0,
+                  "exclusion_radius_y": 0,
+                  "required_empty_blocks": 1,
+                  "block_provider": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:glow_lichen",
+                      "Properties": {
+                        "waterlogged": "false",
+                        "down": "false",
+                        "east": "false",
+                        "north": "false",
+                        "south": "false",
+                        "up": "true",
+                        "west": "false"
+                      }
+                    }
+                  },
+                  "directions": [
+                    "down"
+                  ]
+                }
+              ]
+            }
+          },
+          "placement": [
+            {
+              "type": "main:block_predicate_filter",
+              "predicate": {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      1,
+                      0
+                    ],
+                    "blocks": [
+                      "main:dark_oak_log",
+                      "main:spruce_log"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "blocks": [
+                      "main:dark_oak_log",
+                      "main:spruce_log"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -1,
+                      0
+                    ],
+                    "blocks": [
+                      "main:dark_oak_log",
+                      "main:spruce_log"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -2,
+                      0
+                    ],
+                    "blocks": [
+                      "main:dark_oak_log",
+                      "main:spruce_log"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -3,
+                      0
+                    ],
+                    "blocks": [
+                      "main:dark_oak_log",
+                      "main:spruce_log"
+                    ]
+                  },
+                  {
+                    "type": "main:any_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          0,
+                          0
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          0,
+                          0
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          1
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          -1
+                        ],
+                        "blocks": "main:air"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "main:not",
+                    "predicate": {
+                      "type": "main:any_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_block_tag",
+                          "offset": [
+                            1,
+                            2,
+                            0
+                          ],
+                          "tag": "main:leaves"
+                        },
+                        {
+                          "type": "main:matching_block_tag",
+                          "offset": [
+                            -1,
+                            2,
+                            0
+                          ],
+                          "tag": "main:leaves"
+                        },
+                        {
+                          "type": "main:matching_block_tag",
+                          "offset": [
+                            0,
+                            2,
+                            1
+                          ],
+                          "tag": "main:leaves"
+                        },
+                        {
+                          "type": "main:matching_block_tag",
+                          "offset": [
+                            0,
+                            2,
+                            -1
+                          ],
+                          "tag": "main:leaves"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "default": {
+      "feature": {
+        "type": "main:tree",
+        "config": {
+          "minimum_size": {
+            "type": "main:two_layers_feature_size"
+          },
+          "dirt_provider": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:dark_oak_log",
+              "Properties": {
+                "axis": "y"
+              }
+            }
+          },
+          "trunk_provider": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:air"
+            }
+          },
+          "foliage_provider": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:brown_mushroom_block",
+              "Properties": {
+                "down": "false",
+                "east": "true",
+                "north": "true",
+                "south": "true",
+                "up": "true",
+                "west": "true"
+              }
+            }
+          },
+          "trunk_placer": {
+            "type": "main:straight_trunk_placer",
+            "base_height": 0,
+            "height_rand_a": 0,
+            "height_rand_b": 0
+          },
+          "foliage_placer": {
+            "type": "main:fancy_foliage_placer",
+            "radius": 3,
+            "offset": 0,
+            "height": 0
+          },
+          "decorators": [
+                {
+                  "type": "main:attached_to_leaves",
+                  "probability": 1,
+                  "exclusion_radius_xz": 0,
+                  "exclusion_radius_y": 0,
+                  "required_empty_blocks": 1,
+                  "block_provider": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:glow_lichen",
+                      "Properties": {
+                        "waterlogged": "false",
+                        "down": "false",
+                        "east": "false",
+                        "north": "false",
+                        "south": "false",
+                        "up": "true",
+                        "west": "false"
+                      }
+                    }
+                  },
+                  "directions": [
+                    "down"
+                  ]
+                }
+              ]
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": [
+                  "main:dark_oak_log",
+                  "main:spruce_log"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:dark_oak_log",
+                  "main:spruce_log"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:dark_oak_log",
+                  "main:spruce_log"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -2,
+                  0
+                ],
+                "blocks": [
+                  "main:dark_oak_log",
+                  "main:spruce_log"
+                ]
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -3,
+                  0
+                ],
+                "blocks": [
+                  "main:dark_oak_log",
+                  "main:spruce_log"
+                ]
+              },
+              {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": "main:air"
+                  }
+                ]
+              },
+              {
+                "type": "main:not",
+                "predicate": {
+                  "type": "main:any_of",
+                  "predicates": [
+                    {
+                      "type": "main:matching_block_tag",
+                      "offset": [
+                        1,
+                        2,
+                        0
+                      ],
+                      "tag": "main:leaves"
+                    },
+                    {
+                      "type": "main:matching_block_tag",
+                      "offset": [
+                        -1,
+                        2,
+                        0
+                      ],
+                      "tag": "main:leaves"
+                    },
+                    {
+                      "type": "main:matching_block_tag",
+                      "offset": [
+                        0,
+                        2,
+                        1
+                      ],
+                      "tag": "main:leaves"
+                    },
+                    {
+                      "type": "main:matching_block_tag",
+                      "offset": [
+                        0,
+                        2,
+                        -1
+                      ],
+                      "tag": "main:leaves"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

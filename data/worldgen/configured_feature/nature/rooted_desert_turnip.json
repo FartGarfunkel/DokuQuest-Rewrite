@@ -1,0 +1,106 @@
+{
+  "type": "nature:turnip_root_feature",
+  "config": {
+    "allowed_tree_position": {
+      "type": "main:all_of",
+      "predicates": [
+        {
+          "type": "main:any_of",
+          "predicates": [
+            {
+              "type": "main:matching_blocks",
+              "blocks": [
+                "main:air",
+                "main:cave_air",
+                "main:void_air"
+              ]
+            },
+            {
+              "type": "main:matching_block_tag",
+              "tag": "main:replaceable"
+            }
+          ]
+        },
+        {
+          "type": "main:matching_block_tag",
+          "offset": [
+            0,
+            -1,
+            0
+          ],
+          "tag": "nature:turnip_stem_grows_on"
+        }
+      ]
+    },
+    "allowed_vertical_water_for_tree": 2,
+    "feature": {
+      "feature": {
+        "type": "main:no_bonemeal_flower",
+        "config": {
+          "feature": {
+            "feature": {
+              "type": "main:simple_block",
+              "config": {
+                "to_place": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "nature:desert_turnip_stem",
+                    "Properties": {
+                      "age": "7"
+                    }
+                  }
+                }
+              }
+            },
+            "placement": [
+              {
+                "type": "main:heightmap",
+                "heightmap": "MOTION_BLOCKING"
+              }
+            ]
+          },
+          "tries": 30,
+          "xz_spread": 3,
+          "y_spread": 2
+        }
+      },
+      "placement": []
+    },
+    "hanging_root_placement_attempts": 20,
+    "hanging_root_radius": 3,
+    "hanging_root_state_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:hanging_roots",
+        "Properties": {
+          "waterlogged": "false"
+        }
+      }
+    },
+    "hanging_roots_vertical_span": 2,
+    "required_vertical_space_for_tree": 3,
+    "root_column_max_height": 20,
+    "root_placement_attempts": 20,
+    "root_radius": 3,
+    "root_replaceable": "#nature:turnip_root_replaceable",
+    "root_state_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "nature:desert_turnip_root_block",
+        "Properties": {
+          "axis": "y"
+        }
+      }
+    },
+    "turnip_placement_attempts": 35,
+    "turnip_state_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "nature:desert_turnip_block",
+        "Properties": {
+          "facing": "up"
+        }
+      }
+    }
+  }
+}

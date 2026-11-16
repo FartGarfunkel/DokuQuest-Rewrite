@@ -1,0 +1,512 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "features": [],
+    "default": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "nature:kaolin"
+            }
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "count",
+          "count": 80
+        },
+        {
+          "type": "main:random_offset",
+          "xz_spread": {
+            "type": "main:uniform",
+            "value": {
+              "min_inclusive": -2,
+              "max_inclusive": 2
+            }
+          },
+          "y_spread": {
+            "type": "main:uniform",
+            "value": {
+              "min_inclusive": -5,
+              "max_inclusive": 0
+            }
+            
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:stone"
+                ]
+              },
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:grass_block",
+                      "main:dirt",
+                      "main:stone",
+                      "nature:kaolin",
+                      "main:red_sand",
+                      "nature:sandy_soil",
+                      "main:terracotta"
+                    ]
+                  },
+                  {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:any_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              -1,
+                              1,
+                              0
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              -1,
+                              1,
+                              1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              -1,
+                              1,
+                              -1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              1,
+                              1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              1,
+                              -1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              1,
+                              1,
+                              -1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              1,
+                              1,
+                              0
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              1,
+                              1,
+                              1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "main:any_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              -1,
+                              2,
+                              0
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              -1,
+                              2,
+                              1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              -1,
+                              2,
+                              -1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              2,
+                              1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              2,
+                              -1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              1,
+                              2,
+                              -1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              1,
+                              2,
+                              0
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              1,
+                              2,
+                              1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "main:any_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              -1,
+                              0,
+                              0
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              -1,
+                              0,
+                              1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              -1,
+                              0,
+                              -1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              0,
+                              1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              0,
+                              -1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              1,
+                              0,
+                              -1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              1,
+                              0,
+                              0
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              1,
+                              0,
+                              1
+                            ],
+                            "blocks": [
+                              "main:grass_block",
+                              "main:stone",
+                              "main:dirt",
+                              "nature:kaolin",
+                              "main:red_sand",
+                              "nature:sandy_soil",
+                              "main:terracotta"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

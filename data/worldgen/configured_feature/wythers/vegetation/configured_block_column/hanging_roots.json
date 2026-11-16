@@ -1,0 +1,33 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "down",
+    "allowed_placement": {
+      "type": "main:true"
+    },
+    "prioritize_tip": true,
+    "layers": [
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:rooted_dirt"
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:hanging_roots",
+            "Properties": {
+              "waterlogged": "false"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

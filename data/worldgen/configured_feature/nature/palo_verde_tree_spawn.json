@@ -1,0 +1,12 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "default": "nature:palo_verde_checked",
+    "features": [
+      {
+        "chance": 0.325,
+        "feature": "nature:palo_verde_checked"
+      }
+    ]
+  }
+}

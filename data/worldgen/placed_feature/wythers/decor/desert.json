@@ -1,0 +1,173 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 8,
+      "xz_spread": 8,
+      "y_spread": 4,
+      "feature": {
+        "feature": {
+          "type": "main:random_selector",
+          "config": {
+            "features": [
+              {
+                "chance": 0.01,
+                "feature": {
+                  "feature": "wythers:decor/skulls",
+                  "placement": []
+                }
+              }
+            ],
+            "default": {
+              "feature": "wythers:decor/stone_buttons",
+              "placement": []
+            }
+          }
+        },
+        "placement": [
+          {
+            "type": "main:count",
+            "count": 10
+          },
+          {
+            "type": "main:heightmap",
+            "heightmap": "OCEAN_FLOOR"
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                0,
+                0
+              ],
+              "blocks": "main:air"
+            }
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -1,
+                0
+              ],
+              "blocks": [
+                "main:sand"
+              ]
+            }
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    1,
+                    0,
+                    0
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    -1,
+                    0,
+                    0
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "blocks": "main:air"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    -1
+                  ],
+                  "blocks": "main:air"
+                }
+              ]
+            }
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:not",
+              "predicate": {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      -1,
+                      0
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      -1,
+                      0
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -1,
+                      1
+                    ],
+                    "blocks": "main:air"
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      -1,
+                      -1
+                    ],
+                    "blocks": "main:air"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 3
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "feature": "nature:swamp_delta",
+  "placement": [
+    {
+      "type": "main:count_on_every_layer",
+      "count": 10
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

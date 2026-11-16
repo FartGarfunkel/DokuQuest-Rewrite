@@ -1,0 +1,44 @@
+{
+  "feature": {
+  "type": "main:ore",
+  "config": {
+    "discard_chance_on_air_exposure": 0.0,
+    "size": 10,
+    "targets": [
+      {
+        "state": {
+          "Name": "main:gilded_blackstone"
+        },
+        "target": {
+          "block": "main:blackstone",
+          "predicate_type": "main:block_match"
+        }
+      }
+    ]
+  }
+},
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 100
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:trapezoid",
+        "min_inclusive": {
+          "absolute": 64
+        },
+        "max_inclusive": {
+          "absolute": 256
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

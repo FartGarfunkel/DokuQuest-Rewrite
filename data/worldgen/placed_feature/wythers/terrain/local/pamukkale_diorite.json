@@ -1,0 +1,465 @@
+{
+  "feature": {
+    "type": "main:disk",
+    "config": {
+      "state_provider": {
+        "fallback": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:diorite"
+          }
+        },
+        "rules": []
+      },
+      "target": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              1,
+              1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              1,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              1,
+              -1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              1,
+              -1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              1,
+              1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              1,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              1,
+              -1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              0,
+              -1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              -1,
+              1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              1,
+              -1,
+              -1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -1,
+              -1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              -1,
+              1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              -1,
+              0
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              -1,
+              -1,
+              -1
+            ],
+            "blocks": [
+              "main:air",
+              "main:grass",
+              "main:diorite",
+              "main:tuff",
+              "main:light_gray_concrete_powder"
+            ]
+          }
+        ]
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 7,
+          "max_inclusive": 7
+        }
+      },
+      "half_height": 4
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 80,
+      "noise_offset": 0.5
+    },
+    {
+      "type": "main:count",
+      "count": 90
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "blocks": [
+          "main:air",
+              "main:grass",
+          "main:tuff",
+          "main:light_gray_concrete_powder"
+        ]
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

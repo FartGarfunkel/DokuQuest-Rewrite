@@ -1,0 +1,63 @@
+{
+  "type": "main:flower",
+  "config": {
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:dual_noise_provider",
+            "noise": {
+              "amplitudes": [
+                1.0
+              ],
+              "firstOctave": 0
+            },
+            "scale": 1.0,
+            "seed": 2345,
+            "slow_noise": {
+              "amplitudes": [
+                1.0
+              ],
+              "firstOctave": -6
+            },
+            "slow_scale": 1.0,
+            "states": [
+              {
+                "Name": "nature:foxglove",
+                "Properties": {
+                  "half": "lower"
+                }
+              },
+              {
+                "Name": "nature:lavender",
+                "Properties": {
+                  "half": "lower"
+                }
+              },
+              {
+                "Name": "nature:anemone"
+              }
+            ],
+            "variety": [
+              2,
+              3
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          }
+        }
+      ]
+    },
+    "tries": 120,
+    "xz_spread": 8,
+    "y_spread": 2
+  }
+}

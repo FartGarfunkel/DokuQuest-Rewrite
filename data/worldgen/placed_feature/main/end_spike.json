@@ -1,0 +1,8 @@
+{
+  "feature": "main:end_spike",
+  "placement": [
+    {
+      "type": "main:biome"
+    }
+  ]
+}

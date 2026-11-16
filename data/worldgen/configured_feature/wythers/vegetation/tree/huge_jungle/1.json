@@ -1,0 +1,805 @@
+{
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "config": {
+            "features": [
+              {
+                "feature": {
+                  "config": {
+                    "features": [
+                      {
+                        "feature": {
+                          "config": {
+                            "features": [
+                              {
+                                "feature": {
+                                  "config": {
+                                    "decorators": [
+                                      {
+                                        "probability": 0.1,
+                                        "type": "main:leave_vine"
+                                      }
+                                    ],
+                                    "dirt_provider": {
+                                      "state": {
+                                        "Name": "main:rooted_dirt"
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "foliage_placer": {
+                                      "height": 1,
+                                      "offset": 0,
+                                      "radius": 2,
+                                      "type": "main:blob_foliage_placer"
+                                    },
+                                    "foliage_provider": {
+                                      "state": {
+                                        "Name": "main:jungle_log",
+                                        "Properties": {
+                                          "axis": "y"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "force_dirt": false,
+                                    "ignore_vines": true,
+                                    "minimum_size": {
+                                      "limit": 3,
+                                      "lower_size": 0,
+                                      "upper_size": 0,
+                                      "type": "main:two_layers_feature_size"
+                                    },
+                                    "trunk_placer": {
+                                      "base_height": 1,
+                                      "height_rand_a": 5,
+                                      "height_rand_b": 0,
+                                      "type": "main:straight_trunk_placer"
+                                    },
+                                    "trunk_provider": {
+                                      "state": {
+                                        "Name": "main:jungle_log",
+                                        "Properties": {
+                                          "axis": "y"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    }
+                                  },
+                                  "type": "main:tree"
+                                },
+                                "placement": [
+                                  {
+                                    "predicate": {
+                                      "type": "main:replaceable"
+                                    },
+                                    "type": "main:block_predicate_filter"
+                                  },
+                                  {
+                                    "count": 64,
+                                    "type": "main:count"
+                                  }
+                                ]
+                              },
+                              {
+                                "feature": {
+                                  "config": {
+                                    "decorators": [
+                                      {
+                                        "type": "main:trunk_vine"
+                                      }
+                                    ],
+                                    "dirt_provider": {
+                                      "state": {
+                                        "Name": "main:jungle_log",
+                                        "Properties": {
+                                          "axis": "y"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "foliage_placer": {
+                                      "offset": 0,
+                                      "radius": 0,
+                                      "type": "main:acacia_foliage_placer"
+                                    },
+                                    "foliage_provider": {
+                                      "state": {
+                                        "Name": "main:air"
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "force_dirt": false,
+                                    "ignore_vines": true,
+                                    "minimum_size": {
+                                      "limit": 1,
+                                      "lower_size": 0,
+                                      "upper_size": 0,
+                                      "type": "main:two_layers_feature_size"
+                                    },
+                                    "trunk_placer": {
+                                      "base_height": 18,
+                                      "height_rand_a": 1,
+                                      "height_rand_b": 0,
+                                      "type": "main:straight_trunk_placer"
+                                    },
+                                    "trunk_provider": {
+                                      "state": {
+                                        "Name": "main:jungle_log",
+                                        "Properties": {
+                                          "axis": "y"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    }
+                                  },
+                                  "type": "main:tree"
+                                },
+                                "placement": [
+                                  {
+                                    "predicate": {
+                                      "predicates": [
+                                        {
+                                          "blocks": "main:jungle_log",
+                                          "type": "main:matching_blocks"
+                                        },
+                                        {
+                                          "predicate": {
+                                            "blocks": "main:jungle_log",
+                                            "offset": [
+                                              0,
+                                              10,
+                                              0
+                                            ],
+                                            "type": "main:matching_blocks"
+                                          },
+                                          "type": "main:not"
+                                        }
+                                      ],
+                                      "type": "main:all_of"
+                                    },
+                                    "type": "main:block_predicate_filter"
+                                  },
+                                  {
+                                    "direction_of_search": "up",
+                                    "max_steps": 10,
+                                    "target_condition": {
+                                      "blocks": "#wythers:tree_branch_replaceable",
+                                      "type": "main:matching_blocks"
+                                    },
+                                    "type": "main:environment_scan"
+                                  },
+                                  {
+                                    "count": 128,
+                                    "type": "main:count"
+                                  },
+                                  {
+                                    "xz_spread": {
+                                      "value": {
+                                        "min_inclusive": -1,
+                                        "max_inclusive": 1
+                                      },
+                                      "type": "main:uniform"
+                                    },
+                                    "y_spread": 0,
+                                    "type": "main:random_offset"
+                                  },
+                                  {
+                                    "predicate": {
+                                      "type": "main:replaceable"
+                                    },
+                                    "type": "main:block_predicate_filter"
+                                  },
+                                  {
+                                    "direction_of_search": "down",
+                                    "max_steps": 2,
+                                    "target_condition": {
+                                      "blocks": "main:jungle_log",
+                                      "offset": [
+                                        0,
+                                        -1,
+                                        0
+                                      ],
+                                      "type": "main:matching_blocks"
+                                    },
+                                    "type": "main:environment_scan"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          "type": "main:simple_random_selector"
+                        },
+                        "placement": [
+                          {
+                            "predicate": {
+                              "type": "main:replaceable"
+                            },
+                            "type": "main:block_predicate_filter"
+                          },
+                          {
+                            "count": 28,
+                            "type": "main:count"
+                          }
+                        ]
+                      },
+                      {
+                        "feature": {
+                          "config": {
+                            "features": [
+                              {
+                                "feature": {
+                                  "config": {
+                                    "decorators": [
+                                      {
+                                        "block_provider": {
+                                          "state": {
+                                            "Name": "main:jungle_leaves",
+                                            "Properties": {
+                                              "distance": "2",
+                                              "persistent": "false",
+                                              "waterlogged": "false"
+                                            }
+                                          },
+                                          "type": "main:simple_state_provider"
+                                        },
+                                        "directions": [
+                                          "down"
+                                        ],
+                                        "exclusion_radius_xz": 0,
+                                        "exclusion_radius_y": 0,
+                                        "probability": 0.35,
+                                        "required_empty_blocks": 1,
+                                        "type": "main:attached_to_leaves"
+                                      },
+                                      {
+                                        "block_provider": {
+                                          "state": {
+                                            "Name": "main:jungle_leaves",
+                                            "Properties": {
+                                              "distance": "2",
+                                              "persistent": "false",
+                                              "waterlogged": "false"
+                                            }
+                                          },
+                                          "type": "main:simple_state_provider"
+                                        },
+                                        "directions": [
+                                          "east"
+                                        ],
+                                        "exclusion_radius_xz": 0,
+                                        "exclusion_radius_y": 0,
+                                        "probability": 0.7,
+                                        "required_empty_blocks": 1,
+                                        "type": "main:attached_to_leaves"
+                                      },
+                                      {
+                                        "block_provider": {
+                                          "state": {
+                                            "Name": "main:jungle_leaves",
+                                            "Properties": {
+                                              "distance": "2",
+                                              "persistent": "false",
+                                              "waterlogged": "false"
+                                            }
+                                          },
+                                          "type": "main:simple_state_provider"
+                                        },
+                                        "directions": [
+                                          "south"
+                                        ],
+                                        "exclusion_radius_xz": 0,
+                                        "exclusion_radius_y": 0,
+                                        "probability": 0.7,
+                                        "required_empty_blocks": 1,
+                                        "type": "main:attached_to_leaves"
+                                      },
+                                      {
+                                        "block_provider": {
+                                          "state": {
+                                            "Name": "main:jungle_leaves",
+                                            "Properties": {
+                                              "distance": "2",
+                                              "persistent": "false",
+                                              "waterlogged": "false"
+                                            }
+                                          },
+                                          "type": "main:simple_state_provider"
+                                        },
+                                        "directions": [
+                                          "west"
+                                        ],
+                                        "exclusion_radius_xz": 0,
+                                        "exclusion_radius_y": 0,
+                                        "probability": 0.7,
+                                        "required_empty_blocks": 1,
+                                        "type": "main:attached_to_leaves"
+                                      },
+                                      {
+                                        "block_provider": {
+                                          "state": {
+                                            "Name": "main:jungle_leaves",
+                                            "Properties": {
+                                              "distance": "2",
+                                              "persistent": "false",
+                                              "waterlogged": "false"
+                                            }
+                                          },
+                                          "type": "main:simple_state_provider"
+                                        },
+                                        "directions": [
+                                          "north"
+                                        ],
+                                        "exclusion_radius_xz": 0,
+                                        "exclusion_radius_y": 0,
+                                        "probability": 0.7,
+                                        "required_empty_blocks": 1,
+                                        "type": "main:attached_to_leaves"
+                                      },
+                                      {
+                                        "probability": 0.2,
+                                        "type": "main:leave_vine"
+                                      }
+                                    ],
+                                    "dirt_provider": {
+                                      "state": {
+                                        "Name": "main:jungle_log",
+                                        "Properties": {
+                                          "axis": "y"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "foliage_placer": {
+                                      "offset": 1,
+                                      "radius": 0,
+                                      "type": "main:dark_oak_foliage_placer"
+                                    },
+                                    "foliage_provider": {
+                                      "state": {
+                                        "Name": "main:jungle_leaves",
+                                        "Properties": {
+                                          "distance": "1",
+                                          "persistent": "false",
+                                          "waterlogged": "false"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "force_dirt": false,
+                                    "ignore_vines": true,
+                                    "minimum_size": {
+                                      "limit": 1,
+                                      "lower_size": 0,
+                                      "upper_size": 0,
+                                      "type": "main:two_layers_feature_size"
+                                    },
+                                    "trunk_placer": {
+                                      "base_height": 32,
+                                      "height_rand_a": 0,
+                                      "height_rand_b": 0,
+                                      "type": "main:fancy_trunk_placer"
+                                    },
+                                    "trunk_provider": {
+                                      "state": {
+                                        "Name": "main:jungle_log",
+                                        "Properties": {
+                                          "axis": "y"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    }
+                                  },
+                                  "type": "main:tree"
+                                },
+                                "placement": [
+                                  {
+                                    "predicate": {
+                                      "predicate": {
+                                        "blocks": "main:jungle_log",
+                                        "offset": [
+                                          0,
+                                          15,
+                                          0
+                                        ],
+                                        "type": "main:matching_blocks"
+                                      },
+                                      "type": "main:not"
+                                    },
+                                    "type": "main:block_predicate_filter"
+                                  },
+                                  {
+                                    "xz_spread": 0,
+                                    "y_spread": {
+                                      "value": {
+                                        "min_inclusive": -10,
+                                        "max_inclusive": -8
+                                      },
+                                      "type": "main:uniform"
+                                    },
+                                    "type": "main:random_offset"
+                                  }
+                                ]
+                              },
+                              {
+                                "feature": {
+                                  "config": {
+                                    "decorators": [
+                                      {
+                                        "probability": 0.2,
+                                        "type": "main:leave_vine"
+                                      }
+                                    ],
+                                    "dirt_provider": {
+                                      "state": {
+                                        "Name": "main:jungle_log",
+                                        "Properties": {
+                                          "axis": "y"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "foliage_placer": {
+                                      "height": 16,
+                                      "offset": 0,
+                                      "radius": 1,
+                                      "type": "main:fancy_foliage_placer"
+                                    },
+                                    "foliage_provider": {
+                                      "state": {
+                                        "Name": "main:jungle_log",
+                                        "Properties": {
+                                          "axis": "y"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "force_dirt": false,
+                                    "ignore_vines": true,
+                                    "minimum_size": {
+                                      "limit": 1,
+                                      "lower_size": 0,
+                                      "upper_size": 0,
+                                      "type": "main:two_layers_feature_size"
+                                    },
+                                    "trunk_placer": {
+                                      "base_height": 1,
+                                      "height_rand_a": 0,
+                                      "height_rand_b": 0,
+                                      "type": "main:straight_trunk_placer"
+                                    },
+                                    "trunk_provider": {
+                                      "state": {
+                                        "Name": "main:jungle_log",
+                                        "Properties": {
+                                          "axis": "y"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    }
+                                  },
+                                  "type": "main:tree"
+                                },
+                                "placement": [
+                                  {
+                                    "predicate": {
+                                      "blocks": "main:jungle_log",
+                                      "offset": [
+                                        0,
+                                        15,
+                                        0
+                                      ],
+                                      "type": "main:matching_blocks"
+                                    },
+                                    "type": "main:block_predicate_filter"
+                                  },
+                                  {
+                                    "xz_spread": 0,
+                                    "y_spread": 12,
+                                    "type": "main:random_offset"
+                                  },
+                                  {
+                                    "direction_of_search": "up",
+                                    "max_steps": 15,
+                                    "target_condition": {
+                                      "predicates": [
+                                        {
+                                          "blocks": "main:jungle_log",
+                                          "type": "main:matching_blocks"
+                                        },
+                                        {
+                                          "blocks": "main:jungle_leaves",
+                                          "offset": [
+                                            0,
+                                            1,
+                                            0
+                                          ],
+                                          "type": "main:matching_blocks"
+                                        },
+                                        {
+                                          "blocks": "main:air",
+                                          "offset": [
+                                            0,
+                                            2,
+                                            0
+                                          ],
+                                          "type": "main:matching_blocks"
+                                        }
+                                      ],
+                                      "type": "main:all_of"
+                                    },
+                                    "type": "main:environment_scan"
+                                  },
+                                  {
+                                    "count": 32,
+                                    "type": "main:count"
+                                  },
+                                  {
+                                    "xz_spread": 0,
+                                    "y_spread": {
+                                      "value": {
+                                        "min_inclusive": -10,
+                                        "max_inclusive": 2
+                                      },
+                                      "type": "main:uniform"
+                                    },
+                                    "type": "main:random_offset"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          "type": "main:simple_random_selector"
+                        },
+                        "placement": [
+                          {
+                            "predicate": {
+                              "blocks": "main:jungle_log",
+                              "type": "main:matching_blocks"
+                            },
+                            "type": "main:block_predicate_filter"
+                          },
+                          {
+                            "xz_spread": 0,
+                            "y_spread": 15,
+                            "type": "main:random_offset"
+                          },
+                          {
+                            "count": 32,
+                            "type": "main:count"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "main:simple_random_selector"
+                },
+                "placement": [
+                  {
+                    "predicate": {
+                      "type": "main:replaceable"
+                    },
+                    "type": "main:block_predicate_filter"
+                  },
+                  {
+                    "count": 28,
+                    "type": "main:count"
+                  }
+                ]
+              },
+              {
+                "feature": {
+                  "config": {
+                    "features": [
+                      {
+                        "feature": "wythers:vegetation/tree/huge_jungle/branch_se",
+                        "placement": []
+                      },
+                      {
+                        "feature": "wythers:vegetation/tree/huge_jungle/branch_sw",
+                        "placement": []
+                      },
+                      {
+                        "feature": "wythers:vegetation/tree/huge_jungle/branch_nw",
+                        "placement": []
+                      },
+                      {
+                        "feature": "wythers:vegetation/tree/huge_jungle/branch_ne",
+                        "placement": []
+                      },
+                      {
+                        "feature": "wythers:vegetation/tree/huge_jungle/extra_leaf",
+                        "placement": []
+                      }
+                    ]
+                  },
+                  "type": "main:simple_random_selector"
+                },
+                "placement": [
+                  {
+                    "predicate": {
+                      "blocks": "main:jungle_log",
+                      "type": "main:matching_blocks"
+                    },
+                    "type": "main:block_predicate_filter"
+                  },
+                  {
+                    "xz_spread": 0,
+                    "y_spread": 15,
+                    "type": "main:random_offset"
+                  },
+                  {
+                    "xz_spread": 0,
+                    "y_spread": 15,
+                    "type": "main:random_offset"
+                  },
+                  {
+                    "xz_spread": 0,
+                    "y_spread": 5,
+                    "type": "main:random_offset"
+                  },
+                  {
+                    "direction_of_search": "up",
+                    "max_steps": 10,
+                    "target_condition": {
+                      "predicates": [
+                        {
+                          "blocks": "main:air",
+                          "type": "main:matching_blocks"
+                        },
+                        {
+                          "blocks": "main:jungle_log",
+                          "offset": [
+                            0,
+                            -1,
+                            0
+                          ],
+                          "type": "main:matching_blocks"
+                        },
+                        {
+                          "predicate": {
+                            "blocks": "main:jungle_log",
+                            "offset": [
+                              1,
+                              0,
+                              1
+                            ],
+                            "type": "main:matching_blocks"
+                          },
+                          "type": "main:not"
+                        }
+                      ],
+                      "type": "main:all_of"
+                    },
+                    "type": "main:environment_scan"
+                  },
+                  {
+                    "count": 48,
+                    "type": "main:count"
+                  }
+                ]
+              },
+              {
+                "feature": "wythers:vegetation/tree/huge_jungle/roots",
+                "placement": [
+                  {
+                    "predicate": {
+                      "blocks": "main:jungle_log",
+                      "type": "main:matching_blocks"
+                    },
+                    "type": "main:block_predicate_filter"
+                  }
+                ]
+              },
+              {
+                "feature": "wythers:vegetation/tree/huge_jungle/rooted_dirt",
+                "placement": [
+                  {
+                    "predicate": {
+                      "blocks": "main:jungle_log",
+                      "type": "main:matching_blocks"
+                    },
+                    "type": "main:block_predicate_filter"
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "main:simple_random_selector"
+        },
+        "placement": [
+          {
+            "predicate": {
+              "state": {
+                "Name": "main:jungle_sapling",
+                "Properties": {
+                  "stage": "0"
+                }
+              },
+              "type": "main:would_survive"
+            },
+            "type": "main:block_predicate_filter"
+          },
+          {
+            "predicate": {
+              "predicates": [
+                {
+                  "offset": [
+                    1,
+                    -2,
+                    0
+                  ],
+                  "type": "main:solid"
+                },
+                {
+                  "offset": [
+                    1,
+                    -2,
+                    1
+                  ],
+                  "type": "main:solid"
+                },
+                {
+                  "offset": [
+                    0,
+                    -2,
+                    1
+                  ],
+                  "type": "main:solid"
+                },
+                {
+                  "offset": [
+                    -1,
+                    -2,
+                    1
+                  ],
+                  "type": "main:solid"
+                },
+                {
+                  "offset": [
+                    -1,
+                    -2,
+                    0
+                  ],
+                  "type": "main:solid"
+                },
+                {
+                  "offset": [
+                    -1,
+                    -2,
+                    -1
+                  ],
+                  "type": "main:solid"
+                },
+                {
+                  "offset": [
+                    0,
+                    -2,
+                    -1
+                  ],
+                  "type": "main:solid"
+                },
+                {
+                  "offset": [
+                    1,
+                    -2,
+                    -1
+                  ],
+                  "type": "main:solid"
+                }
+              ],
+              "type": "main:all_of"
+            },
+            "type": "main:block_predicate_filter"
+          },
+          {
+            "count": 64,
+            "type": "main:count"
+          }
+        ]
+      }
+    ]
+  },
+  "type": "main:simple_random_selector"
+}

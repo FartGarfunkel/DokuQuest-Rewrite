@@ -1,0 +1,175 @@
+{
+  "feature": {
+    "type": "main:random_selector",
+    "config": {
+      "features": [
+        {
+          "chance": 0.3,
+          "feature": {
+            "feature": "wythers:vegetation/tree/forest_eucalyptus",
+            "placement": []
+          }
+        }
+      ],
+      "default": {
+        "feature": "wythers:vegetation/tree/forest_oak",
+        "placement": []
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 900,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 1000,
+      "noise_offset": -0.45
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": 0.45
+    },
+    {
+      "type": "main:count",
+      "count": 15
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 100,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": -1,
+      "noise_factor": 150,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -1,
+          0
+        ],
+        "blocks": [
+          "main:grass_block"
+        ]
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:any_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -2,
+              0
+            ],
+            "blocks": "main:granite"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -3,
+              0
+            ],
+            "blocks": "main:granite"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -4,
+              0
+            ],
+            "blocks": "main:granite"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -5,
+              0
+            ],
+            "blocks": "main:granite"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -6,
+              0
+            ],
+            "blocks": "main:granite"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -7,
+              0
+            ],
+            "blocks": "main:granite"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -8,
+              0
+            ],
+            "blocks": "main:granite"
+          },
+          {
+            "type": "main:matching_blocks",
+            "offset": [
+              0,
+              -9,
+              0
+            ],
+            "blocks": "main:granite"
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:matching_blocks",
+          "offset": [
+            0,
+            -2,
+            0
+          ],
+          "blocks": "main:coarse_dirt"
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

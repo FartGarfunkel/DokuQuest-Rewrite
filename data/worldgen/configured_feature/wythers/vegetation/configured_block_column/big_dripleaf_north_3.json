@@ -1,0 +1,58 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "up",
+    "allowed_placement": {
+      "type": "main:true"
+    },
+    "prioritize_tip": true,
+    "layers": [
+      {
+        "height": 3,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:big_dripleaf_stem",
+            "Properties": {
+              "facing": "north",
+              "waterlogged": "true"
+            }
+          }
+        }
+      },
+      {
+        "height": {
+          "type": "main:uniform",
+          "value": {
+            "min_inclusive": 0,
+            "max_inclusive": 1
+          }
+        },
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:big_dripleaf_stem",
+            "Properties": {
+              "facing": "north",
+              "waterlogged": "false"
+            }
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:big_dripleaf",
+            "Properties": {
+              "facing": "north",
+              "waterlogged": "false",
+              "tilt": "none"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

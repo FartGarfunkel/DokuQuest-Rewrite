@@ -1,0 +1,239 @@
+{
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "config": {
+            "allowed_placement": {
+              "blocks": "#wythers:tree_branch_replaceable",
+              "type": "main:matching_blocks"
+            },
+            "direction": "east",
+            "layers": [
+              {
+                "height": {
+                  "value": {
+                    "min_inclusive": 1,
+                    "max_inclusive": 2
+                  },
+                  "type": "main:uniform"
+                },
+                "provider": {
+                  "state": {
+                    "Name": "main:spruce_log",
+                    "Properties": {
+                      "axis": "x"
+                    }
+                  },
+                  "type": "main:simple_state_provider"
+                }
+              }
+            ],
+            "prioritize_tip": false
+          },
+          "type": "main:block_column"
+        },
+        "placement": [
+          {
+            "xz_spread": {
+              "value": {
+                "min_inclusive": 0,
+                "max_inclusive": 1
+              },
+              "type": "main:uniform"
+            },
+            "y_spread": 0,
+            "type": "main:random_offset"
+          },
+          {
+            "predicate": {
+              "blocks": "main:spruce_log",
+              "offset": [
+                -1,
+                -1,
+                0
+              ],
+              "type": "main:matching_blocks"
+            },
+            "type": "main:block_predicate_filter"
+          }
+        ]
+      },
+      {
+        "feature": {
+          "config": {
+            "allowed_placement": {
+              "blocks": "#wythers:tree_branch_replaceable",
+              "type": "main:matching_blocks"
+            },
+            "direction": "south",
+            "layers": [
+              {
+                "height": {
+                  "value": {
+                    "min_inclusive": 1,
+                    "max_inclusive": 2
+                  },
+                  "type": "main:uniform"
+                },
+                "provider": {
+                  "state": {
+                    "Name": "main:spruce_log",
+                    "Properties": {
+                      "axis": "z"
+                    }
+                  },
+                  "type": "main:simple_state_provider"
+                }
+              }
+            ],
+            "prioritize_tip": false
+          },
+          "type": "main:block_column"
+        },
+        "placement": [
+          {
+            "xz_spread": {
+              "value": {
+                "min_inclusive": 0,
+                "max_inclusive": 1
+              },
+              "type": "main:uniform"
+            },
+            "y_spread": 0,
+            "type": "main:random_offset"
+          },
+          {
+            "predicate": {
+              "blocks": "main:spruce_log",
+              "offset": [
+                0,
+                -1,
+                -1
+              ],
+              "type": "main:matching_blocks"
+            },
+            "type": "main:block_predicate_filter"
+          }
+        ]
+      },
+      {
+        "feature": {
+          "config": {
+            "allowed_placement": {
+              "blocks": "#wythers:tree_branch_replaceable",
+              "type": "main:matching_blocks"
+            },
+            "direction": "west",
+            "layers": [
+              {
+                "height": {
+                  "value": {
+                    "min_inclusive": 1,
+                    "max_inclusive": 2
+                  },
+                  "type": "main:uniform"
+                },
+                "provider": {
+                  "state": {
+                    "Name": "main:spruce_log",
+                    "Properties": {
+                      "axis": "x"
+                    }
+                  },
+                  "type": "main:simple_state_provider"
+                }
+              }
+            ],
+            "prioritize_tip": false
+          },
+          "type": "main:block_column"
+        },
+        "placement": [
+          {
+            "xz_spread": {
+              "value": {
+                "min_inclusive": -1,
+                "max_inclusive": 0
+              },
+              "type": "main:uniform"
+            },
+            "y_spread": 0,
+            "type": "main:random_offset"
+          },
+          {
+            "predicate": {
+              "blocks": "main:spruce_log",
+              "offset": [
+                1,
+                -1,
+                0
+              ],
+              "type": "main:matching_blocks"
+            },
+            "type": "main:block_predicate_filter"
+          }
+        ]
+      },
+      {
+        "feature": {
+          "config": {
+            "allowed_placement": {
+              "blocks": "#wythers:tree_branch_replaceable",
+              "type": "main:matching_blocks"
+            },
+            "direction": "north",
+            "layers": [
+              {
+                "height": {
+                  "value": {
+                    "min_inclusive": 1,
+                    "max_inclusive": 2
+                  },
+                  "type": "main:uniform"
+                },
+                "provider": {
+                  "state": {
+                    "Name": "main:spruce_log",
+                    "Properties": {
+                      "axis": "z"
+                    }
+                  },
+                  "type": "main:simple_state_provider"
+                }
+              }
+            ],
+            "prioritize_tip": false
+          },
+          "type": "main:block_column"
+        },
+        "placement": [
+          {
+            "xz_spread": {
+              "value": {
+                "min_inclusive": -1,
+                "max_inclusive": 0
+              },
+              "type": "main:uniform"
+            },
+            "y_spread": 0,
+            "type": "main:random_offset"
+          },
+          {
+            "predicate": {
+              "blocks": "main:spruce_log",
+              "offset": [
+                0,
+                -1,
+                1
+              ],
+              "type": "main:matching_blocks"
+            },
+            "type": "main:block_predicate_filter"
+          }
+        ]
+      }
+    ]
+  },
+  "type": "main:simple_random_selector"
+}

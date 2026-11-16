@@ -1,0 +1,49 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "up",
+    "allowed_placement": {
+      "type": "main:true"
+    },
+    "prioritize_tip": true,
+    "layers": [
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:moss_block"
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:small_dripleaf",
+            "Properties": {
+              "facing": "west",
+              "half": "lower",
+              "waterlogged": "false"
+            }
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:small_dripleaf",
+            "Properties": {
+              "facing": "west",
+              "half": "upper",
+              "waterlogged": "false"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

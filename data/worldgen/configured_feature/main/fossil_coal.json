@@ -1,0 +1,28 @@
+{
+  "type": "main:fossil",
+  "config": {
+    "fossil_processors": "main:fossil_rot",
+    "fossil_structures": [
+      "main:fossil/spine_1",
+      "main:fossil/spine_2",
+      "main:fossil/spine_3",
+      "main:fossil/spine_4",
+      "main:fossil/skull_1",
+      "main:fossil/skull_2",
+      "main:fossil/skull_3",
+      "main:fossil/skull_4"
+    ],
+    "max_empty_corners_allowed": 4,
+    "overlay_processors": "main:fossil_coal",
+    "overlay_structures": [
+      "main:fossil/spine_1_coal",
+      "main:fossil/spine_2_coal",
+      "main:fossil/spine_3_coal",
+      "main:fossil/spine_4_coal",
+      "main:fossil/skull_1_coal",
+      "main:fossil/skull_2_coal",
+      "main:fossil/skull_3_coal",
+      "main:fossil/skull_4_coal"
+    ]
+  }
+}

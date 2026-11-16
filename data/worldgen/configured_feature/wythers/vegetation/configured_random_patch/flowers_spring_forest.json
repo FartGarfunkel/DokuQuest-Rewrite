@@ -1,0 +1,54 @@
+{
+  "config": {
+    "tries": 96,
+    "xz_spread": 6,
+    "y_spread": 2,
+    "feature": {
+      "feature": {
+        "config": {
+          "to_place": {
+            "seed": 2345,
+            "noise": {
+              "firstOctave": -6,
+              "amplitudes": [
+                1
+              ]
+            },
+            "scale": 1,
+            "states": [
+              {
+                "Name": "main:azure_bluet"
+              },
+              {
+                "Name": "main:cornflower"
+              }
+            ],
+            "variety": [
+              1,
+              3
+            ],
+            "slow_noise": {
+              "firstOctave": -7,
+              "amplitudes": [
+                1
+              ]
+            },
+            "slow_scale": 1,
+            "type": "main:dual_noise_provider"
+          }
+        },
+        "type": "main:simple_block"
+      },
+      "placement": [
+        {
+          "predicate": {
+            "blocks": "main:air",
+            "type": "main:matching_blocks"
+          },
+          "type": "main:block_predicate_filter"
+        }
+      ]
+    }
+  },
+  "type": "main:flower"
+}

@@ -1,0 +1,108 @@
+{
+  "feature": "wythers:vegetation/configured_block_column/floating_vegetation_mat_tall_grass",
+  "placement": [
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 62
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          2,
+          0
+        ],
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "blocks": "main:air"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          0,
+          0
+        ],
+        "blocks": "main:azalea_leaves"
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_blocks",
+        "offset": [
+          0,
+          -1,
+          0
+        ],
+        "blocks": [
+          "main:water"
+        ]
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:any_of",
+          "predicates": [
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                1,
+                0,
+                0
+              ],
+              "blocks": "main:water"
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                -1,
+                0,
+                0
+              ],
+              "blocks": "main:water"
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                0,
+                1
+              ],
+              "blocks": "main:water"
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                0,
+                -1
+              ],
+              "blocks": "main:water"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

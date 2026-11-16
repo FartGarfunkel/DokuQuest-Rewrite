@@ -1,0 +1,19 @@
+{
+  "feature": "main:patch_pumpkin",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 300
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

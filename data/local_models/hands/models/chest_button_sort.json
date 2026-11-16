@@ -1,0 +1,94 @@
+{
+ "texture_size": [
+  32,
+  32
+ ],
+ "textures": {
+  "0": "hands:block/chest_wood",
+  "1": "hands:block/book",
+  "particle": "hands:block/chest_wood"
+ },
+ "elements": [
+  {
+   "from": [
+    11.5,
+    9.5,
+    7.3
+   ],
+   "to": [
+    13.5,
+    11,
+    10
+   ],
+   "rotation": {
+    "angle": 0,
+    "axis": "x",
+    "origin": [
+     8,
+     10,
+     12
+    ]
+   },
+   "faces": {
+    "north": {
+     "uv": [
+      3.5,
+      4.53214,
+      5.25,
+      6.75
+     ],
+     "rotation": 180,
+     "texture": "#0"
+    },
+    "east": {
+     "uv": [
+      3.5,
+      4.53214,
+      5.25,
+      6.75
+     ],
+     "rotation": 90,
+     "texture": "#0"
+    },
+    "south": {
+     "uv": [
+      3.5,
+      4.53214,
+      5.25,
+      6.75
+     ],
+     "texture": "#0"
+    },
+    "west": {
+     "uv": [
+      3.5,
+      4.53214,
+      5.25,
+      6.75
+     ],
+     "rotation": 270,
+     "texture": "#0"
+    },
+    "up": {
+     "uv": [
+      3.5,
+      4.53214,
+      5.25,
+      6.75
+     ],
+     "texture": "#0"
+    },
+    "down": {
+     "uv": [
+      8,
+      11.03214,
+      11.75,
+      16
+     ],
+     "rotation": 180,
+     "texture": "#1"
+    }
+   }
+  }
+ ]
+}

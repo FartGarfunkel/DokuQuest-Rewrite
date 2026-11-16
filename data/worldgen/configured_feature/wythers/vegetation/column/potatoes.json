@@ -1,0 +1,93 @@
+{
+  "type": "main:simple_random_selector",
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "type": "main:block_column",
+          "config": {
+            "direction": "up",
+            "allowed_placement": {
+              "type": "main:true"
+            },
+            "prioritize_tip": true,
+            "layers": [
+              {
+                "height": 1,
+                "provider": {
+                  "type": "main:weighted_state_provider",
+                  "entries": [
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:potatoes",
+                        "Properties": {
+                          "age": "0"
+                        }
+                      }
+                    },
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:potatoes",
+                        "Properties": {
+                          "age": "1"
+                        }
+                      }
+                    },
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:potatoes",
+                        "Properties": {
+                          "age": "2"
+                        }
+                      }
+                    },
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:potatoes",
+                        "Properties": {
+                          "age": "3"
+                        }
+                      }
+                    },
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:potatoes",
+                        "Properties": {
+                          "age": "4"
+                        }
+                      }
+                    },
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:potatoes",
+                        "Properties": {
+                          "age": "5"
+                        }
+                      }
+                    },
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:potatoes",
+                        "Properties": {
+                          "age": "6"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "placement": []
+      }
+    ]
+  }
+}

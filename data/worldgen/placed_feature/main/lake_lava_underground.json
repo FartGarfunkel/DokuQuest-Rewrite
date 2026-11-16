@@ -1,0 +1,57 @@
+{
+  "feature": "main:lake_lava",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 0
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "max_inclusive": {
+          "below_top": 0
+        },
+        "min_inclusive": {
+          "absolute": 0
+        }
+      }
+    },
+    {
+      "type": "main:environment_scan",
+      "direction_of_search": "down",
+      "max_steps": 32,
+      "target_condition": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:not",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "blocks": "main:air"
+            }
+          },
+          {
+            "type": "main:inside_world_bounds",
+            "offset": [
+              0,
+              -5,
+              0
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "type": "main:surface_relative_threshold_filter",
+      "heightmap": "OCEAN_FLOOR_WG",
+      "max_inclusive": -5
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

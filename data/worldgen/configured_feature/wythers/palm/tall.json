@@ -1,0 +1,860 @@
+{
+  "type": "main:simple_random_selector",
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "type": "main:simple_random_selector",
+          "config": {
+            "features": [
+              {
+                "feature": {
+                  "type": "main:tree",
+                  "config": {
+                    "ignore_vines": true,
+                    "force_dirt": false,
+                    "minimum_size": {
+                      "type": "main:two_layers_feature_size",
+                      "limit": 1,
+                      "lower_size": 0,
+                      "upper_size": 0
+                    },
+                    "dirt_provider": {
+                      "type": "main:simple_state_provider",
+                      "state": {
+                        "Name": "main:rooted_dirt"
+                      }
+                    },
+                    "trunk_provider": {
+                      "type": "main:simple_state_provider",
+                      "state": {
+                        "Name": "main:jungle_wood",
+                        "Properties": {
+                          "axis": "y"
+                        }
+                      }
+                    },
+                    "foliage_provider": {
+                      "type": "main:simple_state_provider",
+                      "state": {
+                        "Name": "main:air"
+                      }
+                    },
+                    "trunk_placer": {
+                      "type": "main:straight_trunk_placer",
+                      "base_height": 3,
+                      "height_rand_a": 2,
+                      "height_rand_b": 0
+                    },
+                    "foliage_placer": {
+                      "type": "main:fancy_foliage_placer",
+                      "radius": 0,
+                      "offset": 0,
+                      "height": 0
+                    },
+                    "decorators": []
+                  }
+                },
+                "placement": [
+                  {
+                    "type": "main:block_predicate_filter",
+                    "predicate": {
+                      "type": "main:replaceable"
+                    }
+                  }
+                ]
+              },
+              {
+                "feature": "wythers:palm/branch_set/tall",
+                "placement": [
+                  {
+                    "type": "main:block_predicate_filter",
+                    "predicate": {
+                      "type": "main:matching_blocks",
+                      "blocks": "main:jungle_wood"
+                    }
+                  },
+                  {
+                    "type": "main:environment_scan",
+                    "direction_of_search": "up",
+                    "max_steps": 5,
+                    "target_condition": {
+                      "type": "main:not",
+                      "predicate": {
+                        "type": "main:matching_blocks",
+                        "blocks": "main:jungle_wood"
+                      }
+                    }
+                  },
+                  {
+                    "type": "main:block_predicate_filter",
+                    "predicate": {
+                      "type": "main:not",
+                      "predicate": {
+                        "type": "main:any_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              1,
+                              0,
+                              0
+                            ],
+                            "blocks": "main:jungle_wood"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              0,
+                              1
+                            ],
+                            "blocks": "main:jungle_wood"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              -1,
+                              0,
+                              0
+                            ],
+                            "blocks": "main:jungle_wood"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              0,
+                              -1
+                            ],
+                            "blocks": "main:jungle_wood"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:would_survive",
+              "state": {
+                "Name": "main:fern"
+              }
+            }
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    4,
+                    0,
+                    3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    4,
+                    0,
+                    2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    4,
+                    0,
+                    1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    4,
+                    0,
+                    0
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    4,
+                    0,
+                    -1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    4,
+                    0,
+                    -2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    4,
+                    0,
+                    -3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    3,
+                    0,
+                    4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    3,
+                    0,
+                    3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    3,
+                    0,
+                    2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    3,
+                    0,
+                    1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    3,
+                    0,
+                    0
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    3,
+                    0,
+                    -1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    3,
+                    0,
+                    -2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    3,
+                    0,
+                    -3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    3,
+                    0,
+                    -4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    2,
+                    0,
+                    4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    2,
+                    0,
+                    3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    2,
+                    0,
+                    2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    2,
+                    0,
+                    1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    2,
+                    0,
+                    0
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    2,
+                    0,
+                    -1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    2,
+                    0,
+                    -2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    2,
+                    0,
+                    -3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    2,
+                    0,
+                    -4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    1,
+                    0,
+                    4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    1,
+                    0,
+                    3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    1,
+                    0,
+                    2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    1,
+                    0,
+                    1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    1,
+                    0,
+                    0
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    1,
+                    0,
+                    -1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    1,
+                    0,
+                    -2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    1,
+                    0,
+                    -3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    1,
+                    0,
+                    -4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    0,
+                    0,
+                    4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    0,
+                    0,
+                    3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    0,
+                    0,
+                    2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    0,
+                    0,
+                    -1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    0,
+                    0,
+                    -2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    0,
+                    0,
+                    -3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    0,
+                    0,
+                    -4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -1,
+                    0,
+                    4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -1,
+                    0,
+                    3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -1,
+                    0,
+                    2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -1,
+                    0,
+                    1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -1,
+                    0,
+                    0
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -1,
+                    0,
+                    -1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -1,
+                    0,
+                    -2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -1,
+                    0,
+                    -3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -1,
+                    0,
+                    -4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -2,
+                    0,
+                    4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -2,
+                    0,
+                    3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -2,
+                    0,
+                    2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -2,
+                    0,
+                    1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -2,
+                    0,
+                    0
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -2,
+                    0,
+                    -1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -2,
+                    0,
+                    -2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -2,
+                    0,
+                    -3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -2,
+                    0,
+                    -4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -3,
+                    0,
+                    4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -3,
+                    0,
+                    3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -3,
+                    0,
+                    2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -3,
+                    0,
+                    1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -3,
+                    0,
+                    0
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -3,
+                    0,
+                    -1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -3,
+                    0,
+                    -2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -3,
+                    0,
+                    -3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -3,
+                    0,
+                    -4
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -4,
+                    0,
+                    3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -4,
+                    0,
+                    2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -4,
+                    0,
+                    1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -4,
+                    0,
+                    0
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -4,
+                    0,
+                    -1
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -4,
+                    0,
+                    -2
+                  ],
+                  "tag": "wythers:air_and_plants"
+                },
+                {
+                  "type": "main:matching_block_tag",
+                  "offset": [
+                    -4,
+                    0,
+                    -3
+                  ],
+                  "tag": "wythers:air_and_plants"
+                }
+              ]
+            }
+          },
+          {
+            "type": "main:count",
+            "count": 32
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "type": "main:basalt_columns",
+  "config": {
+    "height": {
+      "type": "main:uniform",
+      "value": {
+        "max_inclusive": 10,
+        "min_inclusive": 5
+      }
+    },
+    "reach": {
+      "type": "main:uniform",
+      "value": {
+        "max_inclusive": 3,
+        "min_inclusive": 2
+      }
+    }
+  }
+}

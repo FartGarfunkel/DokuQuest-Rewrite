@@ -1,0 +1,1538 @@
+[
+{
+"to": "assets/minecraft/textures/block/lavender.png",
+"from": "mod:natures_spirit-2.2.5-1.20.1:assets/natures_spirit/textures/block/lavender.png",
+"tile": "lavender",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/sweet_berry_bush_stage3.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/sweet_berry_bush_stage3.png",
+"tile": "berry_bush",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/sweet_berry_bush_stage1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/sweet_berry_bush_stage1.png",
+"tile": "berry_bush_empty",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/pumpkin_stem_stage0.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/pumpkin_stem_stage0.png",
+"tile": "pumpkin_stem_stage0",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/pumpkin_stem_stage1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/pumpkin_stem_stage1.png",
+"tile": "pumpkin_stem_stage1",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/pumpkin_stem_stage2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/pumpkin_stem_stage2.png",
+"tile": "pumpkin_stem_stage2",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/pumpkin_stem_stage3.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/pumpkin_stem_stage3.png",
+"tile": "pumpkin_stem_stage3",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/pumpkin_stem_stage4.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/pumpkin_stem_stage4.png",
+"tile": "pumpkin_stem_stage4",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/pumpkin_stem_stage5.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/pumpkin_stem_stage5.png",
+"tile": "pumpkin_stem_stage5",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/pumpkin_stem_stage7.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/pumpkin_stem_stage7.png",
+"tile": "pumpkin_stem_stage7",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/melon_stem_stage0.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/melon_stem_stage0.png",
+"tile": "melon_stem_stage0",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/melon_stem_stage1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/melon_stem_stage1.png",
+"tile": "melon_stem_stage1",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/melon_stem_stage2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/melon_stem_stage2.png",
+"tile": "melon_stem_stage2",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/melon_stem_stage3.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/melon_stem_stage3.png",
+"tile": "melon_stem_stage3",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/melon_stem_stage4.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/melon_stem_stage4.png",
+"tile": "melon_stem_stage4",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/melon_stem_stage5.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/melon_stem_stage5.png",
+"tile": "melon_stem_stage5",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/melon_stem_stage7.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/melon_stem_stage7.png",
+"tile": "melon_stem_stage7",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/item/cooked_rice.png",
+"from": "FarmersDelightExcaliburSupport.zip:assets/farmersdelight/textures/item/cooked_rice.png",
+"tile": "cooked_rice",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/torch_flame.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/torch_flame.png",
+"tile": "torch_flame",
+"mcmeta": true
+},
+{
+"to": "assets/minecraft/textures/item/silver_chestplate.png",
+"from": "mod:dungeons_and_combat-1.2.4-forge-1.20.1:assets/dungeons_and_combat/textures/item/silver_chestplate.png",
+"tile": "silver_chestplate",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/item/steel_chestplate.png",
+"from": "mod:dungeons_and_combat-1.2.4-forge-1.20.1:assets/dungeons_and_combat/textures/item/steel_chestplate.png",
+"tile": "steel_chestplate",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/item/pyromancer_chestplate.png",
+"from": "mod:irons_spellbooks-1.20.1-3.15.6:assets/irons_spellbooks/textures/item/pyromancer_chestplate.png",
+"tile": "pyromancer_chestplate",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/item/bronze_chestplate.png",
+"from": "Dungeons-and-Combat-v6.0.zip:assets/dungeons_and_combat/textures/item/bronze_chestplate.png",
+"tile": "bronze_chestplate",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/pebble.png",
+"from": "Excalibur_Twigs_0.2_1.20.1.zip:assets/twigs/textures/item/pebble.png",
+"tile": "pebble",
+"mcmeta": false,
+"alike": "pebble"
+},
+{
+"to": "assets/minecraft/textures/block/onion_crop_stage0.png",
+"from": "FarmersDelightExcaliburSupport.zip:assets/farmersdelight/textures/block/onions_stage0.png",
+"tile": "onion_crop_stage0",
+"mcmeta": false,
+"alike": "onions_stage0"
+},
+{
+"to": "assets/minecraft/textures/block/cabbage_crop_stage0.png",
+"from": "mod:FarmersDelight-1.20.1-1.2.11a:assets/farmersdelight/textures/block/cabbages_stage0.png",
+"tile": "cabbage_crop_stage0",
+"mcmeta": false,
+"alike": "cabbages_stage0"
+},
+{
+"to": "assets/minecraft/textures/block/rice_crop_stage0.png",
+"from": "FarmersDelightExcaliburSupport.zip:assets/farmersdelight/textures/block/rice/rice_stage0.png",
+"tile": "rice_crop_stage0",
+"mcmeta": false,
+"alike": "rice_stage0"
+},
+{
+"to": "assets/minecraft/textures/block/armor_stand.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/item/armor_stand.png",
+"tile": "armor_stand",
+"mcmeta": false,
+"alike": "armor_stand"
+},
+{
+"to": "assets/minecraft/textures/block/firework_rocket.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/item/firework_rocket.png",
+"tile": "firework_rocket",
+"mcmeta": false,
+"alike": "firework_rocket"
+},
+{
+"to": "assets/minecraft/textures/item/paintbrush.png",
+"from": "Excalibur Sophisticated v1.2.zip:assets/sophisticatedstorage/textures/item/paintbrush.png",
+"tile": "paintbrush",
+"mcmeta": false,
+"alike": "paintbrush"
+},
+{
+"to": "assets/minecraft/textures/block/lapis_bricks.png",
+"from": "Excalibur_Supplementaries_1.0_1.20.1.zip:assets/supplementaries/textures/block/lapis_bricks.png",
+"tile": "lapis_bricks",
+"mcmeta": false,
+"alike": "lapis_bricks"
+},
+{
+"to": "assets/minecraft/textures/item/coconut.png",
+"from": "mod:natures_spirit-2.2.5-1.20.1:assets/natures_spirit/textures/item/coconut.png",
+"tile": "coconut",
+"mcmeta": false,
+"alike": "coconut"
+},
+{
+"to": "assets/minecraft/textures/item/cannonball.png",
+"from": "Excalibur_Supplementaries_1.0_1.20.1.zip:assets/supplementaries/textures/item/cannonball.png",
+"tile": "cannonball",
+"mcmeta": false,
+"alike": "cannonball"
+},
+{
+"to": "assets/minecraft/textures/block/algae.png",
+"from": "Aquaculture 2 Excalibur Support.zip:assets/aquaculture/textures/item/algae.png",
+"tile": "algae",
+"mcmeta": false,
+"alike": "algae"
+},
+{
+"to": "assets/minecraft/textures/block/permafrost_bricks.png",
+"from": "mod:Quark-4.0-462:assets/quark/textures/block/permafrost_bricks.png",
+"tile": "permafrost_bricks",
+"mcmeta": false,
+"alike": "permafrost_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/be_dragon_bone_block_side.png",
+"from": "IceandFireExcaliburizedv3.1.zip:assets/iceandfire/textures/block/dragon_bone_block_side.png",
+"tile": "be_dragon_bone_block_side",
+"mcmeta": false,
+"alike": "dragon_bone_block_side"
+},
+{
+"to": "assets/minecraft/textures/block/polished_limestone.png",
+"from": "Excalibur_X_Quark-1.20.1-4.0-462.zip:assets/quark/textures/block/polished_limestone.png",
+"tile": "polished_limestone",
+"mcmeta": false,
+"alike": "polished_limestone"
+},
+{
+"to": "assets/minecraft/textures/block/sugar_cane_block.png",
+"from": "Excalibur_X_Quark-1.20.1-4.0-462.zip:assets/quark/textures/block/sugar_cane_block.png",
+"tile": "sugar_cane_block",
+"mcmeta": false,
+"alike": "sugar_cane_block"
+},
+{
+"to": "assets/minecraft/textures/block/chainmail_helmet.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/item/chainmail_helmet.png",
+"tile": "chainmail_helmet",
+"mcmeta": false,
+"alike": "chainmail_helmet"
+},
+{
+"to": "assets/minecraft/textures/block/chainmail_chestplate.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/item/chainmail_chestplate.png",
+"tile": "chainmail_chestplate",
+"mcmeta": false,
+"alike": "chainmail_chestplate"
+},
+{
+"to": "assets/minecraft/textures/block/chainmail_leggings.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/item/chainmail_leggings.png",
+"tile": "chainmail_leggings",
+"mcmeta": false,
+"alike": "chainmail_leggings"
+},
+{
+"to": "assets/minecraft/textures/block/chainmail_boots.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/item/chainmail_boots.png",
+"tile": "chainmail_boots",
+"mcmeta": false,
+"alike": "chainmail_boots"
+},
+{
+"to": "assets/minecraft/textures/block/dough.png",
+"from": "Excalibur_Create-6 Addon_Forge_v2.31.zip:assets/create/textures/item/dough.png",
+"tile": "dough",
+"mcmeta": false,
+"alike": "dough"
+},
+{
+"to": "assets/minecraft/textures/block/cherries.png",
+"from": "mod:Delightful-1.20.1-3.7.8:assets/delightful/textures/block/coaster/environmental/cherries.png",
+"tile": "cherries",
+"mcmeta": false,
+"alike": "cherries"
+},
+{
+"to": "assets/minecraft/textures/block/cloth.png",
+"from": "mod:irons_spellbooks-1.20.1-3.15.6:assets/irons_spellbooks/textures/item/cloth.png",
+"tile": "cloth",
+"mcmeta": false,
+"alike": "cloth"
+},
+{
+"to": "assets/minecraft/textures/item/chainmail_horse_armor.png",
+"from": "Excalibur_EpicKnights_1.0_1.20.1.zip:assets/magistuarmory/textures/item/chainmail_horse_armor.png",
+"tile": "chainmail_horse_armor",
+"mcmeta": false,
+"alike": "chainmail_horse_armor"
+},
+{
+"to": "assets/minecraft/textures/item/imm_stone_knife.png",
+"from": "Dungeons-and-Combat-v6.0.zip:assets/dungeons_and_combat/textures/item/stone_knife.png",
+"tile": "imm_stone_knife",
+"mcmeta": false,
+"alike": "stone_knife"
+},
+{
+"to": "assets/minecraft/textures/item/imm_flint_knife.png",
+"from": "FarmersDelightExcaliburSupport.zip:assets/farmersdelight/textures/item/flint_knife.png",
+"tile": "imm_flint_knife",
+"mcmeta": false,
+"alike": "flint_knife"
+},
+{
+"to": "assets/minecraft/textures/item/imm_stone_scythe.png",
+"from": "mod:irons_spellbooks-1.20.1-3.15.6:assets/irons_spellbooks/textures/item/stone_scythe.png",
+"tile": "imm_stone_scythe",
+"mcmeta": false,
+"alike": "stone_scythe"
+},
+{
+"to": "assets/minecraft/textures/item/imm_zinc_ingot.png",
+"from": "Excalibur_Create-6 Addon_Forge_v2.31.zip:assets/create/textures/item/zinc_ingot.png",
+"tile": "imm_zinc_ingot",
+"mcmeta": false,
+"alike": "zinc_ingot"
+},
+{
+"to": "assets/minecraft/textures/item/imm_brass_ingot.png",
+"from": "Excalibur_Create-6 Addon_Forge_v2.31.zip:assets/create/textures/item/brass_ingot.png",
+"tile": "imm_brass_ingot",
+"mcmeta": false,
+"alike": "brass_ingot"
+},
+{
+"to": "assets/minecraft/textures/block/zinc_ore.png",
+"from": "Excalibur Ore Compat.zip:assets/create/textures/block/zinc_ore.png",
+"tile": "zinc_ore",
+"mcmeta": false,
+"alike": "zinc_ore"
+},
+{
+"to": "assets/minecraft/textures/item/imm_flux.png",
+"from": "mod:ApotheoticAdditionsV2.2.2:assets/apotheosis/textures/items/gems/flux.png",
+"tile": "imm_flux",
+"mcmeta": false,
+"alike": "flux"
+},
+{
+"to": "assets/minecraft/textures/item/imm_lime.png",
+"from": "Excalibur_Supplementaries_1.0_1.20.1.zip:assets/supplementaries/textures/item/candle_holders/lime.png",
+"tile": "imm_lime",
+"mcmeta": false,
+"alike": "lime"
+},
+{
+"to": "assets/minecraft/textures/block/shale.png",
+"from": "Excalibur_X_Quark-1.20.1-4.0-462.zip:assets/quark/textures/block/shale.png",
+"tile": "shale",
+"mcmeta": false,
+"alike": "shale"
+},
+{
+"to": "assets/minecraft/textures/block/schist.png",
+"from": "mod:Twigs-1.20.1-3.1.0:assets/twigs/textures/block/schist.png",
+"tile": "schist",
+"mcmeta": false,
+"alike": "schist"
+},
+{
+"to": "assets/minecraft/textures/item/imm_banana.png",
+"from": "mod:alexsmobs-1.22.9:assets/alexsmobs/textures/item/banana.png",
+"tile": "imm_banana",
+"mcmeta": false,
+"alike": "banana"
+},
+{
+"to": "assets/minecraft/textures/block/olive_leaves.png",
+"from": "mod:natures_spirit-2.2.5-1.20.1:assets/natures_spirit/textures/block/olive_leaves.png",
+"tile": "olive_leaves",
+"mcmeta": false,
+"alike": "olive_leaves"
+},
+{
+"to": "assets/minecraft/textures/block/olive_sapling.png",
+"from": "mod:natures_spirit-2.2.5-1.20.1:assets/natures_spirit/textures/block/olive_sapling.png",
+"tile": "olive_sapling",
+"mcmeta": false,
+"alike": "olive_sapling"
+},
+{
+"to": "assets/minecraft/textures/item/imm_orange.png",
+"from": "Excalibur_Supplementaries_1.0_1.20.1.zip:assets/supplementaries/textures/item/candle_holders/orange.png",
+"tile": "imm_orange",
+"mcmeta": false,
+"alike": "orange"
+},
+{
+"to": "assets/minecraft/textures/item/imm_plum.png",
+"from": "mod:Delightful-1.20.1-3.7.8:assets/delightful/textures/block/coaster/environmental/plum.png",
+"tile": "imm_plum",
+"mcmeta": false,
+"alike": "plum"
+},
+{
+"to": "assets/minecraft/textures/block/bn_soul_sandstone_top.png",
+"from": "Excalibur_X_Quark-1.20.1-4.0-462.zip:assets/quark/textures/block/soul_sandstone_top.png",
+"tile": "bn_soul_sandstone_top",
+"mcmeta": false,
+"alike": "soul_sandstone_top"
+},
+{
+"to": "assets/minecraft/textures/block/bn_soul_sandstone_bottom.png",
+"from": "Excalibur_X_Quark-1.20.1-4.0-462.zip:assets/quark/textures/block/soul_sandstone_bottom.png",
+"tile": "bn_soul_sandstone_bottom",
+"mcmeta": false,
+"alike": "soul_sandstone_bottom"
+},
+{
+"to": "assets/minecraft/textures/block/bn_willow_log.png",
+"from": "mod:natures_spirit-2.2.5-1.20.1:assets/natures_spirit/textures/block/willow_log.png",
+"tile": "bn_willow_log",
+"mcmeta": false,
+"alike": "willow_log"
+},
+{
+"to": "assets/minecraft/textures/block/bn_willow_log_top.png",
+"from": "mod:natures_spirit-2.2.5-1.20.1:assets/natures_spirit/textures/block/willow_log_top.png",
+"tile": "bn_willow_log_top",
+"mcmeta": false,
+"alike": "willow_log_top"
+},
+{
+"to": "assets/minecraft/textures/block/bn_willow_leaves.png",
+"from": "mod:natures_spirit-2.2.5-1.20.1:assets/natures_spirit/textures/block/willow_leaves.png",
+"tile": "bn_willow_leaves",
+"mcmeta": false,
+"alike": "willow_leaves"
+},
+{
+"to": "assets/minecraft/textures/block/torch_base.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/torch_base.png",
+"tile": "model:torch"
+},
+{
+"to": "assets/minecraft/models/block/torch.json",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/models/block/torch.json",
+"tile": "model:torch"
+},
+{
+"to": "assets/minecraft/models/block/wall_torch.json",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/models/block/wall_torch.json",
+"tile": "model:wall_torch"
+},
+{
+"to": "assets/minecraft/textures/block/soul_torch_base.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/soul_torch_base.png",
+"tile": "model:soul_torch"
+},
+{
+"to": "assets/minecraft/textures/block/soul_torch_flame.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/soul_torch_flame.png",
+"tile": "model:soul_torch"
+},
+{
+"to": "assets/minecraft/models/block/soul_torch.json",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/models/block/soul_torch.json",
+"tile": "model:soul_torch"
+},
+{
+"to": "assets/minecraft/models/block/soul_wall_torch.json",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/models/block/soul_wall_torch.json",
+"tile": "model:soul_wall_torch"
+},
+{
+"to": "assets/minecraft/textures/block/redstone_torch_base.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/redstone_torch_base.png",
+"tile": "model:redstone_torch"
+},
+{
+"to": "assets/minecraft/models/block/redstone_torch.json",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/models/block/redstone_torch.json",
+"tile": "model:redstone_torch"
+},
+{
+"to": "assets/minecraft/models/block/redstone_wall_torch.json",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/models/block/redstone_wall_torch.json",
+"tile": "model:redstone_wall_torch"
+},
+{
+"to": "assets/minecraft/models/block/redstone_torch_off.json",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/models/block/redstone_torch_off.json",
+"tile": "model:redstone_torch_off"
+},
+{
+"to": "assets/minecraft/models/block/redstone_wall_torch_off.json",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/models/block/redstone_wall_torch_off.json",
+"tile": "model:redstone_wall_torch_off"
+},
+{
+"to": "assets/minecraft/textures/block/copper_torch_base.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/copper_torch_base.png",
+"tile": "model:copper_torch"
+},
+{
+"to": "assets/minecraft/textures/block/copper_torch_flame.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/copper_torch_flame.png",
+"tile": "model:copper_torch"
+},
+{
+"to": "assets/minecraft/models/block/copper_torch.json",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/models/block/copper_torch.json",
+"tile": "model:copper_torch"
+},
+{
+"to": "assets/minecraft/models/block/copper_wall_torch.json",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/models/block/copper_wall_torch.json",
+"tile": "model:copper_wall_torch"
+},
+{
+"to": "assets/minecraft/textures/block/dirt1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/dirt1.png",
+"tile": "variant:dirt"
+},
+{
+"to": "assets/minecraft/textures/block/dirt2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/dirt2.png",
+"tile": "variant:dirt"
+},
+{
+"to": "assets/minecraft/textures/block/sculk_1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/sculk_1.png",
+"tile": "variant:sculk"
+},
+{
+"to": "assets/minecraft/textures/block/sculk_2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/sculk_2.png",
+"tile": "variant:sculk"
+},
+{
+"to": "assets/dokuquest/variants.json",
+"from": "Excalibur_V1.21.10.zip:blockstates",
+"tile": "variants"
+},
+{
+"to": "assets/minecraft/textures/block/andesite1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/andesite1.png",
+"tile": "variant:andesite"
+},
+{
+"to": "assets/minecraft/textures/block/andesite2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/andesite2.png",
+"tile": "variant:andesite"
+},
+{
+"to": "assets/minecraft/textures/block/coarse_dirt1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/coarse_dirt1.png",
+"tile": "variant:coarse_dirt"
+},
+{
+"to": "assets/minecraft/textures/block/cobblestone1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/cobblestone1.png",
+"tile": "variant:cobblestone"
+},
+{
+"to": "assets/minecraft/textures/block/cobblestone2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/cobblestone2.png",
+"tile": "variant:cobblestone"
+},
+{
+"to": "assets/minecraft/textures/block/cracked_stone_bricks1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/cracked_stone_bricks1.png",
+"tile": "variant:cracked_stone_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/deepslate_bricks1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/deepslate_bricks1.png",
+"tile": "variant:deepslate_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/deepslate_bricks2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/deepslate_bricks2.png",
+"tile": "variant:deepslate_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/gravel1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/gravel1.png",
+"tile": "variant:gravel"
+},
+{
+"to": "assets/minecraft/textures/block/gravel2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/gravel2.png",
+"tile": "variant:gravel"
+},
+{
+"to": "assets/minecraft/textures/block/gravel3.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/gravel3.png",
+"tile": "variant:gravel"
+},
+{
+"to": "assets/minecraft/textures/block/mossy_stone_bricks1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/mossy_stone_bricks1.png",
+"tile": "variant:mossy_stone_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/mossy_stone_bricks2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/mossy_stone_bricks2.png",
+"tile": "variant:mossy_stone_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/mossy_stone_bricks3.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/mossy_stone_bricks3.png",
+"tile": "variant:mossy_stone_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/mossy_stone_bricks5.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/mossy_stone_bricks5.png",
+"tile": "variant:mossy_stone_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/netherrack1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/netherrack1.png",
+"tile": "variant:netherrack"
+},
+{
+"to": "assets/minecraft/textures/block/netherrack2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/netherrack2.png",
+"tile": "variant:netherrack"
+},
+{
+"to": "assets/minecraft/textures/block/pale_moss_block0.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/pale_moss_block0.png",
+"tile": "variant:pale_moss_block"
+},
+{
+"to": "assets/minecraft/textures/block/red_nether_bricks1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/red_nether_bricks1.png",
+"tile": "variant:red_nether_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/red_nether_bricks2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/red_nether_bricks2.png",
+"tile": "variant:red_nether_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/red_nether_bricks3.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/red_nether_bricks3.png",
+"tile": "variant:red_nether_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/sand1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/sand1.png",
+"tile": "variant:sand"
+},
+{
+"to": "assets/minecraft/textures/block/sand2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/sand2.png",
+"tile": "variant:sand"
+},
+{
+"to": "assets/minecraft/textures/block/stone1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/stone1.png",
+"tile": "variant:stone"
+},
+{
+"to": "assets/minecraft/textures/block/stone2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/stone2.png",
+"tile": "variant:stone"
+},
+{
+"to": "assets/minecraft/textures/block/stone3.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/stone3.png",
+"tile": "variant:stone"
+},
+{
+"to": "assets/minecraft/textures/block/stone4.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/stone4.png",
+"tile": "variant:stone"
+},
+{
+"to": "assets/minecraft/textures/block/stone5.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/stone5.png",
+"tile": "variant:stone"
+},
+{
+"to": "assets/minecraft/textures/block/stonebrick1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/stonebrick1.png",
+"tile": "variant:stone_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/stonebrick2.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/stonebrick2.png",
+"tile": "variant:stone_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/stonebrick3.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/stonebrick3.png",
+"tile": "variant:stone_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/stonebrick4.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/stonebrick4.png",
+"tile": "variant:stone_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/stonebrick5.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/stonebrick5.png",
+"tile": "variant:stone_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/stonebrick6.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/stonebrick6.png",
+"tile": "variant:stone_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/tuff_bricks1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/tuff_bricks1.png",
+"tile": "variant:tuff_bricks"
+},
+{
+"to": "assets/minecraft/textures/block/warped_planks1.png",
+"from": "Excalibur_V1.21.10.zip:assets/minecraft/textures/block/warped_planks1.png",
+"tile": "variant:warped_planks"
+},
+{
+"to": "assets/dokuquest/armor3d/chess_board_knight_armor.geo.json",
+"from": "fantasy_armor:geo/chess_board_knight_armor.geo.json",
+"tile": "armor3d:chess_board_knight_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/chess_board_knight_armor.png",
+"from": "fantasy_armor:textures/armor/chess_board_knight_armor.png",
+"tile": "armor3d:chess_board_knight_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/crucible_knight_armor.geo.json",
+"from": "fantasy_armor:geo/crucible_knight_armor.geo.json",
+"tile": "armor3d:crucible_knight_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/crucible_knight_armor.png",
+"from": "fantasy_armor:textures/armor/crucible_knight_armor.png",
+"tile": "armor3d:crucible_knight_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/dark_cover_armor.geo.json",
+"from": "fantasy_armor:geo/dark_cover_armor.geo.json",
+"tile": "armor3d:dark_cover_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/dark_cover_armor.png",
+"from": "fantasy_armor:textures/armor/dark_cover_armor.png",
+"tile": "armor3d:dark_cover_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/dark_lord_armor.geo.json",
+"from": "fantasy_armor:geo/dark_lord_armor.geo.json",
+"tile": "armor3d:dark_lord_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/dark_lord_armor.png",
+"from": "fantasy_armor:textures/armor/dark_lord_armor.png",
+"tile": "armor3d:dark_lord_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/dead_gladiator_armor.geo.json",
+"from": "fantasy_armor:geo/dead_gladiator_armor.geo.json",
+"tile": "armor3d:dead_gladiator_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/dead_gladiator_armor.png",
+"from": "fantasy_armor:textures/armor/dead_gladiator_armor.png",
+"tile": "armor3d:dead_gladiator_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/dragonslayer_armor.geo.json",
+"from": "fantasy_armor:geo/dragonslayer_armor.geo.json",
+"tile": "armor3d:dragonslayer_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/dragonslayer_armor.png",
+"from": "fantasy_armor:textures/armor/dragonslayer_armor.png",
+"tile": "armor3d:dragonslayer_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/eclipse_soldier_armor.geo.json",
+"from": "fantasy_armor:geo/eclipse_soldier_armor.geo.json",
+"tile": "armor3d:eclipse_soldier_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/eclipse_soldier_armor.png",
+"from": "fantasy_armor:textures/armor/eclipse_soldier_armor.png",
+"tile": "armor3d:eclipse_soldier_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/evening_ghost_armor.geo.json",
+"from": "fantasy_armor:geo/evening_ghost_armor.geo.json",
+"tile": "armor3d:evening_ghost_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/evening_ghost_armor.png",
+"from": "fantasy_armor:textures/armor/evening_ghost_armor.png",
+"tile": "armor3d:evening_ghost_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/flesh_of_the_feaster_armor.geo.json",
+"from": "fantasy_armor:geo/flesh_of_the_feaster_armor.geo.json",
+"tile": "armor3d:flesh_of_the_feaster_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/flesh_of_the_feaster_armor.png",
+"from": "fantasy_armor:textures/armor/flesh_of_the_feaster_armor.png",
+"tile": "armor3d:flesh_of_the_feaster_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/fog_guard_armor.geo.json",
+"from": "fantasy_armor:geo/fog_guard_armor.geo.json",
+"tile": "armor3d:fog_guard_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/fog_guard_armor.png",
+"from": "fantasy_armor:textures/armor/fog_guard_armor.png",
+"tile": "armor3d:fog_guard_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/forgotten_trace_armor.geo.json",
+"from": "fantasy_armor:geo/forgotten_trace_armor.geo.json",
+"tile": "armor3d:forgotten_trace_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/forgotten_trace_armor.png",
+"from": "fantasy_armor:textures/armor/forgotten_trace_armor.png",
+"tile": "armor3d:forgotten_trace_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/gilded_hunt_armor.geo.json",
+"from": "fantasy_armor:geo/gilded_hunt_armor.geo.json",
+"tile": "armor3d:gilded_hunt_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/gilded_hunt_armor.png",
+"from": "fantasy_armor:textures/armor/gilded_hunt_armor.png",
+"tile": "armor3d:gilded_hunt_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/golden_execution_armor.geo.json",
+"from": "fantasy_armor:geo/golden_execution_armor.geo.json",
+"tile": "armor3d:golden_execution_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/golden_execution_armor.png",
+"from": "fantasy_armor:textures/armor/golden_execution_armor.png",
+"tile": "armor3d:golden_execution_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/golden_horns_armor.geo.json",
+"from": "fantasy_armor:geo/golden_horns_armor.geo.json",
+"tile": "armor3d:golden_horns_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/golden_horns_armor.png",
+"from": "fantasy_armor:textures/armor/golden_horns_armor.png",
+"tile": "armor3d:golden_horns_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/grave_sentinel_armor.geo.json",
+"from": "fantasy_armor:geo/grave_sentinel_armor.geo.json",
+"tile": "armor3d:grave_sentinel_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/grave_sentinel_armor.png",
+"from": "fantasy_armor:textures/armor/grave_sentinel_armor.png",
+"tile": "armor3d:grave_sentinel_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/hero_armor.geo.json",
+"from": "fantasy_armor:geo/hero_armor.geo.json",
+"tile": "armor3d:hero_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/hero_armor.png",
+"from": "fantasy_armor:textures/armor/hero_armor.png",
+"tile": "armor3d:hero_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/lady_maria_armor.geo.json",
+"from": "fantasy_armor:geo/lady_maria_armor.geo.json",
+"tile": "armor3d:lady_maria_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/lady_maria_armor.png",
+"from": "fantasy_armor:textures/armor/lady_maria_armor.png",
+"tile": "armor3d:lady_maria_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/malenia_armor.geo.json",
+"from": "fantasy_armor:geo/malenia_armor.geo.json",
+"tile": "armor3d:malenia_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/malenia_armor.png",
+"from": "fantasy_armor:textures/armor/malenia_armor.png",
+"tile": "armor3d:malenia_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/old_knight_armor.geo.json",
+"from": "fantasy_armor:geo/old_knight_armor.geo.json",
+"tile": "armor3d:old_knight_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/old_knight_armor.png",
+"from": "fantasy_armor:textures/armor/old_knight_armor.png",
+"tile": "armor3d:old_knight_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/ornstein_armor.geo.json",
+"from": "fantasy_armor:geo/ornstein_armor.geo.json",
+"tile": "armor3d:ornstein_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/ornstein_armor.png",
+"from": "fantasy_armor:textures/armor/ornstein_armor.png",
+"tile": "armor3d:ornstein_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/redeemer_armor.geo.json",
+"from": "fantasy_armor:geo/redeemer_armor.geo.json",
+"tile": "armor3d:redeemer_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/redeemer_armor.png",
+"from": "fantasy_armor:textures/armor/redeemer_armor.png",
+"tile": "armor3d:redeemer_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/ronin_armor.geo.json",
+"from": "fantasy_armor:geo/ronin_armor.geo.json",
+"tile": "armor3d:ronin_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/ronin_armor.png",
+"from": "fantasy_armor:textures/armor/ronin_armor.png",
+"tile": "armor3d:ronin_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/silver_knight_armor.geo.json",
+"from": "fantasy_armor:geo/silver_knight_armor.geo.json",
+"tile": "armor3d:silver_knight_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/silver_knight_armor.png",
+"from": "fantasy_armor:textures/armor/silver_knight_armor.png",
+"tile": "armor3d:silver_knight_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/spark_of_dawn_armor.geo.json",
+"from": "fantasy_armor:geo/spark_of_dawn_armor.geo.json",
+"tile": "armor3d:spark_of_dawn_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/spark_of_dawn_armor.png",
+"from": "fantasy_armor:textures/armor/spark_of_dawn_armor.png",
+"tile": "armor3d:spark_of_dawn_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/sunset_wings_armor.geo.json",
+"from": "fantasy_armor:geo/sunset_wings_armor.geo.json",
+"tile": "armor3d:sunset_wings_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/sunset_wings_armor.png",
+"from": "fantasy_armor:textures/armor/sunset_wings_armor.png",
+"tile": "armor3d:sunset_wings_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/thief_armor.geo.json",
+"from": "fantasy_armor:geo/thief_armor.geo.json",
+"tile": "armor3d:thief_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/thief_armor.png",
+"from": "fantasy_armor:textures/armor/thief_armor.png",
+"tile": "armor3d:thief_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/twinned_armor.geo.json",
+"from": "fantasy_armor:geo/twinned_armor.geo.json",
+"tile": "armor3d:twinned_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/twinned_armor.png",
+"from": "fantasy_armor:textures/armor/twinned_armor.png",
+"tile": "armor3d:twinned_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/wandering_wizard_armor.geo.json",
+"from": "fantasy_armor:geo/wandering_wizard_armor.geo.json",
+"tile": "armor3d:wandering_wizard_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/wandering_wizard_armor.png",
+"from": "fantasy_armor:textures/armor/wandering_wizard_armor.png",
+"tile": "armor3d:wandering_wizard_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/wind_worshipper_armor.geo.json",
+"from": "fantasy_armor:geo/wind_worshipper_armor.geo.json",
+"tile": "armor3d:wind_worshipper_armor"
+},
+{
+"to": "assets/dokuquest/armor3d/wind_worshipper_armor.png",
+"from": "fantasy_armor:textures/armor/wind_worshipper_armor.png",
+"tile": "armor3d:wind_worshipper_armor"
+},
+{
+"to": "assets/minecraft/textures/block/anemone.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/anemone.png",
+"tile": "anemone",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/black_iris.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/black_iris.png",
+"tile": "black_iris",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/blue_iris.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/blue_iris.png",
+"tile": "blue_iris",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/bluebell.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/bluebell.png",
+"tile": "bluebell",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/dwarf_blossoms.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/dwarf_blossoms.png",
+"tile": "dwarf_blossoms",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/hibiscus.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/hibiscus.png",
+"tile": "hibiscus",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/marigold.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/marigold.png",
+"tile": "marigold",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/protea.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/protea_flower.png",
+"tile": "protea",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/ruby_blossoms.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/ruby_blossoms.png",
+"tile": "ruby_blossoms",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tiger_lily.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tiger_lily.png",
+"tile": "tiger_lily",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/purple_wildflower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/purple_wildflower.png",
+"tile": "purple_wildflower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/yellow_wildflower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/yellow_wildflower.png",
+"tile": "yellow_wildflower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/white_heather.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/white_heather.png",
+"tile": "white_heather",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/red_heather.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/red_heather.png",
+"tile": "red_heather",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/purple_heather.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/purple_heather.png",
+"tile": "purple_heather",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/red_bearberries.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/red_bearberries.png",
+"tile": "red_bearberries",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/green_bearberries.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/green_bearberries.png",
+"tile": "green_bearberries",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/purple_bearberries.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/purple_bearberries.png",
+"tile": "purple_bearberries",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/red_bitter_sprouts.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/red_bitter_sprouts.png",
+"tile": "red_bitter_sprouts",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/green_bitter_sprouts.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/green_bitter_sprouts.png",
+"tile": "green_bitter_sprouts",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/purple_bitter_sprouts.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/purple_bitter_sprouts.png",
+"tile": "purple_bitter_sprouts",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/aureate_succulent.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/aureate_succulent.png",
+"tile": "aureate_succulent",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/drowsy_succulent.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/drowsy_succulent.png",
+"tile": "drowsy_succulent",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/foamy_succulent.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/foamy_succulent.png",
+"tile": "foamy_succulent",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/imperial_succulent.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/imperial_succulent.png",
+"tile": "imperial_succulent",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/ornate_succulent.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/ornate_succulent.png",
+"tile": "ornate_succulent",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/regal_succulent.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/regal_succulent.png",
+"tile": "regal_succulent",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/sage_succulent.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/sage_succulent.png",
+"tile": "sage_succulent",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/beach_grass.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/beach_grass.png",
+"tile": "beach_grass",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/frigid_grass.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/frigid_grass.png",
+"tile": "frigid_grass",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/oat_grass.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/oat_grass.png",
+"tile": "oat_grass",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/scorched_grass.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/scorched_grass.png",
+"tile": "scorched_grass",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/sedge_grass.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/sedge_grass.png",
+"tile": "sedge_grass",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/flaxen_fern.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/flaxen_fern.png",
+"tile": "flaxen_fern",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/melic_grass.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/melic_grass.png",
+"tile": "melic_grass",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/lush_fern.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/lush_fern.png",
+"tile": "lush_fern",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/blue_bulbs_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/blue_bulbs_bottom.png",
+"tile": "blue_bulbs_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/blue_bulbs_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/blue_bulbs_top.png",
+"tile": "blue_bulbs_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/carnation_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/carnation_bottom.png",
+"tile": "carnation_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/carnation_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/carnation_top.png",
+"tile": "carnation_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/foxglove_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/foxglove_bottom.png",
+"tile": "foxglove_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/foxglove_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/foxglove_top.png",
+"tile": "foxglove_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/gardenia_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/gardenia_bottom.png",
+"tile": "gardenia_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/gardenia_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/gardenia_top.png",
+"tile": "gardenia_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/snapdragon_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/snapdragon_bottom.png",
+"tile": "snapdragon_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/snapdragon_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/snapdragon_top.png",
+"tile": "snapdragon_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/silverbush_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/silverbush_bottom.png",
+"tile": "silverbush_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/silverbush_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/silverbush_top.png",
+"tile": "silverbush_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tall_beach_grass_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tall_beach_grass_bottom.png",
+"tile": "tall_beach_grass_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tall_beach_grass_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tall_beach_grass_top.png",
+"tile": "tall_beach_grass_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tall_frigid_grass_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tall_frigid_grass_bottom.png",
+"tile": "tall_frigid_grass_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tall_frigid_grass_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tall_frigid_grass_top.png",
+"tile": "tall_frigid_grass_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tall_oat_grass_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tall_oat_grass_bottom.png",
+"tile": "tall_oat_grass_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tall_oat_grass_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tall_oat_grass_top.png",
+"tile": "tall_oat_grass_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tall_scorched_grass_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tall_scorched_grass_bottom.png",
+"tile": "tall_scorched_grass_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tall_scorched_grass_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tall_scorched_grass_top.png",
+"tile": "tall_scorched_grass_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tall_sedge_grass_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tall_sedge_grass_bottom.png",
+"tile": "tall_sedge_grass_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tall_sedge_grass_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tall_sedge_grass_top.png",
+"tile": "tall_sedge_grass_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/large_flaxen_fern_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/large_flaxen_fern_bottom.png",
+"tile": "large_flaxen_fern_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/large_flaxen_fern_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/large_flaxen_fern_top.png",
+"tile": "large_flaxen_fern_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tall_melic_grass_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tall_melic_grass_bottom.png",
+"tile": "tall_melic_grass_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/tall_melic_grass_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/tall_melic_grass_top.png",
+"tile": "tall_melic_grass_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/large_lush_fern_lower.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/large_lush_fern_bottom.png",
+"tile": "large_lush_fern_lower",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/large_lush_fern_upper.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/large_lush_fern_top.png",
+"tile": "large_lush_fern_upper",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/azolla.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/azolla.png",
+"tile": "azolla",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/helvola.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/helvola_pad.png",
+"tile": "helvola",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/desert_turnip_stem.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/desert_turnip_stem_stage7.png",
+"tile": "desert_turnip_stem",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/chert_top.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/chert_top.png",
+"tile": "chert_top",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/chert.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/chert.png",
+"tile": "chert",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/travertine.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/travertine.png",
+"tile": "travertine",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/white_chalk.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/white_chalk.png",
+"tile": "white_chalk",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/kaolin.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/kaolin.png",
+"tile": "kaolin",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/white_kaolin.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/white_kaolin.png",
+"tile": "white_kaolin",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/light_gray_kaolin.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/light_gray_kaolin.png",
+"tile": "light_gray_kaolin",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/brown_kaolin.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/brown_kaolin.png",
+"tile": "brown_kaolin",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/yellow_kaolin.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/yellow_kaolin.png",
+"tile": "yellow_kaolin",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/sandy_soil.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/sandy_soil.png",
+"tile": "sandy_soil",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/pink_sand.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/pink_sand.png",
+"tile": "pink_sand",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/red_moss_block.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/red_moss_block.png",
+"tile": "red_moss_block",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/pink_sandstone_top.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/pink_sandstone_top.png",
+"tile": "pink_sandstone_top",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/pink_sandstone_side.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/pink_sandstone.png",
+"tile": "pink_sandstone_side",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/pink_sandstone_bottom.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/pink_sandstone_bottom.png",
+"tile": "pink_sandstone_bottom",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/desert_turnip_block_top.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/desert_turnip_block_top.png",
+"tile": "desert_turnip_block_top",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/desert_turnip_block_side.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/desert_turnip_block_side.png",
+"tile": "desert_turnip_block_side",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/desert_turnip_block_bottom.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/desert_turnip_block_bottom.png",
+"tile": "desert_turnip_block_bottom",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/desert_turnip_root_block_top.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/desert_turnip_root_block_top.png",
+"tile": "desert_turnip_root_block_top",
+"mcmeta": false
+},
+{
+"to": "assets/minecraft/textures/block/desert_turnip_root_block.png",
+"from": "mod:natures_spirit:assets/natures_spirit/textures/block/desert_turnip_root_block.png",
+"tile": "desert_turnip_root_block",
+"mcmeta": false
+}
+]

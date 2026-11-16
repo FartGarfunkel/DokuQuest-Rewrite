@@ -1,0 +1,82 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "tries": 96,
+    "xz_spread": 7,
+    "y_spread": 3,
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:weighted_state_provider",
+            "entries": [
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:sweet_berry_bush",
+                  "Properties": {
+                    "age": "0"
+                  }
+                }
+              },
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:sweet_berry_bush",
+                  "Properties": {
+                    "age": "1"
+                  }
+                }
+              },
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:sweet_berry_bush",
+                  "Properties": {
+                    "age": "2"
+                  }
+                }
+              },
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:sweet_berry_bush",
+                  "Properties": {
+                    "age": "3"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": [
+                  "main:grass_block",
+                  "main:podzol"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

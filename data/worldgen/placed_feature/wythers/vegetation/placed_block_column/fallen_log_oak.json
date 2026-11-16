@@ -1,0 +1,19 @@
+{
+  "feature": "wythers:vegetation/configured_block_column/fallen_log_oak",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 3
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

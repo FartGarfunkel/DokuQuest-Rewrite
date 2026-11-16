@@ -1,0 +1,23 @@
+{
+  "type": "nature:pumpkin_patch_feature",
+  "config": {
+    "discard_chance_on_air_exposure": 0.0,
+    "size": 43,
+    "targets": [
+      {
+        "state": {
+          "Name": "main:oak_leaves",
+          "Properties": {
+            "distance": "7",
+            "persistent": "true",
+            "waterlogged": "false"
+          }
+        },
+        "target": {
+          "block": "main:air",
+          "predicate_type": "main:block_match"
+        }
+      }
+    ]
+  }
+}

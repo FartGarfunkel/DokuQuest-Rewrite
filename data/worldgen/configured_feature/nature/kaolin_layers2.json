@@ -1,0 +1,139 @@
+{
+  "type": "main:simple_random_selector",
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:chert"
+            },
+            "target": {
+              "Name": "main:terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:kaolin"
+            },
+            "target": {
+              "Name": "main:white_terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:chert"
+            },
+            "target": {
+              "Name": "main:light_gray_terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:sandy_soil"
+            },
+            "target": {
+              "Name": "main:orange_terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:sandy_soil"
+            },
+            "target": {
+              "Name": "main:red_terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:netherrack_replace_blobs",
+          "config": {
+            "state": {
+              "Name": "nature:kaolin"
+            },
+            "target": {
+              "Name": "main:brown_terracotta"
+            },
+            "radius": {
+              "type": "main:uniform",
+              "value": {
+                "min_inclusive": 7,
+                "max_inclusive": 12
+              }
+              
+            }
+          }
+        },
+        "placement": []
+      }
+    ]
+  }
+}

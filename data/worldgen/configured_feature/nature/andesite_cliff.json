@@ -1,0 +1,355 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "features": [],
+    "default": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:andesite"
+            }
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "count",
+          "count": 256
+        },
+        {
+          "type": "main:random_offset",
+          "xz_spread": {
+            "type": "main:uniform",
+            "value": {
+              "min_inclusive": -2,
+              "max_inclusive": 2
+            }
+          },
+          "y_spread": {
+            "type": "main:uniform",
+            "value": {
+              "min_inclusive": -8,
+              "max_inclusive": 0
+            }
+            
+          }
+        },
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:grass_block",
+                  "nature:red_moss_block",
+                  "main:dirt",
+                  "main:snow_block",
+                  "main:stone",
+                  "main:coarse_dirt",
+                  "main:andesite"
+                ]
+              },
+              {
+                "type": "main:all_of",
+                "predicates": [
+                  {
+                    "type": "main:any_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          1,
+                          0
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          1,
+                          1
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          1,
+                          -1
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          1,
+                          1
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          1,
+                          -1
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          1,
+                          -1
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          1,
+                          0
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          1,
+                          1
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "main:any_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          2,
+                          0
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          2,
+                          1
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          2,
+                          -1
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          2,
+                          1
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          2,
+                          -1
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          2,
+                          -1
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          2,
+                          0
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          2,
+                          1
+                        ],
+                        "blocks": [
+                          "main:grass_block",
+                          "nature:red_moss_block",
+                          "main:snow_block",
+                          "main:stone",
+                          "main:coarse_dirt",
+                          "main:dirt",
+                          "main:andesite"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

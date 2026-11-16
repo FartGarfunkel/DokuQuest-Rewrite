@@ -1,0 +1,42 @@
+{
+  "feature": {
+    "type": "main:netherrack_replace_blobs",
+    "config": {
+      "state": {
+        "Name": "main:lava",
+        "Properties": {
+          "level": "0"
+        }
+      },
+      "target": {
+        "Name": "main:water",
+        "Properties": {
+          "level": "0"
+        }
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 9,
+          "max_inclusive": 12
+        }
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 150
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "type": "nature:water_delta_feature",
+  "config": {
+    "contents": {
+      "Name": "main:water",
+      "Properties": {
+        "level": "0"
+      }
+    },
+    "rim": {
+      "Name": "main:coarse_dirt"
+    },
+    "rim_size": {
+      "type": "main:uniform",
+      "value": {
+        "max_inclusive": 4,
+        "min_inclusive": 0
+      }
+    },
+    "size": {
+      "type": "main:uniform",
+      "value": {
+        "max_inclusive": 8,
+        "min_inclusive": 5
+      }
+    }
+  }
+}

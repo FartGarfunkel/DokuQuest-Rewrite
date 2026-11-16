@@ -1,0 +1,129 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 64,
+      "xz_spread": 8,
+      "y_spread": 8,
+      "feature": {
+        "feature": {
+          "type": "main:simple_block",
+          "config": {
+            "to_place": {
+              "type": "main:weighted_state_provider",
+              "entries": [
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:fire_coral",
+                    "Properties": {
+                      "waterlogged": "true"
+                    }
+                  }
+                },
+                {
+                  "weight": 1,
+                  "data": {
+                    "Name": "main:fire_coral_fan",
+                    "Properties": {
+                      "waterlogged": "true"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    0
+                  ],
+                  "blocks": "main:sand"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "blocks": "main:water"
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:any_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          0,
+                          0
+                        ],
+                        "blocks": "main:dead_fire_coral"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          0,
+                          0
+                        ],
+                        "blocks": "main:dead_fire_coral"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          1
+                        ],
+                        "blocks": "main:dead_fire_coral"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          -1
+                        ],
+                        "blocks": "main:dead_fire_coral"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "type": "main:heightmap",
+            "heightmap": "OCEAN_FLOOR"
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 10,
+      "noise_factor": 150,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

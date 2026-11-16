@@ -1,0 +1,133 @@
+{
+  "feature": {
+    "type": "main:simple_random_selector",
+    "config": {
+      "features": [
+        {
+          "feature": {
+            "type": "main:netherrack_replace_blobs",
+            "config": {
+              "state": {
+                "Name": "main:gravel"
+              },
+              "target": {
+                "Name": "main:grass_block"
+              },
+              "radius": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 7,
+                  "max_inclusive": 12
+                }
+              }
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:netherrack_replace_blobs",
+            "config": {
+              "state": {
+                "Name": "main:gravel"
+              },
+              "target": {
+                "Name": "main:dirt"
+              },
+              "radius": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 7,
+                  "max_inclusive": 12
+                }
+              }
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:netherrack_replace_blobs",
+            "config": {
+              "state": {
+                "Name": "main:deepslate"
+              },
+              "target": {
+                "Name": "main:stone"
+              },
+              "radius": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 7,
+                  "max_inclusive": 12
+                }
+              }
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:netherrack_replace_blobs",
+            "config": {
+              "state": {
+                "Name": "main:mud"
+              },
+              "target": {
+                "Name": "main:gravel"
+              },
+              "radius": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 7,
+                  "max_inclusive": 12
+                }
+              }
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:netherrack_replace_blobs",
+            "config": {
+              "state": {
+                "Name": "main:gravel"
+              },
+              "target": {
+                "Name": "main:mud"
+              },
+              "radius": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 7,
+                  "max_inclusive": 12
+                }
+              }
+            }
+          },
+          "placement": []
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 10
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:count",
+      "count": 3
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "absolute": 300
+      }
+    }
+  ]
+}

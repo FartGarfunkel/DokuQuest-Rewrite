@@ -1,0 +1,338 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "tries": 128,
+    "xz_spread": 5,
+    "y_spread": 1,
+    "feature": {
+      "feature": {
+        "type": "main:simple_random_selector",
+        "config": {
+          "features": [
+            {
+              "feature": {
+                "type": "main:simple_block",
+                "config": {
+                  "to_place": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:vine",
+                      "Properties": {
+                        "east": "false",
+                        "north": "true",
+                        "south": "false",
+                        "up": "false",
+                        "west": "false"
+                      }
+                    }
+                  }
+                }
+              },
+              "placement": [
+                {
+                  "type": "main:block_predicate_filter",
+                  "predicate": {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_block_tag",
+                        "offset": [
+                          0,
+                          0,
+                          -1
+                        ],
+                        "tag": "main:logs_that_burn"
+                      },
+                      {
+                        "type": "main:any_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              -1,
+                              0
+                            ],
+                            "blocks": "main:water"
+                          },
+                          {
+                            "type": "main:all_of",
+                            "predicates": [
+                              {
+                                "type": "main:matching_blocks",
+                                "offset": [
+                                  0,
+                                  -1,
+                                  0
+                                ],
+                                "blocks": "main:vine"
+                              },
+                              {
+                                "type": "main:matching_blocks",
+                                "offset": [
+                                  0,
+                                  -2,
+                                  0
+                                ],
+                                "blocks": "main:water"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "feature": {
+                "type": "main:simple_block",
+                "config": {
+                  "to_place": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:vine",
+                      "Properties": {
+                        "east": "false",
+                        "north": "false",
+                        "south": "true",
+                        "up": "false",
+                        "west": "false"
+                      }
+                    }
+                  }
+                }
+              },
+              "placement": [
+                {
+                  "type": "main:block_predicate_filter",
+                  "predicate": {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_block_tag",
+                        "offset": [
+                          0,
+                          0,
+                          1
+                        ],
+                        "tag": "main:logs_that_burn"
+                      },
+                      {
+                        "type": "main:any_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              -1,
+                              0
+                            ],
+                            "blocks": "main:water"
+                          },
+                          {
+                            "type": "main:all_of",
+                            "predicates": [
+                              {
+                                "type": "main:matching_blocks",
+                                "offset": [
+                                  0,
+                                  -1,
+                                  0
+                                ],
+                                "blocks": "main:vine"
+                              },
+                              {
+                                "type": "main:matching_blocks",
+                                "offset": [
+                                  0,
+                                  -2,
+                                  0
+                                ],
+                                "blocks": "main:water"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "feature": {
+                "type": "main:simple_block",
+                "config": {
+                  "to_place": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:vine",
+                      "Properties": {
+                        "east": "true",
+                        "north": "false",
+                        "south": "false",
+                        "up": "false",
+                        "west": "false"
+                      }
+                    }
+                  }
+                }
+              },
+              "placement": [
+                {
+                  "type": "main:block_predicate_filter",
+                  "predicate": {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_block_tag",
+                        "offset": [
+                          1,
+                          0,
+                          0
+                        ],
+                        "tag": "main:logs_that_burn"
+                      },
+                      {
+                        "type": "main:any_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              -1,
+                              0
+                            ],
+                            "blocks": "main:water"
+                          },
+                          {
+                            "type": "main:all_of",
+                            "predicates": [
+                              {
+                                "type": "main:matching_blocks",
+                                "offset": [
+                                  0,
+                                  -1,
+                                  0
+                                ],
+                                "blocks": "main:vine"
+                              },
+                              {
+                                "type": "main:matching_blocks",
+                                "offset": [
+                                  0,
+                                  -2,
+                                  0
+                                ],
+                                "blocks": "main:water"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "feature": {
+                "type": "main:simple_block",
+                "config": {
+                  "to_place": {
+                    "type": "main:simple_state_provider",
+                    "state": {
+                      "Name": "main:vine",
+                      "Properties": {
+                        "east": "false",
+                        "north": "false",
+                        "south": "false",
+                        "up": "false",
+                        "west": "true"
+                      }
+                    }
+                  }
+                }
+              },
+              "placement": [
+                {
+                  "type": "main:block_predicate_filter",
+                  "predicate": {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_block_tag",
+                        "offset": [
+                          -1,
+                          0,
+                          0
+                        ],
+                        "tag": "main:logs_that_burn"
+                      },
+                      {
+                        "type": "main:any_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              -1,
+                              0
+                            ],
+                            "blocks": "main:water"
+                          },
+                          {
+                            "type": "main:all_of",
+                            "predicates": [
+                              {
+                                "type": "main:matching_blocks",
+                                "offset": [
+                                  0,
+                                  -1,
+                                  0
+                                ],
+                                "blocks": "main:vine"
+                              },
+                              {
+                                "type": "main:matching_blocks",
+                                "offset": [
+                                  0,
+                                  -2,
+                                  0
+                                ],
+                                "blocks": "main:water"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "placement": []
+    }
+  }
+}

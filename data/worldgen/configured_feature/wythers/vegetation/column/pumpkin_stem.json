@@ -1,0 +1,91 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "up",
+    "allowed_placement": {
+      "type": "main:matching_blocks",
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "blocks": [
+        "main:air"
+      ]
+    },
+    "prioritize_tip": false,
+    "layers": [
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:weighted_state_provider",
+          "entries": [
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:pumpkin_stem",
+                "Properties": {
+                  "age": "0"
+                }
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:pumpkin_stem",
+                "Properties": {
+                  "age": "1"
+                }
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:pumpkin_stem",
+                "Properties": {
+                  "age": "2"
+                }
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:pumpkin_stem",
+                "Properties": {
+                  "age": "3"
+                }
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:pumpkin_stem",
+                "Properties": {
+                  "age": "4"
+                }
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:pumpkin_stem",
+                "Properties": {
+                  "age": "5"
+                }
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:pumpkin_stem",
+                "Properties": {
+                  "age": "6"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

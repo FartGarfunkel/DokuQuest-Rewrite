@@ -1,0 +1,205 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "tries": 48,
+    "xz_spread": 3,
+    "y_spread": 3,
+    "feature": {
+      "feature": {
+        "type": "main:block_column",
+        "config": {
+          "direction": "up",
+          "allowed_placement": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          },
+          "prioritize_tip": false,
+          "layers": [
+            {
+              "height": {
+                "type": "main:weighted_list",
+                "distribution": [
+                  {
+                    "weight": 1,
+                    "data": 1
+                  },
+                  {
+                    "weight": 1,
+                    "data": 3
+                  },
+                  {
+                    "weight": 2,
+                    "data": 2
+                  }
+                ]
+              },
+              "provider": {
+                "type": "main:simple_state_provider",
+                "state": {
+                  "Name": "main:cactus",
+                  "Properties": {
+                    "age": "0"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "blocks": "main:sand"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  0,
+                  0
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  0,
+                  0
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  1
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  -1
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  1,
+                  0
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  1,
+                  0
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  1
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  -1
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  2,
+                  0
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  1,
+                  2,
+                  0
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  -1,
+                  2,
+                  0
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  2,
+                  1
+                ],
+                "blocks": "main:air"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  2,
+                  -1
+                ],
+                "blocks": "main:air"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

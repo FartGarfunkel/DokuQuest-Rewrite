@@ -1,0 +1,19 @@
+{
+  "feature": "wythers:vegetation/configured_random_patch/flooded_savanna_packed_mud",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 20
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

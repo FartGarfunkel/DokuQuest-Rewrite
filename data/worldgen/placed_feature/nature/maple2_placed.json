@@ -1,0 +1,23 @@
+{
+  "feature": "nature:maple_spawn",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 7
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

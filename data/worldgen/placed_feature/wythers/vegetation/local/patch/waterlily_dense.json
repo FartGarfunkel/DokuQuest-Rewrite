@@ -1,0 +1,19 @@
+{
+  "feature": "main:patch_waterlily",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 12
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

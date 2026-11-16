@@ -1,0 +1,109 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "nature:sedge_grass",
+              "Properties": {
+                "waterlogged": "true"
+              }
+            }
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:would_survive",
+                "state": {
+                  "Name": "nature:sedge_grass",
+                  "Properties": {
+                    "waterlogged": "true"
+                  }
+                }
+              },
+              {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:water"
+                ]
+              },
+              {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_fluids",
+                    "fluids": [
+                      "main:water",
+                      "main:flowing_water"
+                    ],
+                    "offset": [
+                      1,
+                      -1,
+                      0
+                    ]
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "fluids": [
+                      "main:water",
+                      "main:flowing_water"
+                    ],
+                    "offset": [
+                      -1,
+                      -1,
+                      0
+                    ]
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "fluids": [
+                      "main:water",
+                      "main:flowing_water"
+                    ],
+                    "offset": [
+                      0,
+                      -1,
+                      1
+                    ]
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "fluids": [
+                      "main:water",
+                      "main:flowing_water"
+                    ],
+                    "offset": [
+                      0,
+                      -1,
+                      -1
+                    ]
+                  },
+                  {
+                    "type": "main:matching_fluids",
+                    "fluids": [
+                      "main:water",
+                      "main:flowing_water"
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "tries": 32,
+    "xz_spread": 7,
+    "y_spread": 3
+  }
+}

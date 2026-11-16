@@ -1,0 +1,210 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 50,
+      "xz_spread": 7,
+      "y_spread": 0,
+      "feature": {
+        "feature": {
+          "type": "main:random_selector",
+          "config": {
+            "features": [
+              {
+                "chance": 0.5,
+                "feature": {
+                  "feature": {
+                    "type": "main:simple_block",
+                    "config": {
+                      "to_place": {
+                        "type": "main:weighted_state_provider",
+                        "entries": [
+                          {
+                            "weight": 3,
+                            "data": {
+                              "Name": "main:moss_carpet"
+                            }
+                          },
+                          {
+                            "weight": 1,
+                            "data": {
+                              "Name": "main:lily_of_the_valley"
+                            }
+                          },
+                          {
+                            "weight": 1,
+                            "data": {
+                              "Name": "main:azalea"
+                            }
+                          },
+                          {
+                            "weight": 1,
+                            "data": {
+                              "Name": "main:small_dripleaf",
+                              "Properties": {
+                                "facing": "north",
+                                "half": "lower",
+                                "waterlogged": "false"
+                              }
+                            }
+                          },
+                          {
+                            "weight": 1,
+                            "data": {
+                              "Name": "main:small_dripleaf",
+                              "Properties": {
+                                "facing": "south",
+                                "half": "lower",
+                                "waterlogged": "false"
+                              }
+                            }
+                          },
+                          {
+                            "weight": 1,
+                            "data": {
+                              "Name": "main:small_dripleaf",
+                              "Properties": {
+                                "facing": "west",
+                                "half": "lower",
+                                "waterlogged": "false"
+                              }
+                            }
+                          },
+                          {
+                            "weight": 1,
+                            "data": {
+                              "Name": "main:small_dripleaf",
+                              "Properties": {
+                                "facing": "east",
+                                "half": "lower",
+                                "waterlogged": "false"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "placement": []
+                }
+              },
+              {
+                "chance": 0.1,
+                "feature": {
+                  "feature": "wythers:vegetation/column/melons_and_stems",
+                  "placement": []
+                }
+              },
+              {
+                "chance": 0.2,
+                "feature": {
+                  "feature": "wythers:vegetation/column/potatoes",
+                  "placement": []
+                }
+              },
+              {
+                "chance": 0.2,
+                "feature": {
+                  "feature": "wythers:vegetation/column/carrots",
+                  "placement": []
+                }
+              },
+              {
+                "chance": 0.2,
+                "feature": {
+                  "feature": "wythers:vegetation/column/beets",
+                  "placement": []
+                }
+              },
+              {
+                "chance": 0.15,
+                "feature": {
+                  "feature": "wythers:vegetation/column/melon_stems",
+                  "placement": []
+                }
+              },
+              {
+                "chance": 0.15,
+                "feature": {
+                  "feature": "wythers:vegetation/column/mini_dripleaf",
+                  "placement": []
+                }
+              },
+              {
+                "chance": 0.15,
+                "feature": {
+                  "feature": "wythers:vegetation/column/bamboo_shoot",
+                  "placement": []
+                }
+              }
+            ],
+            "default": {
+              "feature": "wythers:vegetation/column/oasis_bamboo",
+              "placement": []
+            }
+          }
+        },
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:moss_block"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "blocks": [
+                    "main:air"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 1000,
+      "noise_offset": -0.6
+    },
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 1,
+      "noise_factor": 80,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:count",
+      "count": 10
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

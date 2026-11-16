@@ -1,0 +1,421 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 256,
+      "xz_spread": 5,
+      "y_spread": 10,
+      "feature": {
+        "feature": {
+          "type": "main:simple_block",
+          "config": {
+            "to_place": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:stone"
+              }
+            }
+          }
+        },
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:any_of",
+              "predicates": [
+                {
+                  "type": "main:all_of",
+                  "predicates": [
+                    {
+                      "type": "main:matching_blocks",
+                      "blocks": [
+                        "main:smooth_sandstone",
+                        "main:sandstone",
+                        "main:sand"
+                      ]
+                    },
+                    {
+                      "type": "main:any_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            1,
+                            0
+                          ],
+                          "blocks": [
+                            "main:stone"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "main:all_of",
+                  "predicates": [
+                    {
+                      "type": "main:matching_blocks",
+                      "blocks": [
+                        "main:smooth_sandstone",
+                        "main:sandstone"
+                      ]
+                    },
+                    {
+                      "type": "main:any_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            1,
+                            0,
+                            0
+                          ],
+                          "blocks": [
+                            "main:air"
+                          ]
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            -1,
+                            0,
+                            0
+                          ],
+                          "blocks": [
+                            "main:air"
+                          ]
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            0,
+                            1
+                          ],
+                          "blocks": [
+                            "main:air"
+                          ]
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            0,
+                            -1
+                          ],
+                          "blocks": [
+                            "main:air"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "main:all_of",
+                  "predicates": [
+                    {
+                      "type": "main:matching_blocks",
+                      "blocks": [
+                        "main:sand"
+                      ]
+                    },
+                    {
+                      "type": "main:any_of",
+                      "predicates": [
+                        {
+                          "type": "main:all_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                1,
+                                -1,
+                                0
+                              ],
+                              "blocks": [
+                                "main:air"
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:all_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                -1,
+                                -1,
+                                0
+                              ],
+                              "blocks": [
+                                "main:air"
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:all_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                -1,
+                                1
+                              ],
+                              "blocks": [
+                                "main:air"
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:all_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                -1,
+                                -1
+                              ],
+                              "blocks": [
+                                "main:air"
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:all_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                1,
+                                -1,
+                                0
+                              ],
+                              "blocks": [
+                                "main:stone"
+                              ]
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                1,
+                                0,
+                                0
+                              ],
+                              "blocks": "main:air"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:all_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                -1,
+                                -1,
+                                0
+                              ],
+                              "blocks": [
+                                "main:stone"
+                              ]
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                -1,
+                                0,
+                                0
+                              ],
+                              "blocks": "main:air"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:all_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                -1,
+                                1
+                              ],
+                              "blocks": [
+                                "main:stone"
+                              ]
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                0,
+                                1
+                              ],
+                              "blocks": "main:air"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:all_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                -1,
+                                -1
+                              ],
+                              "blocks": [
+                                "main:stone"
+                              ]
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                0,
+                                -1
+                              ],
+                              "blocks": "main:air"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:all_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                1,
+                                1,
+                                0
+                              ],
+                              "blocks": [
+                                "main:stone"
+                              ]
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                1,
+                                -1,
+                                0
+                              ],
+                              "blocks": "main:air"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:all_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                -1,
+                                1,
+                                0
+                              ],
+                              "blocks": [
+                                "main:stone"
+                              ]
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                -1,
+                                -1,
+                                0
+                              ],
+                              "blocks": "main:air"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:all_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                1,
+                                1
+                              ],
+                              "blocks": [
+                                "main:stone"
+                              ]
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                -1,
+                                1
+                              ],
+                              "blocks": "main:air"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "main:all_of",
+                          "predicates": [
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                1,
+                                -1
+                              ],
+                              "blocks": [
+                                "main:stone"
+                              ]
+                            },
+                            {
+                              "type": "main:matching_blocks",
+                              "offset": [
+                                0,
+                                -1,
+                                -1
+                              ],
+                              "blocks": "main:air"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 128
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": 0
+    }
+  ]
+}

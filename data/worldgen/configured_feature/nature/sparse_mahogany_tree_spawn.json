@@ -1,0 +1,12 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "default": "nature:sparse_mahogany_checked",
+    "features": [
+      {
+        "chance": 0.5,
+        "feature": "nature:sparse_mahogany_checked"
+      }
+    ]
+  }
+}

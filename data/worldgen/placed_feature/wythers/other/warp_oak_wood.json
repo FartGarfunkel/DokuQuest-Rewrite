@@ -1,0 +1,49 @@
+{
+  "feature": {
+    "type": "main:netherrack_replace_blobs",
+    "config": {
+      "state": {
+        "Name": "main:stripped_warped_hyphae",
+        "Properties": {
+          "axis": "y"
+        }
+      },
+      "target": {
+        "Name": "main:oak_wood",
+        "Properties": {}
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 7,
+          "max_inclusive": 12
+        }
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 2
+    },
+    {
+      "type": "main:count",
+      "count": 200
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": 15
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

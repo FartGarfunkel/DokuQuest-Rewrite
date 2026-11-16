@@ -1,0 +1,29 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 8,
+      "xz_spread": 4,
+      "y_spread": 1,
+      "feature": "wythers:vegetation/placed_block_column/saguaros"
+    }
+  },
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_to_count_ratio": 10,
+      "noise_factor": 30,
+      "noise_offset": 0
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

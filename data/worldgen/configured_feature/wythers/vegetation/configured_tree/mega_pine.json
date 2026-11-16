@@ -1,0 +1,91 @@
+{
+  "type": "main:tree",
+  "config": {
+    "decorators": [
+      {
+        "type": "main:alter_ground",
+        "provider": {
+          "type": "main:weighted_state_provider",
+          "entries": [
+            {
+              "weight": 2,
+              "data": {
+                "Name": "main:podzol",
+                "Properties": {
+                  "snowy": "false"
+                }
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:rooted_dirt"
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:coarse_dirt"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "dirt_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:spruce_log",
+        "Properties": {
+          "axis": "y"
+        }
+      }
+    },
+    "foliage_placer": {
+      "type": "main:mega_pine_foliage_placer",
+      "crown_height": {
+        "type": "main:uniform",
+        "value": {
+          "max_inclusive": 7,
+          "min_inclusive": 3
+        }
+      },
+      "offset": 0,
+      "radius": 0
+    },
+    "foliage_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:spruce_leaves",
+        "Properties": {
+          "distance": "7",
+          "persistent": "false",
+          "waterlogged": "false"
+        }
+      }
+    },
+    "force_dirt": true,
+    "ignore_vines": false,
+    "minimum_size": {
+      "type": "main:two_layers_feature_size",
+      "limit": 1,
+      "lower_size": 1,
+      "upper_size": 2
+    },
+    "trunk_placer": {
+      "type": "main:giant_trunk_placer",
+      "base_height": 13,
+      "height_rand_a": 2,
+      "height_rand_b": 14
+    },
+    "trunk_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:spruce_log",
+        "Properties": {
+          "axis": "y"
+        }
+      }
+    }
+  }
+}

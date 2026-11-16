@@ -1,0 +1,19 @@
+{
+  "feature": "nature:flower_oak_savanna",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 4
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

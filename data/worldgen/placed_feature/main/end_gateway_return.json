@@ -1,0 +1,30 @@
+{
+  "feature": "main:end_gateway_return",
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 700
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:random_offset",
+      "xz_spread": 0,
+      "y_spread": {
+        "type": "main:uniform",
+        "value": {
+          "max_inclusive": 9,
+          "min_inclusive": 3
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

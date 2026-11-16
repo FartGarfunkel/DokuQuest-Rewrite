@@ -1,0 +1,14 @@
+{
+  "feature": "wythers:vegetation/configured_tree/baobab_adansonia_robrostipa_small",
+  "placement": [
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:dead_bush"
+        }
+      }
+    }
+  ]
+}

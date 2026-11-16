@@ -1,0 +1,40 @@
+{
+  "feature": {
+    "type": "main:netherrack_replace_blobs",
+    "config": {
+      "state": {
+        "Name": "main:light_gray_terracotta"
+      },
+      "target": {
+        "Name": "main:terracotta"
+      },
+      "radius": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 7,
+          "max_inclusive": 12
+        }
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 2
+    },
+    {
+      "type": "main:count",
+      "count": 200
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,257 @@
+{
+  "feature": {
+    "type": "main:simple_random_selector",
+    "config": {
+      "features": [
+        {
+          "feature": {
+            "type": "main:disk",
+            "config": {
+              "state_provider": {
+                "fallback": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:red_terracotta"
+                  }
+                },
+                "rules": [
+                  {
+                    "if_true": {
+                      "type": "main:all_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            1,
+                            0
+                          ],
+                          "blocks": [
+                            "main:water",
+                            "main:yellow_terracotta"
+                          ]
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            2,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        }
+                      ]
+                    },
+                    "then": {
+                      "type": "main:simple_state_provider",
+                      "state": {
+                        "Name": "main:yellow_terracotta"
+                      }
+                    }
+                  }
+                ]
+              },
+              "target": {
+                "type": "main:matching_blocks",
+                "blocks": "main:red_terracotta"
+              },
+              "radius": 4,
+              "half_height": 4
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:disk",
+            "config": {
+              "state_provider": {
+                "fallback": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:orange_terracotta"
+                  }
+                },
+                "rules": [
+                  {
+                    "if_true": {
+                      "type": "main:all_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            1,
+                            0
+                          ],
+                          "blocks": [
+                            "main:water",
+                            "main:yellow_terracotta"
+                          ]
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            2,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        }
+                      ]
+                    },
+                    "then": {
+                      "type": "main:simple_state_provider",
+                      "state": {
+                        "Name": "main:yellow_terracotta"
+                      }
+                    }
+                  }
+                ]
+              },
+              "target": {
+                "type": "main:matching_blocks",
+                "blocks": "main:orange_terracotta"
+              },
+              "radius": 4,
+              "half_height": 4
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:disk",
+            "config": {
+              "state_provider": {
+                "fallback": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:terracotta"
+                  }
+                },
+                "rules": [
+                  {
+                    "if_true": {
+                      "type": "main:all_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            1,
+                            0
+                          ],
+                          "blocks": [
+                            "main:water",
+                            "main:yellow_terracotta"
+                          ]
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            2,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        }
+                      ]
+                    },
+                    "then": {
+                      "type": "main:simple_state_provider",
+                      "state": {
+                        "Name": "main:yellow_terracotta"
+                      }
+                    }
+                  }
+                ]
+              },
+              "target": {
+                "type": "main:matching_blocks",
+                "blocks": "main:terracotta"
+              },
+              "radius": 4,
+              "half_height": 4
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:disk",
+            "config": {
+              "state_provider": {
+                "fallback": {
+                  "type": "main:simple_state_provider",
+                  "state": {
+                    "Name": "main:packed_mud"
+                  }
+                },
+                "rules": [
+                  {
+                    "if_true": {
+                      "type": "main:all_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            1,
+                            0
+                          ],
+                          "blocks": [
+                            "main:water",
+                            "main:yellow_terracotta"
+                          ]
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            2,
+                            0
+                          ],
+                          "blocks": "main:air"
+                        }
+                      ]
+                    },
+                    "then": {
+                      "type": "main:simple_state_provider",
+                      "state": {
+                        "Name": "main:yellow_terracotta"
+                      }
+                    }
+                  }
+                ]
+              },
+              "target": {
+                "type": "main:matching_blocks",
+                "blocks": "main:packed_mud"
+              },
+              "radius": 4,
+              "half_height": 4
+            }
+          },
+          "placement": []
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 100
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "up",
+    "allowed_placement": {
+      "type": "main:matching_blocks",
+      "offset": [
+        0,
+        0,
+        0
+      ],
+      "blocks": "main:air"
+    },
+    "prioritize_tip": true,
+    "layers": [
+      {
+        "height": {
+          "type": "main:weighted_list",
+          "distribution": [
+            {
+              "weight": 1,
+              "data": 2
+            },
+            {
+              "weight": 4,
+              "data": 1
+            }
+          ]
+        },
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:sunflower",
+            "Properties": {
+              "half": "lower"
+            }
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:weighted_state_provider",
+          "entries": [
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:white_tulip"
+              }
+            },
+            {
+              "weight": 1,
+              "data": {
+                "Name": "main:pink_tulip"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

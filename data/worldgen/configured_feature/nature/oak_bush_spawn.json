@@ -1,0 +1,12 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "default": "nature:oak_bush_checked",
+    "features": [
+      {
+        "chance": 0.5,
+        "feature": "nature:oak_bush_checked"
+      }
+    ]
+  }
+}

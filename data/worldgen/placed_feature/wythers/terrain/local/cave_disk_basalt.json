@@ -1,0 +1,354 @@
+{
+  "feature": {
+    "type": "main:simple_random_selector",
+    "config": {
+      "features": [
+        {
+          "feature": {
+            "type": "main:disk",
+            "config": {
+              "state_provider": {
+                "fallback": {
+                  "type": "main:weighted_state_provider",
+                  "entries": [
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:deepslate_diamond_ore"
+                      }
+                    },
+                    {
+                      "weight": 2,
+                      "data": {
+                        "Name": "main:deepslate_redstone_ore"
+                      }
+                    },
+                    {
+                      "weight": 5,
+                      "data": {
+                        "Name": "main:deepslate_gold_ore"
+                      }
+                    },
+                    {
+                      "weight": 30,
+                      "data": {
+                        "Name": "main:deepslate_iron_ore"
+                      }
+                    },
+                    {
+                      "weight": 1000,
+                      "data": {
+                        "Name": "main:smooth_basalt"
+                      }
+                    }
+                  ]
+                },
+                "rules": [
+                  {
+                    "if_true": {
+                      "type": "main:any_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            1,
+                            0
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            1,
+                            0,
+                            1
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            1,
+                            0,
+                            0
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            1,
+                            0,
+                            -1
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            0,
+                            1
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            0,
+                            -1
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            -1,
+                            0,
+                            1
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            -1,
+                            0,
+                            0
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            -1,
+                            0,
+                            -1
+                          ],
+                          "blocks": "main:lava"
+                        }
+                      ]
+                    },
+                    "then": {
+                      "type": "main:simple_state_provider",
+                      "state": {
+                        "Name": "main:blackstone"
+                      }
+                    }
+                  }
+                ]
+              },
+              "target": {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:deepslate",
+                  "main:tuff",
+                  "main:water"
+                ]
+              },
+              "radius": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 6,
+                  "max_inclusive": 7
+                }
+              },
+              "half_height": 2
+            }
+          },
+          "placement": []
+        },
+        {
+          "feature": {
+            "type": "main:disk",
+            "config": {
+              "state_provider": {
+                "fallback": {
+                  "type": "main:weighted_state_provider",
+                  "entries": [
+                    {
+                      "weight": 1,
+                      "data": {
+                        "Name": "main:deepslate_diamond_ore"
+                      }
+                    },
+                    {
+                      "weight": 2,
+                      "data": {
+                        "Name": "main:deepslate_redstone_ore"
+                      }
+                    },
+                    {
+                      "weight": 5,
+                      "data": {
+                        "Name": "main:deepslate_gold_ore"
+                      }
+                    },
+                    {
+                      "weight": 30,
+                      "data": {
+                        "Name": "main:deepslate_iron_ore"
+                      }
+                    },
+                    {
+                      "weight": 1000,
+                      "data": {
+                        "Name": "main:smooth_basalt"
+                      }
+                    }
+                  ]
+                },
+                "rules": [
+                  {
+                    "if_true": {
+                      "type": "main:any_of",
+                      "predicates": [
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            1,
+                            0
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            1,
+                            0,
+                            1
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            1,
+                            0,
+                            0
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            1,
+                            0,
+                            -1
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            0,
+                            1
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            0,
+                            0,
+                            -1
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            -1,
+                            0,
+                            1
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            -1,
+                            0,
+                            0
+                          ],
+                          "blocks": "main:lava"
+                        },
+                        {
+                          "type": "main:matching_blocks",
+                          "offset": [
+                            -1,
+                            0,
+                            -1
+                          ],
+                          "blocks": "main:lava"
+                        }
+                      ]
+                    },
+                    "then": {
+                      "type": "main:simple_state_provider",
+                      "state": {
+                        "Name": "main:blackstone"
+                      }
+                    }
+                  }
+                ]
+              },
+              "target": {
+                "type": "main:matching_blocks",
+                "blocks": [
+                  "main:deepslate",
+                  "main:tuff",
+                  "main:water"
+                ]
+              },
+              "radius": {
+                "type": "main:uniform",
+                "value": {
+                  "min_inclusive": 6,
+                  "max_inclusive": 7
+                }
+              },
+              "half_height": 3
+            }
+          },
+          "placement": []
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 20
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:uniform",
+        "min_inclusive": {
+          "absolute": -55
+        },
+        "max_inclusive": {
+          "absolute": -60
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:matching_fluids",
+        "fluids": "main:lava"
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "type": "main:tree",
+  "config": {
+    "ignore_vines": true,
+    "force_dirt": true,
+    "minimum_size": {
+      "type": "main:two_layers_feature_size",
+      "limit": 3,
+      "lower_size": 0,
+      "upper_size": 2
+    },
+    "dirt_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:oak_log",
+        "Properties": {
+          "axis": "y"
+        }
+      }
+    },
+    "trunk_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:oak_log",
+        "Properties": {
+          "axis": "y"
+        }
+      }
+    },
+    "foliage_provider": {
+      "type": "main:simple_state_provider",
+      "state": {
+        "Name": "main:oak_leaves",
+        "Properties": {
+          "waterlogged": "false",
+          "persistent": "false",
+          "distance": "7"
+        }
+      }
+    },
+    "trunk_placer": {
+      "type": "main:upwards_branching_trunk_placer",
+      "base_height": 8,
+      "height_rand_a": 1,
+      "height_rand_b": 9,
+      "extra_branch_steps": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 1,
+          "max_inclusive": 6
+        }
+      },
+      "extra_branch_length": {
+        "type": "main:uniform",
+        "value": {
+          "min_inclusive": 0,
+          "max_inclusive": 1
+        }
+      },
+      "place_branch_per_log_probability": 0.5,
+      "can_grow_through": "#main:mangrove_logs_can_grow_through"
+    },
+    "foliage_placer": {
+      "type": "main:random_spread_foliage_placer",
+      "radius": 2,
+      "offset": 0,
+      "foliage_height": 2,
+      "leaf_placement_attempts": 30
+    },
+    "decorators": [
+      {
+        "type": "main:leave_vine",
+        "probability": 0.125
+      },
+      {
+        "type": "main:beehive",
+        "probability": 0.01
+      }
+    ]
+  }
+}

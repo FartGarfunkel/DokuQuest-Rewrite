@@ -1,0 +1,28 @@
+{
+  "type": "main:simple_random_selector",
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "type": "main:coral_tree",
+          "config": {}
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:coral_claw",
+          "config": {}
+        },
+        "placement": []
+      },
+      {
+        "feature": {
+          "type": "main:coral_mushroom",
+          "config": {}
+        },
+        "placement": []
+      }
+    ]
+  }
+}

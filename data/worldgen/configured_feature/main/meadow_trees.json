@@ -1,0 +1,12 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "default": "main:super_birch_bees",
+    "features": [
+      {
+        "chance": 0.5,
+        "feature": "main:fancy_oak_bees"
+      }
+    ]
+  }
+}

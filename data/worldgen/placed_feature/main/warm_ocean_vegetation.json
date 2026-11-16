@@ -1,0 +1,21 @@
+{
+  "feature": "main:warm_ocean_vegetation",
+  "placement": [
+    {
+      "type": "main:noise_based_count",
+      "noise_factor": 400.0,
+      "noise_offset": 0.0,
+      "noise_to_count_ratio": 20
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

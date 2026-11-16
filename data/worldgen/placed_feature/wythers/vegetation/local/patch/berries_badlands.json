@@ -1,0 +1,310 @@
+{
+  "feature": {
+    "type": "main:random_selector",
+    "config": {
+      "features": [
+        {
+          "chance": 0.5,
+          "feature": {
+            "feature": {
+              "type": "main:random_patch",
+              "config": {
+                "tries": 64,
+                "xz_spread": 8,
+                "y_spread": 4,
+                "feature": {
+                  "feature": {
+                    "type": "main:block_column",
+                    "config": {
+                      "direction": "up",
+                      "allowed_placement": {
+                        "type": "main:all_of",
+                        "predicates": [
+                          {
+                            "type": "main:all_of",
+                            "predicates": [
+                              {
+                                "type": "main:matching_blocks",
+                                "offset": [
+                                  0,
+                                  0,
+                                  0
+                                ],
+                                "blocks": "main:air"
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "prioritize_tip": false,
+                      "layers": [
+                        {
+                          "height": 1,
+                          "provider": {
+                            "type": "main:simple_state_provider",
+                            "state": {
+                              "Name": "main:sweet_berry_bush",
+                              "Properties": {
+                                "age": "3"
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  "placement": [
+                    {
+                      "type": "main:block_predicate_filter",
+                      "predicate": {
+                        "type": "main:all_of",
+                        "predicates": [
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              -1,
+                              0
+                            ],
+                            "blocks": "main:red_sand"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              0,
+                              0
+                            ],
+                            "blocks": "main:air"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              1,
+                              0,
+                              0
+                            ],
+                            "blocks": "main:air"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              -1,
+                              0,
+                              0
+                            ],
+                            "blocks": "main:air"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              0,
+                              1
+                            ],
+                            "blocks": "main:air"
+                          },
+                          {
+                            "type": "main:matching_blocks",
+                            "offset": [
+                              0,
+                              0,
+                              -1
+                            ],
+                            "blocks": "main:air"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "placement": [
+              {
+                "type": "main:count",
+                "count": 3
+              },
+              {
+                "type": "main:heightmap",
+                "heightmap": "WORLD_SURFACE_WG"
+              },
+              {
+                "type": "main:block_predicate_filter",
+                "predicate": {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    -1,
+                    0
+                  ],
+                  "blocks": "main:red_sand"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "default": {
+        "feature": {
+          "type": "main:random_patch",
+          "config": {
+            "tries": 32,
+            "xz_spread": 8,
+            "y_spread": 4,
+            "feature": {
+              "feature": {
+                "type": "main:simple_block",
+                "config": {
+                  "to_place": {
+                    "type": "main:weighted_state_provider",
+                    "entries": [
+                      {
+                        "weight": 1,
+                        "data": {
+                          "Name": "main:sweet_berry_bush",
+                          "Properties": {
+                            "age": "0"
+                          }
+                        }
+                      },
+                      {
+                        "weight": 1,
+                        "data": {
+                          "Name": "main:sweet_berry_bush",
+                          "Properties": {
+                            "age": "1"
+                          }
+                        }
+                      },
+                      {
+                        "weight": 1,
+                        "data": {
+                          "Name": "main:sweet_berry_bush",
+                          "Properties": {
+                            "age": "2"
+                          }
+                        }
+                      },
+                      {
+                        "weight": 1,
+                        "data": {
+                          "Name": "main:sweet_berry_bush",
+                          "Properties": {
+                            "age": "3"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "placement": [
+                {
+                  "type": "main:block_predicate_filter",
+                  "predicate": {
+                    "type": "main:all_of",
+                    "predicates": [
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          -1,
+                          0
+                        ],
+                        "blocks": "main:grass_block"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          0
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          1,
+                          0,
+                          0
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          -1,
+                          0,
+                          0
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          1
+                        ],
+                        "blocks": "main:air"
+                      },
+                      {
+                        "type": "main:matching_blocks",
+                        "offset": [
+                          0,
+                          0,
+                          -1
+                        ],
+                        "blocks": "main:air"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "placement": [
+          {
+            "type": "main:count",
+            "count": 1
+          },
+          {
+            "type": "main:heightmap",
+            "heightmap": "WORLD_SURFACE_WG"
+          },
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                -1,
+                0
+              ],
+              "blocks": "main:grass_block"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 4
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "WORLD_SURFACE_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

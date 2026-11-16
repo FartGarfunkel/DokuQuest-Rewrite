@@ -1,0 +1,58 @@
+{
+  "type": "main:flower",
+  "config": {
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:noise_provider",
+            "noise": {
+              "amplitudes": [
+                1.0
+              ],
+              "firstOctave": 0
+            },
+            "scale": 0.030833334,
+            "seed": 2445,
+            "states": [
+              {
+                "Name": "nature:blue_iris"
+              },
+              {
+                "Name": "main:dandelion"
+              },
+              {
+                "Name": "main:dandelion"
+              },
+              {
+                "Name": "nature:ruby_blossoms"
+              },
+              {
+                "Name": "nature:ruby_blossoms"
+              },
+              {
+                "Name": "nature:ruby_blossoms"
+              },
+              {
+                "Name": "nature:blue_iris"
+              }
+            ]
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:matching_blocks",
+            "blocks": "main:air"
+          }
+        }
+      ]
+    },
+    "tries": 90,
+    "xz_spread": 6,
+    "y_spread": 2
+  }
+}

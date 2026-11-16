@@ -1,0 +1,158 @@
+{
+  "feature": {
+    "type": "main:random_patch",
+    "config": {
+      "tries": 10,
+      "xz_spread": 5,
+      "y_spread": 5,
+      "feature": {
+        "feature": {
+          "type": "main:simple_block",
+          "config": {
+            "to_place": {
+              "type": "main:simple_state_provider",
+              "state": {
+                "Name": "main:campfire",
+                "Properties": {
+                  "facing": "east",
+                  "lit": "true",
+                  "signal_fire": "false",
+                  "waterlogged": "true"
+                }
+              }
+            }
+          }
+        },
+        "placement": [
+          {
+            "type": "main:block_predicate_filter",
+            "predicate": {
+              "type": "main:all_of",
+              "predicates": [
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    1,
+                    0
+                  ],
+                  "blocks": [
+                    "main:yellow_terracotta",
+                    "main:blackstone",
+                    "main:diorite"
+                  ]
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    2,
+                    0
+                  ],
+                  "blocks": [
+                    "main:water",
+                    "main:lava"
+                  ]
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:water",
+                      "main:air"
+                    ]
+                  }
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      -1,
+                      0,
+                      0
+                    ],
+                    "blocks": [
+                      "main:water",
+                      "main:air"
+                    ]
+                  }
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "blocks": [
+                      "main:water",
+                      "main:air"
+                    ]
+                  }
+                },
+                {
+                  "type": "main:not",
+                  "predicate": {
+                    "type": "main:matching_blocks",
+                    "offset": [
+                      0,
+                      0,
+                      -1
+                    ],
+                    "blocks": [
+                      "main:water",
+                      "main:air"
+                    ]
+                  }
+                },
+                {
+                  "type": "main:has_sturdy_face",
+                  "offset": [
+                    0,
+                    -1,
+                    0
+                  ],
+                  "direction": "up"
+                },
+                {
+                  "type": "main:matching_blocks",
+                  "offset": [
+                    0,
+                    4,
+                    0
+                  ],
+                  "blocks": "main:air"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 3
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

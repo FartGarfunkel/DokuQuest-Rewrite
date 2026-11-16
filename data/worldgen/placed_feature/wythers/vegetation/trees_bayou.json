@@ -1,0 +1,34 @@
+{
+  "feature": "wythers:vegetation/configured_trees_bayou",
+  "placement": [
+    {
+      "count": 40,
+      "type": "main:count"
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "heightmap": "OCEAN_FLOOR",
+      "type": "main:heightmap"
+    },
+    {
+      "type": "main:biome"
+    },
+    {
+      "predicate": {
+        "state": {
+          "Properties": {
+            "waterlogged": "false",
+            "stage": "0",
+            "hanging": "false",
+            "age": "0"
+          },
+          "Name": "main:mangrove_propagule"
+        },
+        "type": "main:would_survive"
+      },
+      "type": "main:block_predicate_filter"
+    }
+  ]
+}

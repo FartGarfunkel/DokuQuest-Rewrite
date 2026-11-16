@@ -1,0 +1,12 @@
+{
+  "type": "main:random_selector",
+  "config": {
+    "default": "main:oak_checked",
+    "features": [
+      {
+        "chance": 0.8,
+        "feature": "main:acacia_checked"
+      }
+    ]
+  }
+}

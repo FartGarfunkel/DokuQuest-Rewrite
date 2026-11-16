@@ -1,0 +1,55 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "down",
+    "allowed_placement": {
+      "type": "main:matching_blocks",
+      "blocks": "main:air"
+    },
+    "prioritize_tip": false,
+    "layers": [
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:glow_lichen",
+            "Properties": {
+              "down": "false",
+              "east": "false",
+              "north": "false",
+              "south": "true",
+              "up": "true",
+              "waterlogged": "false",
+              "west": "false"
+            }
+          }
+        }
+      },
+      {
+        "height": {
+          "type": "main:uniform",
+          "value": {
+            "min_inclusive": 3,
+            "max_inclusive": 13
+          }
+        },
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:glow_lichen",
+            "Properties": {
+              "down": "false",
+              "east": "false",
+              "north": "false",
+              "south": "true",
+              "up": "false",
+              "waterlogged": "false",
+              "west": "false"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

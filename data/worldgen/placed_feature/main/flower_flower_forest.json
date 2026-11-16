@@ -1,0 +1,23 @@
+{
+  "feature": "main:flower_flower_forest",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 3
+    },
+    {
+      "type": "main:rarity_filter",
+      "chance": 2
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING"
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

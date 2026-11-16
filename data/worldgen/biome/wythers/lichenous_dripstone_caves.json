@@ -1,0 +1,182 @@
+{
+	"carvers": {
+		"air": [
+			"main:cave",
+			"main:cave_extra_underground",
+			"main:canyon"
+		]
+	},
+	"downfall": 0.5,
+	"effects": {
+		"fog_color": 12638463,
+		"mood_sound": {
+			"block_search_extent": 8,
+			"offset": 2,
+			"sound": "main:ambient.cave",
+			"tick_delay": 6000
+		},
+		"music": {
+			"max_delay": 24000,
+			"min_delay": 12000,
+			"replace_current_music": false,
+			"sound": "main:music.overworld.lush_caves"
+		},
+		"sky_color": 8103167,
+		"water_color": 6388580,
+		"water_fog_color": 2302743
+	},
+	"features": [
+		[],
+		[
+			"main:lake_lava_underground",
+			"main:lake_lava_surface"
+		],
+		[
+			"main:amethyst_geode",
+			"main:large_dripstone"
+		],
+		[
+			"main:monster_room",
+			"main:monster_room_deep"
+		],
+		[
+			"wythers:caves/water_delta"
+		],
+		[],
+		[
+			"main:ore_dirt",
+			"main:ore_gravel",
+			"main:ore_granite_upper",
+			"main:ore_granite_lower",
+			"main:ore_diorite_upper",
+			"main:ore_diorite_lower",
+			"main:ore_andesite_upper",
+			"main:ore_andesite_lower",
+			"main:ore_tuff",
+			"main:ore_coal_upper",
+			"main:ore_coal_lower",
+			"main:ore_iron_upper",
+			"main:ore_iron_middle",
+			"main:ore_iron_small",
+			"main:ore_gold",
+			"main:ore_gold_lower",
+			"main:ore_redstone",
+			"main:ore_redstone_lower",
+			"main:ore_diamond",
+			"main:ore_diamond_large",
+			"main:ore_diamond_buried",
+			"main:ore_lapis",
+			"main:ore_lapis_buried",
+			"main:ore_copper",
+			"main:underwater_magma",
+			"main:disk_sand",
+			"main:disk_clay",
+			"main:disk_gravel"
+		],
+		[
+			"main:dripstone_cluster",
+			"main:pointed_dripstone"
+		],
+		[
+			"main:spring_water",
+			"main:spring_lava"
+		],
+		[
+			"main:glow_lichen",
+			"wythers:caves/hanging_lichen"
+		],
+		[
+			"main:freeze_top_layer"
+		]
+	],
+	"spawn_costs": { },
+	"spawners": {
+		"ambient": [
+			{
+				"type": "main:bat",
+				"maxCount": 8,
+				"minCount": 8,
+				"weight": 10
+			}
+		],
+		"axolotls": [
+			{
+				"type": "main:axolotl",
+				"maxCount": 6,
+				"minCount": 4,
+				"weight": 10
+			}
+		],
+		"creature": [],
+		"misc": [],
+		"monster": [
+			{
+				"type": "main:spider",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:zombie",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 95
+			},
+			{
+				"type": "main:zombie_villager",
+				"maxCount": 1,
+				"minCount": 1,
+				"weight": 5
+			},
+			{
+				"type": "main:skeleton",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:creeper",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:slime",
+				"maxCount": 4,
+				"minCount": 4,
+				"weight": 100
+			},
+			{
+				"type": "main:enderman",
+				"maxCount": 4,
+				"minCount": 1,
+				"weight": 10
+			},
+			{
+				"type": "main:witch",
+				"maxCount": 1,
+				"minCount": 1,
+				"weight": 5
+			}
+		],
+		"underground_water_creature": [
+			{
+				"type": "main:glow_squid",
+				"maxCount": 6,
+				"minCount": 4,
+				"weight": 10
+			}
+		],
+		"water_ambient": [
+			{
+				"type": "main:tropical_fish",
+				"maxCount": 8,
+				"minCount": 8,
+				"weight": 25
+			}
+		],
+		"water_creature": []
+	},
+	"temperature": 0.5,
+	"has_precipitation": true
+}

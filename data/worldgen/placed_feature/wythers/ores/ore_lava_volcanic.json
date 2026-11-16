@@ -1,0 +1,59 @@
+{
+  "feature": {
+    "type": "main:ore",
+    "config": {
+      "size": 17,
+      "discard_chance_on_air_exposure": 1,
+      "targets": [
+        {
+          "target": {
+            "predicate_type": "main:tag_match",
+            "tag": "main:stone_ore_replaceables"
+          },
+          "state": {
+            "Name": "main:lava",
+            "Properties": {
+              "level": "0"
+            }
+          }
+        },
+        {
+          "target": {
+            "predicate_type": "main:tag_match",
+            "tag": "main:deepslate_ore_replaceables"
+          },
+          "state": {
+            "Name": "main:lava",
+            "Properties": {
+              "level": "0"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 100
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:height_range",
+      "height": {
+        "type": "main:trapezoid",
+        "min_inclusive": {
+          "absolute": 64
+        },
+        "max_inclusive": {
+          "absolute": 256
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

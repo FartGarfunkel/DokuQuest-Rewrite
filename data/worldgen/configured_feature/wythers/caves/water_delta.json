@@ -1,0 +1,31 @@
+{
+  "type": "main:delta_feature",
+  "config": {
+    "contents": {
+      "Name": "main:water",
+      "Properties": {
+        "level": "0"
+      }
+    },
+    "rim": {
+      "Name": "main:water",
+      "Properties": {
+        "level": "0"
+      }
+    },
+    "size": {
+      "type": "main:uniform",
+      "value": {
+        "min_inclusive": 3,
+        "max_inclusive": 7
+      }
+    },
+    "rim_size": {
+      "type": "main:uniform",
+      "value": {
+        "min_inclusive": 0,
+        "max_inclusive": 2
+      }
+    }
+  }
+}

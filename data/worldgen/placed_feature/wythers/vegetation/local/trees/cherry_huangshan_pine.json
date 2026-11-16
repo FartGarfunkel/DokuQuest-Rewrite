@@ -1,0 +1,118 @@
+{
+  "feature": {
+    "type": "main:tree",
+    "config": {
+      "ignore_vines": true,
+      "force_dirt": true,
+      "minimum_size": {
+        "type": "main:two_layers_feature_size",
+        "limit": 1,
+        "lower_size": 0,
+        "upper_size": 2
+      },
+      "dirt_provider": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:spruce_log",
+          "Properties": {
+            "axis": "y"
+          }
+        }
+      },
+      "trunk_provider": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:spruce_log",
+          "Properties": {
+            "axis": "y"
+          }
+        }
+      },
+      "foliage_provider": {
+        "type": "main:simple_state_provider",
+        "state": {
+          "Name": "main:spruce_leaves",
+          "Properties": {
+            "waterlogged": "false",
+            "persistent": "false",
+            "distance": "7"
+          }
+        }
+      },
+      "trunk_placer": {
+        "type": "main:forking_trunk_placer",
+        "base_height": 4,
+        "height_rand_a": 2,
+        "height_rand_b": 3
+      },
+      "foliage_placer": {
+        "type": "main:acacia_foliage_placer",
+        "radius": 2,
+        "offset": 0
+      },
+      "decorators": [
+        {
+          "type": "main:alter_ground",
+          "provider": {
+            "type": "main:weighted_state_provider",
+            "entries": [
+              {
+                "weight": 4,
+                "data": {
+                  "Name": "main:grass_block",
+                  "Properties": {
+                    "snowy": "false"
+                  }
+                }
+              },
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:coarse_dirt"
+                }
+              },
+              {
+                "weight": 1,
+                "data": {
+                  "Name": "main:rooted_dirt"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 3
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:cherry_sapling",
+          "Properties": {
+            "stage": "0"
+          }
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}

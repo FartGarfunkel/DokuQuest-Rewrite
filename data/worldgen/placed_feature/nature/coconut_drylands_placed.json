@@ -1,0 +1,98 @@
+{
+  "feature": "nature:coconut_tree_spawn",
+  "placement": [
+    {
+      "type": "main:count",
+      "count": 6
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 0
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "OCEAN_FLOOR"
+    },
+    {
+      "type": "main:biome"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:all_of",
+        "predicates": [
+          {
+            "type": "main:matching_blocks",
+            "blocks": [
+              "main:air",
+              "main:water"
+            ]
+          },
+          {
+            "type": "main:any_of",
+            "predicates": [
+              {
+                "type": "main:matching_fluids",
+                "fluids": [
+                  "main:water",
+                  "main:flowing_water"
+                ],
+                "offset": [
+                  1,
+                  -1,
+                  0
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "fluids": [
+                  "main:water",
+                  "main:flowing_water"
+                ],
+                "offset": [
+                  -1,
+                  -1,
+                  0
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "fluids": [
+                  "main:water",
+                  "main:flowing_water"
+                ],
+                "offset": [
+                  0,
+                  -1,
+                  1
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "fluids": [
+                  "main:water",
+                  "main:flowing_water"
+                ],
+                "offset": [
+                  0,
+                  -1,
+                  -1
+                ]
+              },
+              {
+                "type": "main:matching_fluids",
+                "fluids": [
+                  "main:water",
+                  "main:flowing_water"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

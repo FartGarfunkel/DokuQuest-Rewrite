@@ -1,0 +1,444 @@
+{
+  "config": {
+    "features": [
+      {
+        "feature": {
+          "config": {
+            "features": [
+              {
+                "feature": {
+                  "config": {
+                    "features": [
+                      {
+                        "feature": {
+                          "config": {
+                            "decorators": [
+                              {
+                                "block_provider": {
+                                  "state": {
+                                    "Name": "main:spruce_leaves",
+                                    "Properties": {
+                                      "distance": "2",
+                                      "persistent": "false",
+                                      "waterlogged": "false"
+                                    }
+                                  },
+                                  "type": "main:simple_state_provider"
+                                },
+                                "directions": [
+                                  "down"
+                                ],
+                                "exclusion_radius_xz": 0,
+                                "exclusion_radius_y": 0,
+                                "probability": 0.4,
+                                "required_empty_blocks": 2,
+                                "type": "main:attached_to_leaves"
+                              },
+                              {
+                                "block_provider": {
+                                  "state": {
+                                    "Name": "main:spruce_leaves",
+                                    "Properties": {
+                                      "distance": "2",
+                                      "persistent": "false",
+                                      "waterlogged": "false"
+                                    }
+                                  },
+                                  "type": "main:simple_state_provider"
+                                },
+                                "directions": [
+                                  "east"
+                                ],
+                                "exclusion_radius_xz": 0,
+                                "exclusion_radius_y": 0,
+                                "probability": 0.7,
+                                "required_empty_blocks": 1,
+                                "type": "main:attached_to_leaves"
+                              },
+                              {
+                                "block_provider": {
+                                  "state": {
+                                    "Name": "main:spruce_leaves",
+                                    "Properties": {
+                                      "distance": "2",
+                                      "persistent": "false",
+                                      "waterlogged": "false"
+                                    }
+                                  },
+                                  "type": "main:simple_state_provider"
+                                },
+                                "directions": [
+                                  "south"
+                                ],
+                                "exclusion_radius_xz": 0,
+                                "exclusion_radius_y": 0,
+                                "probability": 0.7,
+                                "required_empty_blocks": 1,
+                                "type": "main:attached_to_leaves"
+                              },
+                              {
+                                "block_provider": {
+                                  "state": {
+                                    "Name": "main:spruce_leaves",
+                                    "Properties": {
+                                      "distance": "2",
+                                      "persistent": "false",
+                                      "waterlogged": "false"
+                                    }
+                                  },
+                                  "type": "main:simple_state_provider"
+                                },
+                                "directions": [
+                                  "west"
+                                ],
+                                "exclusion_radius_xz": 0,
+                                "exclusion_radius_y": 0,
+                                "probability": 0.7,
+                                "required_empty_blocks": 1,
+                                "type": "main:attached_to_leaves"
+                              },
+                              {
+                                "block_provider": {
+                                  "state": {
+                                    "Name": "main:spruce_leaves",
+                                    "Properties": {
+                                      "distance": "2",
+                                      "persistent": "false",
+                                      "waterlogged": "false"
+                                    }
+                                  },
+                                  "type": "main:simple_state_provider"
+                                },
+                                "directions": [
+                                  "north"
+                                ],
+                                "exclusion_radius_xz": 0,
+                                "exclusion_radius_y": 0,
+                                "probability": 0.7,
+                                "required_empty_blocks": 1,
+                                "type": "main:attached_to_leaves"
+                              },
+                              {
+                                "block_provider": {
+                                  "state": {
+                                    "Name": "main:spruce_leaves",
+                                    "Properties": {
+                                      "distance": "2",
+                                      "persistent": "false",
+                                      "waterlogged": "false"
+                                    }
+                                  },
+                                  "type": "main:simple_state_provider"
+                                },
+                                "directions": [
+                                  "up"
+                                ],
+                                "exclusion_radius_xz": 0,
+                                "exclusion_radius_y": 0,
+                                "probability": 0.8,
+                                "required_empty_blocks": 1,
+                                "type": "main:attached_to_leaves"
+                              }
+                            ],
+                            "dirt_provider": {
+                              "state": {
+                                "Name": "main:rooted_dirt"
+                              },
+                              "type": "main:simple_state_provider"
+                            },
+                            "foliage_placer": {
+                              "crown_height": 5,
+                              "offset": 2,
+                              "radius": 1,
+                              "type": "main:mega_pine_foliage_placer"
+                            },
+                            "foliage_provider": {
+                              "state": {
+                                "Name": "main:spruce_leaves",
+                                "Properties": {
+                                  "distance": "1",
+                                  "persistent": "false",
+                                  "waterlogged": "false"
+                                }
+                              },
+                              "type": "main:simple_state_provider"
+                            },
+                            "force_dirt": false,
+                            "ignore_vines": true,
+                            "minimum_size": {
+                              "limit": 3,
+                              "lower_size": 0,
+                              "upper_size": 1,
+                              "type": "main:two_layers_feature_size"
+                            },
+                            "trunk_placer": {
+                              "base_height": 22,
+                              "height_rand_a": 5,
+                              "height_rand_b": 2,
+                              "type": "main:giant_trunk_placer"
+                            },
+                            "trunk_provider": {
+                              "state": {
+                                "Name": "main:spruce_log",
+                                "Properties": {
+                                  "axis": "y"
+                                }
+                              },
+                              "type": "main:simple_state_provider"
+                            }
+                          },
+                          "type": "main:tree"
+                        },
+                        "placement": [
+                          {
+                            "predicate": {
+                              "type": "main:replaceable"
+                            },
+                            "type": "main:block_predicate_filter"
+                          }
+                        ]
+                      },
+                      {
+                        "feature": {
+                          "config": {
+                            "features": [
+                              {
+                                "feature": {
+                                  "config": {
+                                    "decorators": [
+                                      {
+                                        "block_provider": {
+                                          "state": {
+                                            "Name": "main:spruce_leaves",
+                                            "Properties": {
+                                              "distance": "2",
+                                              "persistent": "false",
+                                              "waterlogged": "false"
+                                            }
+                                          },
+                                          "type": "main:simple_state_provider"
+                                        },
+                                        "directions": [
+                                          "down"
+                                        ],
+                                        "exclusion_radius_xz": 0,
+                                        "exclusion_radius_y": 0,
+                                        "probability": 0.35,
+                                        "required_empty_blocks": 2,
+                                        "type": "main:attached_to_leaves"
+                                      }
+                                    ],
+                                    "dirt_provider": {
+                                      "state": {
+                                        "Name": "main:spruce_log",
+                                        "Properties": {
+                                          "axis": "y"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "foliage_placer": {
+                                      "crown_height": 7,
+                                      "offset": 2,
+                                      "radius": 1,
+                                      "type": "main:mega_pine_foliage_placer"
+                                    },
+                                    "foliage_provider": {
+                                      "state": {
+                                        "Name": "main:spruce_leaves",
+                                        "Properties": {
+                                          "distance": "1",
+                                          "persistent": "false",
+                                          "waterlogged": "false"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    },
+                                    "force_dirt": false,
+                                    "ignore_vines": true,
+                                    "minimum_size": {
+                                      "limit": 3,
+                                      "lower_size": 0,
+                                      "upper_size": 0,
+                                      "type": "main:two_layers_feature_size"
+                                    },
+                                    "trunk_placer": {
+                                      "base_height": 9,
+                                      "height_rand_a": 0,
+                                      "height_rand_b": 0,
+                                      "type": "main:giant_trunk_placer"
+                                    },
+                                    "trunk_provider": {
+                                      "state": {
+                                        "Name": "main:spruce_log",
+                                        "Properties": {
+                                          "axis": "y"
+                                        }
+                                      },
+                                      "type": "main:simple_state_provider"
+                                    }
+                                  },
+                                  "type": "main:tree"
+                                },
+                                "placement": [
+                                  {
+                                    "predicate": {
+                                      "predicate": {
+                                        "blocks": "main:spruce_log",
+                                        "offset": [
+                                          0,
+                                          2,
+                                          0
+                                        ],
+                                        "type": "main:matching_blocks"
+                                      },
+                                      "type": "main:not"
+                                    },
+                                    "type": "main:block_predicate_filter"
+                                  }
+                                ]
+                              },
+                              {
+                                "feature": "wythers:vegetation/tree/big_spruce/branch_set/1",
+                                "placement": [
+                                  {
+                                    "xz_spread": 0,
+                                    "y_spread": {
+                                      "value": {
+                                        "min_inclusive": -6,
+                                        "max_inclusive": -5
+                                      },
+                                      "type": "main:uniform"
+                                    },
+                                    "type": "main:random_offset"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          "type": "main:simple_random_selector"
+                        },
+                        "placement": [
+                          {
+                            "predicate": {
+                              "blocks": "main:spruce_log",
+                              "type": "main:matching_blocks"
+                            },
+                            "type": "main:block_predicate_filter"
+                          },
+                          {
+                            "xz_spread": 0,
+                            "y_spread": 15,
+                            "type": "main:random_offset"
+                          },
+                          {
+                            "xz_spread": 0,
+                            "y_spread": 6,
+                            "type": "main:random_offset"
+                          },
+                          {
+                            "predicate": {
+                              "predicate": {
+                                "blocks": "main:spruce_log",
+                                "offset": [
+                                  0,
+                                  8,
+                                  0
+                                ],
+                                "type": "main:matching_blocks"
+                              },
+                              "type": "main:not"
+                            },
+                            "type": "main:block_predicate_filter"
+                          },
+                          {
+                            "direction_of_search": "up",
+                            "max_steps": 8,
+                            "target_condition": {
+                              "predicate": {
+                                "blocks": "main:spruce_log",
+                                "offset": [
+                                  0,
+                                  1,
+                                  0
+                                ],
+                                "type": "main:matching_blocks"
+                              },
+                              "type": "main:not"
+                            },
+                            "type": "main:environment_scan"
+                          },
+                          {
+                            "count": 64,
+                            "type": "main:count"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "main:simple_random_selector"
+                },
+                "placement": [
+                  {
+                    "predicate": {
+                      "type": "main:replaceable"
+                    },
+                    "type": "main:block_predicate_filter"
+                  },
+                  {
+                    "count": 28,
+                    "type": "main:count"
+                  }
+                ]
+              },
+              {
+                "feature": "wythers:vegetation/tree/big_spruce/roots/1",
+                "placement": [
+                  {
+                    "predicate": {
+                      "blocks": "main:spruce_log",
+                      "type": "main:matching_blocks"
+                    },
+                    "type": "main:block_predicate_filter"
+                  }
+                ]
+              },
+              {
+                "feature": "wythers:vegetation/tree/big_spruce/rooted_dirt",
+                "placement": [
+                  {
+                    "predicate": {
+                      "blocks": "main:spruce_log",
+                      "type": "main:matching_blocks"
+                    },
+                    "type": "main:block_predicate_filter"
+                  }
+                ]
+              }
+            ]
+          },
+          "type": "main:simple_random_selector"
+        },
+        "placement": [
+          {
+            "predicate": {
+              "state": {
+                "Name": "main:spruce_sapling",
+                "Properties": {
+                  "stage": "0"
+                }
+              },
+              "type": "main:would_survive"
+            },
+            "type": "main:block_predicate_filter"
+          },
+          {
+            "count": 48,
+            "type": "main:count"
+          }
+        ]
+      }
+    ]
+  },
+  "type": "main:simple_random_selector"
+}

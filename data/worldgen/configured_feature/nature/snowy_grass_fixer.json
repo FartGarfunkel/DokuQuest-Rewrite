@@ -1,0 +1,47 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:grass_block",
+              "Properties": {
+                "snowy": "true"
+              }
+            }
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:environment_scan",
+          "direction_of_search": "down",
+          "max_steps": 8,
+          "target_condition": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "blocks": "main:grass_block"
+              },
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  1,
+                  0
+                ],
+                "blocks": "main:snow"
+              }
+            ]
+          }
+        }
+      ]
+    }
+
+  }
+}

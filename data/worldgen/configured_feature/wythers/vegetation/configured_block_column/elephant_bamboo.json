@@ -1,0 +1,83 @@
+{
+  "type": "main:block_column",
+  "config": {
+    "direction": "up",
+    "allowed_placement": {
+      "type": "main:matching_blocks",
+      "blocks": [
+        "main:air"
+      ]
+    },
+    "prioritize_tip": true,
+    "layers": [
+      {
+        "height": {
+          "type": "main:uniform",
+          "value": {
+            "min_inclusive": 3,
+            "max_inclusive": 13
+          }
+        },
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:bamboo",
+            "Properties": {
+              "age": "1",
+              "leaves": "none",
+              "stage": "1"
+            }
+          }
+        }
+      },
+      {
+        "height": 1,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:bamboo",
+            "Properties": {
+              "age": "1",
+              "leaves": "small",
+              "stage": "1"
+            }
+          }
+        }
+      },
+      {
+        "height": 2,
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:bamboo",
+            "Properties": {
+              "age": "1",
+              "leaves": "large",
+              "stage": "1"
+            }
+          }
+        }
+      },
+      {
+        "height": {
+          "type": "main:uniform",
+          "value": {
+            "min_inclusive": 3,
+            "max_inclusive": 4
+          }
+        },
+        "provider": {
+          "type": "main:simple_state_provider",
+          "state": {
+            "Name": "main:azalea_leaves",
+            "Properties": {
+              "distance": "1",
+              "persistent": "false",
+              "waterlogged": "false"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

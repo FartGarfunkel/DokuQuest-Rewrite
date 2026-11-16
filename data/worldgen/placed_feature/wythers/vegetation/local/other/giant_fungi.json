@@ -1,0 +1,147 @@
+{
+  "feature": {
+    "type": "main:random_selector",
+    "config": {
+      "features": [
+        {
+          "chance": 0.25,
+          "feature": {
+            "feature": "wythers:vegetation/fungus/medium_muscaria",
+            "placement": []
+          }
+        },
+        {
+          "chance": 0.25,
+          "feature": {
+            "feature": "wythers:vegetation/fungus/patch_morel",
+            "placement": []
+          }
+        },
+        {
+          "chance": 0.15,
+          "feature": {
+            "feature": "wythers:vegetation/fungus/patch_enoki",
+            "placement": []
+          }
+        },
+        {
+          "chance": 0.1,
+          "feature": {
+            "feature": "wythers:vegetation/fungus/giant_matsutake",
+            "placement": []
+          }
+        },
+        {
+          "chance": 0.02,
+          "feature": {
+            "feature": "wythers:vegetation/fungus/giant_omphalotus_illudens",
+            "placement": []
+          }
+        }
+      ],
+      "default": {
+        "feature": "wythers:vegetation/fungus/giant_muscaria",
+        "placement": []
+      }
+    }
+  },
+  "placement": [
+    {
+      "type": "main:rarity_filter",
+      "chance": 3
+    },
+    {
+      "type": "main:in_square"
+    },
+    {
+      "type": "main:heightmap",
+      "heightmap": "MOTION_BLOCKING_NO_LEAVES"
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:would_survive",
+        "state": {
+          "Name": "main:fern"
+        }
+      }
+    },
+    {
+      "type": "main:block_predicate_filter",
+      "predicate": {
+        "type": "main:not",
+        "predicate": {
+          "type": "main:all_of",
+          "predicates": [
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                10,
+                0
+              ],
+              "blocks": "main:air"
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                11,
+                0
+              ],
+              "blocks": "main:air"
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                12,
+                0
+              ],
+              "blocks": "main:air"
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                13,
+                0
+              ],
+              "blocks": "main:air"
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                14,
+                0
+              ],
+              "blocks": "main:air"
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                15,
+                0
+              ],
+              "blocks": "main:air"
+            },
+            {
+              "type": "main:matching_blocks",
+              "offset": [
+                0,
+                16,
+                0
+              ],
+              "blocks": "main:air"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "main:biome"
+    }
+  ]
+}
