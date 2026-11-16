@@ -22,7 +22,7 @@ void registerWeatherSystem();    // sim/weather.cpp
 void registerPortals();          // sim/portals.cpp (+ the stacked worlds, sim/seamless.cpp)
 void registerMagic();            // sim/magic.cpp (magic, enchanting, brewing, skills, rpg)
 void registerBossBrains();       // sim/boss_brains.cpp
-void registerVillageTheft();     // sim/village_theft.cpp       // sim/boss_brains.cpp
+void registerVillageTheft();     // sim/village_theft.cpp
 void registerContent();          // sim/content.cpp (maps, farming, fishing, camping, travel, elytra, stable, places)
 void registerEndStory();      // sim/endstory.cpp: the End, dragons, the Deep Dark, the watcher and the rift
 void registerVillagers();        // sim/villagers.cpp (villages, villagers, quests, shops, paths, gates, raids)
