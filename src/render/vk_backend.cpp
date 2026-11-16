@@ -4606,6 +4606,7 @@ static void GLAD_API_PTR dq_glGetIntegerv(GLenum pname, GLint* out) {
     case GL_BLEND_EQUATION_RGB: *out = (GLint)blendEq; break;
     case GL_BLEND_EQUATION_ALPHA: *out = (GLint)blendEqA; break;
     case GL_MAX_ARRAY_TEXTURE_LAYERS: *out = gfx.maxArrayLayers; break;
+    case GL_MAX_TEXTURE_IMAGE_UNITS: case GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS: *out = gfx.maxTexUnits; break;
     case GL_PIXEL_UNPACK_BUFFER_BINDING: *out = (GLint)pixelUnpack; break;
     case GL_SAMPLER_BINDING: *out = 0; break;
     case GL_POLYGON_MODE: out[0] = out[1] = GL_FILL; break;

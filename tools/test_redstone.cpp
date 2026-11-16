@@ -328,6 +328,21 @@ int main(int argc, char** argv) {
     check(countType("primed_tnt") == 0 && key(TX, Y - 1, TZ) == "air", "TNT blows a hole");
   }
 
+  printf("[using string, dust and rails on a chest]\n");
+  {
+    const int cx = X - 20, cz = Z + 40;
+    clearArea(cx - 2, cx + 3, cz - 2, cz + 3, 4);
+    set(cx, Y, cz, "chest"); set(cx + 1, Y, cz, "furnace");
+    p.sneaking = false;
+    use("string", cx, Y, cz, FACE_PY); use("redstone", cx, Y, cz, FACE_PY); use("rail", cx + 1, Y, cz, FACE_PY);
+    check(key(cx, Y + 1, cz) == "air" && key(cx + 1, Y + 1, cz) == "air", "string, dust or a rail used on a chest or furnace isn't laid on top (" + key(cx, Y + 1, cz) + ")");
+    p.sneaking = true;
+    use("string", cx, Y, cz, FACE_PY);
+    check(key(cx, Y + 1, cz) == "tripwire", "sneaking, string is laid on the chest");
+    p.sneaking = false;
+  }
+
+
   // =============================================================== saving and loading carts, joins and boats
   {
     int nCarts = countCarts(), nLinks = 0;

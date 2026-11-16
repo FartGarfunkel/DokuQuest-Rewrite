@@ -332,13 +332,27 @@ static float lum(u32 c) { return (c & 255) * 0.299f + ((c >> 8) & 255) * 0.587f 
 static void voxelPart(VoxelGrid& g, ivec3 n, const std::array<Pic, 6>& F, bool glow, bool faceRelief) {
   g.resize(n);
   auto at = [&](int f, float s, float t) -> u32 { if (F[f].empty()) return 0; int x = clampv((int)(s * TILE), 0, TILE - 1), y = clampv((int)(t * TILE), 0, TILE - 1); return F[f][y * TILE + x]; };
+  // the front picture shrunk onto a smaller face: one sample per voxel would step over a feature thinner than a voxel (a
+  // fox's eyes are 2 pixels of 32, its head 12 voxels tall: every sample missed them). Each voxel looks over all the pixels
+  // it covers and keeps the darkest when that one is a dark feature (eyes, nostrils), else its middle pixel as before.
+  float frontMed = 0;
+  if (!F[5].empty()) { std::vector<float> ls; for (u32 c : F[5]) if (c) ls.push_back(lum(c)); if (!ls.empty()) { std::nth_element(ls.begin(), ls.begin() + ls.size() / 2, ls.end()); frontMed = ls[ls.size() / 2]; } }
+  auto front = [&](int x, int y) -> u32 {
+    const u32 mid = at(5, 1 - (x + 0.5f) / n.x, 1 - (y + 0.5f) / n.y);
+    if (F[5].empty() || frontMed < 50 || !mid) return mid;
+    const int x0 = clampv((int)std::floor((1 - (x + 1.f) / n.x) * TILE + 1e-4f), 0, TILE - 1), x1 = clampv((int)std::ceil((1 - (float)x / n.x) * TILE - 1e-4f) - 1, 0, TILE - 1);
+    const int y0 = clampv((int)std::floor((1 - (y + 1.f) / n.y) * TILE + 1e-4f), 0, TILE - 1), y1 = clampv((int)std::ceil((1 - (float)y / n.y) * TILE - 1e-4f) - 1, 0, TILE - 1);
+    u32 dark = 0; float dl = 1e9f;
+    for (int ty = y0; ty <= y1; ty++) for (int tx = x0; tx <= x1; tx++) { const u32 c = F[5][ty * TILE + tx]; if (c && lum(c) < dl) { dl = lum(c); dark = c; } }
+    return dark && dl < frontMed * 0.55f ? dark : mid;
+  };
   auto open = [&](int f) { return F[f].empty(); };
   int thinAxis = -1;
   { const int d[3] = {n.x, n.y, n.z}; for (int a = 0; a < 3; a++) if (d[a] <= 2 && d[(a + 1) % 3] >= 4 && d[(a + 2) % 3] >= 4) thinAxis = a; }
   u32 avg = 0; { u64 r = 0, gg = 0, b = 0, k = 0; for (auto& f : F) for (u32 c : f) if (c) { r += c & 255; gg += (c >> 8) & 255; b += (c >> 16) & 255; k++; } if (k) avg = voxRGBA((int)(r / k), (int)(gg / k), (int)(b / k)); }
   for (int z = 0; z < n.z; z++) for (int y = 0; y < n.y; y++) for (int x = 0; x < n.x; x++) {
     vec3 u((x + 0.5f) / n.x, (y + 0.5f) / n.y, (z + 0.5f) / n.z);
-    u32 c[6] = {at(0, 1 - u.z, 1 - u.y), at(1, u.z, 1 - u.y), at(2, u.x, u.z), at(3, 1 - u.x, u.z), at(4, u.x, 1 - u.y), at(5, 1 - u.x, 1 - u.y)};
+    u32 c[6] = {at(0, 1 - u.z, 1 - u.y), at(1, u.z, 1 - u.y), at(2, u.x, u.z), at(3, 1 - u.x, u.z), at(4, u.x, 1 - u.y), z == 0 ? front(x, y) : at(5, 1 - u.x, 1 - u.y)};
     // the visual hull: on every axis, one of the two pictures must be solid there (open faces don't carve). A thin
     // plane (a leaf, a fern, a cobweb, a coral fan, a wing) is cut by its face pictures only: its edges are a strip of
     // the picture squeezed to a voxel or two, and would carve the shape away.
@@ -369,7 +383,7 @@ static void voxelPart(VoxelGrid& g, ivec3 n, const std::array<Pic, 6>& F, bool g
     float med = ls[ls.size() / 2];
     if (med < 50) return;
     for (int y = 1; y < n.y - 1; y++) for (int x = 1; x < n.x - 1; x++) {
-      u32 c = at(5, 1 - (x + 0.5f) / n.x, 1 - (y + 0.5f) / n.y);
+      u32 c = front(x, y);
       if (!c || lum(c) >= med * 0.55f || !g.solid(x, y, 0)) continue;
       u32 v = g.at(x, y, 0);
       g.set(x, y, 0, 0);
@@ -448,7 +462,23 @@ static void partGrid(const TileSet& ts, const RigModel& M, const std::string& ke
   ivec3 n = glm::max(ivec3(glm::round(size * (p.res > 0 ? p.res : 32.f))), ivec3(1));
   bool faceRelief = p.tex.is_object() && p.tex.contains("front") && !pack;
   voxelPart(g, n, F, p.glow || p.unlit, faceRelief);
+  // an open front ("front": false: a hood, a cowl) is a shell round what it covers, not a solid block: two voxels thick on
+  // its sides, top and back, open at the front and underneath, so the face inside shows (it filled the space before it)
+  if (!packed && p.tex.is_object() && p.tex.contains("front") && p.tex["front"] == false && n.x > 4 && n.y > 2 && n.z > 2) {
+    const int T = 2;
+    for (int z = 0; z < n.z - T; z++) for (int y = 0; y < n.y - T; y++) for (int x = T; x < n.x - T; x++) g.set(x, y, z, 0);
+  }
   if (p.name == "jaw" && M.key == "enderman") toothCrown(g, n);
+  // a bird's head drawn from one feather picture all round has no eyes in it (a crow, a gull, an eagle): one eye on each
+  // side, near the front and high up, dark on a pale head and a light glint on a dark one
+  if (p.role == "bhead" && !packed && p.tex.is_string() && n.x >= 3 && n.y >= 4 && n.z >= 3) {
+    u64 r = 0, gg = 0, b = 0, k = 0;
+    for (int z = 0; z < n.z; z++) for (int y = 0; y < n.y; y++) for (int x : {0, n.x - 1}) if (g.solid(x, y, z)) { const u32 c = g.at(x, y, z); r += c & 255; gg += (c >> 8) & 255; b += (c >> 16) & 255; k++; }
+    const float L = k ? (r * 0.299f + gg * 0.587f + b * 0.114f) / k : 128;
+    const u32 eye = (L > 90 ? voxRGBA(28, 22, 18) : voxRGBA(214, 206, 180)) | (u32)VOXEL_SOLID << 24;
+    const int es = std::max(1, n.y / 8), ez = std::max(0, n.z / 4 - es / 2), ey = std::min(n.y - es, (int)std::lround(n.y * 0.62f));
+    for (int x : {0, n.x - 1}) for (int dz = 0; dz < es; dz++) for (int dy = 0; dy < es; dy++) if (g.solid(x, ey + dy, ez + dz)) g.set(x, ey + dy, ez + dz, eye);
+  }
   if (p.eyes && !packed)   // render/models.js: two eyes, not one bar (the gap between them is the bridge of the nose)
     for (int x = 0; x < n.x; x++) if (std::fabs(lo.x + (x + 0.5f) * size.x / n.x) < 0.065f) for (int z = 0; z < n.z; z++) for (int y = 0; y < n.y; y++) g.set(x, y, z, 0);
   if (bird && !packed && n.y >= 4) {
