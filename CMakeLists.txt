@@ -156,6 +156,9 @@ target_link_libraries(test_content PRIVATE dqcore)
 # Ingot and log piles (headless, sim/piles.h). Run: build/test_piles
 add_executable(test_piles tools/test_piles.cpp)
 target_link_libraries(test_piles PRIVATE dqcore)
+# Moving structures: glue, hinges, sliders, moving bodies (headless, sim/moving.h). Run: build/test_moving
+add_executable(test_moving tools/test_moving.cpp)
+target_link_libraries(test_moving PRIVATE dqcore)
 add_test(NAME piles COMMAND test_piles)
 # The immersive progression (headless: the rule, trees, leaves, ground items, knapping, recipes). Run: build/test_immersive
 add_executable(test_immersive tools/test_immersive.cpp)
