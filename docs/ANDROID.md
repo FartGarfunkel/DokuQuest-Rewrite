@@ -24,8 +24,9 @@ GitHub's "latest" release, so the desktop launcher's updater never sees it.
 ## Playing
 - Touch (`input/touch.h`): a move stick wherever the left thumb lands (pushed up past its ring: sprint), drag anywhere
   else to look, tap to use/place, press and hold to mine; buttons for Jump, Sneak (a toggle), Mine, Use (hold: eat,
-  draw a bow), Bag, View and Pause; tap the hotbar to pick a slot. In menus a finger is the pointer. The first start
-  turns Auto-Jump on. `DQ_TOUCH=1` shows the controls on a PC; `tools/playtests/touch.json` drives them with fingers.
+  draw a bow), Bag, View and Pause; tap the hotbar to pick a slot. In menus a finger is the pointer, and dragging a
+  list up or down scrolls it. The first start turns Auto-Jump on. GUI Scale "Auto" makes the interface as large as
+  the 1280x720 layout allows on a phone (150% on 2400x1080; `ui/theme.cpp computeZoom`). `DQ_TOUCH=1` shows the controls on a PC; `tools/playtests/touch.json` drives them with fingers.
 - A controller (Bluetooth or USB) plays everything, menus included; using one hides the touch buttons (a touch
   brings them back).
 - Back button / back gesture = Escape. Text fields open the on-screen keyboard.
