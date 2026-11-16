@@ -627,6 +627,16 @@ int main(int argc, char** argv) {
     check(inscribeWorkTake(*L, *P, w, T, 0) && count("apprentice_spellbook") == 1, "  ...the book taken back");
   }
   lvp->close();
+  printf("[stacking]\n");
+  {
+    auto ms = [](const char* k) { const ItemDef* d = reg().item(k); return d ? d->maxStack : -1; };
+    check(ms("chest") == 64 && ms("barrel") == 64 && ms("oak_door") == 64 && ms("white_bed") == 64 && ms("cake") == 64, "chests, barrels, doors, beds and cakes stack to 64");
+    check(ms("minecart") == 64 && ms("compass") == 64 && ms("tome_firebolt") == 64 && ms("music_disc_ember") == 64, "minecarts, compasses, tomes and discs stack");
+    check(ms("diamond_sword") == 1 && ms("iron_chestplate") == 1 && ms("leather_backpack") == 1 && ms("water_bucket") == 1 && ms("mushroom_stew") == 1 && ms("elytra") == 1, "worn-out things, carried containers, filled buckets and stews stay single");
+    ItemStack full("chest", 1); full.tag = json{{"c", json::array({ItemStack("dirt", 3).toJson()})}};
+    check(!ItemStack("chest", 1).canMerge(full) && ItemStack("chest", 1).canMerge(ItemStack("chest", 5)), "a chest carried with things in it never merges with an empty one");
+  }
+
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails ? 1 : 0;
 }

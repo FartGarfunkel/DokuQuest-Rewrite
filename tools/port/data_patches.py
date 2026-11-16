@@ -506,3 +506,6 @@ _s20 = _u.spec_from_file_location('dragon_shape', pathlib.Path(__file__).with_na
 #      (tools/port/new_materials.py; forging.py and tool_parts.py are idempotent) ----
 for _n in ('new_materials', 'forging', 'tool_parts', 'armor_art', 'elytra_art', 'trommel', 'classic_extras', 'tool_parts', 'magic_rework', 'village_rework', 'village_builder', 'bird_feet', 'polish_data', 'new_mobs', 'nether_biome_blocks', 'dynamic_trees', 'limb_tags'):   # (tool_parts again: chainlinks, olivine)
     _s21 = _u.spec_from_file_location(_n, pathlib.Path(__file__).with_name(_n + '.py')); _m21 = _u.module_from_spec(_s21); _s21.loader.exec_module(_m21); _m21.main(d)
+
+# ---- everything stacks unless stacking would break it (tools/port/stacking.py) ----
+_s22 = _u.spec_from_file_location('stacking', pathlib.Path(__file__).with_name('stacking.py')); _m22 = _u.module_from_spec(_s22); _s22.loader.exec_module(_m22); _m22.main(d)
