@@ -586,7 +586,7 @@ void PlayerController::handCasting(float dt, PlayerInput& in, Entity* te) {
   const bool staffR = heldStaff(p) != nullptr;
   bool forUse = false;
   if (target.hit && !te) { const BlockDef& b = reg().block(target.id); forUse = interactable(target.id) || b.has("harvest") || b.key == "sluice" || b.key == "sealed_barrel" || b.key == "bloomery"; }
-  const bool rPress = rOk && in.attackPressed && (te || !target.hit || staffR);
+  const bool rPress = rOk && in.attackPressed && (te || !target.hit || (staffR && !forUse));   // (a staff casts anywhere, but not at something for using: your grave, a chest's tray, a lever)
   if (te && !isFoe(*te)) forUse = true;   // (a villager, a horse, a pet: used as ever)
   const bool lPress = lOk && in.usePressed && !forUse && !p.sneaking && (held.empty() || staffR);
   if (!in.attack) castHoldR = false;
@@ -774,6 +774,7 @@ bool interactable(BlockId id) {
   const BlockDef& b = reg().block(id);
   static const char* keys[] = {"anvil", "enchant", "brewing", "grindstone", "loom", "smithing", "cartography", "fletching", "composter", "cauldron", "lectern", "barrel", "chest", "furnace", "smoker", "crafting", "table", "bench", "bed", "door", "gate", "trapdoor", "bell", "note", "jukebox", "shelf", "bookcase", "campfire", "cooking", "altar", "forge", "press", "mill", "rack", "stand"};
   for (const char* k : {"container", "table", "furnace", "lectern", "station", "enderChest", "partyChest", "machine", "stonecutter", "jukebox", "bed", "door", "trapdoor", "noteBlock", "bellBlock", "cauldron", "pile", "placedBackpack", "frame", "sign", "pot"}) if (b.has(k)) return true;
+  if (b.has("grave") || b.has("rs") || b.has("carry")) return true;   // (your grave, levers and buttons, things you pick up)
   if (reg().tShape[id] == ShapeKind::Gate) return true;
   for (const char* k : keys) if (b.key.find(k) != std::string::npos) return true;
   return false;

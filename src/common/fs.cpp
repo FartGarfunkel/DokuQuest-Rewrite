@@ -20,7 +20,7 @@ namespace dq {
 // programs; a file is read from data/ itself if it's there (development, mods, a player's own change), else from it
 namespace {
 struct DataArchive {
-  std::mutex mx; bool tried = false, ok = false; mz_zip_archive za{};
+  std::mutex mx; bool tried = false, ok = false; mz_zip_archive za{}; fs::file_time_type made{};
   std::unordered_map<std::string, unsigned> idx; std::string root;
   void open() {
     tried = true;
@@ -34,8 +34,21 @@ struct DataArchive {
       if (!mz_zip_reader_is_file_a_directory(&za, i)) idx[nm] = i;
     }
     root = dataDir().lexically_normal().generic_string() + "/";
+    made = fs::last_write_time(p, ec);
     ok = true;
-    DQ_LOG("data.dqa: %zu files (loose files in data/ win)", idx.size());
+    DQ_LOG("data.dqa: %zu files (loose files in data/ win when newer than it)", idx.size());
+  }
+  // a loose file in data/ older than the archive is left over from an older version unpacked in the same place (a
+  // Windows folder unzipped over): the archive's newer copy wins. Newer loose files (a player's own change) still win.
+  bool stale(const fs::path& p) {
+    std::lock_guard<std::mutex> lk(mx);
+    if (!tried) open();
+    if (!ok) return false;
+    const std::string g = p.lexically_normal().generic_string();
+    if (g.compare(0, root.size(), root) != 0 || !idx.count(g.substr(root.size()))) return false;
+    std::error_code ec;
+    const auto t = fs::last_write_time(p, ec);
+    return !ec && t + std::chrono::minutes(10) < made;
   }
   bool read(const fs::path& p, std::string& out) {
     std::lock_guard<std::mutex> lk(mx);
@@ -56,12 +69,14 @@ DataArchive& dataArchive() { static DataArchive* a = new DataArchive(); return *
 bool inDataArchive(const fs::path& p) { std::string s; return dataArchive().read(p, s); }
 
 std::optional<std::string> readFile(const fs::path& p) {
+  if (dataArchive().stale(p)) { std::string s; if (dataArchive().read(p, s)) return s; }
   std::ifstream f(p, std::ios::binary);
   if (!f) { std::string s; if (dataArchive().read(p, s)) return s; return std::nullopt; }
   std::ostringstream ss; ss << f.rdbuf();
   return ss.str();
 }
 std::optional<std::vector<u8>> readBinary(const fs::path& p) {
+  if (dataArchive().stale(p)) { std::string s; if (dataArchive().read(p, s)) return std::vector<u8>(s.begin(), s.end()); }
   std::ifstream f(p, std::ios::binary | std::ios::ate);
   if (!f) { std::string s; if (dataArchive().read(p, s)) return std::vector<u8>(s.begin(), s.end()); return std::nullopt; }
   auto n = f.tellg(); f.seekg(0);

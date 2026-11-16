@@ -5,6 +5,31 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.25 — Honest Folk (November 2026)
+
+**Villages and thieves:**
+- **What's in a village belongs to it:** its chests, barrels and cupboards, its beds, work stations and crops. What you put down there yourself stays yours.
+- **Seen stealing,** you lose standing with that village and a guard comes over: give it back, pay a fine in coins, or refuse and fight. Unseen, someone notices later.
+- **Keep at it, or refuse,** and you're wanted: the guards attack on sight until you pay or a few days pass. A known thief pays more in its shops.
+- **Each player has their own standing:** one person's stealing never counts against anyone else.
+
+**Chests and barrels:**
+- **What you put in joins the same thing on any layer,** and sorting joins every stack across all layers: no more two half-stacks of the same thing.
+- **A take-all button** on the open lid (top left) and on a barrel's rim: everything into your bag, the rest left in it.
+
+**Magic:**
+- **Spell ranks take far longer:** a fireball is mastered after about 300 casts instead of 39, a firebolt after about 1,000.
+- **A staff or a readied spell no longer gets in your way:** aimed at your grave, a chest, a lever, a table or a door, you use it instead of casting; sneak-use on something you can pick up picks it up.
+
+**Tooltips:**
+- **Only what a thing does:** pickaxes, axes, shovels and hoes show their mining speed; swords and staffs only their attack. Staffs say they cast your chosen spell, and show their spell power, element boosts and mana while held.
+
+**Fixes:**
+- **Windows:** a new version unzipped over an older one no longer keeps the old version's leftover pictures, models and data (Herobrine, the barrel buttons and more).
+- **Herobrine** wears his own skin even with an old copy of the DokuQuest Base pack in your player folder.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.24 — Great Foes (November 2026)
 
 **The bosses fight:**

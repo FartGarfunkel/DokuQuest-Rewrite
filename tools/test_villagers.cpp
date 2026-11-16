@@ -11,6 +11,7 @@
 #include "sim/mob_combat.h"
 #include "sim/combat_rpg.h"
 #include "sim/villagers_internal.h"
+#include "sim/village_theft.h"
 #include "gen/overworld.h"
 #include "gen/structures.h"
 #include "gen/structures_api.h"
@@ -314,6 +315,90 @@ int main(int argc, char** argv) {
     tick(2);
     guard = byJob(v->id, "guard");
     check(guard != nullptr, "someone new takes the watch");
+  }
+
+  // ------------------------------------------------------------ thieves: seen, a word from the guard, give back, pay or fight
+  {
+    World& w = L->world();
+    guard = byJob(v->id, "guard");
+    Creature* owner = byJob(v->id, "farmer");
+    const ivec3 cpos = ivec3(glm::floor(owner->pos)) + ivec3(2, 0, 0);
+    auto stockChest = [&] {
+      w.setBlock(cpos.x, cpos.y, cpos.z, reg().blockId("chest"));
+      json items = json::array(); for (int i = 0; i < 27; i++) items.push_back(nullptr);
+      items[0] = ItemStack("bread", 6).toJson(); items[1] = ItemStack("iron_ingot", 3).toJson();
+      w.setBlockEntity(cpos.x, cpos.y, cpos.z, json{{"type", "chest"}, {"items", items}});
+    };
+    auto take = [&](const char* id, int n) {   // (out of the chest into the bag, as any way of taking does)
+      json* e = w.blockEntity(cpos.x, cpos.y, cpos.z);
+      for (auto& it : (*e)["items"]) { ItemStack q = ItemStack::fromJson(it); if (q.id == id) { q.n -= n; it = q.n > 0 ? q.toJson() : json(); break; } }
+      w.blockEntityChanged(cpos.x, cpos.y, cpos.z);
+      P->give(ItemStack(id, n));
+    };
+    for (auto& q : P->inv) q = ItemStack();
+    stockChest();
+    P->pos = vec3(cpos) + vec3(0.5f, 0, -1.5f); owner->pos = vec3(cpos) + vec3(4.5f, 0, 0.5f);
+    tick(1);   // (they've seen what's in it)
+    const double rep0 = repOf(*P, v->id);
+    opened = nullptr;
+    take("bread", 6); take("iron_ingot", 3);
+    tick(1);
+    check(repOf(*P, v->id) < rep0, "stealing in front of a villager costs standing (" + std::to_string(rep0) + " -> " + std::to_string(repOf(*P, v->id)) + ")");
+    tick(12);
+    check(opened.is_array() && opened[1] == "talk" && opened[2].value("victim", "") == "theft", "a guard comes over about what you took");
+    Talk c; talkOpen(*L, *P, *guard, c, true, "theft");
+    int giveI = -1, payI = -1, refI = -1;
+    for (int i = 0; i < (int)c.opts.size(); i++) { if (c.opts[i].act == "giveback") giveI = i; if (c.opts[i].act == "payfine") payI = i; if (c.opts[i].act == "refuse") refI = i; }
+    check(c.mode == "confront" && giveI >= 0 && payI >= 0 && refI >= 0, "\"give it back\", \"pay the fine\" or \"make me\"");
+    check(c.opts[payI].label.find("coins") != std::string::npos && theftFine(*P, v->id) >= 5, "the fine is in coins (" + c.opts[payI].label + ")");
+    const double repCaught = repOf(*P, v->id);
+    talkChoose(*L, *P, c, giveI);
+    int bread = 0; for (auto& q : P->inv) if (q.id == "bread") bread += q.n;
+    const json* e = w.blockEntity(cpos.x, cpos.y, cpos.z);
+    int back = 0; for (auto& it : (*e)["items"]) if (ItemStack::fromJson(it).id == "bread") back += ItemStack::fromJson(it).n;
+    check(bread == 0 && back == 6 && repOf(*P, v->id) > repCaught && !theftWanted(*P, v->id), "given back: the bread is in the chest again, some standing back, nothing owed");
+    // again: pay the fine and keep it
+    tick(1);
+    take("bread", 6); tick(1);
+    tick(12);
+    Talk c2; talkOpen(*L, *P, *guard, c2, true, "theft");
+    payI = -1; for (int i = 0; i < (int)c2.opts.size(); i++) if (c2.opts[i].act == "payfine") payI = i;
+    const int fine = theftFine(*P, v->id);
+    P->give(ItemStack("gold_coin", fine + 3));
+    talkChoose(*L, *P, c2, payI);
+    int coins = 0; bread = 0; for (auto& q : P->inv) { if (q.id == "gold_coin") coins += q.n; if (q.id == "bread") bread += q.n; }
+    check(fine >= 5 && coins == 3 && bread == 6 && !theftWanted(*P, v->id), "the fine paid in coins (" + std::to_string(fine) + "): the bread kept, nothing owed");
+    // and again: refuse, and the guards come for you
+    stockChest(); tick(1);
+    take("bread", 6); tick(1); tick(12);
+    Talk c3; talkOpen(*L, *P, *guard, c3, true, "theft");
+    refI = -1; for (int i = 0; i < (int)c3.opts.size(); i++) if (c3.opts[i].act == "refuse") refI = i;
+    talkChoose(*L, *P, c3, refI);
+    tick(0.5);
+    check(theftWanted(*P, v->id) && vsys(*L)->mind(guard->id).foe == P->id, "\"make me\": wanted, and the guard attacks");
+    // a chest you put there yourself is yours
+    theftForgive(*L, *P, v->id);
+    vsys(*L)->mind(guard->id).foe = 0;
+    const ivec3 mine = cpos + ivec3(0, 0, 2);
+    bus.emit("blockPlace", json::array({P->name, mine.x, mine.y, mine.z, "chest"}));
+    w.setBlock(mine.x, mine.y, mine.z, reg().blockId("chest"));
+    json mi = json::array(); for (int i = 0; i < 27; i++) mi.push_back(nullptr); mi[0] = ItemStack("apple", 4).toJson();
+    w.setBlockEntity(mine.x, mine.y, mine.z, json{{"type", "chest"}, {"items", mi}});
+    tick(1);
+    const double repMine = repOf(*P, v->id);
+    (*w.blockEntity(mine.x, mine.y, mine.z))["items"][0] = nullptr; w.blockEntityChanged(mine.x, mine.y, mine.z); P->give(ItemStack("apple", 4));
+    tick(2);
+    check(repOf(*P, v->id) == repMine && !theftWanted(*P, v->id), "taking from your own chest is no theft");
+    // each player their own standing: someone else's theft is theirs alone
+    auto p2 = std::make_unique<Player>(); p2->name = "Friend"; p2->pos = P->pos + vec3(30, 0, 0);
+    Player& P2 = *static_cast<Player*>(L->spawn(std::move(p2)));
+    const double rep2 = repOf(P2, v->id);
+    stockChest(); tick(1); take("bread", 6); tick(1);
+    check(repOf(P2, v->id) == rep2, "a friend's standing isn't touched by your stealing");
+    P2.removed = true; theftForgive(*L, *P, v->id);
+    for (auto& q : P->inv) q = ItemStack();
+    w.setBlock(cpos.x, cpos.y, cpos.z, AIR); w.setBlock(mine.x, mine.y, mine.z, AIR);
+    tick(0.5);
   }
 
   // ------------------------------------------------------------ paths

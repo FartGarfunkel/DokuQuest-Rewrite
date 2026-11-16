@@ -2,6 +2,7 @@
 // The enchanting offers and rune strings are checked against values taken from the running original
 // (tools/port/jsdump.py: enchOffers / enchRunes / skillLevel). Run: build/test_magic
 #include "sim/crafting.h"
+namespace dq { bool interactable(BlockId id); }   // (sim/controller.cpp)
 #include "sim/spell_items.h"
 #include "core/tool_parts.h"
 #include "sim/skilltree.h"
@@ -143,6 +144,7 @@ int main(int argc, char** argv) {
   // power = 1 * (1 + (lv-1)/98*0.6): Magic is level 1 here -> 6 damage
   check(sk && near(sk->hp, hp0 - 6) && mobStatus(*sk, "burnT") > 0, "the bolt hits: 6 damage and burning");
   check(skillXp(p, "magic") == 460 + 24 && gearLevel(p.inv[0]) == 1 && p.inv[0].tag.value("gx", 0) == 2 && p.inv[0].d == 1, "Magic +24 xp, the staff wears and grows");
+
   check(p.stats["schools"].value("fire", 0) == 24, "the Fire school grows with the cast");
 
   // not enough mana, the cooldown
@@ -217,6 +219,27 @@ int main(int argc, char** argv) {
   World& w = lv->world(0);
   w.stream({{p.pos, 1, false}}, 50);
   for (int i = 0; i < 400 && !w.isLoaded(0, 700, 0); i++) { w.stream({{p.pos, 1, false}}, 50); w.pumpMain(50); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+  // a staff aimed at something with a use of its own: that use, not a spell (your grave, a lever, a table)
+  {
+    World& ww = lv->world();
+    const ivec3 g(4, 700, 4);
+    const ItemStack keep0 = p.inv[0]; const int keepSel = p.selected;
+    p.inv[0] = ItemStack("apprentice_staff", 1); p.selected = 0;
+    const float mana0 = magicState(*lv, p).mana;
+    for (const char* k : {"grave", "lever", "crafting_table"}) {
+      ww.setBlock(g.x, g.y, g.z, reg().blockId(k));
+      magicState(*lv, p).castCd = 0;
+      bus.emit("itemUse", json::array({"Mage", "apprentice_staff", g.x, g.y, g.z, 2}));
+      check(near(magicState(*lv, p).mana, mana0), std::string("a staff used on a ") + k + " doesn't cast");
+    }
+    p.sneaking = true;
+    const int sp0 = p.stats.value("spell", 0);
+    bus.emit("itemUse", json::array({"Mage", "apprentice_staff", g.x, g.y, g.z, 2}));
+    check(p.stats.value("spell", 0) == sp0, "sneak-use on a crafting table (to pick it up) doesn't change your spell");
+    p.sneaking = false;
+    ww.setBlock(g.x, g.y, g.z, AIR);
+    p.inv[0] = keep0; p.selected = keepSel;
+  }
   check(w.isLoaded(0, 700, 0), "a chunk to brew in");
   w.setBlock(2, 700, 2, reg().blockId("brewing_stand"));
   json& be = brewEntity(w, 2, 700, 2);
@@ -423,6 +446,20 @@ int main(int argc, char** argv) {
     fresh(); pc.handCasting(TICK_DT, in, nullptr);
     check(in.attackPressed && bolts().empty(), "attack on a block within reach, hand empty: it digs (no spell)");
     pc.target.hit = false;
+    {   // a staff: anywhere it casts, but not at something for using (your grave, a chest, a lever): that's used
+      const ItemStack keep = p.inv[p.selected]; p.inv[p.selected] = ItemStack("apprentice_staff", 1);
+      for (const char* k : {"grave", "chest", "lever"}) {
+        in = PlayerInput(); in.attackPressed = in.attack = true; pc.target.hit = true; pc.target.id = reg().blockId(k);
+        fresh(); pc.handCasting(TICK_DT, in, nullptr);
+        check(in.attackPressed && bolts().empty(), std::string("a staff's attack at a ") + k + ": no spell, the block's own");
+      }
+      in = PlayerInput(); in.attackPressed = in.attack = true; pc.target.hit = true; pc.target.id = reg().blockId("stone");
+      fresh(); pc.handCasting(TICK_DT, in, nullptr);
+      check(!in.attackPressed, "a staff's attack at stone: the spell (as ever)");
+      check(interactable(reg().blockId("grave")) && interactable(reg().blockId("lever")), "a grave and a lever are for using");
+      p.inv[p.selected] = keep; pc.target.hit = false;
+      for (int i = 0; i < 20; i++) lv->tick(TICK_DT);
+    }
     // ---- the quick spell (Morrowind): its own button, a heal with a sword and a shield in hand ----
     p.inv[0] = ItemStack("iron_sword", 1); p.offhand[0] = ItemStack("shield", 1);
     fresh();
@@ -494,6 +531,17 @@ int main(int argc, char** argv) {
     check(near(z->maxHp, hp1, 0.05), "they leave: back as it was");
     z->removed = true; lv->tick(TICK_DT);
     p.stats["skills"] = keepSkills;
+  }
+
+  printf("[spell ranks: a long road to mastery]\n");
+  {
+    json keepX = p.stats.contains("spellXp") ? p.stats["spellXp"] : json::object();
+    auto rankAfter = [&](double casts) { p.stats["spellXp"] = json{{"fireball", casts * 14 * 6}}; return spellRank(p, "fireball"); };
+    check(rankAfter(10) == 2, "ten fireballs: rank II (" + std::to_string(rankAfter(10)) + ")");
+    check(rankAfter(39) <= 4, "39 fireballs (mastery before): rank IV at most (" + std::to_string(rankAfter(39)) + ")");
+    check(rankAfter(150) < 10 && rankAfter(150) >= 5, "150: well along, not yet mastered (" + std::to_string(rankAfter(150)) + ")");
+    check(rankAfter(300) == 10, "about three hundred: mastered");
+    p.stats["spellXp"] = keepX;
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

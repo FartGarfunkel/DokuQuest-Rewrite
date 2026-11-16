@@ -268,6 +268,7 @@ fs::path userHerobrineSkin() {
   if (found.empty()) {
     const fs::path rp = userDir() / "resourcepacks";
     if (fs::is_directory(rp, ec)) for (auto& pk : fs::directory_iterator(rp, ec)) {
+      if (pk.path().filename() == "DokuQuest Base") continue;   // (an old copy of the game's own pack: his skin is the game's, updated with it)
       const fs::path f = pk.path() / "assets" / "minecraft" / "textures" / "entity" / "herobrine" / "herobrine.png";
       if (fs::exists(f, ec)) { found = f; break; }
     }

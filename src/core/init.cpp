@@ -24,6 +24,7 @@ bool initCore(const CoreOptions& o) {
   registerRedstone();
   registerBossKits();   // imported bosses fight by their own attack tables (sim/boss_kit.cpp)
   registerBossBrains();   // the great foes that had no fight of their own (sim/boss_brains.cpp)
+  registerVillageTheft();   // stealing in villages (sim/village_theft.cpp)
   return true;
 }
 void shutdownCore() {}

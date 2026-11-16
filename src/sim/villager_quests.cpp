@@ -4,6 +4,7 @@
 // adds to it: riftarc.js, riftlore.js, hearth.js, paths.js, rpg.js) and paths.js's path choice and talents.
 #include "core/tool_parts.h"
 #include "sim/villagers_internal.h"
+#include "sim/village_theft.h"
 #include "sim/skills.h"
 #include "sim/rpg.h"
 #include "sim/endstory.h"
@@ -305,7 +306,7 @@ std::vector<ShopLine> shopLines(Level& lv, Player& p, const Village& v, int npcI
     if (!reg().item(l[0].get<std::string>())) continue;
     ShopLine o; o.i = i; o.id = l[0]; o.n = l[1]; o.tier = l[3]; o.key = tab + std::to_string(i);
     double base = l[2].get<double>();
-    o.price = std::max(1, (int)std::floor(base * (tab == "buy" ? disc : 1) + 0.5));
+    o.price = std::max(1, (int)std::floor(base * (tab == "buy" ? disc * shopPriceFactor(p, v.id) : 1) + 0.5));   // (a known thief pays more)
     o.locked = o.tier > st.tier; o.left = 12 - rec["u"].value(o.key, 0);
     // the village makes these itself (sim/villager_chores.cpp): only what's been baked or ground is for sale
     if (tab == "buy" && villageMakes(o.id)) o.left = std::min(o.left, villageStock(lv, v).value(o.id, 0) / std::max(1, o.n));
@@ -588,6 +589,15 @@ static void confront(Level& lv, Player& p, Talk& t, const std::string& victim0) 
   Creature* e = talkNpc(lv, t);
   NpcMind* M = e && vsys(lv) ? &vsys(lv)->mind(e->id) : nullptr;
   std::string victim = !victim0.empty() ? victim0 : M && !M->confrontVictim.empty() ? M->confrontVictim : "one of ours";
+  if (victim == "theft") {   // you were seen taking: give it back, pay the fine, or fight (sim/village_theft.h)
+    t.mode = "confront";
+    const int fine = theftFine(p, t.vid);
+    say(lv, p, t, "Hold it right there. You were seen taking " + theftWhat(p, t.vid) + ". That doesn't belong to you.");
+    t.opts = {{"Here, take it back. I'm sorry.", "", "giveback", nullptr},
+              {"I'll pay the fine (" + std::to_string(fine) + " coins).", "", "payfine", nullptr},
+              {"Make me.", "", "refuse", nullptr}};
+    return;
+  }
   bool mine = victim == "me" || victim == t.name;
   t.mode = "confront";
   say(lv, p, t, mine ? "Whoa! Watch where you swing that! Do that again and we'll have a problem." : "Hey! I saw that. What do you think you're doing, hitting " + victim + "?");
@@ -624,6 +634,22 @@ void talkChoose(Level& lv, Player& p, Talk& t, int i) {
   sfxUi(lv, p, "click");
   const std::string& a = o.act;
   if (a == "close") { t.closeNow = true; return; }
+  if (a == "giveback") {
+    if (theftGiveBack(lv, p, t.vid)) { say(lv, p, t, "Good. Let's not have this happen again."); t.opts = {{"Goodbye.", "", "close", nullptr}}; }
+    else { say(lv, p, t, "Hm. There's nothing owed. Off you go."); t.opts = {{"Goodbye.", "", "close", nullptr}}; }
+    return;
+  }
+  if (a == "payfine") {
+    if (theftPayFine(lv, p, t.vid)) { say(lv, p, t, "Paid in full. Keep your hands to yourself from now on."); t.opts = {{"Goodbye.", "", "close", nullptr}}; }
+    else say(lv, p, t, "You don't have the coins. Then give it back.");
+    return;
+  }
+  if (a == "refuse") {
+    theftRefuse(lv, p, t.vid);
+    say(lv, p, t, "Then we do this the hard way. Guards!");
+    t.closeNow = true;
+    return;
+  }
   if (a == "shop") { t.mode = "shop"; t.tab = "buy"; return; }
   if (a == "news") { news(lv, p, t); return; }
   if (a == "family" && v) {   // their family tree and who they get on with (sim/villager_social.cpp, villager_family.cpp)

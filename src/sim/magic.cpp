@@ -2,6 +2,7 @@
 // uses, creature statuses, summons' time running out, brewing stands; the MagicSystem that runs them.
 // (game/magic.js, arcana.js, spellcraft.js, paths.js schools, brewing.js, monsters.js venom, stable.js spirits)
 #include "sim/magic.h"
+#include "world/shapes.h"
 #include "sim/blockfx.h"
 #include "sim/spell_items.h"
 #include "sim/skilltree.h"
@@ -272,9 +273,17 @@ bool magicItemUse(Level& lv, Player& p, const std::string& key, ivec3 at, int fa
   const ItemDef* d = h.def();
   if (!d) return true;
   // a block you can use (a chest, a table, a station, a door, a bed) is used, not the thing in your hand
+  if (face >= 0) {   // (a block's own use beats a spell or a staff: your grave after you die, a lever, a gate...)
+    const BlockId bid = lv.world(p.realm).getBlock(at.x, at.y, at.z);
+    const BlockDef& b = reg().block(bid);
+    if (p.sneaking && (b.has("carry") || b.has("grave"))) return true;   // (sneaking: picked up / your things back, not a spell changed)
+  }
   if (face >= 0 && !p.sneaking) {
-    const BlockDef& b = reg().block(lv.world(p.realm).getBlock(at.x, at.y, at.z));
+    const BlockId bid = lv.world(p.realm).getBlock(at.x, at.y, at.z);
+    const BlockDef& b = reg().block(bid);
     if (b.has("container") || b.has("table") || b.has("door") || b.has("station") || b.has("questBoard") || b.has("bed") || b.has("furnace")) return true;
+    if (b.has("grave") || b.has("rs") || b.has("machine") || b.has("trapdoor") || b.has("gate") || b.has("sign") || b.has("cauldron") || b.has("composter") ||
+        b.has("jukebox") || b.has("lectern") || b.has("noteBlock") || b.has("cake") || b.has("carry") || reg().tShape[bid] == ShapeKind::Gate || reg().tShape[bid] == ShapeKind::Trapdoor || reg().tShape[bid] == ShapeKind::Door) return true;
     // what a thing in hand is set on: a shelf, a bookcase, a pile, a rack or stand (a potion goes on it, not down your throat)
     if (b.has("shelf") || b.has("bookcase") || b.has("pile") || b.has("rack") || b.has("trough") || b.str("furniture") == "table" || b.key == "brewing_stand") return true;
   }
