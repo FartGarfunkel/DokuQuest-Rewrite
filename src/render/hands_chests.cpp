@@ -152,10 +152,11 @@ public:
       const PackModel* swapM = partOf("chest_button_page");
       const float lid = handsEase(c.at, 2, c.open, dt) * (c.barrel ? 71.6f : 90.f);   // (a barrel's top: render/chest_layer.cpp's 1.25)
       const vec2 light(c.L.sky, c.L.block);
-      auto part = [&](const PackModel* m, float press) {
+      auto part = [&](const PackModel* m, float press, vec3 grow = vec3(-1)) {
         if (!m) return;
         TPose p = lidPose(f, c, lid);
         if (press != 0) p.t(0, press * 1.2f / 16, 0);
+        if (grow.x >= 0) p.t(grow.x / 16, grow.y / 16, grow.z / 16).s(1.8f, 1.8f, 1.8f).t(-grow.x / 16, -grow.y / 16, -grow.z / 16);   // (a barrel's buttons: bigger, to be found)
         handsPartDraw(s.app, cd, *m, p.m, light);
       };
       if (!c.barrel) part(c.lay.sheet ? lidM : bareLid(lidM), 0);   // (a barrel's own top is render/chest_layer.cpp's; a large chest's right lid has no sheet)
@@ -164,7 +165,10 @@ public:
         p.t(6.f / 16, 10.75f / 16, 7.f / 16).rx(90).s(6.f / 16, 8.f / 16, 1);
         cd.picture(mapPaperTexture(), p.m, vec4(0, 0, 1, 1), vec4(1), light, true);
       }
-      if (lid > 0.1f && c.lay.buttons) { part(sortM, pressOf(c.at, 0, c.press[0], f.time)); part(swapM, pressOf(c.at, 1, c.press[1], f.time)); }
+      if (lid > 0.1f && c.lay.buttons) {
+        const vec3 g0 = c.barrel ? vec3(12.5f, 10.25f, 8.65f) : vec3(-1), g1 = c.barrel ? vec3(12.5f, 10.25f, 4.5f) : vec3(-1);   // (sim/hands_chest.cpp handsBarrelButton)
+        part(sortM, pressOf(c.at, 0, c.press[0], f.time), g0); part(swapM, pressOf(c.at, 1, c.press[1], f.time), g1);
+      }
       if (lid > 0.1f && c.hover >= 0) {   // (the sheet: the item's name and lines written on the sheet: a large chest's on its left lid)
         const int k = c.page * c.lay.pg + c.lay.off + c.hover;
         const Chest* sheet = &c;

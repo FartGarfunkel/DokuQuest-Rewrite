@@ -82,7 +82,8 @@ int barrelFacing(World& w, ivec3 at) { return w.getMeta(at.x, at.y, at.z) & 3; }
 // a rim button's box (k 0 sort, 1 next layer) on the raised top's underside, in the north frame (sixteenths)
 void barrelButtonBox(World& w, ivec3 at, int k, float out[6]) {
   const vec3 c = handsBarrelButton(w, at, k) * 16.f;
-  out[0] = c.x - 1.6f; out[1] = c.y - 1.6f; out[2] = c.z - 1.6f; out[3] = c.x + 1.6f; out[4] = c.y + 1.6f; out[5] = c.z + 1.6f;
+  const float r = 2.8f;   // (drawn bigger than the chest's: render/hands_chests.cpp BARREL_BUTTON)
+  out[0] = c.x - r; out[1] = c.y - r; out[2] = c.z - r; out[3] = c.x + r; out[4] = c.y + r; out[5] = c.z + r;
 }
 }  // namespace
 
@@ -384,6 +385,11 @@ bool handsBarrelUse(Level& lv, Player& p, World& w, ivec3 at, vec3 eye, vec3 dir
     const u8 m = w.getMeta(at.x, at.y, at.z);
     const u8 want = (u8)bf;   // (its front toward you: render/chest_layer.cpp hinges the top on the far side)
     if ((m & 3) != want) w.setBlock(at.x, at.y, at.z, w.getBlock(at.x, at.y, at.z), (u8)((m & ~3) | want));
+    // what's in it packed from the first slot and the first layer showing: loot is rolled into any of its 27 slots,
+    // and a barrel shows one layer at a time (it looked empty with its goods on the layers below)
+    json& its = itemsOf(*e); int k = 0;
+    for (int i = 0; i < SLOTS && i < (int)its.size(); i++) if (!its[i].is_null() && !ItemStack::fromJson(its[i]).empty()) { if (i != k) { its[k] = its[i]; its[i] = nullptr; } k++; }
+    (*e)["page"] = 0; changed();
     setChestLidOpen(w, at, true); sfxAt(lv, "chest", c);
     return true;
   }

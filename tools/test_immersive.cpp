@@ -393,6 +393,18 @@ int main(int argc, char** argv) {
     check(handsBarrelAim(w, at, eye, glm::normalize(topMid - eye)).what == HandsChestAim::Lid, "aimed at the raised top: it shuts");
     check(handsBarrelAim(w, at, eye, glm::normalize(vec3(at) + vec3(0.5f, 0.3f, 0.5f) - eye)).what < HandsChestAim::Tray, "aimed at its side: not the tray (it can be broken)");
     check(handsBarrelAim(w, at, eye, glm::normalize(vec3(at) + vec3(0.5f, 0.75f, 0.5f) - eye)).what == HandsChestAim::Tray, "aimed into it: the tray");
+    // a little off the button's middle (2.5 sixteenths up; the chest-sized box reached 1.6): still the button (they're drawn big enough to find)
+    check(handsBarrelAim(w, at, eye, glm::normalize(btn + vec3(0, 2.5f / 16, 0) - eye)).what == HandsChestAim::Swap, "a little off the button: still the button");
+    // loot rolled anywhere in its 27 slots: opened, it lies on the first layer
+    const ivec3 b2(14, im.Y + 1, 12);
+    w.setBlock(b2.x, b2.y, b2.z, reg().blockId("barrel"));
+    json items = json::array(); for (int i = 0; i < 27; i++) items.push_back(nullptr);
+    items[20] = ItemStack("apple", 2).toJson(); items[25] = ItemStack("coal", 5).toJson();
+    w.setBlockEntity(b2.x, b2.y, b2.z, json{{"type", "chest"}, {"items", items}, {"page", 1}});
+    const vec3 eye2 = vec3(b2) + vec3(-1.2f, 1.62f, 0.5f);
+    handsBarrelUse(*im.lv, *im.P, w, b2, eye2, glm::normalize(vec3(b2) + vec3(0.5f, 0.9f, 0.5f) - eye2), none, false, false);
+    const json* e2 = w.blockEntity(b2.x, b2.y, b2.z);
+    check(e2 && ItemStack::fromJson((*e2)["items"][0]).id == "apple" && ItemStack::fromJson((*e2)["items"][1]).id == "coal" && e2->value("page", 0) == 0, "opened, the loot deep in it lies on the first layer");
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);
