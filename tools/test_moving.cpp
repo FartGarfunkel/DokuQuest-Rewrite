@@ -10,6 +10,7 @@
 #include "world/world.h"
 #include "world/dims.h"
 #include "sim/rotate.h"
+#include "sim/glue.h"
 #include <thread>
 #include <cstdio>
 
@@ -51,6 +52,48 @@ int main(int argc, char** argv) {
     check(rotateMetaAbout(log, 0, 1, 1) == 2 && rotateMetaAbout(log, 0, 2, 1) == 1 && rotateMetaAbout(log, 1, 1, 1) == 1, "about a sideways axis an upright log lies down across it; one along the axis stays");
     check(rotateMetaAbout(disp, 1, 1, 1) == 3 && rotateMetaAbout(disp, 3, 1, 1) == 0 && rotateMetaAbout(disp, 1, 1, 4) == 1, "a six-way block turned about east-west: up becomes south, south becomes down");
     check(rotateMetaAbout(stairs, 1, 1, 1) == 1, "blocks without a six-way facing keep theirs about a sideways axis");
+  }
+
+  // a little world to build in: a stone floor high in the sky
+  ThreadPool pool(2); EventBus bus;
+  LevelInfo li; li.name = "MovingTest"; li.seedText = "moving";
+  auto lvp = Level::create(userSub("saves"), li, &pool, &bus);
+  Level* L = lvp.get();
+  World& w = L->world();
+  const int Y = dimBase(DIM_OVERWORLD) + 200;
+  Player* P; { auto p = std::make_unique<Player>(); p->name = "Tester"; p->pos = vec3(8.5f, Y + 1, 8.5f); P = static_cast<Player*>(L->spawn(std::move(p))); }
+  { double t0 = nowSeconds();
+    while (nowSeconds() - t0 < 60) {
+      w.stream({{P->pos, 2, false}}, 20);
+      bool all = true;
+      for (int cx = -1; cx <= 1; cx++) for (int cz = -1; cz <= 1; cz++) if (!w.chunk(DIM_OVERWORLD, cx, cz)) all = false;
+      if (all) break;
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    } }
+  check(w.chunk(DIM_OVERWORLD, 0, 0) != nullptr, "the test chunks load");
+  const BlockId stone = reg().blockId("stone"), planks = reg().blockId("planks"), chest = reg().blockId("chest"), water = reg().blockId("water");
+  for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) { w.setBlock(x, Y, z, stone); for (int y = Y + 1; y < Y + 8; y++) w.setBlock(x, y, z, AIR); }
+  auto use = [&](const std::string& item, ivec3 at, int face) { P->held() = item.empty() ? ItemStack() : ItemStack(item, 8); return bus.emit("itemUse", json::array({P->name, item, at.x, at.y, at.z, face})); };
+
+  printf("[glue]\n");
+  {
+    const ivec3 A(2, Y + 1, 2), B(3, Y + 1, 2), C(2, Y + 1, 4);
+    w.setBlock(A.x, A.y, A.z, planks); w.setBlock(B.x, B.y, B.z, planks);
+    check(setGlue(w, A, 0, true) && glued(w, A, 0) && glued(w, B, 1), "glue on A's east face sticks A and B (seen from both sides)");
+    check(setGlue(w, A, 0, false) && !glued(w, A, 0) && !glued(w, B, 1), "glue again unsticks them");
+    w.setBlock(C.x, C.y, C.z, chest);
+    w.setBlockEntity(C.x, C.y, C.z, json{{"type", "chest"}, {"items", json::array({ItemStack("cobblestone", 5).toJson()})}});
+    w.setBlock(C.x, C.y, C.z - 1, planks);
+    const bool cg = setGlue(w, C, 5, true);
+    const json* ce = w.blockEntity(C.x, C.y, C.z);
+    check(cg && glued(w, C, 5) && ce && ce->value("type", "") == "chest" && (*ce)["items"].size() == 1, "a chest glued keeps its contents and stays a chest");
+    w.setBlock(A.x, A.y + 1, A.z, water);
+    check(!setGlue(w, A, 2, true) && !glueable(water) && !glueable(AIR), "water (and air) can't be glued");
+    setGlue(w, A, 0, true); w.setBlock(B.x, B.y, B.z, AIR);
+    check(!glued(w, A, 0), "a glued neighbour broken: the glue is gone");
+    w.setBlock(B.x, B.y, B.z, planks);
+    check(!use("glue", A, 0) && glued(w, A, 0) && P->held().n == 7, "using glue on a face sticks it, one glue used");
+    check(!use("glue", A, 0) && !glued(w, A, 0) && P->held().n == 9, "using it again unsticks it, the glue given back");
   }
 
   printf("%d passed, %d failed\n", passes, fails);

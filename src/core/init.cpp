@@ -19,6 +19,7 @@ bool initCore(const CoreOptions& o) {
   registerPortals();
   registerMagic();
   registerContent();
+  registerGlue();   // moving structures: glue between faces (sim/glue.h)
   registerEndStory();
   registerVillagers();
   registerRedstone();
