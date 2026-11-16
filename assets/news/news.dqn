@@ -16,8 +16,8 @@
 **Tooltips:**
 - **Only what a thing does:** pickaxes, axes, shovels and hoes show their mining speed; swords and staffs only their attack. Staffs say they cast your chosen spell, and show their spell power, element boosts and mana while held.
 **Fixes:**
-- **Windows:** a new version unzipped over an older one no longer keeps the old version's leftover pictures, models and data (Herobrine, the barrel buttons and more).
-- **Herobrine** wears his own skin even with an old copy of the DokuQuest Base pack in your player folder.
+- **Windows:** a new version unzipped over an older one no longer keeps the old version's leftover pictures, models and data (old skins, the barrel buttons and more).
+- **Skins:** the game's own creature skins are used even with an old copy of the DokuQuest Base pack in your player folder.
 - Removed Herobrine.
 ## Alpha 1.0.0.24 — Great Foes | November 2026
 **The bosses fight:**
