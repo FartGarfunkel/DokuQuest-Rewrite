@@ -46,6 +46,7 @@ bool TouchControls::held(Btn b) const {
 void TouchControls::beginFrame() {
   lookAcc = vec2(0);
   pulseBag = pulsePause = pulseView = false; pulseSlot = -1;
+  menuScroll = 0; menuDragStarted = false;
 }
 
 void TouchControls::handle(const SDL_Event& e, bool playing) {
@@ -63,7 +64,7 @@ void TouchControls::handle(const SDL_Event& e, bool playing) {
   const Layout L = layoutFor(W, H);
   if (e.type == SDL_FINGERDOWN) {
     inUse = true;
-    if (!playing) return;   // (a menu: the finger is the pointer)
+    if (!playing) { menuDown = true; menuId = e.tfinger.fingerId; menuStart = menuLast = p; menuDir = 0; return; }   // (a menu: the finger is the pointer)
     Finger f; f.id = e.tfinger.fingerId; f.start = f.last = p; f.t0 = nowSeconds();
     for (int k = 0; k < BtnCount && f.role == None; k++) if (glm::length(p - L.c[k]) < L.r[k] * 1.2f) { f.role = Button; f.btn = k; }
     if (f.role == None) { const int s = hudHotbarSlotAt(p.x, p.y); if (s >= 0) { f.role = Hotbar; pulseSlot = s; } }
@@ -80,6 +81,18 @@ void TouchControls::handle(const SDL_Event& e, bool playing) {
     fingers.erase(std::remove_if(fingers.begin(), fingers.end(), [&](const Finger& o) { return o.id == f.id; }), fingers.end());
     fingers.push_back(f);
     return;
+  }
+  if (menuDown && e.tfinger.fingerId == menuId) {
+    if (e.type == SDL_FINGERUP) menuDown = false;
+    else if (!playing) {
+      const vec2 d = p - menuLast, all = p - menuStart;
+      menuLast = p;
+      if (menuDir == 0 && glm::length(all) >= L.slop) {
+        menuDir = std::fabs(all.y) > std::fabs(all.x) ? 1 : 2;   // (sideways: a slider)
+        menuDragStarted = menuDir == 1;
+      }
+      if (menuDir == 1) menuScroll -= d.y;   // the list follows the finger
+    }
   }
   Finger* f = find(e.tfinger.fingerId);
   if (!f) return;

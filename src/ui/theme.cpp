@@ -399,8 +399,15 @@ bool inputText(const char* id, std::string* s, const char* hint, size_t maxLen, 
 
 void padScrollHere() {
   float d = app().input.padScroll();
-  if (d == 0) return;
   ImGuiContext& g = *GImGui;
+  {   // a finger dragging a list (input/touch.h): not while it holds a scrollbar; a button it pressed first is let go, or
+      // lifting the finger would press it (the list moves with the finger, so the same button is still under it)
+    const TouchControls& t = app().input.touch;
+    const bool bar = g.ActiveId && g.ActiveIdWindow && g.ActiveId == ImGui::GetWindowScrollbarID(g.ActiveIdWindow, ImGuiAxis_Y);
+    if (bar) d -= t.menuScroll;
+    else if (t.menuDragStarted && g.ActiveId) ImGui::ClearActiveID();
+  }
+  if (d == 0) return;
   if (ImGui::IsWindowFocused(ImGuiFocusedFlags_ChildWindows) || g.NavId == 0 || ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows))
     ImGui::SetScrollY(ImGui::GetScrollY() + d);
 }

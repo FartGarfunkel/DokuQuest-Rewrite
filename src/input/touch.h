@@ -30,6 +30,8 @@ public:
   bool attack = false, use = false, jump = false, sneak = false, sprint = false;
   bool pulseBag = false, pulsePause = false, pulseView = false;
   int pulseSlot = -1;
+  float menuScroll = 0;      // a menu dragged up or down by a finger: pixels to scroll it this frame (Input::padScroll)
+  bool menuDragStarted = false;   // this frame a finger's drag became a scroll: the button it pressed is let go (ui/theme.cpp padScrollHere)
 
 private:
   enum Role { None, Stick, Look, Button, Hotbar };
@@ -39,6 +41,8 @@ private:
   bool sneakOn = false;      // Sneak is a toggle under a thumb
   int useFrames = 0;         // a tap holds Use down this many more frames
   vec2 lookAcc{0};
+  // the finger on a menu (the pointer): dragged mostly up or down, it scrolls the list under it
+  bool menuDown = false; SDL_FingerID menuId = 0; vec2 menuStart{0}, menuLast{0}; int menuDir = 0;   // 0 not yet, 1 scrolls, 2 doesn't
   Finger* find(SDL_FingerID id);
   bool held(Btn b) const;
 };

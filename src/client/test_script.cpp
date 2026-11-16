@@ -4,7 +4,8 @@
 //   {"steps":[{"wait":120,"do":"give","item":"chest"}, {"do":"key","key":"E","hold":3},
 //             {"do":"pad","button":"a"}, {"do":"expect","screen":"inventory"}, {"do":"shot","path":"/tmp/a.png"}]}
 // do: key{key,hold} type{text} mouse{button,hold,x?,y?} move{dx,dy} pad{button,hold,id?} padaxis{axis,value,hold,id?}
-//     touch{x,y (0..1),to?:[x,y],hold,id?} (a finger: the on-screen controls; DQ_TOUCH=1 shows them on a PC)
+//     touch{x,y (0..1),to?:[x,y],hold,id?,mouse?} (a finger: the on-screen controls, DQ_TOUCH=1 shows them on a PC;
+//       finger 0 also moves and presses the pointer, as SDL does on a phone)
 // (local = which split-screen player the look/tp/give/... steps act on; id = which virtual controller, 0..3: they attach on first use; Start on a free one joins split screen)
 //     furnace{x,y,z,in,fuel,out,n,cook,burn} (a furnace's record filled)
 //     cmd{text} look{yaw,pitch (degrees)} lookAt{x,y,z} tp{x,y,z} give{item,n,clear?,hand?} select{slot} setBlock{x,y,z,key}
@@ -81,10 +82,21 @@ void pushMouseButton(int button, bool down, int x, int y) {
   SDL_PushEvent(&e);
 }
 // a finger on the touch screen (x, y: 0..1 of the window), as Android's SDL sends it
-void pushFinger(Uint32 type, int id, float x, float y) {
+// mouse: also the pointer events SDL makes from the first finger on a phone (which = SDL_TOUCH_MOUSEID)
+void pushFinger(Uint32 type, int id, float x, float y, bool mouse) {
   SDL_Event e{}; e.type = type; e.tfinger.touchId = 1; e.tfinger.fingerId = id; e.tfinger.x = x; e.tfinger.y = y; e.tfinger.pressure = 1;
   e.tfinger.windowID = SDL_GetWindowID(app().window);
   SDL_PushEvent(&e);
+  if (!mouse) return;
+  const int px = (int)(x * app().width), py = (int)(y * app().height);
+  SDL_WarpMouseInWindow(app().window, px, py);
+  SDL_Event m{}; m.type = SDL_MOUSEMOTION; m.motion.which = SDL_TOUCH_MOUSEID; m.motion.x = px; m.motion.y = py; m.motion.windowID = e.tfinger.windowID;
+  if (type == SDL_FINGERDOWN || type == SDL_FINGERMOTION) { m.motion.state = type == SDL_FINGERMOTION ? SDL_BUTTON_LMASK : 0; SDL_PushEvent(&m); }
+  if (type == SDL_FINGERDOWN || type == SDL_FINGERUP) {
+    SDL_Event b{}; b.type = type == SDL_FINGERDOWN ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP; b.button.which = SDL_TOUCH_MOUSEID; b.button.button = SDL_BUTTON_LEFT;
+    b.button.state = type == SDL_FINGERDOWN ? SDL_PRESSED : SDL_RELEASED; b.button.clicks = 1; b.button.x = px; b.button.y = py; b.button.windowID = e.tfinger.windowID;
+    SDL_PushEvent(&b);
+  }
 }
 void pushMotion(int x, int y, int dx, int dy) {
   SDL_Event e{}; e.type = SDL_MOUSEMOTION; e.motion.x = x; e.motion.y = y; e.motion.xrel = dx; e.motion.yrel = dy;
@@ -169,15 +181,16 @@ void runStep(App& a, const json& st) {
     atlasPut(*p, "map", mp, back); atlasPut(*p, "compass", cp, back); setAtlasMinimap(*p, st.value("mini", true));
   } else if (op == "touch") {   // a finger: down at x,y, slid to "to" [x,y] over "hold" frames, then lifted (input/touch.h)
     const int id = st.value("id", 0);
+    const bool ms = st.value("mouse", id == 0);   // (the first finger is the pointer too, as on a phone)
     const float x = st.value("x", 0.5f), y = st.value("y", 0.5f);
     float tx = x, ty = y;
     if (st.contains("to") && st["to"].is_array() && st["to"].size() >= 2) { tx = st["to"][0]; ty = st["to"][1]; }
-    R.later.push_back({f + 1, [id, x, y] { pushFinger(SDL_FINGERDOWN, id, x, y); }});
+    R.later.push_back({f + 1, [id, x, y, ms] { pushFinger(SDL_FINGERDOWN, id, x, y, ms); }});
     for (int k = 1; k <= hold; k++) {
       const float u = (float)k / (float)hold;
-      if (tx != x || ty != y) R.later.push_back({f + 1 + k, [id, x, y, tx, ty, u] { pushFinger(SDL_FINGERMOTION, id, x + (tx - x) * u, y + (ty - y) * u); }});
+      if (tx != x || ty != y) R.later.push_back({f + 1 + k, [id, x, y, tx, ty, u, ms] { pushFinger(SDL_FINGERMOTION, id, x + (tx - x) * u, y + (ty - y) * u, ms); }});
     }
-    R.later.push_back({f + 1 + hold, [id, tx, ty] { pushFinger(SDL_FINGERUP, id, tx, ty); }});
+    R.later.push_back({f + 1 + hold, [id, tx, ty, ms] { pushFinger(SDL_FINGERUP, id, tx, ty, ms); }});
   } else if (op == "move") {
     pushMotion(a.width / 2, a.height / 2, st.value("dx", 0), st.value("dy", 0));
   } else if (op == "pad" && (st.value("button", "") == "lt" || st.value("button", "") == "rt")) {

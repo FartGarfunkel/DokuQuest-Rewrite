@@ -373,6 +373,7 @@ void Input::computeFrame(Frame& F, bool kb, const std::vector<SDL_JoystickID>* i
     if (p.pView) F.pulse[(int)Act::View] = true;
     padView |= p.viewOn;
   }
+  if (kb && touch.enabled) F.scrollPx += touch.menuScroll;   // a finger dragging a menu
   if (kb && touch.enabled && !setupActive) {   // the phone's on-screen controls (input/touch.h)
     F.cur[(int)Act::Attack] = F.cur[(int)Act::Attack] || touch.attack; F.cur[(int)Act::Use] = F.cur[(int)Act::Use] || touch.use;
     F.cur[(int)Act::Jump] = F.cur[(int)Act::Jump] || touch.jump; F.cur[(int)Act::Sneak] = F.cur[(int)Act::Sneak] || touch.sneak;
