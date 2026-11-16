@@ -38,7 +38,7 @@ logs() { timeout 60 adb logcat -d -v brief > "$OUT/logcat-$1.txt" 2>/dev/null; }
 crashed() {   # anything in logcat that means this app died (other processes' errors are not ours)
   grep -E -A12 "Process: $PKG|Fatal signal.*\($PKG\)|>>> $PKG <<<|E/DokuQuest.*(crashed|uncaught)" "$OUT/logcat-$1.txt" | head -40
 }
-game_log() { grep -E "DokuQuest|SDL|vulkan|Vulkan" "$OUT/logcat-$1.txt" | grep -E "[IWEF]/(DokuQuest|SDL)" | head -${2:-80}; }
+game_log() { grep -E "[VIWEF]/(DokuQuest|SDL)" "$OUT/logcat-$1.txt" | head -${2:-80}; }   # (V/SDL: the activity and its surface coming and going)
 
 echo "Android $(adb shell getprop ro.build.version.release | tr -d '\r'), ABIs $(adb shell getprop ro.product.cpu.abilist | tr -d '\r'), Vulkan HAL $(adb shell getprop ro.hardware.vulkan | tr -d '\r')"
 adb install -r "$APK" || { err "the APK did not install"; exit 1; }

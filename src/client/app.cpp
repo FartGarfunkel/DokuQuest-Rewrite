@@ -93,6 +93,22 @@ void App::parseArgs(int argc, char** argv) {
   }
 }
 
+// The game's window. On Android the app's surface can be away for a while as the game starts (the screen turning to
+// landscape; the app left and opened again while it loads): SDL can't make the window then ("Could not fetch native
+// window"), and the game used to stop. It waits for the surface instead (up to ten minutes), pumping SDL's events.
+static SDL_Window* openWindow(const Settings& s, Uint32 flags) {
+  SDL_Window* w = SDL_CreateWindow(("DokuQuest " DQ_VERSION), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, s.windowW, s.windowH, flags);
+#ifdef __ANDROID__
+  for (int i = 0; !w && i < 3000; i++) {
+    if (i == 0) DQ_WARN("window: %s; waiting for the app's surface", SDL_GetError());
+    SDL_PumpEvents(); SDL_Delay(200);
+    w = SDL_CreateWindow(("DokuQuest " DQ_VERSION), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, s.windowW, s.windowH, flags);
+    if (w) DQ_LOG("window: made after waiting %.1f s for the app's surface", (i + 1) * 0.2);
+  }
+#endif
+  return w;
+}
+
 bool App::initWindow() {
 #ifdef SDL_HINT_WINDOWS_DPI_AWARENESS
   SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");   // physical pixels, so we scale the UI ourselves
@@ -120,7 +136,7 @@ bool App::initWindow() {
 #endif
   if (want == RendererKind::Vulkan) {
     Uint32 flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI | (fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0);
-    window = SDL_CreateWindow(("DokuQuest " DQ_VERSION), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, settings.windowW, settings.windowH, flags);
+    window = openWindow(settings, flags);
     if (!window) { DQ_ERR("window: %s", SDL_GetError()); return false; }
     gfxVulkanSetVsync(settings.vsync != 0);   // before the swapchain is made (it was only applied on a later Options change, so Vulkan stayed at the screen's refresh rate)
 #ifdef __ANDROID__
@@ -171,7 +187,7 @@ bool App::initWindow() {
 #if !defined(NDEBUG) && !defined(__ANDROID__)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 #endif
-    if (!window) window = SDL_CreateWindow(("DokuQuest " DQ_VERSION), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, settings.windowW, settings.windowH, flags);
+    if (!window) window = openWindow(settings, flags);
     if (!window) { DQ_ERR("window: %s", SDL_GetError()); return false; }
     glctx = SDL_GL_CreateContext(window);
     if (glctx) { if (gfxInit(t.k)) break; SDL_GL_DeleteContext(glctx); glctx = nullptr; }
