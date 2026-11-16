@@ -8,6 +8,8 @@
 #include "ui/book_ui.h"
 #include "render/char_layer.h"
 #include "client/photo_mode.h"
+#include "core/registry.h"
+#include "render/camera.h"
 #include <random>
 
 namespace dq {
@@ -75,7 +77,7 @@ void clientTickLocalPlayer(GameSession& s, double dt) {
     if (st.hasFov && app.settings.fov > 1) look *= clampv(st.fov / app.settings.fov, 0.05f, 1.f);   // zoomed in, the view turns as much slower
     pi.mx = mv.x; pi.mz = -mv.y; pi.lookX = look.x; pi.lookY = look.y;
     pi.jump = in.down(Act::Jump); pi.sneak = in.down(Act::Sneak); pi.sprint = in.down(Act::Sprint);
-    pi.autoJump = app.settings.autoJump && in.touch.inUse;   // (the touch controls: Options → Controls → Auto-Jump)
+    pi.autoJump = app.settings.autoJump && in.touch.visible();   // (the touch controls: Options → Controls → Auto-Jump)
     pi.dodge = in.pressed(Act::Dodge);   // (sim/combat_rpg.cpp: stamina, a moment untouchable)
     pi.attack = in.down(Act::Attack); pi.attackPressed = in.pressed(Act::Attack);
     pi.use = in.down(Act::Use); pi.usePressed = in.pressed(Act::Use);
@@ -83,6 +85,8 @@ void clientTickLocalPlayer(GameSession& s, double dt) {
     pi.pick = in.pressed(Act::PickBlock); pi.swap = in.pressed(Act::SwapHands); pi.place = in.pressed(Act::PlaceMode); pi.hotRow = in.pressed(Act::HotbarRow);
     // crawl: sneak tapped twice (keyboard and pads alike)
     if (in.pressed(Act::Sneak)) { if (app.time - st.sneakTapT < 0.3) { pi.crawl = true; st.sneakTapT = -10; } else st.sneakTapT = app.time; }
+    if (in.pressed(Act::Crawl)) pi.crawl = true;   // (its own key, and the touch controls' More → Crawl)
+    if (in.touch.dropOne || in.touch.dropAll) { pi.drop = in.touch.dropOne && !justMenu; pi.dropAll = in.touch.dropAll && !justMenu; }   // (the touch Drop button: tapped, held)
     for (int i = 0; i < 9; i++) if (in.pressed((Act)((int)Act::Hot1 + i))) pi.slot = i;
     pi.wheel = -(int)in.wheel();
     const bool padCast = in.usingPad() && in.down(Act::Sneak) && (in.padButtonDown(4) || in.padButtonDown(5));   // sneak + a bumper casts (render/magic_fx.cpp)
@@ -101,6 +105,23 @@ void clientTickLocalPlayer(GameSession& s, double dt) {
   } else st.deadT = 0;
   c.aimOverride = s.viewMode == 1 && st.hasShoulder;
   if (c.aimOverride) { c.aimOrigin = st.shoulder; c.aimDir = lookVector(p.yaw, p.pitch); }
+  // touch, aiming where the finger is (input/touch.h): the ray from the camera through that point of the screen. A quick
+  // tap hits a monster there, or uses / places on whatever else it shows (holding on it mines, as the attack button)
+  const TouchControls& tc = in.touch;
+  if (!menu && !s.split() && tc.visible() && tc.aimAtTouch && (tc.aiming || tc.tap) && app.width > 0 && app.height > 0) {
+    const Camera& cam = s.frame.cam;
+    const vec2 at = tc.tap ? tc.tapAt : tc.aimAt;
+    const float nx = at.x / (float)app.width * 2.f - 1.f, ny = 1.f - at.y / (float)app.height * 2.f, k = std::tan(glm::radians(cam.fov) * 0.5f);
+    const vec3 f = cam.forward(), r = cam.right(), u = glm::cross(r, f);
+    c.aimOverride = true; c.aimOrigin = cam.pos; c.aimDir = glm::normalize(f + r * (nx * k * cam.aspect) + u * (ny * k));
+    if (tc.tap && !p.dead) {
+      c.updateTarget();
+      const Entity* e = c.targetEnt ? s.level->entity(c.targetEnt) : nullptr;
+      const bool hostile = e && reg().mobs.contains(e->type) && reg().mobs[e->type].value("hostile", false);
+      if (hostile) { pi.attack = true; pi.attackPressed = true; }
+      else { pi.use = true; pi.usePressed = true; }
+    }
+  }
   c.chestLids = app.settings.leaveChestsOpen;
   c.handsStations = app.settings.handsStations;
   c.update((float)dt, pi);

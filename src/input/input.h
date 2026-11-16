@@ -135,6 +135,7 @@ public:
   TouchControls touch;               // the phone's on-screen controls (input/touch.h): the first player's, like the keyboard
   // a mouse event SDL made from a finger while the touch controls play: neither the game nor the menus take it
   bool touchOwns(const SDL_Event& e) const;
+  bool pointerIsTouch() const { return touch.enabled && pointerTouch; }   // the pointer's last press came from a finger
 private:
   Settings* settings = nullptr;
   struct Frame { std::array<bool, (int)Act::Count> cur{}, prev{}, pulse{}, kcur{}, kprev{}; ivec2 nav{0}; float scrollPx = 0; };
@@ -154,7 +155,7 @@ private:
   bool mouseHit[8]{}, keyHit[SDL_NUM_SCANCODES]{};
   vec2 mouseDelta{0};
   float wheelY = 0;
-  bool capture = false, lastWasPad = false, dropAllFlag = false;
+  bool capture = false, lastWasPad = false, dropAllFlag = false, pointerTouch = false;
   double lastW = -1; bool doubleW = false, sneakLatch = false, sprintLatch = false;
   std::vector<PadState> padList;
   void defaults();

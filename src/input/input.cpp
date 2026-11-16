@@ -3,6 +3,8 @@
 
 namespace dq {
 
+static_assert((int)Act::Count <= TouchControls::ACTS, "TouchControls::ACTS holds every action");
+
 namespace {
 constexpr float PAD_DEAD = 0.17f;
 std::vector<ActInfo> buildTable() {
@@ -163,10 +165,11 @@ bool Input::touchOwns(const SDL_Event& e) const {
 
 void Input::handle(const SDL_Event& e) {
   if (touch.enabled) {
-    if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION || e.type == SDL_FINGERUP) { touch.handle(e, capture); if (e.type == SDL_FINGERDOWN && touch.inUse) lastWasPad = false; return; }
+    if (e.type == SDL_MOUSEBUTTONDOWN) pointerTouch = e.button.which == SDL_TOUCH_MOUSEID;   // (what pressed last: a finger or the mouse)
+    if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION || e.type == SDL_FINGERUP) { touch.handle(e, capture); if (e.type == SDL_FINGERDOWN && e.tfinger.touchId != SDL_MOUSE_TOUCHID) lastWasPad = false; return; }
     if (touchOwns(e)) return;
     // a key (a keyboard on the phone) puts the on-screen controls away; Back, and typing in a text box, don't
-    if (e.type == SDL_KEYDOWN && !textActive && e.key.keysym.scancode != SDL_SCANCODE_ESCAPE && e.key.keysym.scancode != SDL_SCANCODE_AC_BACK) touch.inUse = false;
+    if (e.type == SDL_KEYDOWN && !textActive && e.key.keysym.scancode != SDL_SCANCODE_ESCAPE && e.key.keysym.scancode != SDL_SCANCODE_AC_BACK) touch.keyUsed = true;
   }
   switch (e.type) {
     case SDL_KEYDOWN:
@@ -297,8 +300,8 @@ void Input::endFrame() {
   // 1) each controller on its own: read it, its menu navigation (stick repeat), its latches (sprint, crawl, view)
   for (auto& p : padList) {
     readPad(p);
-    for (int k = 0; k < 17; k++) if (p.edge(k)) { lastWasPad = true; touch.inUse = false; if (lastPadButton < 0 && k < 16) lastPadButton = k; }
-    if (glm::length(p.lstick) > 0.3f || glm::length(p.rstick) > 0.3f) { lastWasPad = true; touch.inUse = false; }
+    for (int k = 0; k < 17; k++) if (p.edge(k)) { lastWasPad = true; if (lastPadButton < 0 && k < 16) lastPadButton = k; }
+    if (glm::length(p.lstick) > 0.3f || glm::length(p.rstick) > 0.3f) lastWasPad = true;
     p.navOut = ivec2(0); p.scrollOut = 0; p.pCrawl = p.pView = p.pShoulder = p.viewOn = false;
     if (setupActive) continue;
     for (int k = 0; k < 17; k++) if (k != 9 && p.edge(k)) p.used = true;
@@ -329,6 +332,17 @@ void Input::endFrame() {
   }
   if (settings && settings->toggleSprint && kSprint) sprintLatch = true;
   if (!kFwd) { doubleW = false; sprintLatch = false; }
+  if (touch.enabled) {   // the touch controls' options (Settings extra "touch"), and whether a controller is there
+    const json* t = settings && settings->extra.is_object() && settings->extra.contains("touch") && settings->extra["touch"].is_object() ? &settings->extra["touch"] : nullptr;
+    const std::string mode = t ? t->value("mode", "auto") : "auto";
+    touch.mode = mode == "on" ? TouchControls::On : mode == "off" ? TouchControls::Off : TouchControls::Auto;
+    touch.aimAtTouch = !t || t->value("aim", "touch") != "crosshair";
+    touch.size = t ? std::clamp(t->value("size", 1.f), 0.6f, 1.6f) : 1.f;
+    touch.opacity = t ? std::clamp(t->value("opacity", 1.f), 0.2f, 1.f) : 1.f;
+    touch.lookSpeed = t ? std::clamp(t->value("look", 1.f), 0.2f, 4.f) : 1.f;
+    touch.padConnected = false;
+    for (auto& p : padList) touch.padConnected = touch.padConnected || p.ctl || p.active;
+  }
   touch.endFrame(dt, capture);
   // 3) the merged view of everything (one player), and one per local player in split screen
   computeFrame(fr[0], true, nullptr);
@@ -375,13 +389,8 @@ void Input::computeFrame(Frame& F, bool kb, const std::vector<SDL_JoystickID>* i
   }
   if (kb && touch.enabled) F.scrollPx += touch.menuScroll;   // a finger dragging a menu
   if (kb && touch.enabled && !setupActive) {   // the phone's on-screen controls (input/touch.h)
-    F.cur[(int)Act::Attack] = F.cur[(int)Act::Attack] || touch.attack; F.cur[(int)Act::Use] = F.cur[(int)Act::Use] || touch.use;
-    F.cur[(int)Act::Jump] = F.cur[(int)Act::Jump] || touch.jump; F.cur[(int)Act::Sneak] = F.cur[(int)Act::Sneak] || touch.sneak;
-    sprint |= touch.sprint;
-    if (touch.pulseBag) F.pulse[(int)Act::Inventory] = true;
-    if (touch.pulsePause) F.pulse[(int)Act::Pause] = true;
-    if (touch.pulseView) F.pulse[(int)Act::View] = true;
-    if (touch.pulseSlot >= 0 && touch.pulseSlot < 9) F.pulse[(int)Act::Hot1 + touch.pulseSlot] = true;
+    for (int a = 0; a < (int)Act::Count; a++) { F.cur[a] = F.cur[a] || touch.down[a]; F.pulse[a] = F.pulse[a] || touch.pulse[a]; }
+    sprint |= touch.down[(int)Act::Sprint];
   }
   F.cur[(int)Act::Sprint] = sprint;
   // the pad's view button acts on release (tap) — only keys make View a plain press

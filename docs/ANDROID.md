@@ -22,11 +22,22 @@ GitHub's "latest" release, so the desktop launcher's updater never sees it.
 - `DQ_GLES=1 ./build/dokuquest --renderer legacy` runs the GLES path on a PC (Mesa has GLES) for testing.
 
 ## Playing
-- Touch (`input/touch.h`): a move stick wherever the left thumb lands (pushed up past its ring: sprint), drag anywhere
-  else to look, tap to use/place, press and hold to mine; buttons for Jump, Sneak (a toggle), Mine, Use (hold: eat,
-  draw a bow), Bag, View and Pause; tap the hotbar to pick a slot. In menus a finger is the pointer, and dragging a
-  list up or down scrolls it. The first start turns Auto-Jump on. GUI Scale "Auto" makes the interface as large as
-  the 1280x720 layout allows on a phone (150% on 2400x1080; `ui/theme.cpp computeZoom`). `DQ_TOUCH=1` shows the controls on a PC; `tools/playtests/touch.json` drives them with fingers.
+- Touch (`input/touch.h`): a fixed move stick bottom left (push past its ring, or tap Sprint, to sprint); drag anywhere
+  else to look. Aiming (Options → Controls → Touch → Touch Aiming): "Where You Touch" (default: tap a block to use it or
+  place on it, tap a monster to hit it, hold on a block to mine it) or "Crosshair" (taps and holds act on the centre).
+  Buttons: Jump, Mine, Use (hold: eat, draw a bow), Sneak (a toggle), Cast (the quick spell), Dodge; by the hotbar Drop
+  (held: the stack) and Swap hands; along the top Pause, Bag, More, Map, Journal, Spells, Chat. More opens a panel with
+  every other action (skills, spellbook, next spell, quick spell, companions, crawl, placing mode, next hotbar row,
+  camera, zoom, pick block, drop stack, command, photo mode, screenshot, hide HUD). Tap the hotbar to pick a slot.
+- In the bag: tap = take/put (left click), hold still = half a stack / one (right click; on a crafting result: make
+  all), double tap = quick move (shift click), drag from a slot = carry it to where you let go (off the panel: thrown),
+  drag while holding something = spread it. The item's tooltip shows above the finger. In menus a finger is the
+  pointer, and dragging a list up or down scrolls it.
+- Options → Controls → Touch: Touch Controls Auto (hidden while a controller is connected) / On / Off, Touch Aiming,
+  Auto-Jump (on from a phone's first start), Look Speed, Button Size, Button Opacity. GUI Scale "Auto" makes the
+  interface as large as the 1280x720 layout allows on a phone (150% on 2400x1080; `ui/theme.cpp computeZoom`).
+- `DQ_TOUCH=1` shows the touch controls on a PC; `tools/playtests/touch.json` and `touch_inventory.json` drive them with
+  fingers (the `touch` and `tbutton` script steps).
 - A controller (Bluetooth or USB) plays everything, menus included; using one hides the touch buttons (a touch
   brings them back).
 - Back button / back gesture = Escape. Text fields open the on-screen keyboard.

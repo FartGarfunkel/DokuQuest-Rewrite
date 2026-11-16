@@ -1,0 +1,23 @@
+{"steps":[
+ {"wait":150,"do":"give","item":"dirt","n":16,"clear":true},
+ {"do":"give","item":"torch","n":8},
+ {"do":"give","item":"cobblestone","n":20},
+ {"do":"tbutton","name":"bag","hold":3},
+ {"wait":40,"do":"touch","x":0.5469,"y":0.5944,"to":[0.6695,0.5944],"hold":20},
+ {"wait":30,"do":"expect","inv":0},
+ {"do":"expect","inv":4,"item":"dirt","n":16},
+ {"do":"expect","cursor":""},
+ {"do":"touch","x":0.6695,"y":0.5944,"hold":45},
+ {"wait":55,"do":"expect","cursor":"dirt"},
+ {"do":"touch","x":0.6391,"y":0.5944,"hold":2},
+ {"wait":15,"do":"expect","inv":3,"item":"dirt","n":8},
+ {"do":"expect","inv":4,"item":"dirt","n":8},
+ {"do":"expect","cursor":""},
+ {"do":"touch","x":0.6086,"y":0.5944,"hold":1},
+ {"wait":2,"do":"touch","x":0.6086,"y":0.5944,"hold":1},
+ {"wait":15,"do":"expect","inv":2},
+ {"do":"expect","cursor":""},
+ {"do":"shot","path":"/tmp/t_touch_inventory.png"},
+ {"do":"report"},
+ {"wait":5,"do":"quit"}
+]}

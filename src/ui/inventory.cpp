@@ -374,7 +374,9 @@ public:
     if (!p.cursor.empty()) {
       ImVec2 at = ImGui::GetIO().MousePos;
       if (a.input.usingPad()) if (const Hit* f = hasFocus ? findHit(focus) : nullptr) at = ImVec2(f->a.x + (f->b.x - f->a.x) * 0.75f, f->a.y + (f->b.y - f->a.y) * 0.75f);
-      drawItem(ImGui::GetForegroundDrawList(), p.cursor, at - ImVec2(is, is) * 0.5f, is);
+      const bool finger = a.input.pointerIsTouch();
+      if (finger) at.y -= is * 1.2f;   // (above the finger, not under it)
+      drawItem(ImGui::GetForegroundDrawList(), p.cursor, at - ImVec2(is, is) * 0.5f * (finger ? 1.5f : 1.f), is * (finger ? 1.5f : 1.f));
     } else if (!a.input.usingPad()) tooltip(a);
     else if (hasFocus) if (const Hit* f = findHit(focus)) tooltip(a, f, ImVec2(f->b.x, f->a.y));   // the pad: the same tooltip, by the focused slot
     if (o.mode == "inventory") menuTabsDraw(a, "inventory");
@@ -841,6 +843,8 @@ public:
   }
 
   void tooltip(App& a, const Hit* h = nullptr, ImVec2 m = ImVec2(-1, -1)) {
+    const bool finger = a.input.pointerIsTouch();
+    if (finger && !h && !ImGui::IsMouseDown(0)) return;   // (a finger: only while it rests on a slot; a pointer left behind shows nothing)
     if (!h) { m = ImGui::GetIO().MousePos; for (auto& x : hits) if (x.contains(m)) h = &x; }
     if (!h) return;
     ItemStack s;
@@ -852,15 +856,16 @@ public:
     std::vector<std::pair<std::string, u32>> lines;
     itemInfoText(s, &sess->p, &lines);
     // (on the journal's pages: drawn on the window after the book, at the real pointer, so it isn't cut off at the page)
-    if (bookUiScreenDraw([lines, &a] { drawTip(a, lines, ImGui::GetIO().MousePos); })) return;
-    drawTip(a, lines, m);
+    if (bookUiScreenDraw([lines, &a, finger] { drawTip(a, lines, ImGui::GetIO().MousePos, finger); })) return;
+    drawTip(a, lines, m, finger);
   }
-  static void drawTip(App& a, const std::vector<std::pair<std::string, u32>>& lines, ImVec2 m) {
+  static void drawTip(App& a, const std::vector<std::pair<std::string, u32>>& lines, ImVec2 m, bool above = false) {
     float z = Z(), maxW = 260 * z - 16 * z, k = 13.f / 15.f;
     float w = 0, hgt = 0;
     for (auto& [t, c] : lines) { if (!t.empty() && t[0] == '\x02') { w = std::max(w, 120 * z); hgt += 8 * z; continue; } ImVec2 ts = textSize(F_BODY, t.c_str(), maxW, k); w = std::max(w, ts.x); hgt += ts.y; }
     ImDrawList* dl = ImGui::GetForegroundDrawList();
     ImVec2 p(m.x + 14 * z, m.y + 10 * z), size(w + 16 * z, hgt + 10 * z);
+    if (above) p = ImVec2(m.x - size.x * 0.5f, m.y - size.y - 48 * z);   // a finger: over it, where it can be read
     p.x = std::max(4 * z, std::min(p.x, (float)a.width - size.x - 6 * z)); p.y = std::max(4 * z, std::min(p.y, (float)a.height - size.y - 6 * z));
     dl->AddRectFilled(p - ImVec2(4, 4) * z, p + size + ImVec2(4, 4) * z, col::black);
     dl->AddRectFilled(p - ImVec2(2, 2) * z, p + size + ImVec2(2, 2) * z, col::pnHi);
@@ -1055,6 +1060,71 @@ public:
   bool paper = false;    // a block's screen is being drawn onto a page: its words in the book's ink
   std::string catTip;
 
+  // ---- a finger (the phone's touch screen is the pointer): no right button, no shift, and the press can't act at once
+  //  tap: the left button's click · hold still: the right button's (half a stack, or one from the cursor; on a crafting
+  //  result: make all) · double tap: quick move (shift) · drag from a slot: carry its stack to the slot you let go on (off
+  //  the panel: thrown); holding something, drag across slots to spread it
+  struct TouchPress { bool down = false, moved = false, held = false, cursorWas = false, carrying = false, spreading = false; double t0 = 0; ImVec2 start; Hit hit{H_SLOT}; };
+  TouchPress tp;
+  double lastTapT = -10; Hit lastTap{H_SLOT}; bool lastTapFromEmpty = false;
+  void touchMouse(App& a, const Hit* h, ImVec2 m, bool overWidget) {
+    const double now = nowSeconds();
+    const float slop = std::max(8.f, ImGui::GetIO().DisplaySize.y * 0.02f);
+    Player& pl = sess->p;
+    if (ImGui::IsMouseClicked(0)) {
+      tp = TouchPress{}; tp.t0 = now; tp.start = m;
+      if (overWidget) return;   // (a text box, a button: ImGui has it)
+      if (!h) {   // off the panel with something on the cursor: thrown, as a click there does
+        bool inPanel = m.x >= panelA.x && m.y >= panelA.y && m.x < panelB.x && m.y < panelB.y;
+        bool inBook = bookShown && m.x >= bookA.x && m.y >= bookA.y && m.x < bookB.x && m.y < bookB.y;
+        if (!pl.cursor.empty() && !inPanel && !inBook) sess->throwCursor(pl.cursor.n);
+        return;
+      }
+      if (h->k != H_SLOT) { activate(a, *h, false, false, false); return; }
+      tp.down = true; tp.hit = *h; tp.cursorWas = !pl.cursor.empty();
+      return;
+    }
+    if (!tp.down) return;
+    if (ImGui::IsMouseDown(0)) {
+      const float dx = m.x - tp.start.x, dy = m.y - tp.start.y;
+      if (!tp.moved && dx * dx + dy * dy > slop * slop) {
+        tp.moved = true;
+        if (tp.cursorWas) { if (sess->dragTarget(tp.hit.g, tp.hit.i)) { sess->dragBegin(tp.hit.g, tp.hit.i, false); tp.spreading = true; tp.down = false; } }   // (mouse() carries the spread on)
+        else if (!tp.held) { activate(a, tp.hit, false, false, false); tp.carrying = !pl.cursor.empty(); }   // picked up: it follows the finger
+      }
+      if (!tp.held && !tp.moved && now - tp.t0 >= 0.42) {
+        tp.held = true;
+        const bool out = tp.hit.g == Grp::Out || tp.hit.g == Grp::SOut;
+        activate(a, tp.hit, !out, out, false);
+      }
+      return;
+    }
+    // let go
+    tp.down = false;
+    if (tp.held) return;
+    if (tp.carrying) {
+      if (h && h->k == H_SLOT && !sameKey(*h, tp.hit)) activate(a, *h, false, false, false);   // put down here
+      else if (!h) {
+        bool inPanel = m.x >= panelA.x && m.y >= panelA.y && m.x < panelB.x && m.y < panelB.y;
+        bool inBook = bookShown && m.x >= bookA.x && m.y >= bookA.y && m.x < bookB.x && m.y < bookB.y;
+        if (!inPanel && !inBook && !pl.cursor.empty()) sess->throwCursor(pl.cursor.n);   // dragged off the panel: thrown
+        else if (!pl.cursor.empty()) activate(a, tp.hit, false, false, false);           // back where it came from
+      } else if (!pl.cursor.empty()) activate(a, tp.hit, false, false, false);
+      return;
+    }
+    if (tp.moved) return;
+    // a tap: twice on the same slot (it was empty-handed the first time) is the quick move
+    const bool out = tp.hit.g == Grp::Out || tp.hit.g == Grp::SOut;
+    if (!out && lastTapFromEmpty && now - lastTapT < 0.33 && sameKey(lastTap, tp.hit)) {
+      activate(a, tp.hit, false, false, false);   // (the first tap's pick-up put back)
+      activate(a, tp.hit, false, true, false);
+      lastTapT = -10;
+      return;
+    }
+    activate(a, tp.hit, false, false, false);
+    lastTap = tp.hit; lastTapT = now; lastTapFromEmpty = !tp.cursorWas;
+  }
+
   // ---- the mouse (invui.js pointer events) ----------------------------------------------------------------
   void mouse(App& a) {
     ImGuiIO& io = ImGui::GetIO();
@@ -1072,6 +1142,7 @@ public:
       else sess->dragEnd();
       return;
     }
+    if (a.input.pointerIsTouch()) { touchMouse(a, h, m, overWidget); return; }
     for (int btn = 0; btn < 2; btn++) {
       if (!ImGui::IsMouseClicked(btn) || overWidget) continue;
       bool right = btn == 1, shift = a.input.shiftHeld();

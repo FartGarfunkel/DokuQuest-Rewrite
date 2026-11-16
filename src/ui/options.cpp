@@ -367,7 +367,21 @@ private:
       if (kit.action("Set Up Controller", "Set Up\xE2\x80\xA6", "If a controller's buttons are mixed up, press each one when asked.")) a.pushScreen(makePadSetupScreen());
       std::string forget = n ? std::to_string(n) + " controller" + (n == 1 ? "" : "s") + " set up by hand. Forget them." : "No controllers set up by hand.";
       if (kit.action("Forget Set-Ups", "Reset", forget.c_str(), n == 0)) { S.padMaps = json::object(); in.reloadBinds(); S.save(); }
-      if (kit.toggle("Auto-Jump (Touch)", &S.autoJump, D.autoJump, "Step up blocks by walking into them on a touch screen.")) applyNow = true;
+      if (!in.touch.enabled && kit.toggle("Auto-Jump (Touch)", &S.autoJump, D.autoJump, "Step up blocks by walking into them on a touch screen.")) applyNow = true;
+    }
+    if (in.touch.enabled && kit.category("Touch")) {   // a phone's on-screen controls (input/touch.h)
+      if (!S.extra.is_object()) S.extra = json::object();
+      if (!S.extra.contains("touch") || !S.extra["touch"].is_object()) S.extra["touch"] = json::object();
+      json& t = S.extra["touch"];
+      { static const char* v[] = {"auto", "on", "off"}; int cur = indexOfStr(v, 3, t.value("mode", "auto"));
+        if (kit.cycle("Touch Controls", &cur, {"Auto", "On", "Off"}, 0, "Auto: on the screen unless a controller is connected. On: always. Off: never (fingers still work the menus).")) { t["mode"] = v[cur]; applyNow = true; } }
+      { static const char* v[] = {"touch", "crosshair"}; int cur = indexOfStr(v, 2, t.value("aim", "touch"));
+        if (kit.cycle("Touch Aiming", &cur, {"Where You Touch", "Crosshair"}, 0, "Where you touch: tap a block to use it or place on it, tap a monster to hit it, hold on a block to mine it. Crosshair: taps and holds act on the middle of the screen.", 150)) { t["aim"] = v[cur]; applyNow = true; } }
+      if (kit.toggle("Auto-Jump", &S.autoJump, D.autoJump, "Step up blocks by walking into them.")) applyNow = true;
+      float look = t.value("look", 1.f), size = t.value("size", 1.f), op = t.value("opacity", 1.f);
+      if (kit.range("Look Speed", &look, 0.2f, 4.f, 0.05f, strFormat("%.2f\xC3\x97", look), 1.f, "How far the view turns as a finger drags.")) t["look"] = look;
+      if (kit.range("Button Size", &size, 0.6f, 1.6f, 0.05f, strFormat("%d%%", (int)std::lround(size * 100)), 1.f, "The on-screen buttons and the move stick.")) t["size"] = size;
+      if (kit.range("Button Opacity", &op, 0.2f, 1.f, 0.05f, strFormat("%d%%", (int)std::lround(op * 100)), 1.f, "How solid the on-screen buttons look.")) t["opacity"] = op;
     }
     // which codes / buttons are used more than once
     std::map<std::string, int> kUse; std::map<int, int> pUse;

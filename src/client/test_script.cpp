@@ -6,6 +6,8 @@
 // do: key{key,hold} type{text} mouse{button,hold,x?,y?} move{dx,dy} pad{button,hold,id?} padaxis{axis,value,hold,id?}
 //     touch{x,y (0..1),to?:[x,y],hold,id?,mouse?} (a finger: the on-screen controls, DQ_TOUCH=1 shows them on a PC;
 //       finger 0 also moves and presses the pointer, as SDL does on a phone)
+//     tbutton{name,hold,dx?,dy?} (a finger on a touch control by name: jump mine use sneak cast dodge sprint drop swap pause
+//       bag more map journal spells chat stick, or a More entry: skills crawl zoom ...)
 // (local = which split-screen player the look/tp/give/... steps act on; id = which virtual controller, 0..3: they attach on first use; Start on a free one joins split screen)
 //     furnace{x,y,z,in,fuel,out,n,cook,burn} (a furnace's record filled)
 //     cmd{text} look{yaw,pitch (degrees)} lookAt{x,y,z} tp{x,y,z} give{item,n,clear?,hand?} select{slot} setBlock{x,y,z,key}
@@ -191,6 +193,16 @@ void runStep(App& a, const json& st) {
       if (tx != x || ty != y) R.later.push_back({f + 1 + k, [id, x, y, tx, ty, u, ms] { pushFinger(SDL_FINGERMOTION, id, x + (tx - x) * u, y + (ty - y) * u, ms); }});
     }
     R.later.push_back({f + 1 + hold, [id, tx, ty, ms] { pushFinger(SDL_FINGERUP, id, tx, ty, ms); }});
+  } else if (op == "tbutton") {   // a finger on one of the touch controls by name (input/touch.h buttonAt), held "hold" frames;
+                                   // dx, dy (fractions of the screen's height): slid that far from it first (the stick)
+    vec2 c;
+    if (!a.input.touch.buttonAt(st.value("name", ""), (float)a.width, (float)a.height, c)) { DQ_WARN("test: no touch button '%s'", st.value("name", "").c_str()); return; }
+    const int id = st.value("id", 5);
+    const float W = (float)std::max(1, a.width), H = (float)std::max(1, a.height);
+    const float x = c.x / W, y = c.y / H, tx = (c.x + st.value("dx", 0.f) * H) / W, ty = (c.y + st.value("dy", 0.f) * H) / H;
+    R.later.push_back({f + 1, [id, x, y] { pushFinger(SDL_FINGERDOWN, id, x, y, false); }});
+    if (tx != x || ty != y) for (int k = 1; k <= 3; k++) { const float u = k / 3.f; R.later.push_back({f + 1 + k, [id, x, y, tx, ty, u] { pushFinger(SDL_FINGERMOTION, id, x + (tx - x) * u, y + (ty - y) * u, false); }}); }
+    R.later.push_back({f + 1 + std::max(hold, 4), [id, tx, ty] { pushFinger(SDL_FINGERUP, id, tx, ty, false); }});
   } else if (op == "move") {
     pushMotion(a.width / 2, a.height / 2, st.value("dx", 0), st.value("dy", 0));
   } else if (op == "pad" && (st.value("button", "") == "lt" || st.value("button", "") == "rt")) {

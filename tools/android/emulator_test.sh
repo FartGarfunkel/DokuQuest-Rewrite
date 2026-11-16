@@ -184,10 +184,19 @@ if [ $up = 1 ]; then
   read -r SW SH < <(timeout 20 adb shell wm size | tr -d '\r' | sed -n 's/.*: *\([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -1)
   SW=${SW:-2400}; SH=${SH:-1080}
   [ "$SW" -lt "$SH" ] && { t=$SW; SW=$SH; SH=$t; }   # (the game is landscape)
-  note "touch: screen ${SW}x${SH}; walking (left thumb pushed up)"
-  # the thumb down, pushed up to the ring's edge, held there 15 s (the emulator draws about a frame a second, and each
-  # frame moves the player at most a tenth of a second's walk), then lifted
-  X=$((SW * 20 / 100)); Y0=$((SH * 70 / 100)); Y1=$((SH * 57 / 100))
+  # where the game put its buttons (it logs them, in its window's coordinates). The window can be narrower than the
+  # screen (the camera's cut-out beside it, on a side not known here): a touch aims half that difference in from a
+  # button's centre, so it lands on it whichever side the gap is
+  L=$(timeout 20 adb logcat -d -v brief 2>/dev/null | grep "touch: window" | tail -1)
+  num() { echo "$L" | sed -n "s/.* $1=\([0-9]*\),\([0-9]*\).*/\1 \2/p"; }
+  read -r GW GH < <(echo "$L" | sed -n 's/.*touch: window \([0-9]*\)x\([0-9]*\).*/\1 \2/p'); GW=${GW:-$SW}; GH=${GH:-$SH}
+  read -r SX SY < <(num stick); read -r BX BY < <(num bag)
+  SX=${SX:-$((GH * 30 / 100))}; SY=${SY:-$((GH * 76 / 100))}; BX=${BX:-$((GW - GH * 23 / 100))}; BY=${BY:-$((GH * 10 / 100))}
+  OFF=$(( (SW - GW) / 2 ))
+  note "touch: screen ${SW}x${SH}, game window ${GW}x${GH}; stick at $SX,$SY, Bag at $BX,$BY; walking (the stick pushed up)"
+  # the thumb on the stick, pushed up to the ring's edge, held there 15 s (the emulator draws about a frame a second, and
+  # each frame moves the player at most a tenth of a second's walk), then lifted
+  X=$((SX + OFF)); Y0=$SY; Y1=$((SY - GH * 12 / 100))
   if timeout 20 adb shell input motionevent DOWN $X $Y0 > /dev/null 2>&1; then
     for y in $(seq $Y0 -20 $Y1) $Y1; do timeout 20 adb shell input motionevent MOVE $X $y > /dev/null 2>&1; done
     sleep 5; shot touch-walking; sleep 10
@@ -200,13 +209,8 @@ if [ $up = 1 ]; then
   note "touch: turning (a drag on the right)"
   timeout 60 adb shell input swipe $((SW * 55 / 100)) $((SH * 40 / 100)) $((SW * 75 / 100)) $((SH * 40 / 100)) 2500
   sleep 6
-  # the game's window can be narrower than the screen (the camera's cut-out beside it, on a side not known here): aim
-  # half that difference in from the button's centre, so the tap lands on it whichever side the gap is
-  read -r GW GH < <(timeout 20 adb logcat -d -v brief 2>/dev/null | sed -n 's/.*touch: the window is \([0-9]*\)x\([0-9]*\).*/\1 \2/p' | tail -1)
-  GW=${GW:-$SW}; GH=${GH:-$SH}
-  B=$((GH * 15 / 100)); M=$((GH * 35 / 1000))
-  note "touch: the Bag button (game window ${GW}x${GH})"
-  timeout 30 adb shell input tap $((GW - M - B * 13 / 10 + (SW - GW) / 2)) $((M + B * 4 / 10))
+  note "touch: the Bag button"
+  timeout 30 adb shell input tap $((BX + OFF)) $BY
   sleep 10; shot touch-bag
   timeout 30 adb shell input keyevent KEYCODE_BACK
   sleep 8

@@ -44,6 +44,12 @@ int hudHotbarSlotAt(float x, float y) {
   const int i = (int)std::floor((x - g.p0.x + 1) / g.step);
   return i >= 0 && i < 9 ? i : -1;
 }
+bool hudHotbarBox(vec2& lo, vec2& hi) {   // (the touch controls put Drop and Swap beside it)
+  const HotbarHit& g = hotbarHit();
+  if (g.step <= 0 || app().frame > g.frame + 2) return false;
+  lo = vec2(g.p0.x, g.p0.y); hi = vec2(g.p0.x + 8 * g.step + g.slot, g.p0.y + g.slot);
+  return true;
+}
 static int hudPieceBegin(ImDrawList* dl) { return dl->VtxBuffer.Size; }
 static void hudPieceEnd(App& a, ImDrawList* dl, int start, const char* piece) {
   ImVec2 off = hudPieceOffset(a, piece), lo(1e9f, 1e9f), hi(-1e9f, -1e9f);

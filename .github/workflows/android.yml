@@ -86,8 +86,11 @@ jobs:
             echo "- Options → Video → Renderer switches between Vulkan and OpenGL ES (from the next start). If Vulkan ever stops the game as it starts, the next start uses OpenGL ES by itself."
             echo
             echo "### Playing"
-            echo "- Touch: the left thumb moves (push it up past the ring to sprint), drag anywhere else to look, tap to use or place, press and hold to mine. Buttons: Jump, Sneak (tap on / off), Mine, Use (hold to eat or draw a bow), Bag, View, Pause. Tap the hotbar to pick a slot. Auto-Jump is on (Options → Controls)."
-            echo "- A controller (Bluetooth or USB) plays everything, menus included; using one hides the touch buttons. In menus, a finger is the pointer."
+            echo "- Touch: the stick bottom left moves (push past its ring, or tap Sprint, to sprint); drag anywhere else to look."
+            echo "- Tap a block to use it or place on it, tap a monster to hit it, hold on a block to mine it (or aim with the centre crosshair: Options → Controls → Touch → Touch Aiming)."
+            echo "- Buttons: Jump, Mine, Use (hold to eat or draw a bow), Sneak (on / off), Cast (your quick spell), Dodge; Drop (hold: the stack) and Swap by the hotbar; Pause, Bag, More, Map, Journal, Spells, Chat along the top. More has everything else (skills, spells, companions, crawl, placing mode, camera, zoom, pick block, photo mode, ...). Tap the hotbar to pick a slot."
+            echo "- In the bag: tap to take or put, hold for half a stack (or one), double tap to quick-move, drag an item to carry it to another slot (or off the panel to throw it)."
+            echo "- Touch controls: Auto (hidden while a controller is connected), On or Off, plus button size, opacity and look speed, in Options → Controls → Touch. A controller plays everything, menus included. In menus a finger is the pointer, and dragging a list scrolls it."
             echo "- Back button / back gesture = Escape (pause, close a menu)."
             echo "- Starts on the Low graphics preset; raise it in Options → Video."
             echo "- Your folder (worlds, settings, resource packs, screenshots, latest.log): Android/data/org.dokuquest.app/files, reachable from a computer over USB."
