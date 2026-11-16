@@ -146,15 +146,18 @@ void VolumetricClouds::draw(const FrameCtx& f, const SkyEnv& env) {
   // a quarter of the screen across on the legacy renderer (a sixteenth of its pixels), half on the modern one; coarser
   // when the march is slow here (built-in graphics), finer again when there's time for it
   if (!div) div = gfx.modern ? 2 : 4;
-  if (!tq[0]) glGenQueries(3, tq);
-  for (int k = 0; k < 3; k++) if (tqUsed[k] && k != tqi) {
+  // GPU timers: desktop OpenGL only (OpenGL ES has no GL_TIME_ELAPSED and no 64-bit query read: those calls are missing
+  // there, and a phone crashed calling one); without them the size stays where it started
+  static const bool canTime = glGenQueries && glBeginQuery && glEndQuery && glGetQueryObjectiv && glGetQueryObjectui64v && gfx.version.rfind("OpenGL ES", 0) != 0;
+  if (canTime && !tq[0]) glGenQueries(3, tq);
+  if (canTime) for (int k = 0; k < 3; k++) if (tqUsed[k] && k != tqi) {
     GLint ready = 0; glGetQueryObjectiv(tq[k], GL_QUERY_RESULT_AVAILABLE, &ready);
     if (ready) { GLuint64 ns = 0; glGetQueryObjectui64v(tq[k], GL_QUERY_RESULT, &ns); tqUsed[k] = false; gpuMs = gpuMs * 0.9f + (float)(ns / 1e6) * 0.1f; }
   }
   if (divHold > 0) divHold--;
   else if (gpuMs > 1.6f && div < 4) { div++; divHold = 90; gpuMs *= 0.5f; }
   else if (gpuMs < 0.45f && div > (gfx.modern ? 2 : 4)) { div--; divHold = 240; gpuMs *= 2.0f; }
-  const bool timing = !tqUsed[tqi];
+  const bool timing = canTime && !tqUsed[tqi];
   if (timing) glBeginQuery(GL_TIME_ELAPSED, tq[tqi]);
   const int w = std::max(1, f.width / div), h = std::max(1, f.height / div);
   GLint prevFbo = 0, vp[4]; glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prevFbo); glGetIntegerv(GL_VIEWPORT, vp);
