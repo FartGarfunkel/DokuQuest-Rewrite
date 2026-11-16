@@ -25,7 +25,7 @@ bool blockDrops(Level& lv) { return !lv.info.rules.is_object() || lv.info.rules.
 vec3 C(int x, int y, int z) { return vec3(x + 0.5f, y + 0.5f, z + 0.5f); }
 
 // ---- the index of campfires per realm (kept by a hook on each World)
-struct CampState;
+class CampState;
 class CampWorldHook : public WorldSystem {
 public:
   explicit CampWorldHook(CellSet* s) : set(s) {}

@@ -89,6 +89,9 @@ jobs:
         run: |
           set -o pipefail
           ud="$RUNNER_TEMP/ud"
+          # (the lightest settings: software drawing of the full pack and its 3D plants took past the time limit; this checks
+          #  the game runs, not how it looks)
+          mkdir -p "$ud" && printf '%s' '{"preset":"custom","renderDist":2,"farTerrain":0,"plantDetail":"flat","shaderLevel":0,"clouds":false,"particles":0,"scale":0.5,"microVoxels":0,"fancyLeaves":false,"waterQuality":0,"shadows":0,"volumetricClouds":false,"portalViews":false,"weatherParticles":0}' > "$ud/settings.json"
           timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" ./build/dokuquest --userdir "$ud" --create Test --seed hello --smoke-frames 300 --smoke-shot game.png 2>&1 | tee smoke.log
           timeout 300 xvfb-run -a -s "-screen 0 1280x720x24" ./build/dokuquest-launcher --userdir "$ud" --smoke-frames 30 --smoke-shot launcher.png 2>&1 | tee -a smoke.log
           if grep -n '^\[error\]' smoke.log; then echo "::error::the smoke test logged errors"; exit 1; fi

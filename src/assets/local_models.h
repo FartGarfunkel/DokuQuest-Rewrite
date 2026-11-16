@@ -7,7 +7,7 @@
 #include "core/registry.h"
 
 namespace dq {
-class TileSet;
+struct TileSet;
 
 struct StationModel {
   PackModel model;                              // the north-facing one's (models[0]'s)

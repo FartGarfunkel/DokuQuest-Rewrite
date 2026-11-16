@@ -11,7 +11,7 @@
 #include <unordered_map>
 
 namespace dq {
-class TileSet; class PackFS;
+struct TileSet; class PackFS;
 
 struct PackModelFace { int tile = -1; vec4 uv{0, 0, 16, 16}; int rot = 0; };   // uv in the pack's 0..16 units; rot: the picture turned (degrees, clockwise)
 struct PackModelBox {

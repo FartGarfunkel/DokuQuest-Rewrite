@@ -75,7 +75,7 @@ jobs:
           ud="$RUNNER_TEMP/ud"; mkdir -p shots "$ud"
           # Mesa software GL draws about one frame a second at default settings, so the playtests ran into their
           # 15-minute timeouts. Low settings keep the modern renderer but draw a short view at half resolution.
-          echo '{"preset":"custom","renderDist":4,"farTerrain":256,"shadows":0,"waterQuality":0,"clouds":false,"portalViews":false,"scale":0.5,"particles":1,"weatherParticles":0,"microVoxels":0}' > "$ud/settings.json"
+          echo '{"preset":"custom","renderDist":4,"farTerrain":256,"shadows":0,"waterQuality":0,"clouds":false,"portalViews":false,"scale":0.5,"particles":1,"weatherParticles":0,"microVoxels":0,"plantDetail":"flat","shaderLevel":0,"fancyLeaves":false,"volumetricClouds":false}' > "$ud/settings.json"
           run() { echo "::group::$*"; timeout 900 xvfb-run -a -s "-screen 0 1280x720x24" "$@" 2>&1 | tee -a smoke.log; local c=${PIPESTATUS[0]}; echo "::endgroup::"; return $c; }
           run ./build/dokuquest --userdir "$ud" --create Test --seed hello --smoke-frames 300 --smoke-shot shots/game.png
           # scripted playtests: leave and reopen the world twice; fell a tree, save, reopen (tools/playtests, client/test_script)

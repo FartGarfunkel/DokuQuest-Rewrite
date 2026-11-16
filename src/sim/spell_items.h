@@ -8,7 +8,7 @@
 #include <vector>
 
 namespace dq {
-struct ItemStack; class Level; struct Player;
+struct ItemStack; class Level; class Player;
 
 const char* spellRarityName(int rank);    // I-II Common, III-IV Uncommon, V-VI Rare, VII-VIII Epic, IX-X Legendary
 u32 spellRarityColor(int rank);           // 0xRRGGBB (white, green, blue, purple, gold)

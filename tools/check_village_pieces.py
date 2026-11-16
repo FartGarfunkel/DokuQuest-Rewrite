@@ -31,7 +31,9 @@ def passable(n): return n in OPEN or n.endswith('_carpet') or n.endswith('_press
 def main():
     data = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else 'data')
     bad = []
-    files = sorted(glob.glob(str(data / 'villages' / '*' / 'houses' / '*.nbt')))
+    # (the styles tools/port/village_builder.py builds: the pieces brought in by the local importers keep their own builders' layouts)
+    import village_builder
+    files = sorted(f for f in glob.glob(str(data / 'villages' / '*' / 'houses' / '*.nbt')) if pathlib.Path(f).parent.parent.name in village_builder.STYLES)
     ladders = igloos = hearths = 0
     for f in files:
         g = load(f)
@@ -47,6 +49,7 @@ def main():
             if not st['Name'].endswith(':campfire'): continue
             dx, dz = FRONT[st.get('Properties', {}).get('facing', 'west')]
             if name(g, (x - dx, y, z - dz)) == 'air': continue   # (its back to the room: not set in a wall)
+            if name(g, (x + dx, y - 1, z + dz)) == 'air': continue   # (nothing to stand on before it: a fire up in a roof, the oven's smoke)
             hearths += 1
             n = name(g, (x + dx, y, z + dz))
             if not passable(n): bad.append('%s: hearth at %s blocked by %s' % (short, (x, y, z), n))

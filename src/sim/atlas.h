@@ -8,7 +8,7 @@
 #include <string>
 
 namespace dq {
-struct ItemStack; class Level; struct Player; struct PaperMap;
+struct ItemStack; class Level; class Player; struct PaperMap;
 
 constexpr int ATLAS_SCALE = 1;
 bool atlasHasMap(const Player& p);
