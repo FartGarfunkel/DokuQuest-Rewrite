@@ -3,6 +3,7 @@
 // demo world; the version line opens What's new.
 #include "ui/ui.h"
 #include "ui/theme.h"
+#include "client/android_update.h"
 #include "client/app.h"
 #include "client/session.h"
 #include "render/world_renderer.h"
@@ -243,6 +244,16 @@ public:
     if (greyButton("Options...", ImVec2(half, btnH))) a.pushScreen(makeOptionsScreen());
     ImGui::SameLine(0, bgap);
     if (greyButton("Quit Game", ImVec2(half, btnH))) a.quit = true;
+    if (androidUpdateSupported()) {   // the phone build: a newer one offered, downloaded and installed from here
+      static bool asked = false;
+      if (!asked) { asked = true; androidUpdateCheck(); }
+      const std::string st = androidUpdateState();
+      row(by += btnH + bgap);
+      if (st.rfind("available:", 0) == 0) { if (greyButton(("Update to " + st.substr(10)).c_str(), ImVec2(btnW, btnH))) androidUpdateStart(); }
+      else if (st.rfind("downloading:", 0) == 0) greyButton(("Downloading the update... " + st.substr(12) + "%").c_str(), ImVec2(btnW, btnH));
+      else if (st == "installing") greyButton("Opening the installer...", ImVec2(btnW, btnH));
+      else if (st.rfind("error:", 0) == 0) { if (greyButton(("Update: " + st.substr(6) + " (tap to try again)").c_str(), ImVec2(btnW, btnH))) androidUpdateStart(); }
+    }
     // version (bottom left) and storage line (bottom right)
     std::string ver = versionText();
     bool isNew = a.settings.extra.value("seenVersion", "") != DQ_VERSION;

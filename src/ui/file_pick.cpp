@@ -8,6 +8,9 @@
 #include <deque>
 #include <mutex>
 #include <thread>
+#ifdef __ANDROID__
+#include <jni.h>
+#endif
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -25,7 +28,7 @@ struct FilePicker::State {
 
 namespace {
 std::string toUpper(std::string s) { for (auto& c : s) c = (char)toupper((unsigned char)c); return s; }
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__ANDROID__)
 // a shell word in single quotes
 std::string sq(const std::string& s) { std::string o = "'"; for (char c : s) { if (c == '\'') o += "'\\''"; else o += c; } return o + "'"; }
 bool runCapture(const std::string& cmd, std::string& out, int& rc) {
@@ -41,7 +44,30 @@ bool haveTool(const char* t) { std::string o; int rc = 0; return runCapture(std:
 #endif
 
 void pickBlocking(const std::string& title, const std::string& ext, const std::string& dir, std::string& path, std::string& err) {
-#ifdef _WIN32
+#if defined(__ANDROID__)
+  // Android's own file chooser (android/java/.../MainActivity.java pickFile): it copies the chosen file into the game's
+  // cache and hands back that path; this worker waits for it
+  (void)title; (void)dir;
+  JNIEnv* env = (JNIEnv*)SDL_AndroidGetJNIEnv();
+  jobject act = (jobject)SDL_AndroidGetActivity();
+  if (!env || !act) { err = "The file chooser isn't available"; return; }
+  jclass cls = env->GetObjectClass(act);
+  jmethodID pick = env->GetMethodID(cls, "pickFile", "(Ljava/lang/String;Ljava/lang/String;)V");
+  jmethodID res = env->GetMethodID(cls, "pickResultNow", "()Ljava/lang/String;");
+  if (!pick || !res || env->ExceptionCheck()) { env->ExceptionClear(); err = "The file chooser isn't available"; env->DeleteLocalRef(cls); env->DeleteLocalRef(act); return; }
+  const std::string e = toLower(ext);
+  const char* mime = e == "png" ? "image/png" : e == "zip" ? "application/zip" : "*/*";
+  jstring jm = env->NewStringUTF(mime), je = env->NewStringUTF(e.c_str());
+  env->CallVoidMethod(act, pick, jm, je);
+  env->DeleteLocalRef(jm); env->DeleteLocalRef(je);
+  for (int waited = 0; waited < 20 * 60 * 10; waited++) {   // (up to twenty minutes in the chooser)
+    jstring r = (jstring)env->CallObjectMethod(act, res);
+    if (env->ExceptionCheck()) { env->ExceptionClear(); break; }
+    if (r) { const char* c = env->GetStringUTFChars(r, nullptr); path = c ? c : ""; if (c) env->ReleaseStringUTFChars(r, c); env->DeleteLocalRef(r); break; }
+    SDL_Delay(100);
+  }
+  env->DeleteLocalRef(cls); env->DeleteLocalRef(act);
+#elif defined(_WIN32)
   // the common Open dialog, loaded at run time (no extra link library)
   typedef BOOL(WINAPI * GetOpenFileNameW_t)(LPOPENFILENAMEW);
   HMODULE dll = LoadLibraryW(L"comdlg32.dll");

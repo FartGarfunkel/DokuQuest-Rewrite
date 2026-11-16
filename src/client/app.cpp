@@ -558,7 +558,18 @@ void App::frameLoop() {
     ImGui::Render();
 #ifdef __ANDROID__
     // a text field is being typed in: the on-screen keyboard (desktop SDL always takes text, Android only on request)
-    { static bool kb = false; const bool want = ImGui::GetIO().WantTextInput; if (want != kb) { kb = want; if (want) SDL_StartTextInput(); else SDL_StopTextInput(); } }
+    // (any typing counts: the menus' fields, chat, the journal's pages and a villager's talk, which draw in their own
+    //  interface, and a book being written in; a keyboard sent away with Back while still typing comes back at the
+    //  next tap on the screen)
+    {
+      static bool kb = false;
+      const bool want = ImGui::GetIO().WantTextInput || input.textActive || (session && session->uiWantsText);
+      const bool tapped = ImGui::GetIO().MouseClicked[0];
+      if (want != kb || (want && tapped && !SDL_IsScreenKeyboardShown(window))) {
+        kb = want;
+        if (want) { SDL_StartTextInput(); DQ_LOG("android: keyboard up"); } else { SDL_StopTextInput(); DQ_LOG("android: keyboard down"); }
+      }
+    }
 #endif
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     if (screenshotPending) {
