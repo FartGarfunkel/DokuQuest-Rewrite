@@ -157,8 +157,12 @@ std::vector<std::string> listResourcePacks() {
   return out;
 }
 
+static const char* DEFAULT_PACK = "DokuQuest Base";
 static fs::path packPath(const std::string& name) {
   std::error_code ec;
+  // the game's own pack always comes from the game (it's updated with it): an old copy in a player's folder, from before
+  // the game carried it, kept them on the old pictures; any other pack of the same name in their folder wins
+  if (name == DEFAULT_PACK && fs::is_directory(dataDir() / "resourcepacks" / name, ec)) return dataDir() / "resourcepacks" / name;
   for (const fs::path& dir : {userSub("resourcepacks"), dataDir() / "resourcepacks"}) {   // a player's pack of the same name wins
     if (fs::is_directory(dir / name, ec)) return dir / name;
     if (fs::exists(dir / (name + ".zip"), ec)) return dir / (name + ".zip");
@@ -167,7 +171,6 @@ static fs::path packPath(const std::string& name) {
   return {};
 }
 
-static const char* DEFAULT_PACK = "DokuQuest Base";
 // Animation frames no animation uses any more (the game's own water, lava, fire... once a pack's picture took the tile,
 // or stilled it) are dropped, the rest moved down: every layer counts, as a GPU with 2048-layer arrays holds 4096 tiles
 // in all. Only frames live from `base` on (the built-in set's own tiles come first), and only the animations name them.
