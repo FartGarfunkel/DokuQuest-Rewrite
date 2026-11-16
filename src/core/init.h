@@ -21,8 +21,8 @@ void registerModApi();           // mod/*.cpp
 void registerWeatherSystem();    // sim/weather.cpp
 void registerPortals();          // sim/portals.cpp (+ the stacked worlds, sim/seamless.cpp)
 void registerMagic();            // sim/magic.cpp (magic, enchanting, brewing, skills, rpg)
-void registerBossBrains();
-void registerVillageTheft();     // sim/village_theft.cpp       // sim/boss_brains.cpp
+void registerBossBrains();       // sim/boss_brains.cpp
+void registerVillageTheft();     // sim/village_theft.cpp
 void registerMovingBodies();     // sim/moving.cpp (hinges and sliders)
 void registerGlue();             // sim/glue.cpp (moving structures: glue between faces)
 void registerContent();          // sim/content.cpp (maps, farming, fishing, camping, travel, elytra, stable, places)
