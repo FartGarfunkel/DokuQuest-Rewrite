@@ -80,8 +80,10 @@ jobs:
             echo "- The first start unpacks the game's files (a few seconds of black screen)."
             echo
             echo "### Phones"
-            echo "- Needs Vulkan 1.3: Android 13 or newer on a recent phone (Pixel 9a and Pixel 10 have it). Older phones show a message saying so."
-            echo "- 64-bit ARM (arm64-v8a)."
+            echo "- 64-bit ARM (arm64-v8a), Android 8 or newer."
+            echo "- Vulkan 1.3 draws the game where the phone has it (Android 13+ on a recent phone: Pixel 9a, Pixel 10, ...)."
+            echo "- Older phones (Android 12 and before, e.g. a Galaxy Note 10+) draw with OpenGL ES 3 instead, automatically."
+            echo "- Options → Video → Renderer switches between Vulkan and OpenGL ES (from the next start). If Vulkan ever stops the game as it starts, the next start uses OpenGL ES by itself."
             echo
             echo "### Playing"
             echo "- A controller (Bluetooth or USB) plays everything, menus included. Touch works as a mouse in the menus."
