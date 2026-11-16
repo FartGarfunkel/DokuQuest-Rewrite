@@ -38,6 +38,7 @@ namespace dq {
 static App* g_app = nullptr;
 App& app() { return *g_app; }
 static double g_runStart = 0;   // (when App::run began: the first frame's log line)
+static bool g_testNoVulkan = false;   // --renderer vulkan-missing (initWindow)
 
 #ifdef __ANDROID__
 // A phone whose Vulkan driver takes the game down as it starts would do it on every start, before Options could be
@@ -77,7 +78,12 @@ void App::parseArgs(int argc, char** argv) {
   for (int i = 1; i < argc; i++) {
     std::string a = argv[i];
     auto next = [&]() -> std::string { return i + 1 < argc ? argv[++i] : ""; };
-    if (a == "--renderer") { std::string r = next(); args.rendererSet = true; args.renderer = r == "legacy" ? RendererKind::Legacy : r == "vulkan" ? RendererKind::Vulkan : RendererKind::Modern; }
+    if (a == "--renderer") {
+      std::string r = next(); args.rendererSet = true;
+      // (tests: "vulkan-missing" is a device without Vulkan 1.3 — the window made for Vulkan, then the way to OpenGL ES)
+      if (r == "vulkan-missing") { g_testNoVulkan = true; r = "vulkan"; }
+      args.renderer = r == "legacy" ? RendererKind::Legacy : r == "vulkan" ? RendererKind::Vulkan : RendererKind::Modern;
+    }
     else if (a == "--world") args.world = next();
     else if (a == "--create") args.createWorld = next();
     else if (a == "--seed") args.seed = next();
@@ -142,7 +148,7 @@ bool App::initWindow() {
 #ifdef __ANDROID__
     writeFileAtomic(vulkanMark(), std::string("1"));   // (taken away after a while of drawing: see vulkanMark)
 #endif
-    if (gfxInitVulkan(window)) {
+    if (!g_testNoVulkan && gfxInitVulkan(window)) {
       SDL_GetWindowSize(window, &width, &height);
       if (auto icon = readBinary(assetsDir() / "icon.png")) {
         int w, h; std::vector<u8> px;

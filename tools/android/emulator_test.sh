@@ -150,6 +150,24 @@ else
   err "no screenshot from the OpenGL ES run"
 fi
 
+# ---- 3a. a phone without Vulkan 1.3 (Android 12 and older, e.g. a Galaxy Note 10+): the window is made for Vulkan,
+# Vulkan turns it down, and the game makes a window for OpenGL ES instead (--renderer vulkan-missing acts that out)
+timeout 30 adb shell am force-stop $PKG; sleep 2
+adb shell rm -f $DIR/shot-novk.png
+adb logcat -c
+TW=--world,TestGles; [ $VULKAN_OK = 1 ] && TW=--world,Test
+timeout 180 adb shell am start -W -n $PKG/.MainActivity --esa args "--renderer,vulkan-missing,$TW,--smoke-frames,120,--smoke-shot,$DIR/shot-novk.png"
+for i in $(seq 1 120); do sleep 5; alive || break; done
+logs novk
+c=$(crashed novk); [ -n "$c" ] && { err "crash in the no-Vulkan run"; echo "$c"; }
+if alive; then err "the no-Vulkan run did not finish its 120 frames"; shot novk-stuck; timeout 30 adb shell am force-stop $PKG; fi
+if grep -q "not on this device, drawing with OpenGL ES" "$OUT/logcat-novk.txt" && grep -q "I/DokuQuest.*OpenGL ES 3" "$OUT/logcat-novk.txt" \
+   && timeout 60 adb pull $DIR/shot-novk.png "$OUT/novk.png" > /dev/null 2>&1; then
+  note "no Vulkan 1.3: the game went on with OpenGL ES in a new window and played 120 frames"
+else
+  err "no Vulkan 1.3: the way to OpenGL ES didn't work"; game_log novk 60
+fi
+
 # ---- 3b. the touch controls (input/touch.h) through the emulator's own touch screen: a thumb on the left walks, a
 # drag on the right turns the view, a tap on the Bag button opens the bag and Back closes it. The game runs a script
 # that only reports where the player stands, every few frames (the touches come from adb, as a finger's would).
