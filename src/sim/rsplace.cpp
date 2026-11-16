@@ -1,6 +1,7 @@
 // sim/rsplace.cpp — placing and using redstone parts, rails, minecarts, boats and mech blocks (game/rsplace.js,
 // the vehicle parts of local.js use(), trains.js/ships.js use overrides, build.js mech placement), all through
 // the EventBus "itemUse" event. Also registerRedstone() (level systems and entity factories).
+#include "sim/blockinfo.h"
 #include "sim/redstone.h"
 #include "sim/villagers.h"
 #include "sim/redstone_entities.h"
@@ -330,7 +331,12 @@ bool rsItemUse(Level& lv, const json& a) {
   // boats on water, carts on rails
   if (def->has("boat")) { if (!remote) placeBoatItem(lv, p, *held); return false; }
   if (def->has("cart")) { if (!remote) { if (hasBlock) placeCartItem(lv, p, *held, hit); else vehToast(lv, p, "Set a minecart on a rail"); } return false; }
-  // placing redstone parts, rails and mech blocks
+  // placing redstone parts, rails and mech blocks (not on a chest, furnace or station unless sneaking: using one of those
+  // opens it or puts the string, dust or rail in, as with any other item)
+  if (hasBlock && !p.sneaking) {
+    const BlockId hid = w.getBlock(hit.x, hit.y, hit.z); const BlockDef& hb = reg().block(hid);
+    if (bhas(hid, BF::Container | BF::Furnace) || hb.has("container") || hb.has("station") || hb.has("table")) return true;
+  }
   if (hasBlock && !def->block.empty()) {
     BlockId bid = reg().blockId(def->block);
     if (bid && placeRedstone(lv, p, w, hit, face, bid, held) >= 0) return false;
