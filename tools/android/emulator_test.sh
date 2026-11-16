@@ -13,11 +13,11 @@ DIR=/sdcard/Android/data/$PKG/files
 OUT=emulator-test
 mkdir -p "$OUT"
 rc=0
-note() { echo "::notice::emulator: $*"; }
-err() { echo "::error::emulator: $*"; rc=1; }
-alive() { [ -n "$(adb shell pidof $PKG 2>/dev/null | tr -d '\r')" ]; }
+note() { echo "::notice::emulator $(date +%H:%M:%S): $*"; }
+err() { echo "::error::emulator $(date +%H:%M:%S): $*"; rc=1; }
+alive() { [ -n "$(timeout 20 adb shell pidof $PKG 2>/dev/null | tr -d '\r')" ]; }
 shot() {   # a screenshot of the screen as it is now, into the log
-  adb exec-out screencap -p > "$OUT/$1.png" 2>/dev/null || return
+  timeout 30 adb exec-out screencap -p > "$OUT/$1.png" 2>/dev/null || return
   python3 - "$OUT/$1.png" "$1" <<'EOF' || true
 import base64, io, sys
 from PIL import Image
@@ -34,7 +34,7 @@ for i in range(0, len(s), 120): print(s[i:i + 120])
 print("=== end")
 EOF
 }
-logs() { adb logcat -d -v brief > "$OUT/logcat-$1.txt" 2>/dev/null; }
+logs() { timeout 60 adb logcat -d -v brief > "$OUT/logcat-$1.txt" 2>/dev/null; }
 crashed() {   # anything in logcat that means this app died (other processes' errors are not ours)
   grep -E -A12 "Process: $PKG|Fatal signal.*\($PKG\)|>>> $PKG <<<|E/DokuQuest.*(crashed|uncaught)" "$OUT/logcat-$1.txt" | head -40
 }
@@ -49,7 +49,7 @@ note "installed $(basename "$APK")"
 # ---- 1. first start: unpacking, Vulkan, the title screen
 adb logcat -c
 t0=$(date +%s)
-adb shell am start -W -n $PKG/.MainActivity
+timeout 180 adb shell am start -W -n $PKG/.MainActivity
 state=""
 for i in $(seq 1 120); do   # (up to 10 minutes: the emulator's GPU is software, so loading is slow)
   sleep 5
@@ -74,7 +74,7 @@ VULKAN_OK=0; [ "$state" = vulkan ] && VULKAN_OK=1
 if [ $VULKAN_OK = 1 ] && alive; then
   adb logcat -c
   adb shell input keyevent KEYCODE_HOME; sleep 6
-  adb shell am start -n $PKG/.MainActivity > /dev/null
+  timeout 60 adb shell am start -n $PKG/.MainActivity > /dev/null
   for i in $(seq 1 24); do sleep 5; logs resume; grep -q "vulkan: new window surface" "$OUT/logcat-resume.txt" && break; alive || break; done
   sleep 5; logs resume
   c=$(crashed resume); [ -n "$c" ] && { err "crash on coming back to the app"; echo "$c"; }
@@ -82,26 +82,26 @@ if [ $VULKAN_OK = 1 ] && alive; then
   grep -E "[EW]/DokuQuest" "$OUT/logcat-resume.txt" | head -10
   shot after-resume
 fi
-adb shell am force-stop $PKG
+timeout 30 adb shell am force-stop $PKG
 sleep 2
 
 # ---- 2. a world at low settings (the emulator draws with a software GPU), 300 frames, a screenshot
 if [ $VULKAN_OK = 1 ]; then
   echo '{"preset":"custom","renderer":"vulkan","renderDist":4,"farTerrain":256,"shadows":0,"waterQuality":0,"clouds":false,"portalViews":false,"scale":0.5,"particles":1,"weatherParticles":0,"microVoxels":0,"plantDetail":"flat","shaderLevel":0,"fancyLeaves":false,"volumetricClouds":false}' > "$OUT/settings.json"
-  adb push "$OUT/settings.json" $DIR/settings.json > /dev/null || err "could not write settings.json into the game's folder"
+  timeout 60 adb push "$OUT/settings.json" $DIR/settings.json > /dev/null || err "could not write settings.json into the game's folder"
   adb shell rm -f $DIR/shot.png
   adb logcat -c
   t0=$(date +%s)
-  adb shell am start -W -n $PKG/.MainActivity --esa args "--create,Test,--seed,hello,--smoke-frames,300,--smoke-shot,$DIR/shot.png"
+  timeout 180 adb shell am start -W -n $PKG/.MainActivity --esa args "--create,Test,--seed,hello,--smoke-frames,300,--smoke-shot,$DIR/shot.png"
   for i in $(seq 1 240); do sleep 5; alive || break; [ $((i % 24)) = 0 ] && shot "world-$((i / 12))min"; done
   logs world
   secs=$(( $(date +%s) - t0 ))
   echo "::group::game log, world"; game_log world 200; echo "::endgroup::"
   c=$(crashed world); [ -n "$c" ] && { err "crash in the world run"; echo "$c"; }
-  if alive; then err "the world run did not finish its 300 frames in $secs s"; shot world-stuck; adb shell am force-stop $PKG; fi
-  adb pull $DIR/latest.log "$OUT/latest.log" > /dev/null 2>&1 && { echo "::group::latest.log"; tail -150 "$OUT/latest.log"; echo "::endgroup::"; }
+  if alive; then err "the world run did not finish its 300 frames in $secs s"; shot world-stuck; timeout 30 adb shell am force-stop $PKG; fi
+  timeout 60 adb pull $DIR/latest.log "$OUT/latest.log" > /dev/null 2>&1 && { echo "::group::latest.log"; tail -150 "$OUT/latest.log"; echo "::endgroup::"; }
   grep -E "^\[error\]" "$OUT/latest.log" 2>/dev/null | sort -u | head -20 | while IFS= read -r l; do echo "::warning::emulator latest.log: ${l:0:300}"; done
-  if adb pull $DIR/shot.png "$OUT/world.png" > /dev/null 2>&1; then
+  if timeout 60 adb pull $DIR/shot.png "$OUT/world.png" > /dev/null 2>&1; then
     note "the world ran 300 frames in $secs s and saved its screenshot"
     python3 - "$OUT/world.png" <<'EOF' || true
 import base64, io, sys
@@ -121,12 +121,12 @@ else
 fi
 
 # ---- 3. the same world on OpenGL ES (what a phone without Vulkan 1.3 gets): reopened, 200 frames, a screenshot
-adb shell am force-stop $PKG; sleep 2
+timeout 30 adb shell am force-stop $PKG; sleep 2
 adb shell rm -f $DIR/shot-gles.png
 adb logcat -c
 t0=$(date +%s)
 WORLD=--create,TestGles; [ $VULKAN_OK = 1 ] && WORLD=--world,Test
-adb shell am start -W -n $PKG/.MainActivity --esa args "--renderer,legacy,$WORLD,--smoke-frames,200,--smoke-shot,$DIR/shot-gles.png"
+timeout 180 adb shell am start -W -n $PKG/.MainActivity --esa args "--renderer,legacy,$WORLD,--smoke-frames,200,--smoke-shot,$DIR/shot-gles.png"
 for i in $(seq 1 240); do sleep 5; alive || break; [ $((i % 24)) = 0 ] && shot "gles-$((i / 12))min"; done
 logs gles
 secs=$(( $(date +%s) - t0 ))
@@ -134,8 +134,8 @@ echo "::group::game log, OpenGL ES"; game_log gles 150; echo "::endgroup::"
 grep -E "I/DokuQuest.*OpenGL ES" "$OUT/logcat-gles.txt" | head -2 | while IFS= read -r l; do note "${l:0:300}"; done
 grep -E "[EW]/DokuQuest" "$OUT/logcat-gles.txt" | sort -u | head -20 | while IFS= read -r l; do echo "::warning::emulator gles: ${l:0:300}"; done
 c=$(crashed gles); [ -n "$c" ] && { err "crash in the OpenGL ES run"; echo "$c"; }
-if alive; then err "the OpenGL ES run did not finish its 200 frames in $secs s"; shot gles-stuck; adb shell am force-stop $PKG; fi
-if adb pull $DIR/shot-gles.png "$OUT/gles.png" > /dev/null 2>&1; then
+if alive; then err "the OpenGL ES run did not finish its 200 frames in $secs s"; shot gles-stuck; timeout 30 adb shell am force-stop $PKG; fi
+if timeout 60 adb pull $DIR/shot-gles.png "$OUT/gles.png" > /dev/null 2>&1; then
   note "OpenGL ES: the world ran 200 frames in $secs s and saved its screenshot"
   python3 - "$OUT/gles.png" <<'PYEOF' || true
 import base64, io, sys
@@ -152,11 +152,11 @@ fi
 
 # ---- 4. a start that dies on Vulkan (killed 15 s in, as a crashing driver would): the next start is OpenGL ES
 if [ $VULKAN_OK = 1 ]; then
-  adb shell am force-stop $PKG; sleep 2
-  adb shell am start -n $PKG/.MainActivity > /dev/null; sleep 15
-  adb shell am force-stop $PKG; sleep 2
+  timeout 30 adb shell am force-stop $PKG; sleep 2
+  timeout 60 adb shell am start -n $PKG/.MainActivity > /dev/null; sleep 15
+  timeout 30 adb shell am force-stop $PKG; sleep 2
   adb logcat -c
-  adb shell am start -n $PKG/.MainActivity > /dev/null; sleep 40
+  timeout 60 adb shell am start -n $PKG/.MainActivity > /dev/null; sleep 40
   logs guard
   if grep -q "didn't get through; drawing with OpenGL ES" "$OUT/logcat-guard.txt" && grep -q "I/DokuQuest.*OpenGL ES" "$OUT/logcat-guard.txt"; then
     note "a start killed on Vulkan: the next start drew with OpenGL ES, as it should"
@@ -165,6 +165,6 @@ if [ $VULKAN_OK = 1 ]; then
     grep -E "[IWE]/DokuQuest" "$OUT/logcat-guard.txt" | head -20
   fi
   c=$(crashed guard); [ -n "$c" ] && { err "crash after the Vulkan fallback"; echo "$c"; }
-  adb shell am force-stop $PKG
+  timeout 30 adb shell am force-stop $PKG
 fi
 exit $rc
