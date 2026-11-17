@@ -2,15 +2,17 @@
 // one, a palisaded one, an open village) every villager and guard is sent, one errand after another, to points about the
 // town: house doors, workplaces, the square, beds, street cells. Each errand: did they get there, how long it took, did
 // they stick (no progress for 10 s), were they moved there by the rescue (a jump of over 2 blocks in one tick).
-//   test_npc_paths [--userdir DIR] [--towns N] [--errands N]    exit code 0 = the arrival rate is at least 90%
+//   test_npc_paths [--userdir DIR] [--towns N] [--errands N] [--ladder-only]   (DQ_NAV_TRACE=1: the climber and the miller step by step)    exit code 0 = the arrival rate is at least 90%
 #include "core/init.h"
 #include "core/registry.h"
 #include "sim/villagers.h"
 #include "sim/villagers_internal.h"
+#include "sim/mob_combat.h"
 #include "gen/structures.h"
 #include "gen/structures_api.h"
 #include "world/dims.h"
 #include "sim/moving.h"
+#include "sim/physics.h"
 #include <set>
 #include "common/noise.h"
 #include <thread>
@@ -30,6 +32,7 @@ int main(int argc, char** argv) {
     if (a == "--userdir" && i + 1 < argc) ud = argv[++i];
     else if (a == "--towns" && i + 1 < argc) townsWanted = std::atoi(argv[++i]);
     else if (a == "--errands" && i + 1 < argc) errands = std::atoi(argv[++i]);
+    else if (a == "--ladder-only") townsWanted = 0;
   }
   std::error_code ec; fs::remove_all(ud, ec);
   CoreOptions co; co.server = true; co.userDirOverride = ud;
@@ -43,6 +46,41 @@ int main(int argc, char** argv) {
   World& w = L->world();
   Player* P; { auto p = std::make_unique<Player>(); p->name = "Tester"; p->pos = vec3(0.5f, 700, 0.5f); P = static_cast<Player*>(L->spawn(std::move(p))); }
 
+  Tally all; std::map<std::string, Tally> byKind; int millerFails = 0;
+  // a ladder, by hand in the sky: a floor, a ladder up a wall to a loft; a townsperson sent up it and back down
+  {
+    const int Y = dimBase(DIM_OVERWORLD) + 220;
+    P->pos = vec3(4.5f, Y + 1, 4.5f);
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 60 && !w.isLoaded(4, Y, 4);) { w.stream({{P->pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+    const BlockId stone = reg().blockId("stone"), ladder = reg().blockId("ladder"), planks = reg().blockId("planks");
+    for (int x = -2; x < 12; x++) for (int z = -2; z < 12; z++) { w.setBlock(x, Y, z, stone); for (int y = Y + 1; y < Y + 12; y++) w.setBlock(x, y, z, AIR); }
+    for (int x = 0; x < 9; x++) for (int y = Y + 1; y <= Y + 9; y++) w.setBlock(x, y, 9, stone);   // (the wall)
+    for (int x = 0; x < 9; x++) for (int z = 5; z <= 8; z++) w.setBlock(x, Y + 6, z, planks);     // (the loft)
+    for (int y = Y + 1; y <= Y + 6; y++) w.setBlock(4, y, 8, ladder, 2);                          // (against the wall, up through the loft)
+    L->tick(0.05);   // (the villages' first look round, which sends home any townsperson of no village, done first)
+    Creature* ce = spawnCreature(*L, REALM_MAIN, "villager", vec3(4.5f, Y + 1, 2.5f));
+    Creature* c = ce;
+    bool upOk = false, downOk = false;
+    if (c) {
+      c->data["npc"] = json{{"v", "none"}, {"i", 0}, {"n", "Climber"}};
+      NpcMind& M = vsys(*L)->mind(c->id);
+      const vec3 ups[2] = {vec3(4.5f, Y + 7, 6.5f), vec3(4.5f, Y + 1, 2.5f)};
+      for (int leg = 0; leg < 2; leg++) {
+        M.sent = true; M.sentTo = ups[leg];
+        for (double t = 0; t < 40 && M.sent; t += 0.05) {
+          L->tick(0.05); P->pos = vec3(4.5f, Y + 1, -6.5f);
+          if ((int)(t * 20) % 20 == 0 && std::getenv("DQ_NAV_TRACE")) printf("    (climber t%.0f: %.2f %.2f %.2f climbing %d path %zu/%zu%s)\n", t, c->pos.x, c->pos.y - Y, c->pos.z, M.climbing, M.pathI, M.path.size(), M.pathPartial ? " partial" : "");
+        }
+        const bool there = std::hypot(c->pos.x - ups[leg].x, c->pos.z - ups[leg].z) < 1 && std::fabs(c->pos.y - ups[leg].y) < 0.6f;
+        (leg ? downOk : upOk) = there;
+        M.sent = false;
+      }
+      c->removed = true;
+    }
+    printf("%s a townsperson climbs a ladder up to a loft\n%s and back down it\n", upOk ? "ok  " : "FAIL", downOk ? "ok  " : "FAIL");
+    if (!upOk || !downOk) millerFails++;
+    fflush(stdout);
+  }
   // the towns: one of each kind of wall, then any
   std::vector<const StructurePlan*> towns;
   auto kindOf = [](const StructurePlan* sp) { return !sp->data.contains("wall") ? std::string("open") : sp->data["wall"].value("kind", std::string("?")); };
@@ -56,7 +94,6 @@ int main(int argc, char** argv) {
       towns.push_back(sp); break;
     }
   }
-  Tally all; std::map<std::string, Tally> byKind; int millerFails = 0;
   long nodesBefore = 0; (void)nodesBefore;
   for (const StructurePlan* town : towns) {
     VillageRef v = villageById(*L, town->data.value("id", std::string()));
@@ -181,14 +218,26 @@ int main(int argc, char** argv) {
       L->info.time = std::floor(L->info.time / DAY_LEN) * DAY_LEN + 0.1 * DAY_LEN;   // (the morning's work)
       S->mind(miller->id).rideS = ivec3(INT32_MIN); S->mind(miller->id).rideStage = 0;
       bool rode = false, up = false; int trips = 0; double midT = 0;
+      const bool trace = std::getenv("DQ_NAV_TRACE") != nullptr;
       for (double t = 0; t < 240 && trips < 2; t += 0.05) {
         L->tick(0.05);
         if ((int)(t * 20) % 40 == 0) w.stream({{P->pos, rad, false}}, 40);
         NpcMind& M = S->mind(miller->id);
         if (M.rideStage == 1 && M.rideS == sl && std::fabs(miller->pos.y - sl.y - 1.5f) > 0.6f) rode = true;   // (on it, off the ground floor)
         if (rode && miller->pos.y > b.y + 7.5f) up = true;
-        if ((int)(t * 20) % 100 == 0) printf("    (miller t%.0f: %.1f %.1f %.1f from the lift, ride %d to %d, lift at %d, carry %s, chore %.1f, path %zu/%zu%s)\n", t, miller->pos.x - sl.x, miller->pos.y - sl.y, miller->pos.z - sl.z, M.rideStage, M.rideTo,
+        if (trace && (int)(t * 20) % 100 == 0) printf("    (miller t%.0f: %.1f %.1f %.1f from the lift, ride %d to %d, lift at %d, carry %s, chore %.1f, path %zu/%zu%s)\n", t, miller->pos.x - sl.x, miller->pos.y - sl.y, miller->pos.z - sl.z, M.rideStage, M.rideTo,
                                             machineState(w, sl).value("at", 0), M.carry.c_str(), M.choreT, M.pathI, M.path.size(), M.pathPartial ? " partial" : "");
+        if (trace && (int)(t * 20) % 400 == 0) {   // (the column they're in, block by block, and what's solid in it)
+          const int cx = ifloor(miller->pos.x), cz = ifloor(miller->pos.z);
+          std::string col;
+          for (int y = sl.y; y <= sl.y + 10; y++) {
+            std::vector<AABB> bx; blockBoxes(w, cx, y, cz, bx);
+            char buf[160]; snprintf(buf, sizeof buf, " %d:%s", y - sl.y, reg().block(w.getBlock(cx, y, cz)).key.c_str()); col += buf;
+            for (auto& q : bx) { snprintf(buf, sizeof buf, "[%.2f-%.2f x%.2f-%.2f z%.2f-%.2f]", q.lo.y - y, q.hi.y - y, q.lo.x - cx, q.hi.x - cx, q.lo.z - cz, q.hi.z - cz); col += buf; }
+          }
+          printf("      (column:%s)\n", col.c_str());
+        }
+        if (trace && (int)(t * 20) % 100 == 0 && M.pathI < M.path.size()) printf("      (next %d %.2f %d climb %d; climbing %d ground %d nograv %d vel %.2f %.2f %.2f stuckGo %d)\n", M.path[M.pathI].at.x - sl.x, M.path[M.pathI].floor - sl.y, M.path[M.pathI].at.z - sl.z, M.path[M.pathI].climb, M.climbing, miller->onGround, miller->noGravity, miller->vel.x, miller->vel.y, miller->vel.z, M.stuckGo);
         if (up && miller->pos.y < b.y + 2.5f) { trips++; up = false; }
         if (miller->pos.y > b.y + 4.5f && miller->pos.y < b.y + 7.f) midT += 0.05; else midT = 0;   // (on the floor between)
         if (midT > 20) break;
@@ -207,5 +256,5 @@ int main(int argc, char** argv) {
   { const NpcNavStats& st = npcNavStats(); printf("\nway finding: %ld plans (%ld partial, %ld no way), %ld ladders climbed, %ld rescues\n", st.plans, st.partial, st.failed, st.climbs, st.rescues); }
   printf("\nall: %d errands, %d there on foot (%.1f%%), mean %.1f s; %d stuck, %d moved by the rescue\n", all.sent, all.arrived, 100 * rate, all.arrived ? all.secs / all.arrived : 0.0, all.stuck, all.rescued);
   lvp->close();
-  return all.sent > 0 && rate >= 0.9 && !millerFails ? 0 : 1;
+  return (townsWanted == 0 || (all.sent > 0 && rate >= 0.9)) && !millerFails ? 0 : 1;
 }

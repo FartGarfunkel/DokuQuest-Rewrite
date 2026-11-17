@@ -162,9 +162,24 @@ OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float speed)
     if (!M.climbing) npcNavStats().climbs++;
     M.climbing = true; e.noGravity = true; e.climbing = true;
     e.vel.y = std::clamp((nd.floor + 0.03f - e.pos.y) * 5.f, -2.4f, 2.4f);
-    const float off = std::hypot(nc.x - e.pos.x, nc.z - e.pos.z);
-    // (in the shaft: kept to the middle of it while they climb; at the top, off sideways once they're up level)
-    if (inCol) return Move{off > 0.12f ? speed * 0.35f : 0, off > 0.12f ? hdg(e.pos, nc) : e.yaw};
+    // (in the shaft: held in the room the ladder's plate leaves them — a ladder's cell is barely wider than a body, and
+    // the plate in the next cell up stops a head that strays over it — while they climb; at the top, off sideways once
+    // they're up level)
+    if (inCol) {
+      float lo[2] = {cx + 0.02f + e.w, cz + 0.02f + e.w}, hi[2] = {cx + 0.98f - e.w, cz + 0.98f - e.w};
+      static thread_local std::vector<AABB> bx;
+      for (int y = ifloor(e.pos.y) - 1; y <= ifloor(e.pos.y + e.h) + 1; y++) {
+        bx.clear(); blockBoxes(w, cx, y, cz, bx);
+        for (const AABB& b : bx) {
+          if (b.lo.x - cx > 0.5f) hi[0] = std::min(hi[0], b.lo.x - 0.02f - e.w); else if (b.hi.x - cx < 0.5f) lo[0] = std::max(lo[0], b.hi.x + 0.02f + e.w);
+          if (b.lo.z - cz > 0.5f) hi[1] = std::min(hi[1], b.lo.z - 0.02f - e.w); else if (b.hi.z - cz < 0.5f) lo[1] = std::max(lo[1], b.hi.z + 0.02f + e.w);
+        }
+      }
+      const float tx = lo[0] <= hi[0] ? (lo[0] + hi[0]) * 0.5f : cx + 0.5f, tz = lo[1] <= hi[1] ? (lo[1] + hi[1]) * 0.5f : cz + 0.5f;
+      const float k = std::min(1.f, dt * 10);
+      e.pos.x += (tx - e.pos.x) * k; e.pos.z += (tz - e.pos.z) * k; e.vel.x = e.vel.z = 0;
+      return Move{0, e.yaw};
+    }
     if (nd.floor - e.pos.y > 0.15f) return Move{0, hdg(e.pos, nc)};
     return Move{speed * 0.6f, hdg(e.pos, nc)};
   }
@@ -756,6 +771,10 @@ OptMove npcBrain(Level& lv, Creature& e, Entity* p, float dist, float dt) {
   // towns3.js: nobody stays stuck
   if ((M.stuckCheckT -= dt) <= 0) { M.stuckCheckT = 1; npcStuckCheck(lv, e, M); }
   Move out{0, e.yaw};
+  // on a lift that's carrying them: they stay on it till it's there, whatever else the day wants of them (they walked
+  // off a moving platform onto the floor it was passing)
+  if (M.rideStage == 1 && M.rideS.x != INT32_MIN)
+    if (OptMove m = npcRideLift(lv, e, M, M.rideS, M.rideTo, dt)) { N["p"] = M.pose; return *m; }
   if (M.sent) {   // (sent somewhere: there first)
     if (OptMove m = npcGo(lv, e, M, M.sentTo, dt, e.T->speed * 0.42f)) { N["p"] = M.pose; return *m; }
     M.sent = false;
