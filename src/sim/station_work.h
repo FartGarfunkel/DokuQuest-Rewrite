@@ -1,5 +1,5 @@
-// sim/station_work.h — the grindstone and the stonecutter worked in the world (their scenes, ui/cinematic_table.cpp; after
-// the grindstone scene's and stonecutter scene). What's being worked lies on the block as its block
+// sim/station_work.h — the grindstone and the stonecutter worked in the world (their scenes, ui/cinematic_table.cpp).
+// What's being worked lies on the block as its block
 // entity, so it syncs to everyone, shows on the block (render/pile_layer.cpp) and spills when the block is broken:
 //   the grindstone, smithing table, loom, fletching and cartography tables {type:"grindwork"|..., items:[a, b], f}: what's
 //     worked and what goes into it, lying on top (their screens' two inputs), made with stationResult (pairWork* below)
