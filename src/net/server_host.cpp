@@ -428,7 +428,7 @@ void ServerHost::update(Level& lv, double dt) {
   while (host && guard++ < 4096 && enet_host_service(host, &ev, 0) > 0) {
     switch (ev.type) {
       case ENET_EVENT_TYPE_CONNECT: {
-        Peer p; p.id = nextPeerId++; p.enet = ev.peer; p.addr = peerAddress(ev.peer);
+        Peer p; p.id = nextPeerId++; p.enet = ev.peer; p.addr = peerAddress(ev.peer); p.joinedAt = nowSeconds();
         ev.peer->data = (void*)(uintptr_t)p.id;
         enet_peer_timeout(ev.peer, 0, 10000, 30000);   // half a minute without a word: they've gone (NET_SILENT)
         peers[p.id] = p;
@@ -444,7 +444,11 @@ void ServerHost::update(Level& lv, double dt) {
         break;
       }
       case ENET_EVENT_TYPE_DISCONNECT: {
-        if (Peer* p = peerOf(ev.peer)) { p->enet = nullptr; peerLeft(*p); }
+        if (Peer* p = peerOf(ev.peer)) {   // (why, for the log: a connection that stopped answering, or one their game shut)
+          if (!p->left) serverLog(strFormat("%s's connection ended without a goodbye (%s, %.0f s after connecting; code %u)", p->name.empty() ? p->addr.c_str() : p->name.c_str(),
+                              ev.data == 0 ? "their game stopped answering or the line dropped" : "their game shut it", nowSeconds() - p->joinedAt, ev.data), "");
+          p->enet = nullptr; peerLeft(*p);
+        }
         ev.peer->data = nullptr;
         break;
       }
@@ -603,6 +607,7 @@ void ServerHost::receive(Peer& p, u8 ty, json& m) {
       break;
     }
     case BYE:
+      serverLog(p.name + " is leaving: their game said goodbye (" + m.value("why", std::string("they left the world")) + ")", "");
       if (m.contains("pl")) applySave(p, {{"pl", m["pl"]}, {"base", p.invSeq}});
       if (p.enet) enet_peer_disconnect_later(p.enet, BYE_NORMAL);
       peerLeft(p);
