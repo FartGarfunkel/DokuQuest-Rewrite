@@ -5,6 +5,17 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.27 (November 2026)
+
+**Multiplayer:**
+- **Joining a dedicated server no longer drops you on the sea floor** (a black screen on the phone): newcomers start on dry land, as a single-player world does, and a server world or player left under the sea by an older version is moved up onto land.
+
+**Android:**
+- **Phones that were wrongly switched from Vulkan to OpenGL ES go back to Vulkan.** Closing the game or updating it in its first minute was taken for a Vulkan crash; now a start counts once it has drawn, and the updater no longer trips it.
+- **The menus always show on OpenGL ES,** even if a world's drawing goes wrong, and anything that went wrong is written to the game's log.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.26 (November 2026)
 
 **Settings:**
