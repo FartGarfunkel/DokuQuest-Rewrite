@@ -415,7 +415,7 @@ void drawOptions(Launcher& L) {
           static const char* styles[] = {"vibrant", "natural", "classic", "custom"};
           int cur = 3; for (int i = 0; i < 4; i++) if (s.colourStyle == styles[i]) cur = i;
           int pick = cur;
-          if (k.cycle("Colour Style", &pick, {"Vibrant", "Natural", "Classic", "Custom"}, 1, "Vibrant: the colours as drawn. Natural: a little softer. Classic: muted and flatter, like the early blocky games (blacks less deep on an OLED).", 120) && pick != cur) {
+          if (k.cycle("Colour Style", &pick, {"Vibrant", "Natural", "Classic", "Custom"}, 2, "Vibrant: the colours as drawn. Natural: a little softer. Classic: muted and flatter, like the early blocky games (blacks less deep on an OLED).", 120) && pick != cur) {
             if (pick < 3) s.applyColourStyle(styles[pick]); else s.colourStyle = "custom";
             changed = true;
           }

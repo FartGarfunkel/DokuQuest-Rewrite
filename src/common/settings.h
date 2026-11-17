@@ -22,9 +22,9 @@ struct Settings {
   bool invertY = false, showFps = false, fpBody = true, viewBob = true;
   float brightness = 0.35f;      // the classic brightness curve: 0 moody (dark stays dark) .. 1 bright (common.glsl curveBrightness)
   // the picture's colour (render/colour_filter_layer.cpp): a style, or "custom" once a slider is moved
-  std::string colourStyle = "natural";   // vibrant | natural | classic | custom
-  float saturation = 0.85f;      // 0 grey .. 1 as drawn .. 1.5
-  float contrast = 0.94f;        // 0.5 flat .. 1 as drawn .. 1.5
+  std::string colourStyle = "classic";   // vibrant | natural | classic | custom (classic: the default, muted like the early blocky games)
+  float saturation = 0.68f;      // 0 grey .. 1 as drawn .. 1.5 (classic)
+  float contrast = 0.86f;        // 0.5 flat .. 1 as drawn .. 1.5 (classic)
   std::string split = "auto";
   int particles = 2;             // 0 off, 1 few, 2 all
   std::string guiScale = "auto";
@@ -40,7 +40,7 @@ struct Settings {
   std::string preset = "auto";   // potato | low | medium | high | ultra | custom | auto
   int microVoxels = 0;           // 0 flat faces, 1 shaded micro-voxels, 2 relief micro-voxels (parallax; still being worked on, so off by default)
   int microVoxelDist = 48;       // blocks: micro-voxel relief fades out past this
-  int waterQuality = 2;          // 0 flat, 1 waves, 2 waves + reflections
+  int waterQuality = 1;          // 0 flat, 1 waves (the default), 2 waves + reflections
   int shadows = 1;               // 0 off, 1 soft sun shadows (modern only)
   // weather (render/weather_layer.cpp): how many weather particles at most (0 off, 600 low, 1500
   // normal, 3000 high), how far round you they fall (blocks), splashes/ripples/streaks, ground fog sheets, height fog
