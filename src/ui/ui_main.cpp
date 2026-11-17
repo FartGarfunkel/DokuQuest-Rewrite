@@ -269,8 +269,9 @@ void throwStackFromPlayer(App& a, const ItemStack& s) {
 // ---- menu tabs (game/menutabs.js) ---------------------------------------------------------------------------
 static std::vector<MenuTab>& tabs() { static std::vector<MenuTab> t; return t; }
 void registerMenuTab(MenuTab t) {
-  static const char* order[] = {"inventory", "guide", "map", "journal", "skills", "spells", "stable", "achievements"};
-  auto rank = [](const std::string& k) { for (int i = 0; i < 8; i++) if (k == order[i]) return i; return 8; };
+  // (the talents beside the skills they grow from: it had no place here, and came last, after the achievements)
+  static const char* order[] = {"inventory", "guide", "map", "journal", "skills", "skilltree", "spells", "stable", "achievements"};
+  auto rank = [](const std::string& k) { for (int i = 0; i < 9; i++) if (k == order[i]) return i; return 9; };
   auto& v = tabs();
   for (auto& o : v) if (o.key == t.key) { o = std::move(t); return; }
   auto it = std::find_if(v.begin(), v.end(), [&](const MenuTab& o) { return rank(o.key) > rank(t.key); });

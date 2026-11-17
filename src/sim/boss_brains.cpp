@@ -82,7 +82,7 @@ void summon(Level& lv, Creature& m, const std::string& type, int n, int cap) {
       lv.fx->particles("poof", c->pos + vec3(0, 1, 0), 12);
     }
   }
-  if (room > 0) lv.fx->sound("evoker_summon", m.pos, 32);
+  if (room > 0) lv.fx->sound("spell_ward", m.pos, 32);   // (calling its servants)
 }
 
 // a free spot standing on ground, `r` from `about` (or none)
@@ -180,7 +180,7 @@ OptMove bossFight(Level& lv, Creature& m, Entity* p, float dist, float dyp, floa
   }
   if (state == "swing") {   // a heavy blow: wound up, then down
     m.lockMove = t < 0.5f;
-    if (t > 0.5f && !m.data.value("bfHit", false)) { m.data["bfHit"] = true; m.swingT = 0.35f; strike(lv, m, 2.6f, dmg * 1.3f, false, 7); lv.fx->sound("attack_strong", m.pos, 24); }
+    if (t > 0.5f && !m.data.value("bfHit", false)) { m.data["bfHit"] = true; m.swingT = 0.35f; strike(lv, m, 2.6f, dmg * 1.3f, false, 7); lv.fx->sound("entity/player/attack/crit1", m.pos, 24); }
     if (t > 0.9f) finish(0.8f);
     return Move{0, t < 0.35f ? toPlayer : m.yaw};
   }
@@ -219,7 +219,7 @@ OptMove bossFight(Level& lv, Creature& m, Entity* p, float dist, float dyp, floa
       m.data["bfAir"] = true;
       const vec3 d = p->pos - m.pos; const float hd = std::max(0.1f, std::hypot(d.x, d.z)), fly = 0.9f;
       m.vel = vec3(d.x / fly, 8.5f + std::max(0.f, d.y) * 1.2f, d.z / fly) * vec3(std::min(1.f, 14.f / hd * fly), 1, std::min(1.f, 14.f / hd * fly));
-      m.onGround = false; lv.fx->sound("jump", m.pos, 24);
+      m.onGround = false; lv.fx->sound("ws_whoosh", m.pos, 24);
     }
     m.lockMove = true;
     if (m.onGround && t > 0.6f) {
