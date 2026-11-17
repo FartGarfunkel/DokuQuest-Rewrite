@@ -1,6 +1,7 @@
 // sim/rpg.cpp — game/rpg.js: perks, Exploring and Alchemy experience, Realm Fragments, the journal; paths.js lookups.
 #include "sim/endstory.h"
 #include "sim/rpg.h"
+#include "sim/creature.h"
 #include "sim/magic.h"
 #include "sim/magic_data.h"
 #include "sim/magic_fx.h"
@@ -174,7 +175,10 @@ void onGreatFoeDied(Level& lv, Entity& mob) {
   const json& F = magicData().fragFoes;
   auto flag = [&](const char* k) { auto it = mob.data.find(k); return it != mob.data.end() && !it->is_null() && *it != false && *it != ""; };   // ids or true
   bool lair = flag("lair") && endsWith(mob.type, "_dragon");
-  if (lv.isRemote() || flag("dungeon") || !(F.contains(mob.type) || lair)) return;
+  // every boss gives one, the first time its kind is beaten in this world (a dungeon's keeper gives its dungeon's own: rift.cpp)
+  const CreatureType* ct = creatureType(mob.type);
+  const bool boss = ct && ct->boss && mob.type != "herobrine";
+  if (lv.isRemote() || flag("dungeon") || !(F.contains(mob.type) || lair || boss)) return;
   json& R = lv.info.data["rift"];
   if (!R.is_object()) R = json{{"stage", 0}, {"frags", 0}};
   json& flags = lv.info.data["flags"];
@@ -185,7 +189,7 @@ void onGreatFoeDied(Level& lv, Entity& mob) {
   got[mob.type] = 1;
   if (R.value("stage", 0) >= 3) { if (reg().item("rift_crystal")) dropStack(lv, mob.realm, ItemStack("rift_crystal", 3), mob.pos + vec3(0, 1, 0)); return; }
   dropStack(lv, mob.realm, ItemStack("realm_fragment", 1), mob.pos + vec3(0, 1, 0));
-  std::string who = F.value(mob.type, std::string("it"));
+  std::string who = F.value(mob.type, ct && !ct->label.empty() ? "the " + ct->label : std::string("it"));
   lv.fx->message(0, "A Realm Fragment falls from " + who + ". Hold it up to the rift in the square and use it.", "epic");
 }
 std::vector<std::string> greatFoesBeaten(Level& lv) {

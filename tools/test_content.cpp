@@ -637,7 +637,7 @@ int main(int argc, char** argv) {
     const std::string saveMode = P->mode;
     P->mode = "survival";
     // each one, given 20 seconds beside you, hurts you: standing on the floor, and up on a pillar out of reach
-    for (const char* b : {"hollow_archmage", "lich_king", "hex_matron", "grave_warden", "minotaur", "valkyrie_queen", "pirate_captain", "rot_king", "slider", "broodmother", "ember_lord", "sun_spirit"}) {
+    for (const char* b : {"night_lord", "graveyard_lich", "dead_king", "hollow_archmage", "lich_king", "hex_matron", "grave_warden", "minotaur", "valkyrie_queen", "pirate_captain", "rot_king", "slider", "broodmother", "ember_lord", "sun_spirit"}) {
       for (int pillar = 0; pillar < 2; pillar++) {
         clearMobs();
         for (int y = BY + 1; y < BY + 8; y++) for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) wb.setBlock(x, y, z, AIR);
@@ -654,6 +654,28 @@ int main(int argc, char** argv) {
         if (std::getenv("DQ_BOSS_TEST_DEBUG")) printf("  %s at %.1f %.1f %.1f player %.1f %.1f %.1f state %s removed %d age %.1f hp %.0f\n", b, boss->pos.x, boss->pos.y, boss->pos.z, P->pos.x, P->pos.y, P->pos.z, (static_cast<Creature*>(boss)->state + "/" + boss->data.value("bfState", std::string("-"))).c_str(), (int)boss->removed, boss->age, P->hp);
         check(lost > 4 && !boss->removed, std::string(b) + (pillar ? " reaches you up a pillar" : " fights you") + " (" + std::to_string((int)lost) + " damage in 20 s)");
       }
+    }
+    // the Night Lord in its second phase: its moves with no hit windows of their own strike too
+    {
+      clearMobs();
+      for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) { wb.setBlock(x, BY, z, B("stone")); for (int y = BY + 1; y < BY + 8; y++) wb.setBlock(x, y, z, AIR); }
+      P->pos = vec3(8.5f, BY + 1, 8.5f); P->maxHp = 100000; P->hp = 100000; P->dead = false;
+      Entity* nl = spawnCreature(*L, REALM_MAIN, "night_lord", vec3(11.5f, BY + 1, 8.5f));
+      if (nl) { nl->hp = nl->maxHp * 0.4f; nl->data["phase"] = 2; }
+      int hits = 0; float last = P->hp;
+      for (int k = 0; k < 600 && nl && !nl->removed; k++) { P->pos.x = 8.5f; P->pos.z = 8.5f; P->vel.x = P->vel.z = 0; P->invuln = std::max(0.f, P->invuln - (float)TICK_DT); L->tick(TICK_DT); if (P->hp < last) hits++; last = P->hp; }
+      check(nl && hits >= 4, "the Night Lord's second phase lands its blows (" + std::to_string(hits) + " in 30 s)");
+    }
+    // a dragon placed in a hall (no lair): it keeps to where it was put (it flew off up through the roof)
+    {
+      clearMobs();
+      for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) { wb.setBlock(x, BY, z, B("stone")); for (int y = BY + 1; y < BY + 8; y++) wb.setBlock(x, y, z, AIR); }
+      P->pos = vec3(8.5f, BY + 1, 8.5f); P->maxHp = 100000; P->hp = 100000;
+      Entity* dg = spawnCreature(*L, REALM_MAIN, "sand_dragon", vec3(14.5f, BY + 2, 8.5f));
+      const vec3 at0 = dg ? dg->pos : vec3(0);
+      float far = 0, up = 0;
+      for (int k = 0; k < 600 && dg && !dg->removed; k++) { P->pos.x = 8.5f; P->pos.z = 8.5f; P->invuln = 0; L->tick(TICK_DT); far = std::max(far, std::hypot(dg->pos.x - at0.x, dg->pos.z - at0.z)); up = std::max(up, dg->pos.y - at0.y); }
+      check(dg && up < 26 && far < 50, "a dragon set down in a hall keeps near where it was put (" + std::to_string((int)up) + " up, " + std::to_string((int)far) + " out)");
     }
     // a summoner keeps its servants few
     clearMobs();
