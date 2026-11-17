@@ -10,10 +10,11 @@
 //     anchor (remember the player's block; x/y/z, from/to and block in steps with "rel":true are relative to it)
 //     fill{from:[x,y,z],to:[x,y,z],key}
 //     expect{screen | block:[x,y,z],is | entity,near} report shot{path} save leave open{world} unjoin{local} quit
+//     unfocus (another window takes the focus and goes away: the window is no longer in front) focus (it comes back)
 //     hurt{entity,amount,tool,type,at} (strike the nearest creature of that type as the player, e.g. tool "axe")
 //     kill (the player / "local" dies)  drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
 //     expect{screen | block:[x,y,z],is | entity,near | held | inv:slot,item,n | count:item,n | cursor:item |
-//            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
+//            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text | typing (the text box being edited holds it; null: none)} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
 // give takes "d" (wear) and "tag" (enchantments, gear xp). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
 #include "sim/creature_rig.h"
@@ -32,6 +33,8 @@
 #include "ui/villager_screens.h"
 #include "ui/magic_screens.h"
 #include "ui/content_screens.h"
+#include "ui/osk.h"
+#include <imgui_internal.h>
 #include "sim/commands.h"
 #include "sim/player.h"
 #include "sim/combat.h"
@@ -48,6 +51,9 @@
 #include "sim/creature_entities.h"
 #include "gen/structures_api.h"
 #include "gen/structures.h"
+
+// SDL's internal focus switch (SDL is linked in statically): the state a real focus change leaves, on any video driver
+extern "C" void SDL_SetKeyboardFocus(SDL_Window* window);
 
 namespace dq {
 std::unique_ptr<Screen> makeGuideScreen(const std::string& item);
@@ -186,6 +192,10 @@ void runStep(App& a, const json& st) {
     SDL_JoystickSetVirtualAxis(vj, ax, (Sint16)std::clamp(v * 32767.f, -32768.f, 32767.f));
     Sint16 rest = trig ? SDL_JOYSTICK_AXIS_MIN : 0;
     R.later.push_back({f + hold, [ax, vj, rest] { SDL_JoystickSetVirtualAxis(vj, ax, rest); }});
+  } else if (op == "unfocus") {   // the window stops being the one in front: SDL's own focus change, as when another program takes it
+    SDL_SetKeyboardFocus(nullptr); a.args.scriptFocusPause = true;
+  } else if (op == "focus") {   // the window comes back to the front
+    SDL_SetKeyboardFocus(a.window);
   } else if (op == "cmd") {
     if (!s) return;
     if (s->level->info.rules.is_object()) s->level->info.rules["commands"] = true;   // tests may always use commands
@@ -369,6 +379,11 @@ void runStep(App& a, const json& st) {
       std::string dump = e ? e->dump() : "null", want = st.value("has", "");
       result(dump.find(want) != std::string::npos, "block entity " + st["blockEntity"].dump() + " has '" + want + "' (got " + dump.substr(0, 200) + ")");
     }
+    if (st.contains("typing")) {   // a text box is being edited and holds this text (null: none is being edited)
+      std::string got; const bool on = ui::oskSeenEditing(a, &got);   // (in the main context, a viewport or the journal's pages)
+      bool ok = st["typing"].is_null() ? !on : on && got == st["typing"].get<std::string>();
+      result(ok, "typing " + st["typing"].dump() + " (got " + (on ? "\"" + got + "\"" : std::string("no text box")) + ")");
+    }
     if (st.contains("held") && p) result(p->held().id == st["held"].get<std::string>(), "held " + st["held"].get<std::string>() + " (got " + p->held().id + ")");
   } else if (op == "arrow" && s && p) {   // a skeleton's arrow at the player: from [right, up, ahead] of the feet (the body's frame), aimed at
     // "at" [right, up, ahead] (default the chest), "speed" blocks/s; logs the player's hp and stamina, the arrow's id
@@ -445,6 +460,7 @@ void runStep(App& a, const json& st) {
     else if (n == "skilltree") a.pushScreen(makeSkillTreeScreen());
     else if (n == "map") a.pushScreen(makeMapScreen(-1));
     else if (n == "spellbook") a.pushScreen(makeSpellbookScreen());
+    else if (n == "sign") a.pushScreen(makeSignScreen(at(st)));   // writing on the sign at x,y,z ("rel": from the anchor)
     else if (n == "brew" && p) a.pushScreen(makeBrewScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z)) + ivec3(st.value("dx", 0), st.value("dy", 0), st.value("dz", 0))));
     else if (n == "inscribe" && p) a.pushScreen(makeInscriptionScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z)) + ivec3(st.value("dx", 0), st.value("dy", 0), st.value("dz", 0))));
     else if (n == "enchant" && p) a.pushScreen(makeEnchantScreen(ivec3(ifloor(p->pos.x), ifloor(p->pos.y), ifloor(p->pos.z)) + ivec3(st.value("dx", 0), st.value("dy", 0), st.value("dz", 0))));

@@ -1,0 +1,18 @@
+{
+"note": "When the window is no longer in front the pause screen opens by itself; the controller must still work there (SDL drops controller presses while the window has no focus unless told otherwise). The first press only asks for the window back; the next ones work the menu.",
+"steps": [
+{"wait": 200, "do": "pad", "button": "x", "hold": 3},
+{"wait": 10, "do": "unfocus"},
+{"wait": 200, "do": "expect", "screen": "pause"},
+{"do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "a", "hold": 3},
+{"wait": 15, "do": "expect", "screen": "settings"},
+{"do": "pad", "button": "b", "hold": 3},
+{"wait": 10, "do": "expect", "screen": "pause"},
+{"do": "focus"},
+{"wait": 10, "do": "pad", "button": "b", "hold": 3},
+{"wait": 10, "do": "expect", "screen": null},
+{"do": "report"}
+]
+}

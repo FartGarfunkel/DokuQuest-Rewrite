@@ -23,10 +23,9 @@ public:
   bool saved = false;
   const char* id() const override { return "sign"; }
   bool pausesGame() const override { return false; }
-  bool padOpen = false;         // opened with a controller: focus starts on Done (no on-screen keyboard yet)
+  // (opened with a controller the first line takes the focus too: the on-screen keyboard comes up for it, ui/osk.cpp;
+  // its Enter moves to the next line like the keyboard's, and on the last line it is Done)
   void onOpen(App& a) override {
-    padOpen = a.input.usingPad();
-    if (padOpen) focusLine = -1;
     if (!a.session) return;
     if (json* e = a.session->world().blockEntity(at.x, at.y, at.z)) if (e->contains("lines") && (*e)["lines"].is_array())
       for (size_t i = 0; i < 4 && i < (*e)["lines"].size(); i++) if ((*e)["lines"][i].is_string()) lines[i] = (*e)["lines"][i].get<std::string>();
@@ -108,7 +107,6 @@ public:
     ImGui::Dummy(ImVec2(1, 2 * z));
     float bwid = textSize(F_BODY, "Done").x + 28 * z;
     ImGui::SetCursorScreenPos(ImVec2(p0.x + (bw - bwid) * 0.5f, ImGui::GetCursorScreenPos().y));
-    if (padOpen) { ImGui::SetKeyboardFocusHere(); padOpen = false; }
     bool done = button("Done", BTN_PRIMARY, true, bwid);
     ImGui::End();
     ImGui::PopStyleVar();

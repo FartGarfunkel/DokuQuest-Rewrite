@@ -197,9 +197,11 @@ static void startupScreen(App& a) {
 
 // Every pad the game understands (SDL game controllers and pads mapped in the setup wizard, in the standard
 // layout with the Nintendo swap applied) drives ImGui's menu navigation: d-pad / left stick move the highlight,
-// A presses, B backs out, LB/RB and the triggers page. ImGui's SDL backend only sees pads SDL knows by name.
+// A presses, B backs out. The keys themselves are fed by ui::feedNav alone (theme.cpp: two feeders that disagreed
+// made ImGui's input queue grow); this only makes sure a menu window has the focus when a pad is used.
 static void feedPadsToImGui(App& a) {
   ImGuiIO& io = ImGui::GetIO();
+  for (auto& p : a.input.pads()) p.oskMute = false;   // the on-screen keyboard asks again each frame (ui/osk.cpp)
   if (!(io.ConfigFlags & ImGuiConfigFlags_NavEnableGamepad) || a.input.setupActive) return;
   bool b[17] = {}; float lx = 0, ly = 0; bool any = false;
   for (auto& p : a.input.pads()) {
@@ -209,14 +211,6 @@ static void feedPadsToImGui(App& a) {
     if (std::fabs(p.lstick.y) > std::fabs(ly)) ly = p.lstick.y;
   }
   if (!any) { static int n = 0; if (std::getenv("DQ_NAV_DEBUG") && n++ % 120 == 0) DQ_LOG("nav: no pads"); return; }
-  io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
-  static const ImGuiKey MAP[16] = {ImGuiKey_GamepadFaceDown, ImGuiKey_GamepadFaceRight, ImGuiKey_GamepadFaceLeft, ImGuiKey_GamepadFaceUp,
-    ImGuiKey_GamepadL1, ImGuiKey_GamepadR1, ImGuiKey_GamepadL2, ImGuiKey_GamepadR2, ImGuiKey_GamepadBack, ImGuiKey_GamepadStart,
-    ImGuiKey_GamepadL3, ImGuiKey_GamepadR3, ImGuiKey_GamepadDpadUp, ImGuiKey_GamepadDpadDown, ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadDpadRight};
-  for (int k = 0; k < 16; k++) io.AddKeyEvent(MAP[k], b[k]);
-  auto axis = [&](ImGuiKey neg, ImGuiKey pos, float v) { io.AddKeyAnalogEvent(neg, v < -0.35f, std::max(0.f, -v)); io.AddKeyAnalogEvent(pos, v > 0.35f, std::max(0.f, v)); };
-  axis(ImGuiKey_GamepadLStickLeft, ImGuiKey_GamepadLStickRight, lx);
-  axis(ImGuiKey_GamepadLStickUp, ImGuiKey_GamepadLStickDown, ly);
   // a pad used while a menu is up but no menu window has the focus (the mouse was used last, or the pad was
   // picked up after the screen opened): give the focus to the topmost menu window so the d-pad has a highlight
   bool active = lx * lx + ly * ly > 0.12f;

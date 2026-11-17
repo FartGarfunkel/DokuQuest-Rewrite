@@ -6,6 +6,7 @@
 #include <string_view>
 #include "ui/screen.h"
 #include "ui/theme.h"
+#include "ui/osk.h"
 #include "ui/ui.h"
 #include "ui/book.h"
 #include "ui/cinematic.h"
@@ -297,6 +298,7 @@ void bookUiRender(App& a, bool station) {
   else {
   for (size_t i = 0; i < a.screens.size(); i++) if (i + 1 == a.screens.size() || a.screens[i + 1]->showsWorld()) a.screens[i]->draw(a);
   uiAfterScreens(a);
+  ui::oskGame(a);   // the on-screen keyboard on the pages (ui/osk.cpp)
   }
   g_drawing = false;
   {   // (the menus dim the world behind them on the background layer: on the pages that's only the paper, left clean)

@@ -22,6 +22,7 @@
 #include "render/env_layers.h"
 #include "ui/screen.h"
 #include "ui/ui.h"
+#include "ui/osk.h"
 #include "audio/audio.h"
 #include "client/client_fx.h"
 #include "mod/modloader.h"
@@ -64,6 +65,10 @@ bool App::initWindow() {
 #ifdef SDL_HINT_WINDOWS_DPI_AWARENESS
   SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");   // physical pixels, so we scale the UI ourselves
 #endif
+  // Controllers keep reading while the window is not in front. SDL's default drops every press then, and losing the
+  // focus is exactly when the pause screen opens by itself: the controller was dead on it. What a pad may do in the
+  // background is decided in the frame loop (Input::background).
+  SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0) { DQ_ERR("SDL: %s", SDL_GetError()); return false; }
   SDL_SetHint(SDL_HINT_MOUSE_RELATIVE_MODE_WARP, settings.rawMouse ? "0" : "1");   // raw look, unless Settings asks for warping
   if (auto db = readFile(assetsDir() / "gamecontrollerdb.txt")) SDL_GameControllerAddMappingsFromRW(SDL_RWFromConstMem(db->data(), (int)db->size()), 1);
@@ -380,7 +385,20 @@ void App::frameLoop() {
         if (!settings.fullscreen && (fl & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)) == 0) { settings.windowW = width; settings.windowH = height; }
       }
     }
-    input.endFrame();
+    // In the background (another window in front) a controller only works the pause menu (which losing the focus
+    // opens), never the world. Its first press there asks for the window back and does nothing else, so a pad used in
+    // some other program doesn't click through our menu; the presses after it work the menu, whether or not the
+    // system gave the focus back.
+    {
+      const bool fg = window && (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) != 0;
+      bool paused = false;
+      for (auto& s : screens) if (s->id() == std::string("pause")) paused = true;
+      if (fg || !paused) bgPadAwake = false;
+      input.background = !fg;
+      input.backgroundPads = paused && bgPadAwake;
+      input.endFrame();
+      if (!fg && paused && input.backgroundPress && !bgPadAwake) { bgPadAwake = true; SDL_RaiseWindow(window); DQ_LOG("controller used in the background: asking for the window back"); }
+    }
     // mouse capture: in-world with no menu open
     bool wantCapture = session && (!topScreen() || !topScreen()->wantsMouse());
     if (session && session->split()) {   // the mouse belongs to the first person: their own menu frees it, or a shared one
@@ -408,6 +426,7 @@ void App::frameLoop() {
       uiAfterScreens(*this);   // the menu tab strip (ui/ui_main.cpp)
       if (bookUiStationOn(*this)) { bookUiRender(*this, true); bookUiDrawScreenTip(); bookUiDebugQuad(ImGui::GetForegroundDrawList()); }   // at a station: your bag in the journal in your off hand
     }
+    ui::oskGame(*this);      // the on-screen keyboard while a controller player edits a text box (ui/osk.cpp)
     if (session && session->split()) {
       // split screen: a shared menu (pause...) answers to everybody; otherwise each person's Back / Pause closes their own menu, or pauses
       if (session->joinedFrame + 1 < frame) {   // (the joiner's own Start press is still an edge in their new input frame the frame after they joined)
@@ -433,7 +452,7 @@ void App::frameLoop() {
     // A shared world still runs (GameSession only pauses a world that is not on the network).
     bool focused = window && (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) != 0;
     if (focused) focusAt = now;
-    else if (args.smokeFrames == 0 && args.smokeScript.is_null() && settings.pauseOnLostFocus && session && !topScreen() && now > focusAt + 0.25)
+    else if (args.smokeFrames == 0 && (args.smokeScript.is_null() || args.scriptFocusPause) && settings.pauseOnLostFocus && session && !topScreen() && now > focusAt + 0.25)
       pushScreen(makePauseScreen());
     if (audio) audio->setMuted(settings.muteOnLostFocus && !focused);
     ImGui::PopFont();
