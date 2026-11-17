@@ -106,6 +106,9 @@ static OptMove lairDragonAI(Level& lv, Creature& m, Entity* p, float dist, float
   Mem& M = S->mem(m);
   const CreatureType& T = *m.T;
   m.hasFlyVy = true;
+  // set down somewhere with no lair (a hall): where it was put is its home (with none, its circling followed itself and it
+  // climbed away through the roof); a hall's dragon keeps a tighter, lower circle
+  if (!m.data.contains("home")) { m.data["home"] = json::array({m.pos.x, m.pos.y, m.pos.z}); if (!m.data.value("lair", false)) m.data["hall"] = true; }
   if (m.hoverT > 0) m.hoverT -= dt;
   dragonUnstick(lv, m, M, dt);
   if (m.state == "idle") m.state = m.data.value("dstate", std::string("circle"));   // back from a save
@@ -133,8 +136,9 @@ static OptMove lairDragonAI(Level& lv, Creature& m, Entity* p, float dist, float
     M.orbit += dt * 0.35f;
     // patrol the lair, wide, the way the ender dragon circles its island. The player is the target of the strafe and the charge, not the centre of the orbit.
     vec3 home = m.data.contains("home") ? jvec(m.data["home"]) : m.pos;
-    float rad = 32.f + 10.f * (0.5f + 0.5f * std::sin(M.orbit * 0.37f));
-    float gx = home.x + std::cos(M.orbit) * rad, gz = home.z + std::sin(M.orbit) * rad, alt = home.y + 16.f + std::sin(m.age * 0.5f) * 3.f;
+    const bool hall = m.data.value("hall", false);
+    float rad = (hall ? 10.f : 32.f) + (hall ? 4.f : 10.f) * (0.5f + 0.5f * std::sin(M.orbit * 0.37f));
+    float gx = home.x + std::cos(M.orbit) * rad, gz = home.z + std::sin(M.orbit) * rad, alt = home.y + (hall ? 6.f : 16.f) + std::sin(m.age * 0.5f) * (hall ? 1.5f : 3.f);
     m.flyVy = clampf((alt - m.pos.y) * 1.2f, -6, 6);
     if ((M.flapT -= dt) <= 0) { M.flapT = 0.75f; lv.fx->sound("dragon_flap", m.pos + vec3(0, 2, 0), 40); }
     if (M.stT <= 0) {

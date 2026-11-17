@@ -11,6 +11,7 @@
 #include "sim/beast_anim.h"
 #include "sim/mob_combat.h"
 #include "sim/weather.h"
+#include "sim/creature_entities.h"
 #include "sim/level.h"
 #include "core/registry.h"
 #include <cstdio>
@@ -49,6 +50,19 @@ OptMove bossBrain(Level& lv, Creature& m, Entity* p, float dist, float dt) {
     return Move{0, m.yaw};
   }
   if (!p || p->hp <= 0 || p->removed || dist > 40) { m.data["atk"] = -1; m.data.erase("clip"); return std::nullopt; }
+  // up out of its reach (a pillar, a ledge): after a moment, a bolt at you now and then (and lightning in its second phase)
+  {
+    float high = m.data.value("kitHigh", 0.f);
+    high = std::fabs(p->pos.y - m.pos.y) > 3.f ? high + dt : 0.f;
+    m.data["kitHigh"] = high;
+    if (high > 2.f && m.age >= m.data.value("kitShot", 0.f)) {
+      m.data["kitShot"] = m.age + 2.5f;
+      const vec3 e = m.pos + vec3(0, std::min(m.h * 0.8f, 2.6f), 0), d = p->pos + vec3(0, 1, 0) - e;
+      if (Entity* b = spawnProjectile(lv, m.realm, e, glm::normalize(d) * 16.f, "arcane", &m)) b->data["dmg"] = (m.T ? m.T->damage : 6) * 0.8f;
+      if (phase == 2) if (WeatherSystem* ws = weatherOf(lv)) ws->strike(lv, (int)std::floor(p->pos.x), (int)std::floor(p->pos.y), (int)std::floor(p->pos.z));
+      lv.fx->sound("spell_fire", e, 28);
+    }
+  }
   if (atk >= 0 && atk < (int)K->size()) {
     const json& A = (*K)[atk];
     const float t = m.age - m.data.value("atkT0", 0.f), len = A.value("len", 1.f);
@@ -57,7 +71,8 @@ OptMove bossBrain(Level& lv, Creature& m, Entity* p, float dist, float dt) {
     if (t < len * 0.35f) dir = toTarget;
     // a leap or a dive: carried at the target through the move's first part
     float want = 0;
-    if (A.value("leap", false) && t > 0.1f && t < len * 0.4f && dist > 2.5f) want = std::min(14.f, dist * 2.2f);
+    const bool farMove = [&] { for (auto& x : A.value("ranges", json::array())) if (x == "far") return true; return false; }();
+    if ((A.value("leap", false) || farMove || !A.contains("hits")) && t > 0.1f && t < len * 0.4f && dist > 2.5f) want = std::min(14.f, dist * 2.2f);   // (a far move that only stood there: it leaps in now)
     // its hit windows
     int done = m.data.value("hitMask", 0);
     if (A.contains("hits")) for (int i = 0; i < (int)A["hits"].size() && i < 16; i++) {
@@ -80,6 +95,24 @@ OptMove bossBrain(Level& lv, Creature& m, Entity* p, float dist, float dt) {
         done |= 1 << (i + 16);
         if (WeatherSystem* ws = weatherOf(lv)) ws->strike(lv, (int)std::floor(p->pos.x), (int)std::floor(p->pos.y), (int)std::floor(p->pos.z));
       }
+    }
+    // a move with no hit windows of its own (several phase-two ones, some of them long channels: a fourteen-second
+    // lightning bolt, a beam, a scream): it strikes every 1.2 s through its middle, a blow up close, a bolt further off
+    // (and the move's lightning in the second phase)
+    if (!A.contains("hits") && t >= len * 0.3f && t <= len * 0.95f && m.age >= m.data.value("kitPulse", 0.f)) {
+      m.data["kitPulse"] = m.age + 1.2f;
+      const vec3 d = p->pos - m.pos;
+      const float hd = std::hypot(d.x, d.z);
+      const float dmg = (m.T ? m.T->damage : 6) * (phase == 2 ? 1.15f : 1.f);
+      if (hd <= 4.f + m.w && std::fabs(d.y) < 3.5f) {
+        DamageSrc src; src.type = "mob";
+        damageEntity(lv, *p, dmg, &m, src);
+        knockback(*p, glm::normalize(vec3(d.x, 0, d.z) + vec3(0.001f, 0, 0)) * 6.f + vec3(0, 3.5f, 0));
+      } else {
+        const vec3 e = m.pos + vec3(0, std::min(m.h * 0.8f, 2.6f), 0), to = p->pos + vec3(0, 1, 0) - e;
+        if (Entity* bolt = spawnProjectile(lv, m.realm, e, glm::normalize(to) * 16.f, "arcane", &m)) bolt->data["dmg"] = dmg * 0.8f;
+      }
+      if (phase == 2 && A.value("lightning", false)) if (WeatherSystem* ws = weatherOf(lv)) ws->strike(lv, (int)std::floor(p->pos.x), (int)std::floor(p->pos.y), (int)std::floor(p->pos.z));
     }
     m.data["hitMask"] = done;
     if (t >= len) {
