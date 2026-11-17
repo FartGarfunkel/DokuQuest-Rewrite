@@ -466,6 +466,7 @@ static GLuint allocId(std::vector<T>& tab, std::vector<GLuint>& freeIds) {
   return (GLuint)tab.size() - 1;
 }
 
+static void endRendering();
 static void beginOneShot() {
   if (oneShotCmd) cmd = oneShotCmd;
   vkResetCommandBuffer(cmd, 0);
@@ -476,6 +477,7 @@ static void beginOneShot() {
 }
 static void submitOneShot() {
   if (!recording) return;
+  endRendering();   // a clear or draw outside a frame opens a pass; a command buffer can't end inside one
   vkEndCommandBuffer(cmd);
   VkSubmitInfo si{VK_STRUCTURE_TYPE_SUBMIT_INFO};
   si.commandBufferCount = 1;
@@ -3641,7 +3643,14 @@ static const bool g_envUboDump = std::getenv("DQ_UBO_DUMP") != nullptr;
 static const bool g_envPipeOnly = std::getenv("DQ_VK_PIPEONLY") != nullptr;
 static void drawCommonImpl(GLenum mode, bool indexed, GLsizei count, GLenum indexType, const void* indices, GLint baseVertex, GLsizei instanceCount, GLuint indirect, GLsizei indirectCount, GLsizei indirectStride) {
   if (g_envNoDraw) return;
-  if (skipFrame || !frameOpen || !recording || count < 0) return;
+  if (skipFrame || count < 0) return;
+  // Outside a frame only a framebuffer of our own takes draws, each one in a one-shot command buffer that is
+  // submitted and finished before the call returns (the item icons: clear, draw, blit per item, and the mesh's
+  // buffers are written again for the next item). Those draws used to be dropped, and the blit then copied an
+  // empty picture over every icon.
+  if (!frameOpen && !(drawFbo != 0 && fboOf(drawFbo))) return;
+  GpuScope gpu;
+  if (!recording) return;
   Prog* p = progOf(curProg);
   if (g_envUboDump) {
     static std::set<GLuint> reached;
@@ -3966,7 +3975,10 @@ static void GLAD_API_PTR dq_glClearColor(GLfloat r, GLfloat g, GLfloat b, GLfloa
 static void GLAD_API_PTR dq_glClearDepth(GLdouble d) { clearDepth = (float)d; }
 static void GLAD_API_PTR dq_glClearDepthf(GLfloat d) { clearDepth = d; }
 static void GLAD_API_PTR dq_glClear(GLbitfield mask) {
-  if (!recording) return;
+  // Outside a frame (the item icons are drawn at start-up and on a pack change) a clear of a framebuffer of our own
+  // runs in a one-shot command buffer, like a blit or a read-back does; it used to be dropped.
+  if (!recording && !(drawFbo != 0 && fboOf(drawFbo))) return;
+  GpuScope gpu; if (!recording) return;
   // A pack program's extra outputs must not widen this clear. The draw that follows
   // restarts the pass if it needs more attachments, and LOAD keeps the cleared texels.
   beginRendering(nullptr);
