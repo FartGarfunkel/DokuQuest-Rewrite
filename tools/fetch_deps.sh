@@ -13,7 +13,8 @@ c https://github.com/nlohmann/json.git json v3.11.3
 if [ ! -f miniupnpc/src/miniupnpc.c ]; then
   t=$(mktemp -d); rm -rf miniupnpc
   git clone -q --depth 1 --branch miniupnpc_2_3_5 https://github.com/miniupnp/miniupnp.git "$t"
-  mkdir -p miniupnpc && cp -r "$t/miniupnpc/src" "$t/miniupnpc/include" "$t/miniupnpc/LICENSE" miniupnpc/
+  mkdir -p miniupnpc && cp -r "$t/miniupnpc/src" "$t/miniupnpc/include" miniupnpc/
+  cp "$t/LICENSE" miniupnpc/LICENSE 2>/dev/null || cp -L "$t/miniupnpc/LICENSE" miniupnpc/LICENSE   # (miniupnpc/LICENSE is a symbolic link: Windows can't copy those)
   rm -rf "$t"
 fi
 echo "ok miniupnpc"

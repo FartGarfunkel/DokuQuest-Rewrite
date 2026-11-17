@@ -4,6 +4,7 @@
 // Smoke options like the game: --userdir DIR --smoke-frames N --smoke-shot FILE --tab news|server|studio[:page]|options
 // Test options: --update-api URL (a saved GitHub response, e.g. file:///…/latest.json) --check-updates --start-server --play --no-handoff
 //   --smoke-after SECONDS (the screenshot waits that long too, e.g. for a server world to load) --server-follow NAME (map/iso centre)
+#include "assets/font_files.h"
 #include "launcher/launcher.h"
 #include "common/ui_scale.h"
 #include "core/init.h"
@@ -137,9 +138,10 @@ void initImGui(Launcher& L) {
   ImGui_ImplOpenGL3_Init("#version 330 core");
   float dpi = 1; int dw, dh; SDL_GL_GetDrawableSize(L.window, &dw, &dh); if (L.width > 0) dpi = (float)dw / L.width;
   ImFontConfig cfg; cfg.OversampleH = 1; cfg.OversampleV = 1; cfg.PixelSnapH = true;
-  std::string ui = (assetsDir() / "fonts" / "PixelifySans.ttf").string(), title = (assetsDir() / "fonts" / "Jersey15.ttf").string();
+  // the fonts chosen in the game's Options (assets/font_files.h), each sized to match the defaults' em
+  std::string ui = fontPath(L.settings.extra.value("fontUi", std::string(DEFAULT_UI_FONT)), DEFAULT_UI_FONT).string(), title = fontPath(L.settings.extra.value("fontTitle", std::string(DEFAULT_TITLE_FONT)), DEFAULT_TITLE_FONT).string();
   static const ImWchar ranges[] = {0x0020, 0x00FF, 0x2010, 0x2027, 0x2190, 0x21FF, 0x2600, 0x26FF, 0};
-  auto load = [&](const std::string& f, float px) { return fs::exists(f) ? io.Fonts->AddFontFromFileTTF(f.c_str(), px * dpi, &cfg, ranges) : io.Fonts->AddFontDefault(); };
+  auto load = [&](const std::string& f, float px) { return fs::exists(f) ? io.Fonts->AddFontFromFileTTF(f.c_str(), px * dpi * fontEmRatio(f) / (f == title ? 1.f : 1.2f), &cfg, ranges) : io.Fonts->AddFontDefault(); };
   L.fUi = load(ui, 16); L.fSmall = load(ui, 13); L.fMid = load(ui, 20); L.fBig = load(ui, 26); L.fTitle = load(title, 34);
   ImFontConfig mono; mono.SizePixels = 13 * dpi;
   L.fMono = io.Fonts->AddFontDefault(&mono);

@@ -4,6 +4,7 @@
 // page and category it belongs to; keys and controller buttons are rebound right on the Controls page
 // (input/controls.js: every key, mouse button and controller button, clashes in red). Also the controller setup
 // wizard (input/padsetup.js: press each button and move each stick once; the pad is remembered by its name).
+#include "assets/font_files.h"
 #include "ui/book_ui.h"
 #include "ui/ui.h"
 #include "ui/theme.h"
@@ -174,12 +175,24 @@ private:
         if (kit.range("GUI Scale", &ui, 45, 300, 5, ui < 50 ? "Auto" : std::to_string((int)ui) + "%", 45, "Menus, hotbar and text. Auto is 100% on 1080p, 125% on 2K, 150% on 3K and 200% on 4K. All the way left is Auto.", &released)) pendingUi = ui;
         if (pendingUi > 0 && (released || !ImGui::IsMouseDown(0))) { s.guiScale = pendingUi < 50 ? "auto" : std::to_string((int)pendingUi); pendingUi = -1; }
         if (kit.toggle("FPS in Overlay", &s.showFps, D.showFps, "The frame rate in the corner.")) applyNow = true;
+        {   // the fonts (assets/font_files.h): the game's own and any .ttf / .otf put in <user>/fonts; text keeps its size
+          const auto files = fontFiles();
+          std::vector<std::string> names; for (auto& f : files) names.push_back(fontLabel(f));
+          auto pickRow = [&](const char* label, const char* key, const char* def, const char* tip) {
+            const std::string cur = s.extra.value(key, std::string(def));
+            int at = 0, defAt = 0;
+            for (int i = 0; i < (int)files.size(); i++) { if (files[i] == cur) at = i; if (files[i] == def) defAt = i; }
+            if (!files.empty() && kit.cycle(label, &at, names, defAt, tip, 160)) { s.extra[key] = files[at]; s.save(); }
+          };
+          pickRow("Text Font", "fontUi", DEFAULT_UI_FONT, "The font of menus, buttons and writing. More fonts: put .ttf or .otf files in the fonts folder in your DokuQuest folder.");
+          pickRow("Heading Font", "fontTitle", DEFAULT_TITLE_FONT, "The font of titles and big headings.");
+        }
         { bool dk = s.extra.value("bookDark", true);
           if (kit.toggle("Dark Book Pages", &dk, true, "The Help, Journal, Skills, Spellbook, Stable and the book inventory on dark pages with light writing, easier on the eyes. The moon on any open book switches it too.")) { s.extra["bookDark"] = dk; s.save(); } }
         { bool cs = s.extra.value("cinematicStations", true);
-          if (kit.toggle("Cinematic Crafting", &cs, true, "Stations are worked in the world: set the pieces on the crafting table's 3 x 3 top, bottles on the brewing stand, the work on the anvil, with your own hands, by mouse or pad (Cinematic Interactions' way). Off: the classic screens.")) { s.extra["cinematicStations"] = cs; s.save(); } }
+          if (kit.toggle("Cinematic Crafting", &cs, true, "Stations are worked in the world: set the pieces on the crafting table's 3 x 3 top, bottles on the brewing stand, the work on the anvil, with your own hands, by mouse or pad. Off: the classic screens.")) { s.extra["cinematicStations"] = cs; s.save(); } }
         { bool cl = s.extra.value("cinematicLean", false);
-          if (kit.toggle("Lean the camera over stations", &cl, false, "Off (seamless first person): your view stays your own while you work a station. On: the camera glides in to lean over it and back out (Cinematic Interactions' camera).")) { s.extra["cinematicLean"] = cl; s.save(); } }
+          if (kit.toggle("Lean the camera over stations", &cl, false, "Off (seamless first person): your view stays your own while you work a station. On: the camera glides in to lean over it and back out.")) { s.extra["cinematicLean"] = cl; s.save(); } }
         { bool bi = s.extra.value("bookInventory", true);
           if (kit.toggle("Book Inventory", &bi, true, "Your inventory as an open book: you, your gear and your skills on the left page, crafting and your bag on the right (in Creative, the item catalogue). Chests, furnaces, the trommel, crafting tables and every station open as books too: the block on the left, your bag on the right. Off: the classic panels.")) { s.extra["bookInventory"] = bi; s.save(); } }
         if (a.session) { if (kit.action("HUD Layout", "Edit HUD\xE2\x80\xA6", "Move the HUD's pieces where you like them.")) a.pushScreen(makeHudEditScreen()); }

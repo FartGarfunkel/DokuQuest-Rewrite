@@ -8,6 +8,7 @@
 #include "client/app.h"
 #include "client/session.h"
 #include "assets/icons.h"
+#include "assets/font_files.h"
 #include "assets/gui_textures.h"
 #include "audio/audio.h"
 #include "render/gl.h"
@@ -22,7 +23,7 @@ namespace dq {
 namespace ui {
 
 namespace {
-struct FontSet { ImFont* f[F_COUNT]{}; float zoom = 0, dpi = 1; };
+struct FontSet { ImFont* f[F_COUNT]{}; float zoom = 0, dpi = 1; std::string uiFile, titleFile; };
 FontSet g_fonts;
 const float FONT_PX[F_COUNT] = {12.5f, 15, 13, 17, 20, 24, 32, 64, 84, 12};
 unsigned g_spriteTex = 0;
@@ -43,23 +44,34 @@ float computeZoom(const App& a) {
 void buildFonts(App& a, float zoom) {
   ImGuiIO& io = ImGui::GetIO();
   float dpi = 1; int dw, dh; SDL_GL_GetDrawableSize(a.window, &dw, &dh); if (a.width > 0) dpi = std::max(1.f, (float)dw / a.width);
-  if (g_fonts.zoom == zoom && g_fonts.dpi == dpi && g_fonts.f[0]) return;
+  // the chosen fonts (Options → User Interface: assets/font_files.h), each sized by its own em so text keeps its size
+  const std::string uiF = fontPath(a.settings.extra.value("fontUi", std::string(DEFAULT_UI_FONT)), DEFAULT_UI_FONT).string();
+  const std::string tF = fontPath(a.settings.extra.value("fontTitle", std::string(DEFAULT_TITLE_FONT)), DEFAULT_TITLE_FONT).string();
+  if (g_fonts.zoom == zoom && g_fonts.dpi == dpi && g_fonts.f[0] && g_fonts.uiFile == uiF && g_fonts.titleFile == tF) return;
   bool had = g_fonts.f[0] != nullptr || io.Fonts->IsBuilt();
   if (had) ImGui_ImplOpenGL3_DestroyFontsTexture();
   io.Fonts->Clear();
   ImFontConfig cfg; cfg.OversampleH = 1; cfg.OversampleV = 1; cfg.PixelSnapH = true;
   static const ImWchar ranges[] = {0x0020, 0x00FF, 0x2010, 0x2027, 0x2030, 0x203A, 0x2190, 0x21FF, 0x2212, 0x2212, 0x25A0, 0x25FF, 0x2600, 0x26FF, 0x2700, 0x27BF, 0};
   static const ImWchar ascii[] = {0x0020, 0x00FF, 0x2010, 0x2027, 0};
-  std::string uiF = (assetsDir() / "fonts" / "PixelifySans.ttf").string(), tF = (assetsDir() / "fonts" / "Jersey15.ttf").string();
   bool haveUi = fs::exists(uiF), haveT = fs::exists(tF);
+  const float emUi = haveUi ? fontEmRatio(uiF) : 1.2f, emT = haveT ? fontEmRatio(tF) : 1.f;
   for (int i = 0; i < F_COUNT; i++) {
     bool display = i == F_H3 || i == F_DISP || i == F_TITLE || i == F_HUGE;
-    // ImGui sizes a font by its ascent+descent, CSS by its em: Pixelify Sans is 1.2 em tall, Jersey 15 1.0 em
-    float size = std::round(FONT_PX[i] * zoom * dpi * (display ? 1.f : 1.2f));
+    // ImGui sizes a font by its ascent+descent, CSS by its em: Pixelify Sans is 1.2 em tall, Jersey 15 1.0 em (each
+    // chosen font measured the same way)
+    float size = std::round(FONT_PX[i] * zoom * dpi * (display ? emT : emUi));
     if (i == F_MONO) { ImFontConfig c2; c2.SizePixels = std::max(13.f, std::round(13 * zoom * dpi)); g_fonts.f[i] = io.Fonts->AddFontDefault(&c2); continue; }
     const std::string& file = display ? tF : uiF;
     bool have = display ? haveT : haveUi;
     g_fonts.f[i] = have ? io.Fonts->AddFontFromFileTTF(file.c_str(), size, &cfg, display ? ascii : ranges) : io.Fonts->AddFontDefault();
+    // a chosen font missing some characters (a middle dot, arrows, dashes): those come from the game's own font
+    const std::string own = (assetsDir() / "fonts" / (display ? DEFAULT_TITLE_FONT : DEFAULT_UI_FONT)).string();
+    if (have && fs::path(file) != fs::path(own) && fs::exists(own)) {
+      ImFontConfig m = cfg; m.MergeMode = true;
+      const float ownSize = std::round(FONT_PX[i] * zoom * dpi * fontEmRatio(own));
+      io.Fonts->AddFontFromFileTTF(own.c_str(), ownSize, &m, display ? ascii : ranges);
+    }
   }
   // symbols the pixel font doesn't have (♥ ▲ ▼ arrows ✕ ⚔ ✦ ◯ ▢ △), painted as glyphs of their own
   struct Sym { ImWchar cp; const char* rows[9]; };
@@ -83,7 +95,7 @@ void buildFonts(App& a, float zoom) {
   for (int i = 0; i < F_COUNT; i++) {
     bool display = i == F_H3 || i == F_DISP || i == F_TITLE || i == F_HUGE;
     if (display || i == F_MONO || !haveUi) continue;
-    float size = std::round(FONT_PX[i] * zoom * dpi * 1.2f);
+    float size = std::round(FONT_PX[i] * zoom * dpi * emUi);
     int px = std::max(5, (int)std::round(size * 0.52f));
     for (auto& sy : SYMS) pend.push_back({io.Fonts->AddCustomRectFontGlyph(g_fonts.f[i], sy.cp, px, px, px + std::round(size * 0.1f), ImVec2(std::round(size * 0.05f), std::round(size * 0.77f) - px)), &sy, px});
   }
@@ -103,7 +115,7 @@ void buildFonts(App& a, float zoom) {
   }
   io.FontGlobalScale = 1.f / dpi;
   if (had) ImGui_ImplOpenGL3_CreateFontsTexture();
-  g_fonts.zoom = zoom; g_fonts.dpi = dpi;
+  g_fonts.zoom = zoom; g_fonts.dpi = dpi; g_fonts.uiFile = uiF; g_fonts.titleFile = tF;
   // the App's font slots point at these from now on
   a.fontUi = g_fonts.f[F_BODY]; a.fontSmall = g_fonts.f[F_MID]; a.fontUiBig = g_fonts.f[F_BIG]; a.fontTitle = g_fonts.f[F_TITLE];
   a.uiScale = zoom;
@@ -213,7 +225,8 @@ void localZoom(float k) {
 
 void beginFrame(App& a) {
   float z = std::round(computeZoom(a) * 20.f) / 20.f;
-  if (z != g_zoom || !g_fonts.f[0]) { g_zoom = z; buildFonts(a, z); }
+  if (z != g_zoom || !g_fonts.f[0]) g_zoom = z;
+  buildFonts(a, g_zoom);   // (rebuilds only when the size or the chosen fonts changed)
   g_baseZoom = g_zoom;
   ImGuiIO& io = ImGui::GetIO();
   a.input.textActive = io.WantTextInput || (a.session && a.session->uiWantsText);
