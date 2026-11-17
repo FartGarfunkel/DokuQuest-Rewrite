@@ -5,6 +5,15 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.30 (November 2026)
+
+**Multiplayer:**
+- **Hosting opens the way in by itself:** when you open a world to LAN or start a dedicated server, the game asks your home router to forward the port (TCP and UDP) to the computer that's hosting, and to open its IPv6 firewall where the router allows it. No port forwarding by hand. It's taken back when you stop. The server's log says what the router answered (and if it refused, why). Open to LAN has a switch for it.
+- **IPv6:** friends can join by an IPv6 address (typed like [2600:abcd::1]:25580), and a server takes IPv6 as well as IPv4. Phones on mobile data usually have their own IPv6 address, so hosting from one works where its IPv4 can't be reached. The host's screens and log show its IPv6 address when it has one.
+- **Clearer messages:** a name that can't be found says so at once; a router behind another router, or a provider that shares one address among many homes, is named in the log.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.29 (November 2026)
 
 **Multiplayer:**

@@ -1,6 +1,12 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.30 | November 2026
+**Multiplayer:**
+- **Hosting opens the way in by itself:** when you open a world to LAN or start a dedicated server, the game asks your home router to forward the port (TCP and UDP) to the computer that's hosting, and to open its IPv6 firewall where the router allows it. No port forwarding by hand. It's taken back when you stop. The server's log says what the router answered (and if it refused, why). Open to LAN has a switch for it.
+- **IPv6:** friends can join by an IPv6 address (typed like [2600:abcd::1]:25580), and a server takes IPv6 as well as IPv4. Phones on mobile data usually have their own IPv6 address, so hosting from one works where its IPv4 can't be reached. The host's screens and log show its IPv6 address when it has one.
+- **Clearer messages:** a name that can't be found says so at once; a router behind another router, or a provider that shares one address among many homes, is named in the log.
+- Removed Herobrine.
 ## Alpha 1.0.0.29 | November 2026
 **Multiplayer:**
 - **TCP first:** a joining game now tries TCP and UDP together from the start, and keeps UDP when both get through. Forwarding the port as TCP alone is enough to play over the internet: no more waiting 6 seconds for UDP first.
