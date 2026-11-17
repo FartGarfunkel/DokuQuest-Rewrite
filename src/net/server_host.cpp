@@ -721,6 +721,13 @@ void ServerHost::applyMe(Peer& p, const json& m) {
       const json& r = m["ri"];
       c->rideIn = {r[0].get<float>(), r[1].get<float>(), r[2].get<int>() != 0, r[3].get<int>() != 0, r[4].get<int>() != 0};
     }
+  // hosting a game we play in: what they're doing, for our screen at the moment their smoothed body gets there (a copy of
+  // them drawn in their place: client/session.cpp showReplicas)
+  if (!opts.dedicated && ct >= 0) {
+    if (!pl.netView) { pl.netView = std::make_shared<Player>(pl); pl.netView->netView.reset(); pl.netView->netViewQ.clear(); }
+    pl.netViewQ.push_back({p.clock.toLocal(ct), entitySnapshot(pl)});
+    if (pl.netViewQ.size() > 64) pl.netViewQ.pop_front();
+  }
   p.aPos = pl.pos; p.aVel = pl.vel; p.aHp = pl.hp; p.aRealm = pl.realm; p.aFly = pl.flying; p.aDead = dead;
   if (!p.ready) {
     p.ready = true; p.motdAt = t + 1.5;

@@ -3,6 +3,7 @@
 #include "world/light.h"
 #include "sim/player.h"
 #include "sim/attack_moves.h"
+#include "sim/creature.h"
 #include <enet/enet.h>
 #ifdef _WIN32
 #undef near   // windows.h (through enet) defines near and far as nothing
@@ -198,6 +199,73 @@ void applyPlayerPose(dq::Player& p, const json& m, bool fromOwner) {
   const float lc = m.value("lc", 0.f);
   if (lc > 0) { if (!p.climb) p.climb.emplace(); p.climb->t = lc * 0.55f; } else p.climb.reset();
   p.netCarry = m.contains("cy") && m["cy"].is_object() ? m["cy"] : json();
+}
+
+// One snapshot entry's state (not its place: sim/net_interp.cpp has that) put on a replica: a guest's of what the host
+// sends (net/client.cpp), and the host's own drawing of a guest, from that guest's news at its moment (Player::netView).
+// myEid / me: the guest's own player as the host knows it and here (a mount it rides), else 0 / null.
+void applyReplicaState(Entity* e, const json& s, u32 myEid, Player* me) {
+  float hp = s.value("hp", e->hp);
+  if (hp < e->hp) e->hurtTime = 0.5f;
+  e->hp = hp; e->maxHp = s.value("mh", e->maxHp); e->w = s.value("w", e->w); e->h = s.value("h", e->h);
+  int f = s.value("f", 0);
+  e->onGround = f & 1; e->inWater = f & 2; e->inLava = f & 4; e->noGravity = f & 16;
+  if (f & 8) e->hurtTime = std::max(e->hurtTime, 0.3f);
+  e->riding = s.value("rd", 0u);
+  e->posture = s.value("po", 0.f); e->maxPosture = s.value("pm", e->maxPosture); e->staggerT = s.value("sg", 0.f); e->mobLevel = s.value("ml", 1); if (s.value("el", 0)) e->data["elite"] = true;   // (sim/combat_rpg.h)
+  if (s.contains("d")) e->data = s["d"];
+  if (auto* c = dynamic_cast<Creature*>(e)) if (s.contains("cs") && s["cs"].is_object()) {   // its look and state (Creature::snap)
+    json cs = s["cs"]; cs["x"] = c->pos.x; cs["y"] = c->pos.y; cs["z"] = c->pos.z; cs["r"] = c->yaw; cs["h"] = e->hp;   // (the glide moves it)
+    c->applySnap(cs);
+    if (c->riddenBy && c->riddenBy == myEid && me) c->riddenBy = me->id;   // ridden by us (our player's id here)
+  }
+  if (auto* p = dynamic_cast<Player*>(e)) {
+    p->name = s.value("n", p->name); p->skin = s.value("sk", p->skin); p->mode = s.value("md", p->mode);
+    p->selected = 0;
+    p->inv[0] = s.contains("hd") ? ItemStack(s["hd"].get<std::string>(), 1) : ItemStack();
+    if (s.contains("hm")) p->data["hm"] = s["hm"]; else if (p->data.is_object()) p->data.erase("hm");   // (the look of what's in their hands: render/char_layer.cpp)
+    for (int i = 0; i < INV_ARMOR; i++) p->armor[i] = s.contains("ar") && i < (int)s["ar"].size() && s["ar"][i].is_string() ? ItemStack(s["ar"][i].get<std::string>(), 1) : ItemStack();
+    p->offhand[0] = s.contains("of") ? ItemStack(s["of"].get<std::string>(), 1) : ItemStack();
+    if (s.contains("om")) p->data["om"] = s["om"]; else if (p->data.is_object()) p->data.erase("om");
+    if (p->shield.empty()) p->shield.resize(1);
+    p->shield[0] = s.contains("sh") ? ItemStack(s["sh"].get<std::string>(), 1) : ItemStack();
+    if (s.contains("bk")) p->data["back"] = s["bk"]; else p->data.erase("back");          // (render/char_layer wornItem)
+    if (s.contains("qv")) p->data["quiver"] = s["qv"]; else p->data.erase("quiver");
+    if (const int f = s.value("qf", 0)) p->data["quiverFill"] = f; else p->data.erase("quiverFill");
+    int pf = s.value("pf", 0);
+    p->sneaking = pf & 1; p->sprinting = pf & 2; p->flying = pf & 4; p->swimming = pf & 8; p->crawling = pf & 16; p->dead = pf & 32;
+    p->activity = (u8)(s.value("ac", 0) & 7); p->typeRate = clampv(s.value("tr", 0.f), 0.f, 40.f);
+    p->stationKind = (i8)s.value("wk", -1); p->workTap = (u8)s.value("wt", (int)p->workTap);
+    if (s.contains("wa") && s["wa"].is_array() && s["wa"].size() == 3) p->workAt = vec3(s["wa"][0].get<float>(), s["wa"][1].get<float>(), s["wa"][2].get<float>());
+    if (!s.contains("bv")) { if (!p->bookPic.empty()) { p->bookPic.clear(); p->bookPicV++; } }   // (their book shut)
+    else if (s.contains("bp") && s["bp"].is_string()) {
+      std::string bp = s["bp"].get<std::string>();
+      if (bp != p->bookPic) { p->bookPic = std::move(bp); p->bookPicV++; }
+      p->bookLay = s.value("bl", std::string());
+    }
+    p->bookFlip = (u8)s.value("bf", (int)p->bookFlip); p->bookDir = (i8)(s.value("bd", 1) < 0 ? -1 : 1);
+    p->eatT = clampv(s.value("et", 0.f), 0.f, 1.f); p->eatId = p->eatT > 0 ? s.value("ei", std::string()) : std::string();
+    if (p != me) {   // their shield, roll and parry (sim/combat_rpg.h): ours are our own game's
+      p->blockT = s.value("sb", 0.f);
+      // a roll, a parry, a blow on the shield: each counts down here on its own (sim/combat_rpg.cpp); only a fresh one (well
+      // above what is left of ours) starts it again — taking every message's value had a late one restart the roll mid-way
+      // (a new one is their own value rising: how fast ours counts down never matters)
+      auto fresh = [](float& mine, float& heard, float theirs) { const bool rose = theirs > heard + 0.1f; heard = theirs; if (rose) mine = theirs; return rose; };
+      fresh(p->parryFlash, p->parryHeard, s.value("py", 0.f)); fresh(p->guardFlash, p->guardHeard, s.value("gf", 0.f));
+      if (fresh(p->dodgeT, p->dodgeHeard, s.value("dg", 0.f))) p->dodgeYaw = s.value("dy", p->dodgeYaw);   // (render/char_layer.cpp plays the roll through from its start)
+      netAttack(*p, s);
+      applyPlayerPose(*p, s, false);   // swings, digging, bow, glide, spyglass, ledge, ladder, water, carrying, asleep
+    }
+  }
+}
+
+void hostViewStep(Player& p, double now, float dt) {
+  if (!p.netView) return;
+  while (!p.netViewQ.empty() && (p.netViewQ.front().first <= now - p.netDelay || p.netViewQ.size() > 40)) {
+    applyReplicaState(p.netView.get(), p.netViewQ.front().second, 0, nullptr);
+    p.netViewQ.pop_front();
+  }
+  advanceReplicaView(p, *p.netView, dt);
 }
 
 } // namespace dq::net

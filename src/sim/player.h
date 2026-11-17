@@ -8,6 +8,8 @@
 #include "sim/physics.h"
 #include "core/itemstack.h"
 #include <optional>
+#include <deque>
+#include <memory>
 
 namespace dq {
 
@@ -87,6 +89,9 @@ public:
   // a guest's hands and armour as their own game has them this moment (net/: the host draws and passes on these; its copy of
   // their bags only changes when their game saves them)
   bool netHands = false; std::string netHeld, netHeldModel, netOff, netOffModel; json netArmor;
+  // the host's drawing of a guest (net/server_host.cpp applyMe, client/session.cpp showReplicas): their news queued with its
+  // moment and put on this copy when their smoothed body gets there, so what they do is seen with where they are
+  std::shared_ptr<Player> netView; std::deque<std::pair<double, json>> netViewQ;
   bool fxSent = false;              // a remote player whose game is the host's: its sounds and dust come as the host's effects already
   // What Are They Up To: what the others see them doing (render/activity_layer.cpp sets your own, the net carries it)
   enum : u8 { ACT_TYPING = 1, ACT_SCREEN = 2, ACT_DOZE = 4 };
@@ -153,5 +158,8 @@ bool ledgeRoom(const World& w, int bx, int bz, float s, float halfW);
 // `rate` cycles a second, one after another — never cut short or restarted by a packet; while they dig, it keeps
 // cycling on its own (the packets' timing never shows in it).
 void remoteSwingStep(Player& p, float dt, float rate);
+// The host's drawing copy of a guest (Player::netView), every frame: its own clocks run on (a swing, a roll, a flash, a hurt)
+// and it takes the body's identity and the look kept in its data (hidden gear, cape, in bed, a cast rod)
+void advanceReplicaView(const Player& body, Player& view, float dt);
 
 } // namespace dq

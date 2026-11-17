@@ -28,6 +28,7 @@
 #include "gen/village_pieces.h"
 #include "client/app.h"
 #include "client/session.h"
+#include "client/netplay.h"
 #include "ui/screen.h"
 #include "ui/ui.h"
 #include "ui/villager_screens.h"
@@ -203,6 +204,10 @@ void runStep(App& a, const json& st) {
     if (s->level->info.rules.is_object()) s->level->info.rules["commands"] = true;   // tests may always use commands
     std::string out = runCommand(*s->level, p, st.value("text", ""));
     DQ_LOG("test: %s -> %s", st.value("text", "").c_str(), out.c_str());
+  } else if (op == "lan" && s) {   // lan{port}: open the world to friends on that port (no announcing, no router)
+    LanOpenOptions o; o.port = st.value("port", 25580); o.announce = false; o.internet = false;
+    std::string err;
+    result(openToLan(a, o, &err), "open to LAN on port " + std::to_string(o.port) + " " + err);
   } else if (op == "look" && p) {
     p->yaw = deg(st, "yaw", p->yaw * 180.f / (float)PI); p->pitch = deg(st, "pitch", 0);
   } else if (op == "anchor" && p) {

@@ -5,12 +5,17 @@
 // have been coming (a calm link: ~70 ms; a jittery one: longer), changed slowly so the motion never jumps.
 #include "sim/entity.h"
 #include "sim/player.h"
+#include "sim/attack_moves.h"
 #include <algorithm>
 #include <cmath>
 
 namespace dq {
 
-static constexpr double NET_EXTRAPOLATE = 0.3;   // how long a replica goes on the way it was going with nothing heard
+// With nothing heard, a replica goes on the way it was going: at full speed for NET_EXTRAPOLATE, then slowing (its speed
+// halving every ~0.2 s) — a gap of 0.6 s on a lumpy link (a TCP relay) shows no stop, a real stop is hardly overshot.
+static constexpr double NET_EXTRAPOLATE = 0.35, NET_COAST = 0.3, NET_COAST_MAX = 1.5;
+static double coastTravel(double a) { return a <= NET_EXTRAPOLATE ? a : NET_EXTRAPOLATE + NET_COAST * (1 - std::exp(-(a - NET_EXTRAPOLATE) / NET_COAST)); }
+static double coastSpeed(double a) { return a <= NET_EXTRAPOLATE ? 1 : std::exp(-(a - NET_EXTRAPOLATE) / NET_COAST); }
 static float angLerp(float a, float b, float k) { return a + std::remainder(b - a, 2 * PI) * k; }
 
 bool Entity::netEval(double rt, vec3& p, float& yaw, float& pitch, float& body, vec3* vel) const {
@@ -21,15 +26,18 @@ bool Entity::netEval(double rt, vec3& p, float& yaw, float& pitch, float& body, 
   if (n == 1 || rt <= f.t) { p = f.p; yaw = f.yaw; pitch = f.pitch; body = f.body; return true; }
   const NetSample& b = netHist.back();
   if (rt >= b.t) {   // past the newest: on the way it was going for a moment (a late or lost packet), then wait there
-    const NetSample& a = netHist[n - 2];
+    // the way it was going: over the last ~0.15 s heard (steadier than the last step alone)
+    size_t ai = n - 2; while (ai > 0 && b.t - netHist[ai].t < 0.15) ai--;
+    const NetSample& a = netHist[ai];
     p = b.p; yaw = b.yaw; pitch = b.pitch; body = b.body;
-    const double span = b.t - a.t, ahead = std::min(rt - b.t, NET_EXTRAPOLATE);
-    if (span > 1e-3 && span < 0.6) {
+    const double span = b.t - a.t, ahead = std::min(rt - b.t, NET_COAST_MAX), go = coastTravel(ahead);
+    const bool stopped = glm::distance(netHist[n - 2].p, b.p) < 1e-3f;   // (the sender says a stop twice: no coasting past it)
+    if (!stopped && span > 1e-3 && span < 0.6) {
       const vec3 v = (b.p - a.p) / (float)span;
-      const float k = (float)(ahead / span);
-      p = b.p + v * (float)ahead;
+      const float k = (float)(go / span);
+      p = b.p + v * (float)go;
       yaw = b.yaw + std::remainder(b.yaw - a.yaw, 2 * PI) * k; body = b.body + std::remainder(b.body - a.body, 2 * PI) * k;   // (turning on too)
-      if (vel && rt - b.t < NET_EXTRAPOLATE) *vel = v;
+      if (vel) *vel = v * (float)coastSpeed(ahead);
     }
     return true;
   }
@@ -112,7 +120,7 @@ void Entity::netUpdateView(double now) {
   if (netLastRt >= 0 && rt < netLastRt) rt = netLastRt;   // never backwards
   vec3 p; float y, pi, b;
   netEval(rt, p, y, pi, b, &viewVel);
-  const float fade = (float)std::exp(-dt / 0.12);
+  const float fade = (float)std::exp(-dt / 0.2);   // (a correction blended in over ~0.2 s)
   netCorr *= fade; netCorrYaw *= fade;
   if (glm::dot(netCorr, netCorr) < 1e-8f) netCorr = vec3(0);
   viewPos = p + netCorr; viewYaw = std::remainder(y + netCorrYaw, 2 * PI); viewPitch = pi; viewBody = std::remainder(b + netCorrYaw, 2 * PI);
@@ -149,4 +157,18 @@ void Entity::glide(double dt) {
   yaw += std::remainder(netYaw - yaw, 2 * PI) * k;
 }
 
+
+void advanceReplicaView(const Player& body, Player& v, float dt) {
+  v.id = body.id; v.type = body.type; v.realm = body.realm; v.ghost = true; v.riding = body.riding; v.removed = body.removed;
+  if (v.atkMove) { v.atkT += dt; if (v.atkMove >= MV_COUNT || v.atkT >= attackMove(v.atkMove).len) { v.atkMove = MV_NONE; v.atkT = 0; } }
+  auto down = [dt](float& t) { if (t > 0) t = std::max(0.f, t - dt); };
+  down(v.dodgeT); down(v.parryFlash); down(v.guardFlash); down(v.hurtTime);
+  if (!v.data.is_object()) v.data = json::object();
+  if (body.data.is_object())
+    for (const char* k : {"hideGear", "customCape", "sleeping", "rodOut", "invisible", "fx", "bedHead", "bedFrom", "bedMoved", "sleepT", "cape", "hook"}) {
+      auto it = body.data.find(k);
+      if (it != body.data.end()) v.data[k] = *it; else v.data.erase(k);
+    }
+  v.skin = body.skin; v.name = body.name;
+}
 } // namespace dq

@@ -10,7 +10,7 @@ struct _ENetPacket;
 struct _ENetPeer;
 struct _ENetHost;
 
-namespace dq { class Player; }
+namespace dq { class Player; class Entity; }
 namespace dq::net {
 
 constexpr int PROTO = 2;                 // 2: timed, unreliable movement on its own channel; more of the players' state
@@ -89,5 +89,10 @@ void netAttack(dq::Player& p, const json& m);
 // game's ME, whose word on sleeping isn't taken)
 void playerPoseInto(const dq::Player& p, json& s);
 void applyPlayerPose(dq::Player& p, const json& m, bool fromOwner);
+// one snapshot entry's state put on a replica (net/protocol.cpp): the guest's replicas and the host's drawing of its guests
+void applyReplicaState(dq::Entity* e, const json& s, u32 myEid, dq::Player* me);
+// hosting, every frame: a guest's queued doings put on their drawing copy (Player::netView) when their smoothed body (its
+// view, sim/net_interp.cpp, updated first) reaches that moment
+void hostViewStep(dq::Player& p, double now, float dt);
 
 } // namespace dq::net

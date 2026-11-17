@@ -183,7 +183,7 @@ static std::string describe(const PathStats& s) {
 // each packet comes 20-220 ms late (so they overtake each other), one in ten never, and once nothing at all for 0.4 s.
 // The viewer draws at 60 frames a second.
 static bool g_dumpPath = false;   // (DQ_INTERP_ONLY: the path printed, and nothing else run)
-static PathStats replicaUnderJitter(u32 seed, double lo = 0.02, double hi = 0.22, double loss = 0.1, bool outage = true) {
+static PathStats replicaUnderJitter(u32 seed, double lo = 0.02, double hi = 0.22, double loss = 0.1, double outage = 0.3) {
   Entity e; e.ghost = true;
   auto rnd01 = [&] { seed = seed * 1664525u + 1013904223u; return (seed >> 8) / 16777216.0; };
   const double speed = 4, omega = 2, base = 50;   // (both clocks: ours starts at 50, the sender's at 0 — a different clock)
@@ -191,7 +191,7 @@ static PathStats replicaUnderJitter(u32 seed, double lo = 0.02, double hi = 0.22
   std::vector<Pkt> pkts;
   for (double st = 0; st < 8.0; st += 0.05) {
     if (rnd01() < loss) continue;
-    if (outage && st > 4.0 && st < 4.3) continue;   // an outage (nothing for 0.3 s, and the losses either side)
+    if (st > 4.0 && st < 4.0 + outage) continue;   // an outage (nothing for that long, and the losses either side)
     const float yaw = (float)std::remainder(omega * st + 3.0, 2 * PI);
     pkts.push_back({base + st + lo + rnd01() * (hi - lo), st, vec3((float)(st * speed), 7, 3), yaw});
   }
@@ -427,6 +427,18 @@ struct BadLink {
 
 int main(int argc, char** argv) {
   setvbuf(stdout, nullptr, _IOLBF, 0);
+#ifndef _WIN32
+  // test_net --proxy udp|tcp LISTEN SERVER LO HI [LOSS]: only the bad link, between real games on this computer (for a
+  // windowed check: a host and a guest each in their own game, the guest joining through it). Runs until stopped.
+  if (argc >= 7 && std::string(argv[1]) == "--proxy") {
+    BadLink b;
+    const int lp = std::atoi(argv[3]), sp = std::atoi(argv[4]);
+    const double lo = std::atof(argv[5]), hi = std::atof(argv[6]), loss = argc > 7 ? std::atof(argv[7]) : 0;
+    if (std::string(argv[2]) == "tcp") b.tcp(lp, sp, lo, hi); else b.udp(lp, sp, lo, hi, loss);
+    printf("bad link: %s %d -> %d, %.0f-%.0f ms late, %.0f%% lost\n", argv[2], lp, sp, lo * 1000, hi * 1000, loss * 100);
+    for (;;) std::this_thread::sleep_for(std::chrono::seconds(60));
+  }
+#endif
   std::string ud = "/tmp/dq-test-net";
   int port = 25597;
   for (int i = 1; i < argc; i++) {
@@ -484,10 +496,17 @@ int main(int argc, char** argv) {
     }
     // the link the players have (50-150 ms late, 2-5% lost): the walk, before and after
     for (double loss : {0.02, 0.05}) {
-      const PathStats s = replicaUnderJitter(4242u + (u32)(loss * 100), 0.05, 0.15, loss, false), o = replicaTheOldWay(4242u + (u32)(loss * 100), 0.05, 0.15, loss, false);
+      const PathStats s = replicaUnderJitter(4242u + (u32)(loss * 100), 0.05, 0.15, loss, 0), o = replicaTheOldWay(4242u + (u32)(loss * 100), 0.05, 0.15, loss, false);
       check(s.back < 0.02 && s.minV > 2.0 && s.maxV < 6.0 && s.maxAcc < 40 && s.lagSpread < 0.06 && s.maxTurn < 6,
             strFormat("walking over a 50-150 ms, %.0f%% lost link: %s", loss * 100, describe(s).c_str()));
       printf("     (the old way: %s)\n", describe(o).c_str());
+    }
+    // a lumpy link (a TCP relay): nothing at all for 0.6 s, then all of it at once — no stop, no lurch to catch up
+    for (u32 seed : {5u, 6u}) {
+      const PathStats s = replicaUnderJitter(seed, 0.05, 0.15, 0.02, 0.6), o = replicaTheOldWay(seed, 0.05, 0.15, 0.02, true);
+      check(s.back < 0.02 && s.minV > 1.5 && s.maxV < 7.0 && s.maxAcc < 60 && s.maxTurn < 6,
+            strFormat("walking over a 50-150 ms link with 0.6 s of silence: %s", describe(s).c_str()));
+      printf("     (the old way, 0.3 s of silence: %s)\n", describe(o).c_str());
     }
     // the arm: digging cycles on smoothly, weapon swings play through, over the same links
     for (double loss : {0.02, 0.05}) {
@@ -815,7 +834,7 @@ int main(int argc, char** argv) {
               // computer starved by the other games in the test, the server not ticking — is counted, and not judged
               // for smoothness (it can only wait, then catch up): the frames until 0.3 s after it start a new segment
               Starve& sv = starve[c];
-              const bool fed = g->netHist.size() >= 2 && g->netLastRt <= g->netHist.back().t + 0.3;
+              const bool fed = g->netHist.size() >= 2 && g->netLastRt <= g->netHist.back().t + 0.7;
               if (!fed) { sv.until = at + 0.3; sv.frames++; }
               if (auto* gp = dynamic_cast<Player*>(g)) {   // her arm, as the viewer's game plays it (render/char_layer.cpp)
                 ArmSeen& a = arms[c];
@@ -1137,6 +1156,48 @@ int main(int argc, char** argv) {
       check(f.size() > 20 && s.back < 0.03 && s.minV > 1.5 && s.maxV < 7 && s.lagSpread < 0.08 && s.offPath < 0.05 && s.maxTurn < 8,
             "the host draws a walking guest smoothly (" + describe(s) + ")");
       check(glm::distance(mirror->pos, C.me->pos) < 1.0f, "...while their body for the rules is where they newly are");
+      // what the guest does, on the host's screen: put on their drawing copy when their smoothed body gets to that moment
+      // (net/protocol.cpp hostViewStep; client/session.cpp swaps the copy in to draw), in order, with the body's lag
+      {
+        auto sig = [](const Player& p) {
+          const ItemStack& h = p.inv[clampv(p.selected, 0, (int)p.inv.size() - 1)];
+          const json& c = p.carrying.is_object() ? p.carrying : p.netCarry;
+          return std::to_string(p.sneaking) + "|" + std::to_string(p.bowPull > 0) + "|" + (p.ghost ? p.inv[0].id : h.id) + "|" +
+                 std::to_string(p.scoping) + "|" + std::to_string(p.blockT > 0) + "|" + std::to_string(c.is_object()) + "|" + std::to_string(p.stationKind) + "|" + std::to_string(p.mineP > 0);
+        };
+        const std::vector<std::function<void(Player&)>> steps = {
+          [](Player& p) { p.sneaking = true; }, [](Player& p) { p.held() = ItemStack("bow", 1); p.bowPull = 0.8f; },
+          [](Player& p) { p.held() = ItemStack("diamond_sword", 1); }, [](Player& p) { p.held() = ItemStack("spyglass", 1); p.scoping = true; },
+          [](Player& p) { p.blockT = 0.5f; }, [](Player& p) { p.carrying = {{"kind", "block"}, {"key", "chest"}, {"meta", 0}}; },
+          [](Player& p) { p.stationKind = 1; }, [](Player& p) { p.mineAt = ivec3(p.pos) - ivec3(0, 1, 0); p.mineP = 0.4f; }, [](Player&) {},
+        };
+        auto neutral = [](Player& p) { p.sneaking = p.scoping = false; p.bowPull = p.blockT = p.mineP = 0; p.carrying = nullptr; p.stationKind = -1; p.held() = ItemStack("stone", 1); };
+        std::vector<std::pair<double, std::string>> mine, seen;
+        auto note = [](std::vector<std::pair<double, std::string>>& v, const std::string& s) { if (v.empty() || v.back().second != s) v.push_back({nowSeconds(), s}); };
+        double last = nowSeconds(), lagSum = 0; int lagN = 0;
+        const ItemStack heldWas = C.me->held();
+        neutral(*C.me);
+        both(1.0, [] { return false; });
+        note(mine, sig(*C.me));   // (where it starts: as the host's copy first shows it)
+        for (auto& step : steps) {
+          const double t0 = nowSeconds();
+          both(0.6, [&] {
+            neutral(*C.me); step(*C.me); note(mine, sig(*C.me));
+            const double now = nowSeconds(); mirror->netUpdateView(now); net::hostViewStep(*mirror, now, (float)(now - last)); last = now;
+            if (mirror->netView) { note(seen, sig(*mirror->netView)); lagSum += mirror->netDelay; lagN++; }
+            return nowSeconds() - t0 > 0.6;
+          });
+        }
+        both(1.0, [&] { const double now = nowSeconds(); mirror->netUpdateView(now); net::hostViewStep(*mirror, now, (float)(now - last)); last = now; if (mirror->netView) note(seen, sig(*mirror->netView)); return false; });
+        bool same = mine.size() == seen.size(); double lateSum = 0;
+        for (size_t i = 0; same && i < mine.size(); i++) { same = mine[i].second == seen[i].second; if (i) lateSum += seen[i].first - mine[i].first; }
+        const double late = mine.size() > 1 ? lateSum / (mine.size() - 1) : 0, body = lagN ? lagSum / lagN : 0;
+        std::string a, b; for (auto& m : mine) a += "[" + m.second + "]"; for (auto& m : seen) b += "[" + m.second + "]";
+        check(same && mine.size() >= 10 && late > body - 0.08 && late < body + 0.15,
+              strFormat("on the host's screen the guest's doings come in order with their body (%zu changes, late by %.0f ms; their body drawn %.0f ms behind)%s",
+                        mine.size(), late * 1000, body * 1000, same ? "" : (" hers " + a + " seen " + b).c_str()));
+        neutral(*C.me); C.me->held() = heldWas;
+      }
       // and their doings, for the host's screen and passed on
       C.me->swingN = 9; C.me->mineAt = ivec3(C.me->pos) - ivec3(0, 1, 0); C.me->mineP = 0.3f; C.me->bowPull = 0.4f;
       C.me->carrying = {{"kind", "mob"}, {"type", "chicken"}, {"hp", 4}};
