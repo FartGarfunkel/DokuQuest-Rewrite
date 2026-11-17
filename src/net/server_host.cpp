@@ -109,6 +109,7 @@ bool ServerHost::start(std::string* err) {
   // and TCP on the same number: a friend whose game hears nothing over UDP carries on over TCP (some home connections
   // let TCP in from outside but drop UDP). The router must forward this port as TCP too.
   if (tcpRelay.start((u16)boundPort, (u16)boundPort)) serverLog(strFormat("Listening on TCP port %d too, %s (friends can join with only TCP forwarded)", boundPort, tcpRelay.dual ? "IPv4 and IPv6" : "IPv4"), "");
+  if (opts.upnp) portMap.start((u16)boundPort);   // (the router asked to let friends in: the answer comes into the log)
   if (std::string six = internetAddress6(); !six.empty()) serverLog("This computer's IPv6 address: friends can join [" + six + "]:" + std::to_string(boundPort), "");
   else serverLog(strFormat("TCP port %d is taken: friends can join over UDP only", boundPort), "warn");
   if (std::string v = vpnAdvice(boundPort); !v.empty()) serverLog(v, "warn");
@@ -151,6 +152,7 @@ bool ServerHost::start(std::string* err) {
 void ServerHost::stop(const std::string& why) {
   if (!host) return;
   tcpRelay.stop();
+  portMap.stop();
   if (level.events) for (int h : uiHandles) level.events->off(h);
   uiHandles.clear();
   flushSaves();
@@ -429,6 +431,7 @@ void ServerHost::update(Level& lv, double dt) {
   if (!host) return;
   t += dt;
   for (auto& l : tcpRelay.takeLog()) serverLog(l, "");
+  for (auto& l : portMap.takeLog()) serverLog(l, "");
   ensureWatchers();
   diffMirrors();   // first: what the server did to anyone since last time, before their own news overwrites it
   ENetEvent ev;

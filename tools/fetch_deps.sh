@@ -10,6 +10,7 @@ c https://github.com/nothings/stb.git stb master
 c https://github.com/g-truc/glm.git glm 1.0.1
 c https://github.com/richgel999/miniz.git miniz 3.0.2
 c https://github.com/nlohmann/json.git json v3.11.3
+[ -d miniupnpc ] || { t=$(mktemp -d); git clone -q --depth 1 --branch miniupnpc_2_3_5 https://github.com/miniupnp/miniupnp.git "$t" && mkdir -p miniupnpc && cp -r "$t/miniupnpc/src" "$t/miniupnpc/include" "$t/miniupnpc/LICENSE" miniupnpc/ && rm -rf "$t"; echo "ok miniupnpc"; }
 mkdir -p vulkan
 c https://github.com/KhronosGroup/Vulkan-Headers.git vulkan/Vulkan-Headers v1.3.296
 c https://github.com/KhronosGroup/glslang.git vulkan/glslang 15.3.0

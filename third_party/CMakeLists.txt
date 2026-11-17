@@ -34,6 +34,28 @@ else()
   target_compile_definitions(enet PRIVATE HAS_SOCKLEN_T=1 HAS_POLL=1 HAS_FCNTL=1 HAS_MSGHDR_FLAGS=1 HAS_GETADDRINFO=1 HAS_GETNAMEINFO=1 HAS_INET_PTON=1 HAS_INET_NTOP=1)
 endif()
 
+# miniupnpc 2.3.5 (BSD-3): asks the home router to forward the game's port (UPnP IGD, and IGDv2 IPv6 pinholes)
+add_library(miniupnpc STATIC miniupnpc/src/addr_is_reserved.c miniupnpc/src/connecthostport.c miniupnpc/src/igd_desc_parse.c
+  miniupnpc/src/minisoap.c miniupnpc/src/minissdpc.c miniupnpc/src/miniupnpc.c miniupnpc/src/miniwget.c miniupnpc/src/minixml.c
+  miniupnpc/src/portlistingparse.c miniupnpc/src/receivedata.c miniupnpc/src/upnpcommands.c miniupnpc/src/upnpdev.c
+  miniupnpc/src/upnperrors.c miniupnpc/src/upnpreplyparse.c)
+# (its version header, which its own build makes: a generic client name, nothing about the player or their computer)
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/miniupnpc_gen/miniupnpcstrings.h "#ifndef MINIUPNPCSTRINGS_H_INCLUDED\n#define MINIUPNPCSTRINGS_H_INCLUDED\n#define OS_STRING \"Game/1.0\"\n#define MINIUPNPC_VERSION_STRING \"2.3.5\"\n#define UPNP_VERSION_MAJOR 1\n#define UPNP_VERSION_MINOR 1\n#define UPNP_VERSION_STRING \"UPnP/1.1\"\n#endif\n")
+target_include_directories(miniupnpc PUBLIC miniupnpc/include PRIVATE miniupnpc/src ${CMAKE_CURRENT_BINARY_DIR}/miniupnpc_gen)
+target_compile_definitions(miniupnpc PUBLIC MINIUPNP_STATICLIB)
+if(WIN32)
+  target_compile_definitions(miniupnpc PRIVATE _WIN32_WINNT=0x0601 _CRT_SECURE_NO_WARNINGS _WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_link_libraries(miniupnpc PUBLIC ws2_32 iphlpapi)
+else()
+  target_compile_definitions(miniupnpc PRIVATE MINIUPNPC_SET_SOCKET_TIMEOUT MINIUPNPC_GET_SRC_ADDR _BSD_SOURCE _DEFAULT_SOURCE)
+  if(NOT APPLE)
+    target_compile_definitions(miniupnpc PRIVATE _XOPEN_SOURCE=600)
+  endif()
+  if(NOT MSVC)
+    target_compile_options(miniupnpc PRIVATE -w)
+  endif()
+endif()
+
 add_library(miniz STATIC miniz/miniz.c miniz/miniz_tdef.c miniz/miniz_tinfl.c miniz/miniz_zip.c)
 target_include_directories(miniz PUBLIC miniz ${CMAKE_CURRENT_BINARY_DIR}/miniz_export)
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/miniz_export/miniz_export.h "#pragma once\n#define MINIZ_EXPORT\n")

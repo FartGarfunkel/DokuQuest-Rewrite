@@ -31,7 +31,7 @@ add_library(dqcore STATIC ${DQ_CORE_SRC})
 target_include_directories(dqcore PUBLIC src)
 target_compile_definitions(dqcore PUBLIC DQ_VERSION="${DQ_VERSION}" DQ_LAUNCHER_VERSION="${DQ_LAUNCHER_VERSION}")
 target_compile_options(dqcore PRIVATE ${DQ_WARN})
-target_link_libraries(dqcore PUBLIC dq_headers miniz enet quickjs Threads::Threads ${CMAKE_DL_LIBS})
+target_link_libraries(dqcore PUBLIC dq_headers miniz enet miniupnpc quickjs Threads::Threads ${CMAKE_DL_LIBS})
 
 file(GLOB_RECURSE DQ_CLIENT_SRC CONFIGURE_DEPENDS
   src/render/*.cpp src/audio/*.cpp src/ui/*.cpp src/input/*.cpp src/assets/*.cpp src/client/*.cpp)

@@ -170,7 +170,7 @@ int main(int argc, char** argv) {
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
   writeMods();
 
-  ServerConfig cfg; cfg.world = "NetTest"; cfg.seed = "multiplayer"; cfg.port = port; cfg.motd = "Hello from the test server"; cfg.viewDistance = 4;
+  ServerConfig cfg; cfg.world = "NetTest"; cfg.seed = "multiplayer"; cfg.port = port; cfg.motd = "Hello from the test server"; cfg.viewDistance = 4; cfg.upnp = false;   // (never ask the real router in a test)
   DedicatedServer srv(cfg);
   // the host's weather, read on the server thread (weather sync checks below)
   static std::atomic<int> hostKind{0}; static std::atomic<float> hostWind{0};
@@ -491,7 +491,7 @@ int main(int argc, char** argv) {
     EventBus sb;
     LevelInfo li; li.name = "SpawnWorld"; li.seedText = "hello";
     auto lv = Level::create(userSub("saves"), li, &pool, &sb);
-    net::HostOptions ho; ho.name = "SpawnWorld"; ho.port = port + 3; ho.dedicated = true; ho.lan = false;
+    net::HostOptions ho; ho.name = "SpawnWorld"; ho.port = port + 3; ho.dedicated = true; ho.lan = false; ho.upnp = false;
     net::ServerHost sh(*lv, ho);
     const vec3 sp = sh.spawnFor("Newcomer");
     ColumnSample s; if (DimGenerator* g = lv->gen->forDim(DIM_OVERWORLD)) g->sample(ifloor(sp.x), ifloor(sp.z), s);
@@ -516,7 +516,7 @@ int main(int argc, char** argv) {
     DimGenerator* g = lv->gen->forDim(DIM_OVERWORLD);
     hp->pos = vec3(0.5f, dimBase(DIM_OVERWORLD) + (g ? g->spawnHeight(0, 0) : 100) + 2, 0.5f);
     Player* host = static_cast<Player*>(lv->spawn(std::move(hp)));
-    net::HostOptions ho; ho.name = "LanWorld"; ho.hostName = "Hostess"; ho.port = port + 1; ho.dedicated = false; ho.lan = false;
+    net::HostOptions ho; ho.name = "LanWorld"; ho.hostName = "Hostess"; ho.port = port + 1; ho.dedicated = false; ho.lan = false; ho.upnp = false;
     auto sh = std::make_shared<net::ServerHost>(*lv, ho);
     std::string e2;
     check(sh->start(&e2), "open to LAN: the game serves its own world " + e2);

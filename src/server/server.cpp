@@ -11,11 +11,11 @@ namespace dq {
 
 json ServerConfig::toJson() const {
   return {{"world", world}, {"seed", seed}, {"mode", mode}, {"difficulty", difficulty}, {"name", name}, {"port", port}, {"maxPlayers", maxPlayers},
-          {"motd", motd}, {"pvp", pvp}, {"lan", lan}, {"plugins", plugins}, {"password", password}, {"viewDistance", viewDistance}};
+          {"motd", motd}, {"pvp", pvp}, {"lan", lan}, {"upnp", upnp}, {"plugins", plugins}, {"password", password}, {"viewDistance", viewDistance}};
 }
 void ServerConfig::fromJson(const json& j) {
   world = j.value("world", world); seed = j.value("seed", seed); mode = j.value("mode", mode); difficulty = j.value("difficulty", difficulty);
-  name = j.value("name", name); port = j.value("port", port); maxPlayers = clampv(j.value("maxPlayers", maxPlayers), 1, 64); motd = j.value("motd", motd);
+  name = j.value("name", name); upnp = j.value("upnp", upnp); port = j.value("port", port); maxPlayers = clampv(j.value("maxPlayers", maxPlayers), 1, 64); motd = j.value("motd", motd);
   pvp = j.value("pvp", pvp); lan = j.value("lan", lan); plugins = j.value("plugins", plugins); password = j.value("password", password);
   viewDistance = clampv(j.value("viewDistance", viewDistance), 2, 32);
 }
@@ -55,7 +55,7 @@ bool DedicatedServer::start(std::string* err) {
   }
   net::HostOptions o;
   o.name = cfg.name; o.hostName = "Server"; o.port = cfg.port; o.maxPlayers = cfg.maxPlayers; o.motd = cfg.motd; o.password = cfg.password;
-  o.lan = cfg.lan; o.viewDistance = cfg.viewDistance; o.pvp = cfg.pvp; o.dedicated = true;
+  o.lan = cfg.lan; o.upnp = cfg.upnp; o.viewDistance = cfg.viewDistance; o.pvp = cfg.pvp; o.dedicated = true;
   host = std::make_shared<net::ServerHost>(*level, o);
   host->onLog = [this](const std::string& t, const std::string& k) { log(t, k); };
   std::string e;

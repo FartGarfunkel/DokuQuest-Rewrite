@@ -19,11 +19,12 @@ struct ServerConfig {
   std::string seed;
   std::string mode = "survival", difficulty = "normal";
   std::string name = "DokuQuest Server"; // shown in LAN lists (the original's "Server name")
-  int port = 25580;                      // UDP; the next 9 are tried when it's taken
+  int port = 25580;                      // TCP and UDP; the next 9 are tried when it's taken
   int maxPlayers = 8;
   std::string motd = "Welcome! Be kind, build big.";
   bool pvp = true, lan = true;           // lan: announce on the home network (UDP 25581)
   bool plugins = true;                   // run mods & plugins from userDir()/mods
+  bool upnp = true;                      // ask the router to forward the port here (net/portmap.h)
   std::string password;
   int viewDistance = 8;
   json toJson() const;
