@@ -360,6 +360,12 @@ void beastAnim(Creature& m, const RigModel& M, RigAnimOut& o) {
 }
 } // namespace
 
-void registerBeastAnim() { registerRigAnim("beast", [](Creature& m, const RigModel& M, RigAnimOut& o) { beastAnim(m, M, o); }); }
+void registerBeastAnim() {
+  registerRigAnim("beast", [](Creature& m, const RigModel& M, RigAnimOut& o) {
+    beastAnim(m, M, o);
+    // a swimmer is drawn along the way it swims, nose up as it climbs and down as it dives (sim/creature_beasts.cpp aquaticSteer)
+    if (m.T && m.inWater && (m.T->aquatic || m.T->amphibious) && !m.onGround) o.pitch += m.swimPitch;
+  });
+}
 
 } // namespace dq

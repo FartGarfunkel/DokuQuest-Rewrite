@@ -505,17 +505,21 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
     bool targetIn = p && p->inWater;
     Entity* foe = m.quarrel ? m.ent(lv, m.quarrel) : (targetIn && dist < 18 && std::fabs(dyp) < 10 && !pawnCreative(p) ? p : nullptr);
     if (foe) {
-      m.swimVy = clampv(((foe->pos.y + 0.5f) - m.pos.y) * 2, -3.f, 3.f);
       if (std::hypot(foe->pos.x - m.pos.x, foe->pos.z - m.pos.z) < 1.6f + m.w && std::fabs(foe->pos.y - m.pos.y) < 1.6f && m.attackCd <= 0) {
         m.attackCd = 1.3f; m.swingT = 0.3f;
         DamageSrc d; d.knock = 3; damageEntity(lv, *foe, T.damage, &m, "mob", d);
         lv.fx->sound("splash_small", m.pos + vec3(0, 0.5f, 0));
       }
-      return Move{T.speed * 1.2f, toPlayer};
+      float dir = std::atan2(-(foe->pos.x - m.pos.x), -(foe->pos.z - m.pos.z)), ty = foe->pos.y + 0.2f, want = T.speed * 1.2f;
+      aquaticSteer(lv, m, dir, ty, want, dt, true, false);   // (after you, but never up onto the beach)
+      return Move{want, dir};
     }
-    m.swimVy = std::sin(m.age * 0.4f + m.id) * 0.5f;
-    m.wander(dt); m.wanderOn = true;
-    return Move{T.speed * 0.45f, m.wanderDir};
+    // cruising: from one place in open water to the next, at depth (it had drifted up and down at random, out of the top)
+    m.swimT -= dt;
+    if (m.swimT <= 0 || m.hitWall || !m.hasSwimDir) { m.swimT = 3 + frand() * 4; aquaticWaypoint(lv, m, false); }
+    float dir = m.hasSwimDir ? m.swimDir : m.yaw, ty = m.hasSwimY ? m.swimY : m.pos.y, want = T.speed * 0.45f;
+    aquaticSteer(lv, m, dir, ty, want, dt, false, false);
+    return Move{want, dir};
   }
   if (T.snake) {
     Entity* foe = m.quarrel ? m.ent(lv, m.quarrel) : (m.angryT > 0 ? m.ent(lv, m.foe) : nullptr);

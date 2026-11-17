@@ -1,9 +1,10 @@
 // sim/basket.cpp — two small ideas, our own designs:
-// - the Wicker Basket: use it on a small animal (a chicken, rabbit, cat, fox, duck, frog...) to lift it in, on a block to
+// - the Wicker Basket: use it on a small animal (a chicken, rabbit, cat, fox, duck, frog, a fish...: sim/mob_carry.h) to lift it in, on a block to
 //   set it down again, as it was (its name, its owner, its colour). The animal rides in the stack's tag.
 // - the Siphon: a copper pipe that draws items one by one out of what is behind it (a chest, a furnace, or loose items
 //   lying there) and pushes them into what is in front (or out onto the ground), with a trickle of motes along it.
 #include "sim/creature.h"
+#include "sim/mob_carry.h"
 #include "sim/player.h"
 #include "sim/controller.h"
 #include "sim/gameplay.h"
@@ -11,17 +12,6 @@
 #include "core/registry.h"
 
 namespace dq {
-namespace {
-
-bool fitsBasket(const Creature& c) {
-  static const char* SMALL[] = {"rabbit", "chicken", "fox", "snow_fox", "raccoon", "cat", "ocelot", "armadillo", "mouse", "duck", "parrot",
-                                "bee", "axolotl", "frog", "aerbunny", "turtle", "cod", "salmon", "tropical_fish", "pufferfish", "green_snake"};
-  if (c.T->hostile && c.owner.empty()) return false;
-  for (const char* k : SMALL) if (c.type == k) return true;
-  return c.baby && !c.T->hostile;   // any baby animal fits
-}
-
-} // namespace
 
 bool releaseBasket(PlayerController& pc, const RayHit& hit, ItemStack* held);
 
@@ -34,7 +24,7 @@ void registerBasket() {
     auto* c = dynamic_cast<Creature*>(&e);
     if (!c || !c->alive()) return false;
     if (held->tag.is_object() && held->tag.contains("mob")) { toast(pc.lv, pc.p, "The basket already has someone in it"); return true; }
-    if (!fitsBasket(*c)) { toast(pc.lv, pc.p, "That won't fit in a basket"); return true; }
+    if (!fitsBasket(*c, &pc.p)) { toast(pc.lv, pc.p, "That won't fit in a basket"); return true; }
     json j = c->save();
     held->tag = {{"mob", c->type}, {"c", j}, {"name", c->T->label.empty() ? c->type : c->T->label}};
     c->removed = true;

@@ -84,6 +84,10 @@ enable_testing()
 add_executable(dq-creature-test tools/test/creature_test.cpp)
 target_link_libraries(dq-creature-test PRIVATE dqcore)
 add_test(NAME creatures COMMAND dq-creature-test)
+# every creature: carried, tamed, ridden, swimming (tools/test_mobs.cpp, headless). Run: build/test_mobs [--table]
+add_executable(test_mobs tools/test_mobs.cpp)
+target_link_libraries(test_mobs PRIVATE dqcore)
+add_test(NAME mobs COMMAND test_mobs)
 # weather particles, sprites, collision (tools/test/weather_test.cpp): pure parts of render/weather_*, no GL context
 add_executable(test_weather tools/test/weather_test.cpp)
 target_link_libraries(test_weather PRIVATE dqclient)

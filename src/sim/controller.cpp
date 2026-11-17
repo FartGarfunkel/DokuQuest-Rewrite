@@ -46,6 +46,7 @@
 #include "sim/cavein.h"
 #include "sim/spinning.h"
 #include "world/rug.h"
+#include "sim/mob_carry.h"
 
 namespace dq {
 bool isCampfire(BlockId id);   // sim/camping.h (its header clashes with sim/gameplay.h here)
@@ -1027,13 +1028,18 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     if (!aimed && held.id != "firestarter" && putDown(downHit, held)) return;
   }
   if (!fromOff && !repeat && te) for (auto& h : hooks().useEntity) if (h(*this, *te, held.empty() ? nullptr : &held, def)) return;
-  // Carry On: sneak + use with an empty hand picks up containers, stations and animals
+  // Carrying: sneak + use with an empty hand picks up containers, stations and animals
   if (!fromOff && !repeat && p.sneaking && held.empty()) {
-    if (te && isMob(*te) && te->hp > 0 && R.mobs[te->type].value("carry", false)) {
-      p.carrying = {{"kind", "mob"}, {"type", te->type}, {"hp", te->hp}, {"data", te->data}, {"save", te->save()}};   // (save: its whole self, coat and all)
-      te->removed = true; sfxUi(lv, p, te->type == "boar" ? "boar" : "pop"); swingArm();
-      toastMsg("Carrying a " + te->type + " \xE2\x80\x94 use to set it down", "good");
-      return;
+    if (auto* tc = te && te->hp > 0 ? dynamic_cast<Creature*>(te) : nullptr) {   // who may lift what: sim/mob_carry.h (the data's "carry")
+      std::string why;
+      if (pickUpCreature(lv, p, *tc, &why)) {
+        sfxUi(lv, p, tc->type == "boar" ? "boar" : "pop"); swingArm();
+        std::string who = !tc->petName.empty() ? tc->petName : tc->label();
+        if (who.empty()) { who = tc->type; for (auto& ch : who) if (ch == '_') ch = ' '; who = "a " + who; }
+        toastMsg("Carrying " + who + " \xE2\x80\x94 use to set it down", "good");
+        return;
+      }
+      if (!why.empty()) { toastMsg(why); return; }
     }
     if (hit && bhas(hit->id, BF::Carry)) { pickUpBlock(hit->block.x, hit->block.y, hit->block.z); return; }
   }
