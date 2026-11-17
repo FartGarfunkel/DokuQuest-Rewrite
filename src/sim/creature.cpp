@@ -18,6 +18,8 @@
 #include "sim/physics.h"
 #include "sim/player.h"
 #include "sim/skills.h"
+#include "sim/balance.h"
+#include "sim/combat_rpg.h"
 #include "core/registry.h"
 #include "gen/structures.h"
 #include "gen/structures_api.h"
@@ -494,7 +496,7 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   if (src.element == "frost" && type == "cinder_golem") dmg *= 2;
   if (src.type == "lava" && T->fireImmune) dmg = 0;
   if (dmg <= 0) { if (a && a->isPlayer()) floatText(lv, a->id, pos + vec3(0, h + 0.3f, 0), "Immune", "#ffb070"); return 0; }
-  if (!src.bypassArmor) if (float ap = armourPoints(); ap > 0) { dmg *= 1 - std::min(20.f, ap) * 0.04f; wolfArmourWear(*this, lv); horseArmourWear(*this, lv); }   // as a player's armour: 4% a point (wolf and horse armour wear down)
+  if (!src.bypassArmor) if (float ap = armourPoints() * (1 - std::clamp(src.pierce, 0.f, 1.f)); ap > 0) { dmg *= 1 - std::min(20.f, ap) * 0.04f; wolfArmourWear(*this, lv); horseArmourWear(*this, lv); }   // as a player's armour: 4% a point (wolf and horse armour wear down)
   // the ender dragon: the head takes the blow, every other part takes a quarter plus at most 1
   if (type == "ender_dragon" && src.hasRay && dmg > 0) {
     const RigModel* RM = rigModel(modelKey());
@@ -577,7 +579,14 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   vec3 at = pos + vec3(0, 0.5f, 0);
   bool noDrops = data.contains("noDrops") && data["noDrops"] == true;   // summons, a called-back dragon (its own table)
   const bool imm = rule(lv, "immersive");
-  if (!baby && !noDrops) for (auto& d : T->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, proceduralOf(hideFor(d.id, imm), n), at, true); }   // (metal gear procedural; immersive: raw hide for leather, sim/barrel.h)
+  // its level, an elite, the killer's luck (sim/balance.h): more rolls, better odds, now and then a piece of gear
+  Entity* killer = ent(lv, src.attacker);
+  const MobLoot L = mobLoot(mobLevel, mobIsElite(data), killer && killer->isPlayer() ? static_cast<Player*>(killer) : nullptr);
+  if (!baby && !noDrops) for (int r = 0; r < L.rolls; r++) for (auto& d : T->drops) if (frand() < d.chance * L.chanceMul) {
+    int n = roll(d.lo, d.hi) + (frand() < L.extra ? 1 : 0);
+    if (n > 0) dropItem(lv, realm, proceduralOf(hideFor(d.id, imm), n), at, true);   // (metal gear procedural; immersive: raw hide for leather, sim/barrel.h)
+  }
+  if (!baby && !noDrops && L.gearChance > 0 && frand() < L.gearChance) if (ItemStack g = mobGearRoll(L, frand(), frand(), frand()); !g.empty()) dropItem(lv, realm, g, at, true);   // (metal gear procedural; immersive: raw hide for leather, sim/barrel.h)
   if (!baby && !noDrops && !variant.empty()) if (const auto* vd = T->vdef(variant))   // what its story left on it
     for (auto& d : vd->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, proceduralOf(d.id, n), at, true); }
   // mob heads, only to a player's blow: a wither skeleton's skull 2.5 % of the time, any other head 1 %
@@ -598,7 +607,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   }
   Entity* a = ent(lv, src.attacker);
   if (a && a->isPlayer()) {
-    grantXP(lv, *a, T->xp, pos + vec3(0, h, 0));
+    grantXP(lv, *a, (int)std::lround(T->xp * mobXpScale(*this)), pos + vec3(0, h, 0));   // (its level, an elite: sim/combat_rpg.h)
     auto* p = static_cast<Player*>(a);
     if (src.type == "magic") skillGain(lv, *p, "magic", 6.0 + T->xp * 3.0);   // brought down by a spell: Magic grows too
     p->stats["mobsKilled"] = p->stats.value("mobsKilled", 0) + 1;

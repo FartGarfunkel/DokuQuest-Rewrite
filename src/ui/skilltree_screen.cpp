@@ -12,6 +12,7 @@
 #include "client/session.h"
 #include "sim/player.h"
 #include "sim/skilltree.h"
+#include "sim/balance.h"
 #include "sim/skills.h"
 #include "common/noise.h"
 #include <imgui.h>
@@ -165,19 +166,26 @@ public:
     if (ImGui::SmallButton("Reset the tree")) treeReset(*p);
     ImGui::Separator();
     ImGui::Text("Stat points: %d", p->statPoints);
-    struct S { const char* name; int* v; const char* what; ui::Glyph g; };
-    S stats[] = {{"Constitution", &p->statCon, "stamina and toughness", ui::Glyph::Heart}, {"Strength", &p->statStr, "+1% damage a point", ui::Glyph::Fist},
-                 {"Agility", &p->statAgi, "quicker on your feet", ui::Glyph::Wing}, {"Intelligence", &p->statInt, "spell power", ui::Glyph::Star},
-                 {"Luck", &p->statLck, "critical hits", ui::Glyph::Clover}, {"Focus", &p->statFoc, "posture damage", ui::Glyph::Target}};
+    ImGui::TextDisabled("A point every %d levels of your skills, up to %d a stat", bal::STAT_EVERY, bal::STAT_CAP);
+    struct S { const char* name; int* v; std::string what; ui::Glyph g; };
+    auto pc = [](float f) { return std::to_string((int)std::lround(f * 100)) + "%"; };
+    using namespace bal;
+    S stats[] = {
+        {"Constitution", &p->statCon, "Stamina and toughness. A point: +" + strFormat("%g", CON_STAMINA) + " stamina, +" + strFormat("%g", CON_HEALTH) + " health, " + pc(CON_REDUCE) + " less harm (at most " + pc(CON_REDUCE_CAP) + ").\nNow: +" + strFormat("%g", conStamina(*p)) + " stamina, +" + strFormat("%g", conHealth(*p)) + " health, " + pc(conReduction(*p)) + " less harm", ui::Glyph::Heart},
+        {"Strength", &p->statStr, "Melee damage. A point: +" + pc(STR_DAMAGE) + ".\nNow: +" + pc(strDamageFactor(*p) - 1), ui::Glyph::Fist},
+        {"Agility", &p->statAgi, "Quicker on your feet. A point: +" + pc(AGI_MOVE) + " speed, rolls " + pc(AGI_DODGE_COST) + " cheaper and " + pc(AGI_DODGE_TIME) + " longer, swings and bow draws " + pc(AGI_ATTACK) + " faster.\nNow: roll costs " + strFormat("%.0f", dodgeCost(*p)) + " stamina, swings x" + strFormat("%.2f", attackSpeedFactor(*p)), ui::Glyph::Wing},
+        {"Intelligence", &p->statInt, "Spell power and mana. A point: +" + pc(INT_SPELL) + " spell power, +" + pc(INT_MANA) + " mana, +" + pc(INT_REGEN) + " mana regeneration.\nNow: spells x" + strFormat("%.2f", spellPowerFactor(*p)) + ", mana x" + strFormat("%.2f", manaFactor(*p)), ui::Glyph::Star},
+        {"Luck", &p->statLck, "Critical hits and drops. A point: +" + strFormat("%.1f", LCK_CRIT * 100) + "% crit chance, +" + strFormat("%.1f", LCK_LOOT * 100) + "% loot luck.\nNow: " + pc(critChance(*p)) + " crit chance (at most " + pc(CRIT_CHANCE_CAP) + "), +" + pc(lootLuck(*p)) + " loot", ui::Glyph::Clover},
+        {"Focus", &p->statFoc, "Posture damage: break a guard sooner for a finisher. A point: +" + pc(FOC_POSTURE) + ".\nNow: x" + strFormat("%.2f", postureFactor(*p)), ui::Glyph::Target}};
     const float pw = ImGui::GetWindowSize().x;
     for (auto& st : stats) {
       ImGui::PushID(st.name);
       glyphInline(st.g, ImGui::GetColorU32(ImGuiCol_Text), ImGui::GetTextLineHeight());
       ImGui::Text("%s", st.name); ImGui::SameLine(pw * 0.55f); ImGui::Text("%d", *st.v); ImGui::SameLine(pw * 0.7f);
-      ImGui::BeginDisabled(p->statPoints <= 0 || *st.v >= 15);
+      ImGui::BeginDisabled(p->statPoints <= 0 || *st.v >= bal::STAT_CAP);
       if (ImGui::SmallButton("+")) { (*st.v)++; p->statPoints--; }
       ImGui::EndDisabled();
-      if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ImGui::SetTooltip("%s", st.what);
+      if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || ImGui::IsItemFocused()) ImGui::SetTooltip("%s", st.what.c_str());   // (focused: a pad's d-pad reads it too)
       ImGui::PopID();
     }
     ImGui::Separator();
@@ -191,6 +199,15 @@ public:
       any++;
       glyphInline(ui::glyphForAttr(sh[0]), ImGui::GetColorU32(ImGuiCol_Text), ImGui::GetTextLineHeight());
       ImGui::Text("%s %s%s", sh[1], f ? ("+" + std::to_string((int)std::round(f))).c_str() : "", pc ? (" +" + std::to_string((int)std::round(pc * 100)) + "%").c_str() : "");
+    }
+    for (const bal::TalentRule& r : bal::TALENTS) {   // the rest, capped as they work in play (sim/balance.h)
+      if (r.flatScale == 0) continue;
+      bool shown = false; for (auto& sh : SHOW) shown |= r.attr == std::string(sh[0]);
+      if (shown || (treeAttr(*p, r.attr) == 0 && treeAttrPct(*p, r.attr) == 0)) continue;
+      any++;
+      const float v = talent(*p, r.attr);
+      ImGui::Text("%s %s%s", r.attr, std::string(r.attr) == "step" ? strFormat("+%.2f", v).c_str() : ((v >= 0 ? "+" : "") + std::to_string((int)std::lround(v * 100)) + "%").c_str(), v >= r.hi || v <= r.lo ? " (capped)" : "");
+      if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", r.what);
     }
     if (!any) ImGui::TextDisabled("Nothing yet");
     ui::bookPagesEnd();

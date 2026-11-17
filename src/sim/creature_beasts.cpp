@@ -13,6 +13,7 @@
 #include "sim/mob_combat.h"
 #include "sim/physics.h"
 #include "sim/player.h"
+#include "sim/skills.h"
 #include "core/registry.h"
 
 namespace dq {
@@ -653,6 +654,13 @@ OptMove Creature::farmAI(Level& lv, Entity* p, float dist, float toPlayer, float
 void Creature::breedWith(Level& lv, Creature& mate) {
   fed = mate.fed = true;
   loveT = mate.loveT = 0; breedCd = mate.breedCd = 300;
+  {   // the Taming skill: the player who fed one of them (once per pair: the one in love first breeds)
+    std::string by = data.is_object() ? data.value("fedBy", std::string()) : std::string();
+    if (by.empty() && mate.data.is_object()) by = mate.data.value("fedBy", std::string());
+    if (data.is_object()) data.erase("fedBy");
+    if (mate.data.is_object()) mate.data.erase("fedBy");
+    if (!by.empty()) for (auto& en : lv.entities()) if (en->isPlayer() && !en->removed && static_cast<Player*>(en.get())->name == by) { onBred(lv, *static_cast<Player*>(en.get())); break; }
+  }
   Creature* baby = spawnCreature(lv, realm, type, vec3((pos.x + mate.pos.x) / 2, std::max(pos.y, mate.pos.y) + 0.1f, (pos.z + mate.pos.z) / 2));
   if (!baby) return;
   baby->makeBaby();
@@ -896,6 +904,7 @@ bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
     else if (e.loveT > 0 || e.breedCd > 0) return true;
     else e.loveT = 30;
     use1(p, held);
+    if (e.loveT > 0) e.data["fedBy"] = p.name;   // (the Taming skill goes to whoever brought them together)
     e.kept = true; hearts(lv, e.pos + vec3(0, e.h, 0), e.baby ? 2 : 5); lv.fx->soundUi(p.id, "eat");
     did = true;
   } else if (e.type == "cow" && def && def->str("bucket") == "empty" && !e.baby) {

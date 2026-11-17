@@ -1,6 +1,9 @@
 // sim/fishing.cpp — the float, what bites, casting and reeling in (game/fishing.js).
 #include "sim/fishing.h"
 #include <cmath>
+#include "sim/balance.h"
+#include "sim/player.h"
+#include "sim/skills.h"
 
 namespace dq {
 bool isMob(const Entity& e);   // sim/gameplay.h
@@ -22,8 +25,10 @@ const int* fishSizes(const std::string& id) {
 static int sizeOf(const std::string& id) { const int* s = fishSizes(id); return (int)std::lround(s[0] + std::pow(frand(), 1.6f) * (s[1] - s[0])); }
 
 // ---- what bites
-FishCatch fishingCatch(Level& lv, int realm, vec3 at) {
+FishCatch fishingCatch(Level& lv, int realm, vec3 at, float luck) {
   float r = frand();
+  // fishing luck (talents, sim/balance.h): treasure more often, junk less (the 4% treasure and 8% junk bands shift)
+  const float treasureTop = 0.04f * (1 + 2 * luck), junkTop = treasureTop + 0.08f * (1 - luck);
   World& w = lv.world(realm);
   int bx = ifloor(at.x), bz = ifloor(at.z), dim = realm == REALM_MAIN ? dimOfY(ifloor(at.y)) : DIM_OVERWORLD;
   // the water's temperature (the chunk's climate) and whether this is the open sea (deep water at sea level)
@@ -42,8 +47,8 @@ FishCatch fishingCatch(Level& lv, int realm, vec3 at) {
     for (auto& e : ok) { q -= e.second; if (q <= 0) return e.first; }
     return ok.empty() ? "cod" : ok[0].first;
   };
-  if (r < 0.04f) return {pick({{"saddle", 2}, {"bow", 2}, {"emerald", 3}, {"gold_ingot", 3}, {"diamond", 1}, {"music_disc_tide", 1}, {"music_disc_grove", 1}, {"music_disc_frost", 1}, {"music_disc_aurora", 1}, {"fishing_rod", 2}}), "treasure", 0};
-  if (r < 0.12f) return {pick({{"stick", 3}, {"string", 3}, {"bowl", 2}, {"leather", 2}, {"bone", 3}, {"lily_pad", 2}, {"kelp", 3}, {"ink_sac", 1}}), "junk", 0};
+  if (r < treasureTop) return {pick({{"saddle", 2}, {"bow", 2}, {"emerald", 3}, {"gold_ingot", 3}, {"diamond", 1}, {"music_disc_tide", 1}, {"music_disc_grove", 1}, {"music_disc_frost", 1}, {"music_disc_aurora", 1}, {"fishing_rod", 2}}), "treasure", 0};
+  if (r < junkTop) return {pick({{"stick", 3}, {"string", 3}, {"bowl", 2}, {"leather", 2}, {"bone", 3}, {"lily_pad", 2}, {"kelp", 3}, {"ink_sac", 1}}), "junk", 0};
   std::vector<std::pair<const char*, float>> fish =
     ocean ? (temp > 0.3f ? std::vector<std::pair<const char*, float>>{{"tropical_fish", 4}, {"pufferfish", 2}, {"cod", 4}}
              : temp < -0.1f ? std::vector<std::pair<const char*, float>>{{"salmon", 6}, {"cod", 4}}
@@ -62,8 +67,12 @@ float Bobber::surface(Level& lv) const {
   return NAN;
 }
 
+float Bobber::ownerLuck(Level& lv) const {
+  Entity* o = owner ? lv.entity(owner) : nullptr;
+  return o && o->isPlayer() ? fishingLuck(*static_cast<Player*>(o)) : 0.f;
+}
 void Bobber::comeUp(Level& lv, float top) {
-  FishCatch c = fishingCatch(lv, realm, pos);
+  FishCatch c = fishingCatch(lv, realm, pos, ownerLuck(lv));
   catchId = c.id; catchKind = c.kind; catchCm = c.cm;
   comeT = std::max(0.5f, waitT);
   float a = frand() * TAU, r = 2.6f + frand() * 1.2f;
@@ -127,7 +136,7 @@ void Bobber::tick(Level& lv, double dtd) {
       BlockId b = w.getBlock(ifloor(n.x), ifloor(n.y), ifloor(n.z));
       if (reg().tLiquid[b] == 1) {
         pos = n; state = Float; vel = vec3(0);
-        waitT = 5 + frand() * 14;
+        waitT = (5 + frand() * 14) * (1 - 0.5f * ownerLuck(lv));   // (fishing luck: bites come sooner)
         sfxAt(lv, "splash_small", pos, 20);
         float top = surface(lv);
         lv.fx->particles("water", vec3(pos.x, (std::isnan(top) ? pos.y : top) + 0.05f, pos.z), 8, {{"spread", 1.5}});
@@ -248,13 +257,14 @@ void endFishing(Level& lv, Player& p, bool reel) {
   if (b->state == Bobber::Float) sfxAt(lv, "splash_small", b->pos, 16);
   if (bite) {
     FishCatch c{b->catchId, b->catchKind, b->catchCm};
-    if (c.id.empty()) c = fishingCatch(lv, b->realm, b->pos);
+    if (c.id.empty()) c = fishingCatch(lv, b->realm, b->pos, fishingLuck(p));
     if (Entity* f = b->fish ? lv.entity(b->fish) : nullptr) { f->data.erase("hooked"); f->removed = true; }
     b->fish = 0;
     // up out of the water and over to you
     vec3 d = p.pos + vec3(0, 1.2f, 0) - b->pos; float t = 0.9f;
     dropItem(lv, b->realm, ItemStack(c.id, 1), b->pos + vec3(0, 0.3f, 0), vec3(d.x / t, d.y / t + 0.5f * 18 * t, d.z / t));
     grantXp(lv, p, c.kind == "treasure" ? 6 : 1 + (int)(frand() * 3), b->pos + vec3(0, 0.5f, 0));
+    onFishCaught(lv, p, c.kind);   // the Fishing skill (sim/skills.h)
     const ItemDef* def = reg().item(c.id);
     std::string name = def ? def->name : c.id;
     toast(lv, p, c.kind == "fish" ? "You caught a " + toLower(name) + " (" + std::to_string(c.cm) + " cm)!" : c.kind == "treasure" ? "Treasure! " + name : "Reeled in some " + toLower(name),

@@ -4,6 +4,7 @@
 #include "sim/magic.h"
 #include "sim/magic_fx.h"
 #include "sim/rpg.h"
+#include "sim/balance.h"
 
 namespace dq {
 
@@ -35,6 +36,7 @@ void giveEffect(Level& lv, Player& p, const std::string& eff, float secs, int le
   if (eff != "heal" && eff != "mana" && eff != "harm" && !(E && E->bad) && hasPerk(p, "alchemy", 30)) secs *= 1.2f;
   // paths.js Iron Will: slowness can't touch you
   if (eff == "slow" && hasTal(p, "ironwill")) return;
+  if (eff == "slow" || eff == "chill") secs *= 1 - stunResist(p);   // (stagger-resistance talents: sim/balance.h)
   if (eff == "heal") { combatHeal(lv, p, secs); return; }
   if (eff == "mana") { MagicState& m = magicState(lv, p); float mx = manaMax(p); m.mana = std::min(mx, (m.mana < 0 ? mx : m.mana) + secs); return; }
   if (eff == "harm") { combatHurt(lv, p, secs, json{{"type", "magic"}, {"bypassArmor", true}, {"knock", 0}}, src && src->isPlayer() ? static_cast<Player*>(src) : nullptr); return; }

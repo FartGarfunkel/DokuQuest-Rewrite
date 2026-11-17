@@ -5,6 +5,7 @@
 #include "core/init.h"
 #include "sim/maps.h"
 #include "sim/fishing.h"
+#include "sim/skills.h"
 #include "sim/camping.h"
 #include "sim/travel.h"
 #include "sim/elytra.h"
@@ -154,6 +155,7 @@ int main(int argc, char** argv) {
       use("fishing_rod");
       check(!fishingOf(*L, *P) && countEntities("item") == before + 1, "reel in quick: the catch flies out to you");
       check(fx.heard("You caught") || fx.heard("Treasure!") || fx.heard("Reeled in"), "  ...and you're told what it was");
+      check(skillXp(*P, "fishing") > 0, "  ...and Fishing grows (" + std::to_string((int)skillXp(*P, "fishing")) + " xp)");
       check(P->held().d == 1, "the rod wears a little");
     }
   }
