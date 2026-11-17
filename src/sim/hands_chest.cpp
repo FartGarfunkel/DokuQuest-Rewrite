@@ -120,7 +120,7 @@ void barrelLidBox(World& w, ivec3 at, float out[6]) {
 }  // namespace
 
 vec3 handsCabinetDoorPoint(World& w, ivec3 at, vec3 q) {
-  const float fa = (w.getMeta(at.x, at.y, at.z) & 3) * PI / 2, da = -1.85f;
+  const float fa = -(w.getMeta(at.x, at.y, at.z) & 3) * PI / 2, da = -1.85f;   // (turned as the mesher turns its model: world/shapes.cpp rotBox)
   vec3 p = q / 16.f;
   const vec3 hinge(2 / 16.f, 0, 15.2f / 16.f);
   auto rotY = [](vec3 v, float a) { return vec3(v.x * std::cos(a) + v.z * std::sin(a), v.y, -v.x * std::sin(a) + v.z * std::cos(a)); };
