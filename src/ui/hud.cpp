@@ -237,6 +237,11 @@ public:
     a.popScreen();
   }
   // hardcore: one life. After it the world can only be watched (spectator, back where you fell) or left
+  static bool graves(App& a) {   // (sim/corpse.h: the rule on, unless everything is kept anyway)
+    if (!a.session || !a.session->level) return false;
+    const json& r = a.session->level->info.rules;
+    return !(r.is_object() && r.value("keepInventory", false)) && !(r.is_object() && r.contains("graves") && !r.value("graves", true));
+  }
   static bool hardcore(App& a) { return a.session && a.session->level && a.session->level->info.rules.is_object() && a.session->level->info.rules.value("hardcore", false); }
   void spectate(App& a) {
     if (!a.session || !a.session->player) { a.popScreen(); return; }
@@ -261,7 +266,8 @@ public:
     ImDrawList* dl = ImGui::GetWindowDrawList();
     float big = clampv(9 * W / z / 100.f, 40.f, 84.f) / fontPx(F_HUGE);
     const bool hc = hardcore(a);
-    std::string note = hc ? "This was a hardcore world: there is no coming back. You can stay and watch it go on without you." : "Your items were dropped where you fell. You keep level " + std::to_string(level) + ".";
+    std::string note = hc ? "This was a hardcore world: there is no coming back. You can stay and watch it go on without you." : (graves(a) ? "Your body lies where you fell, holding what you carried: the death compass points to it. You keep level "
+                                                            : "Your items were dropped where you fell. You keep level ") + std::to_string(level) + ".";
     float colW = std::max({textSize(F_HUGE, "You died", 0, big).x, textSize(F_BODY, cause.c_str()).x, textSize(F_MID, note.c_str()).x, 160 * z}) + 32 * z;
     auto centered = [&](FontId f, const char* t, ImU32 c, float k, ImU32 sh, ImVec2 off) {
       ImVec2 s = textSize(f, t, 0, k); ImVec2 p = ImGui::GetCursorScreenPos();

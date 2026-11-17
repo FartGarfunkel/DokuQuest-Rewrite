@@ -93,7 +93,7 @@ const std::vector<RuleRow>& ruleRows() {
   static const std::vector<RuleRow> t = {
     {"daylightCycle", "Day and Night Cycle", "Turn off to keep the sun where it is", 0},
     {"keepInventory", "Keep Inventory", "You respawn with everything you had", 0},
-    {"graves", "Graves", "What you drop on death is kept safe in a grave, with a compass that points to it", 0},
+    {"graves", "Graves", "Your body stays where you fell, holding everything you carried, with a compass that points to it", 0},
     {"mobGriefing", "Mob Griefing", "Explosions from creatures and boss attacks damage the land", 0},
     {"tntExplodes", "TNT Explodes", "Turn off and TNT just fizzles", 0},
     {"fireSpread", "Fire Spreads", "Fire can spread to wood and leaves nearby", 0},

@@ -300,9 +300,16 @@ std::vector<MapMarker> mapMarkers(Level& lv, const PaperMap& m, const Player* vi
       if (at.is_array() && at.size() >= 3) { vec2 q = P(at[0].get<double>(), at[2].get<double>()); if (inside(q)) mark(14, q, "The rift"); }
     }
   }
-  if (S.contains("grave") && S["grave"].is_object() && S["grave"].value("dim", 0) == m.dim) {
-    vec2 q = P(S["grave"].value("x", 0.0) + 0.5, S["grave"].value("z", 0.0) + 0.5);
-    if (inside(q)) mark(5, q);
+  {   // where you died: every body still lying out there (sim/corpse.h; the oldest is the compass's), or an old world's grave
+    json marks = S.contains("bodies") && S["bodies"].is_array() ? S["bodies"] : json::array();
+    const json& gr = viewer && viewer->grave.is_object() ? viewer->grave : S.value("grave", json());
+    if (gr.is_object() && !gr.contains("cid")) marks.push_back(gr);
+    for (size_t i = 0; i < marks.size(); i++) {
+      const json& g = marks[i];
+      if (!g.is_object() || g.value("dim", 0) != m.dim) continue;
+      vec2 q = P(g.value("x", 0.0) + 0.5, g.value("z", 0.0) + 0.5);
+      if (inside(q)) mark(5, q, g.contains("cid") ? (i == 0 ? "Your body (the compass points here)" : "Your body") : "");
+    }
   }
   if (viewer && jsDimOf(*viewer) == m.dim) {
     for (Player* o : levelPlayers(lv, true)) if (o != viewer && !o->dead && jsDimOf(*o) == m.dim) who(o->pos.x, o->pos.z, o->yaw, 2);

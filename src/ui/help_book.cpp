@@ -70,7 +70,7 @@ const std::vector<Section>& helpText() {
   {"Surviving", "golden_apple", {
     {H, "Surviving"},
     {P, "There is no hunger. Eating any food heals you on the spot \xE2\x80\x94 apples, berries and roast boar are your lifeline. You have ten hearts. Heart Crystals (from bosses) add one for good; charms in the charm slot add more while you wear them, or guard against fire, water and falls."},
-    {P, "Under water, watch your air bubbles. Sprint while under water to swim. If you die, your things wait in a grave and you're given a compass that points to it."},
+    {P, "Under water, watch your air bubbles. Sprint while under water to swim. If you die, your body stays where you fell holding everything you carried, and you're given a compass that points to it: use your body (or walk into it) and each thing goes back to its own slot. Die again before you get there and the compass keeps pointing at the first body."},
     {SUB, "The night"},
     {P, "At night and in dark caves the monsters come out. Ghouls shamble at you, skeletons keep their distance and shoot, spiders climb walls and drop on you from cave roofs, and fuselings creep close, hiss and burst \xE2\x80\x94 back away when you hear one."},
     {P, "A good axe or sword can take a limb off: a ghoul without a leg crawls, a spider short of legs can't leap, a skeleton that loses its bow arm drops the bow."},

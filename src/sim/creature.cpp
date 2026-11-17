@@ -11,6 +11,7 @@
 #include "sim/mount_gear.h"
 #include "sim/endstory.h"
 #include "sim/creature_rig.h"
+#include "sim/ragdoll.h"
 #include "sim/vehicles.h"
 #include "common/holiday.h"
 #include "sim/hallow.h"
@@ -572,6 +573,13 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   // pets.js: the rider gets off first
   if (riddenBy) if (auto* r = dynamic_cast<Player*>(ent(lv, riddenBy))) dismount(lv, *this, *r);
   deathTime = 0.0001f;
+  {   // the killing blow's push, for the limp body (sim/ragdoll.h; sent to guests with the data so their copy falls the same way)
+    vec3 k(vel.x, 0, vel.z);
+    const float f = (src.knock < 0 ? 5.f : src.knock) * 0.55f;
+    if (Entity* a = src.attacker ? ent(lv, src.attacker) : nullptr) { vec3 d(pos.x - a->pos.x, 0, pos.z - a->pos.z); if (glm::length(d) > 1e-3f) k += glm::normalize(d) * f; }
+    else if (src.hasRay) { vec3 d(src.rayD.x, 0, src.rayD.z); if (glm::length(d) > 1e-3f) k += glm::normalize(d) * f; }
+    data["rk"] = json::array({std::round(k.x * 100) / 100, 1.2, std::round(k.z * 100) / 100});
+  }
   if (globalCreatureHooks().died) globalCreatureHooks().died(lv, *this, src);
   // the hydrogen jellyfish: it bursts when it dies (blocks only where mobs may grief)
   if (const float blast = T->j.value("deathBlast", 0.f); blast > 0 && !lv.isRemote()) explode(lv, realm, pos + vec3(0, h * 0.5f, 0), blast, !rule(lv, "mobGriefing"));
@@ -757,8 +765,12 @@ void Creature::update(Level& lv, float dt) {
     // left after 0.95 s — a little longer here so the fall can be seen)
     if (deathTime > DEATH_LINGER) {
       removed = true;
-      mobBurst(lv, pos + vec3(0, h / 2, 0), "white", 14, 0.6f);
-      lv.fx->particles("poof", pos, 18, json{{"w", std::max(w, h * 0.5f)}, {"h", std::min(h, 0.8f)}});   // lying on its side by now
+      // the body is the players' own now: their games let it fall limp, lie there a while and fade (sim/ragdoll.h,
+      // render/ragdoll_layer.cpp). Only the ones that don't go limp (bosses, villagers, skin-dressed mobs) still go in a puff.
+      if (!creatureRagdolls(*this)) {
+        mobBurst(lv, pos + vec3(0, h / 2, 0), "white", 14, 0.6f);
+        lv.fx->particles("poof", pos, 18, json{{"w", std::max(w, h * 0.5f)}, {"h", std::min(h, 0.8f)}});   // lying on its side by now
+      }
       return;
     }
     // still falls and slides to a stop (a body killed in mid-air doesn't hang there)

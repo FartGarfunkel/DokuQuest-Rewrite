@@ -8,6 +8,7 @@
 #include "sim/controller.h"
 #include "sim/gamecommands.h"
 #include "sim/rules.h"
+#include "sim/corpse.h"
 #include "sim/worldsys.h"
 #include "sim/blockfx.h"
 #include "sim/creature.h"
@@ -450,13 +451,20 @@ int main(int argc, char** argv) {
     r.p->inv[3] = ItemStack("dirt", 10);
     std::string reply; ((reply = runCommand(*r.lv, r.p, "/kill")), true);
     CHECK(r.p->dead, "/kill kills (%s)", reply.c_str());
-    CHECK(r.p->grave.is_object() && r.get(r.p->grave["x"], r.p->grave["y"], r.p->grave["z"]) == KBk.grave, "the things go into a grave");
+    Entity* body = nullptr;
+    for (auto& e : r.lv->entities()) if (!e->removed && e->type == "corpse") body = e.get();
+    CHECK(body && r.p->grave.is_object() && r.p->grave.value("cid", std::string()) == body->data.value("cid", std::string()), "the things stay with the body (sim/corpse.h)");
     CHECK(r.p->inv[0].id == "death_compass", "with a compass that points to it");
     r.c->respawn();
     CHECK(!r.p->dead && r.p->hp == r.p->maxHp, "respawns with full health");
-    json g = r.p->grave;
-    openGrave(*r.lv, *r.p, g["x"], g["y"], g["z"]);
-    CHECK(playerCount(*r.p, "dirt") == 10 && playerCount(*r.p, "death_compass") == 0, "opening the grave gives everything back");
+    if (body) retrieveCorpse(*r.lv, *r.p, *body);
+    CHECK(r.p->inv[3].id == "dirt" && r.p->inv[3].n == 10 && playerCount(*r.p, "death_compass") == 0, "using the body gives everything back, to its slot");
+    {   // an old world's grave block still opens
+      json g = makeGrave(*r.lv, *r.p, {ItemStack("stick", 4)});
+      CHECK(g.is_object() && r.get(g["x"], g["y"], g["z"]) == KBk.grave, "an old grave block");
+      openGrave(*r.lv, *r.p, g["x"], g["y"], g["z"]);
+      CHECK(playerCount(*r.p, "stick") == 4, "  ...still opens and gives its things back");
+    }
     // lava hurts and sets you on fire; regen heals 1 HP / 4 s after 8 s unhurt
     r.p->hp = 10; r.p->invuln = 0; r.p->lastHurtT = gameClock(*r.lv);
     r.step(8.5);

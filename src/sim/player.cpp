@@ -360,6 +360,7 @@ void Player::load(const json& j) {
   if (j.contains("stats") && j["stats"].is_object()) for (auto& [k, v] : j["stats"].items()) stats[k] = v;
   carrying = j.value("carrying", json());
   grave = j.value("grave", json());
+  if (!grave.is_object() && stats.contains("grave") && stats["grave"].is_object()) grave = stats["grave"];   // (sim/corpse.cpp keeps the two the same)
   heartCrystals = clampv(j.value("heartCrystals", 0), 0, 10);
   if (j.contains("stamina") && j["stamina"].is_number()) stamina = j["stamina"].get<float>();
   if (j.contains("secondChance") && j["secondChance"].is_number()) secondChanceCd = j["secondChance"].get<float>();

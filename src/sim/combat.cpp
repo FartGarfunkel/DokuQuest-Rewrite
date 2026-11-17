@@ -11,6 +11,7 @@
 #include "sim/magic.h"
 #include "sim/gameplay.h"
 #include "sim/rules.h"
+#include "sim/corpse.h"
 #include "sim/physics.h"
 #include "gen/generator.h"
 #include <algorithm>
@@ -190,10 +191,11 @@ static float mobHurtDefault(Level& lv, Entity& e, float amount, const DamageSour
 float damageEntity(Level& lv, Entity& e, float amount, const DamageSource& src) {
   if (e.isPlayer()) return damagePlayer(lv, static_cast<Player&>(e), amount, src);
   amount = combatRpgBossCap(lv, e, amount);
+  if (e.type == "corpse") return 0;   // a player's body (sim/corpse.h) is never hurt or destroyed
   float dealt = 0;
   if (creatureTakesHit(lv, e, amount, src, dealt)) return dealt;
   if (auto* h = handlerFor(e.type)) return (*h)(lv, e, amount, src);
-  if (e.type == "item" || e.type == "falling_block" || e.type == "falling_tree" || e.type == "seat" || e.type == "tnt") return 0;
+  if (e.type == "item" || e.type == "falling_block" || e.type == "falling_tree" || e.type == "seat" || e.type == "tnt" || e.type == "corpse") return 0;
   return mobHurtDefault(lv, e, amount, src);
 }
 
@@ -394,16 +396,23 @@ void playerDie(Level& lv, Player& p, const DamageSource& src) {
   } else if (a && a->isPlayer()) cause = "You were slain by " + static_cast<Player*>(a)->name;
   else if (src.type == "arrow") cause = "You were shot";
   else if (src.type == "explosion") cause = "You were blown up";
+  // the body stays where it fell (sim/corpse.h): with the "graves" rule it keeps everything they carried, each thing
+  // remembered in its slot, and the death compass points to it (to the oldest body, while there are several)
   if (!rule(lv, "keepInventory")) {
-    std::vector<ItemStack> all;
-    for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm, &p.shield}) for (auto& s : *v) if (!s.empty() && s.id != "death_compass") all.push_back(s);
-    json grave = rule(lv, "graves") ? makeGrave(lv, p, all) : json();
-    if (!grave.is_null()) p.grave = grave;
-    else for (auto& s : all) dropItem(lv, p.realm, s, p.pos + vec3(0, 1, 0), true, 6);
-    for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm, &p.shield}) for (auto& s : *v) s.clear();
-    if (!grave.is_null() && reg().item("death_compass")) p.inv[0] = ItemStack("death_compass", 1);
+    if (rule(lv, "graves")) {
+      spawnCorpse(lv, p, src, true);
+      for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm, &p.cape, &p.quiver, &p.shield}) for (auto& s : *v) s.clear();   // (the old compass too)
+      if (!deathBodies(p).empty() && reg().item("death_compass")) p.inv[0] = ItemStack("death_compass", 1);
+    } else {
+      std::vector<ItemStack> all;
+      for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm, &p.shield}) for (auto& s : *v) if (!s.empty() && s.id != "death_compass") all.push_back(s);
+      for (auto& s : all) dropItem(lv, p.realm, s, p.pos + vec3(0, 1, 0), true, 6);
+      for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm, &p.shield}) for (auto& s : *v) s.clear();
+      if (!deathBodies(p).empty() && reg().item("death_compass")) p.inv[0] = ItemStack("death_compass", 1);   // (bodies from before)
+      spawnCorpse(lv, p, src, false);
+    }
     p.xp = 0;
-  }
+  } else spawnCorpse(lv, p, src, false);
   if (!p.carrying.is_null()) dropCarried(lv, p);
   p.hang.reset(); p.climb.reset(); p.vel = vec3(0);
   if (!p.data.is_object()) p.data = json::object();
