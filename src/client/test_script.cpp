@@ -36,6 +36,8 @@
 #include "ui/osk.h"
 #include <imgui_internal.h>
 #include "sim/commands.h"
+#include "sim/endstory_int.h"
+#include "sim/rpg.h"
 #include "sim/player.h"
 #include "sim/combat.h"
 #include "render/instruments.h"
@@ -394,6 +396,13 @@ void runStep(App& a, const json& st) {
     Entity* ar = spawnArrow(*s->level, p->realm, from, glm::normalize(to - from) * st.value("speed", 30.f), nullptr, st.value("damage", 5.f), false);
     char b[160]; std::snprintf(b, sizeof b, "arrow %u shot: hp %.1f stamina %.1f blockT %.3f", ar ? ar->id : 0u, p->hp, p->stamina, p->blockT);
     DQ_LOG("test: %s", b);
+  } else if (op == "watcher" && s && p) {   // watcher{dist, mode}: one of his sightings (sim/haunt.cpp) that far ahead of you, on your level
+    const float d = st.value("dist", 6.f);
+    const vec3 at(std::floor(p->pos.x - std::sin(p->yaw) * d) + 0.5f, p->pos.y, std::floor(p->pos.z - std::cos(p->yaw) * d) + 0.5f);
+    Entity* w = es::spawnWatcher(*s->level, *p, at, st.value("mode", "far"), st.value("stare", 30.f));
+    DQ_LOG("test: watcher %u at %.1f %.1f %.1f", w ? w->id : 0u, at.x, at.y, at.z);
+  } else if (op == "dex" && p) {   // dex{entity}: that creature met, in the journal's Compendium (sim/rpg.h)
+    dexNote(*p, st.value("entity", ""), false);
   } else if (op == "hurt" && s && p) {   // strike the nearest creature of a type as the player would (tool kind, the ray from the eyes)
     std::string t = st.value("entity", ""); Entity* best = nullptr; float bd = st.value("near", 24.f);
     for (auto& e : s->level->entities()) if (e && !e->removed && e.get() != p && e->type == t && e->hp > 0 && glm::distance(e->pos, p->pos) < bd) { bd = glm::distance(e->pos, p->pos); best = e.get(); }

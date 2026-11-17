@@ -34,6 +34,9 @@ static Pic tilePic(const TileSet& ts, const std::string& name) {
   if (!name.empty() && name[0] == '@') return filePic(name.substr(1));
   auto it = ts.index.find(name);
   int t = it == ts.index.end() ? -1 : it->second;
+  // a name that is no tile but a picture of the game's own (data/textures/entity/<name>.png, e.g. the sheep's undercoat):
+  // that picture, not plain white
+  if (t < 0 && !name.empty() && dataFileExists(dataDir() / "textures" / "entity" / (name + ".png"))) return filePic(name);
   if (t < 0) { auto w = ts.index.find("white"); t = w == ts.index.end() ? 0 : w->second; }
   Pic p(TILE * TILE);
   int S = ts.size;
