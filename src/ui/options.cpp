@@ -248,13 +248,13 @@ private:
         if (kit.range("Render Scale", &s.scale, 0.4f, 1, 0.05f, pct(s.scale), D.scale, "Render fewer pixels for smoother play.", &rel)) applyLight = true;
       }
       if (kit.category("Visuals")) {
-        { int cur = clampv(s.extra.value("dreamLight", 0), 0, 2); if (kit.cycle("Lighting", &cur, {"Classic", "Dreamlike", "Dreamlike (Strong)"}, 0, "Dreamlike: a soft glow round bright things, golden light when the sun is low, soft focus (after Horizon's shaders).", 120)) { s.extra["dreamLight"] = cur; applyNow = true; } }
+        { int cur = clampv(s.extra.value("dreamLight", 0), 0, 2); if (kit.cycle("Lighting", &cur, {"Classic", "Dreamlike", "Dreamlike (Strong)"}, 0, "Dreamlike: a soft glow round bright things, golden light when the sun is low, soft focus.", 120)) { s.extra["dreamLight"] = cur; applyNow = true; } }
         if (kit.range("Brightness", &s.brightness, 0, 1, 0.05f, s.brightness <= 0 ? "Moody" : s.brightness >= 1 ? "Bright" : pct(s.brightness), D.brightness, "Lights up caves and the night. Full daylight stays the same.", &rel)) applyLight = true;
         {   // Settings::applyColourStyle; moving a slider makes it Custom (render/colour_filter_layer.cpp draws it)
           static const char* styles[] = {"vibrant", "natural", "classic", "custom"};
           int cur = 3; for (int i = 0; i < 4; i++) if (s.colourStyle == styles[i]) cur = i;
           int pick = cur;
-          if (kit.cycle("Colour Style", &pick, {"Vibrant", "Natural", "Classic", "Custom"}, 1, "Vibrant: the colours as drawn. Natural: a little softer. Classic: muted and flatter, like the early blocky games (blacks less deep on an OLED).", 120) && pick != cur) {
+          if (kit.cycle("Colour Style", &pick, {"Vibrant", "Natural", "Classic", "Custom"}, 2, "Vibrant: the colours as drawn. Natural: a little softer. Classic: muted and flatter, like the early blocky games (blacks less deep on an OLED).", 120) && pick != cur) {
             if (pick < 3) s.applyColourStyle(styles[pick]); else s.colourStyle = "custom";
             applyLight = true;
           }
