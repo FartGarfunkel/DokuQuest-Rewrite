@@ -1,5 +1,5 @@
 // sim/station_work.h — the grindstone and the stonecutter worked in the world (their scenes, ui/cinematic_table.cpp; after
-// Cinematic Interactions' GrindstoneStation and StonecutterStation). What's being worked lies on the block as its block
+// the grindstone scene's and stonecutter scene). What's being worked lies on the block as its block
 // entity, so it syncs to everyone, shows on the block (render/pile_layer.cpp) and spills when the block is broken:
 //   the grindstone, smithing table, loom, fletching and cartography tables {type:"grindwork"|..., items:[a, b], f}: what's
 //     worked and what goes into it, lying on top (their screens' two inputs), made with stationResult (pairWork* below)
@@ -80,7 +80,7 @@ vec3 campfireSpot(ivec3 at, int k);                                             
 
 // where the pieces lie, in the block's own frame (out toward the side its placer stood, or for a plain block the side
 // the first piece was laid from, kept in the entity as "f"; right across it), so everyone sees them in the same places
-// (Cinematic Interactions' RemainingLayouts / the stations' LAYOUTs)
+// (the scenes' remaining layouts / the stations' LAYOUTs)
 void stationWorkFrame(World& w, ivec3 at, vec3& out, vec3& right);
 vec3 pairLiePos(World& w, ivec3 at, int slot);
 float pairLieSize(const std::string& station, int slot);   // a flat item's width there

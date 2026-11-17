@@ -1,5 +1,5 @@
 // sim/furnace_work.h — a furnace (smoker, blast furnace) loaded by hand in the world (the furnace scene,
-// ui/cinematic_table.cpp; after Cinematic Interactions' FurnaceStation): what smelts there into its mouth, fuel under it,
+// ui/cinematic_table.cpp; after the furnace scene's): what smelts there into its mouth, fuel under it,
 // the smelted out of it — the furnace screen's own rules (smeltResult for the furnace's kind, fuelValue), on its block
 // entity {type:"furnace", items:[input, fuel, output], ...} so it burns on as ever.
 #pragma once

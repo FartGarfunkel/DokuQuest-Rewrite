@@ -287,7 +287,7 @@
 - **Skins, sorted:** the outer layer of a skin (sleeves, jacket, hat, trousers) now keeps its see-through pixels, softly blended, instead of dropping any that weren't at least half solid. Sleeves with soft shading or glassy edges show all of themselves.
 - **No more gaps at the elbows and knees:** bending an arm or leg could open a gap at the joint where you could see into the limb and through its sleeve. The two halves now overlap, so it stays whole however it bends.
 - The inner layer of a skin is always solid, so a transparent pixel there can no longer punch a hole into an arm.
-- **Slim (Alex) arms:** they're recognised far more reliably, from all four unused strips on both arms, and a classic skin with plain-coloured sleeves is no longer mistaken for slim. When someone joins your world, the arms they chose now come with their skin, so everyone sees them right.
+- **Slim arms:** they're recognised far more reliably, from all four unused strips on both arms, and a classic skin with plain-coloured sleeves is no longer mistaken for slim. When someone joins your world, the arms they chose now come with their skin, so everyone sees them right.
 - Distant terrain uses much less memory on long journeys, and the *Click to play* reminder no longer shows while you're playing on a controller.
 - Removed Herobrine.
 

@@ -1,4 +1,4 @@
-// ui/cinematic.h — the stations as scenes (Cinematic Interactions' way, ui/cinematic_table.cpp): using a crafting table
+// ui/cinematic.h — the stations as scenes (the scenes' way, ui/cinematic_table.cpp): using a crafting table
 // the camera glides from your eyes to lean over it, you work its 3 x 3 top in the world with the mouse or the pad, and
 // leaving it glides back to wherever your eyes are by then, so you take over again without a cut.
 #pragma once
@@ -49,10 +49,10 @@ std::unique_ptr<Screen> makeCinematicPairScreen(ivec3 at, const std::string& sta
 int pairSceneKind(const std::string& station);   // 6, 8.. 11; 0 none
 // the stonecutter worked in the world (kind 7): the stone on its table, the shapes it cuts into on a dial over the saw
 std::unique_ptr<Screen> makeCinematicCutScreen(ivec3 at);
-// the jukebox (kind 12, JukeboxStation): your records on a dial over it; one put in sinks into the slot and plays, the one
+// the jukebox (kind 12, jukebox scene): your records on a dial over it; one put in sinks into the slot and plays, the one
 // playing rises out and comes back to you. INSERT 1.3 s (in at INSERT_SEND 0.62), EJECT 1.15 s (out at EJECT_SEND 0.16)
 std::unique_ptr<Screen> makeCinematicJukeboxScreen(ivec3 at);
-// the campfire (kind 13, CampfireStation): sat down by it, your food set on its four spots by hand and taken back
+// the campfire (kind 13, campfire scene): sat down by it, your food set on its four spots by hand and taken back
 std::unique_ptr<Screen> makeCinematicCampfireScreen(ivec3 at);
 struct FireView { ivec3 at{0}; int hover = -1; bool placing = false; };
 bool cinematicFireView(FireView& v);
@@ -67,12 +67,12 @@ bool cinematicPairView(PairView& v);
 struct CutView { ivec3 at{0}; float viewYaw = 0; int hover = -1; double t = -1; bool all = false; float scroll = 0; ItemStack input, piece; };
 bool cinematicCutView(CutView& v);
 // each work's beats: length; contact, when the thing is made (and given); letGo, when it's lifted off toward you.
-//  the grindstone (GrindstoneStation): lifted to the wheel by 0.6, stroked to and fro, let go at 1.9, of 2.4
-//  the smithing table (SmithingStation): the material up by 0.5 and down on the gear by 0.76, pressed at 0.95 (glowing
+//  the grindstone (grindstone scene): lifted to the wheel by 0.6, stroked to and fro, let go at 1.9, of 2.4
+//  the smithing table (smithing scene): the material up by 0.5 and down on the gear by 0.76, pressed at 0.95 (glowing
 //    to PEAK 1.35, cooled by 2.15), of 2.6
-//  the loom (LoomStation): the dye taken up, six passes of the shuttle 0.2..1.85, of 2.4
+//  the loom (loom scene): the dye taken up, six passes of the shuttle 0.2..1.85, of 2.4
 //  the fletching table: flint and feather brought together by 0.6, the arrows fanned out, of 1.8
-//  the cartography table (CartographyStation): the paper laid on the map by 0.6, of 2.1
+//  the cartography table (cartography scene): the paper laid on the map by 0.6, of 2.1
 struct PairBeats { double length, contact, letGo; };
 PairBeats pairBeats(int kind);
 constexpr double GRIND_CLEAN = 1.5, SMITH_PEAK = 1.35, SMITH_COOLED = 2.15, LOOM_FROM = 0.2, LOOM_TO = 1.85;
@@ -80,7 +80,7 @@ constexpr int LOOM_PASSES = 6;
 constexpr double CUT_LENGTH = 1.05, CUT_ALL_LENGTH = 1.5, CUT_BITE = 0.26;
 // where piece k is at t into the work (lying: where it lay, sim/station_work.h pairLiePos)
 vec3 pairHeldPos(const PairView& v, int k, const vec3 lying[2]);
-// StonecutterStation's dial (shapePoint: up to 9 shapes on a half ring over the saw, 0.72 wide, 0.5 high)
+// stonecutter scene's dial (shapePoint: up to 9 shapes on a half ring over the saw, 0.72 wide, 0.5 high)
 vec3 cutDialPoint(ivec3 at, float viewYaw, int k, int count, float scroll, double clock);
 float cutDialShown(int k, int count, float scroll);   // 0..1: on the dial (fading at its ends)
 // the inscription table worked by hand (kind 16, ui/cinematic_inscribe.cpp; sim/station_work.h inscribeWork*): its board

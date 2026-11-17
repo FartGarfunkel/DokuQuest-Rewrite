@@ -1,4 +1,4 @@
-// ui/lectern_screen.cpp — a book on a lectern, read where it lies (after Cinematic Interactions' LecternStation): your
+// ui/lectern_screen.cpp — a book on a lectern, read where it lies (after the lectern scene's): your
 // eyes go to it, its pages turn over on the lectern (render/lectern_layer.cpp draws the book and the page turning), the
 // page you leave it at stays for the next reader. Turn with a click on a page, A / D, the arrows, Q / E, LB / RB, the
 // wheel; take the book; E, Esc or B to step back. Old books of the world, written books and books and quills alike.
