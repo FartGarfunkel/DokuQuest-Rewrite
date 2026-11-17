@@ -78,6 +78,9 @@ void mapMarker(Canvas& c, const std::string& kind, float x, float y, float sz, f
   c.beginPath();
   if (kind == "arrow") { c.moveTo(0, -7); c.lineTo(5.6f, 6.4f); c.lineTo(0, 3.4f); c.lineTo(-5.6f, 6.4f); c.closePath(); c.fill(col); c.stroke(ink, LW); }
   else if (kind == "dot") { c.arc(0, 0, 3.6f, 0, TAU); c.fill(col); c.stroke(ink, LW); }
+  else if (kind == "x") {   // a treasure map's X: two red strokes, edged in ink
+    for (int k = 0; k < 2; k++) { const float sx = k ? -1.f : 1.f; c.beginPath(); c.moveTo(-5.5f * sx, -5.5f); c.lineTo(5.5f * sx, 5.5f); c.stroke(ink, 4.2f); c.beginPath(); c.moveTo(-5.5f * sx, -5.5f); c.lineTo(5.5f * sx, 5.5f); c.stroke(hexRGBA("#d0281e"), 2.4f); }
+  }
   else if (kind == "home") {
     c.moveTo(-6.5f, 0.5f); c.lineTo(0, -6); c.lineTo(6.5f, 0.5f); c.lineTo(4.5f, 0.5f); c.lineTo(4.5f, 6.5f); c.lineTo(-4.5f, 6.5f); c.lineTo(-4.5f, 0.5f); c.closePath();
     c.fill(hexRGBA("#f2e6c8")); c.stroke(ink, LW);
@@ -141,6 +144,7 @@ GLuint mapMarkTexture() {
   mapMarker(k, "dungeon", cell(13), 16, 30, 0, 0);
   mapMarker(k, "rift", cell(14), 16, 30, 0, 0);
   mapMarker(k, "dungeon", cell(15), 16, 30, 0, hexRGBA("#5a8a5a"));
+  mapMarker(k, "x", cell(16), 16, 30, 0, 0);   // (a treasure map's X: sim/treasure_maps.cpp)
   auto px = k.rgba();
   t = makeTexRGBA(32 * MAP_CELLS, 32, px.data(), false, false);
   return t;

@@ -15,6 +15,7 @@
 #include "sim/stations.h"
 #include "core/tool_parts.h"
 #include "sim/creature.h"
+#include "sim/treasure_maps.h"
 #include "sim/creature_entities.h"
 #include "sim/creature_rig.h"
 #include "sim/trough.h"
@@ -667,6 +668,35 @@ int main(int argc, char** argv) {
     P->mode = saveMode; P->maxHp = 20; P->hp = 20;
     for (int y = BY + 1; y < BY + 8; y++) for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) wb.setBlock(x, y, z, AIR);
     P->pos = vec3(8.5f, BY + 1, 8.5f);
+  }
+
+  printf("[treasure maps]\n");
+  {
+    World& wt = L->world();
+    for (auto& q : P->inv) q = ItemStack();
+    P->inv[0] = ItemStack("treasure_map", 1); P->selected = 0;
+    const bool used = !use("treasure_map");
+    const ItemStack& tm = P->inv[0];
+    const bool hasX = tm.tag.is_object() && tm.tag.contains("tx") && tm.tag.contains("tz");
+    const int tx = hasX ? tm.tag["tx"].get<int>() : 0, tz = hasX ? tm.tag["tz"].get<int>() : 0;
+    const float dist = std::hypot(tx - P->pos.x, tz - P->pos.z);
+    check(used && hasX && dist > 150 && dist < 1000, "using a treasure map marks its X some way off (" + std::to_string((int)dist) + " blocks)");
+    ColumnSample cs; if (DimGenerator* g = L->gen->forDim(DIM_OVERWORLD)) g->sample(tx, tz, cs);
+    check(cs.water < 0 && cs.height > 0, "the X is on dry land");
+    check(fx.heard("blocks"), "and says which way and how far");
+    // the land at the X loaded: a chest is buried there, with loot
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 60 && !wt.isLoaded(tx, dimBase(DIM_OVERWORLD) + 100, tz);) { wt.stream({{vec3(tx, dimBase(DIM_OVERWORLD) + 100, tz), 1, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+    tick(3);
+    int chestY = -1, loot = 0;
+    for (int y = dimBase(DIM_OVERWORLD) + 255; y > dimBase(DIM_OVERWORLD); y--) if (reg().block(wt.getBlock(tx, y, tz)).key == "chest") {
+      chestY = y; if (const json* e = wt.blockEntity(tx, y, tz); e && e->contains("items")) for (auto& it : (*e)["items"]) if (!it.is_null()) loot++;
+      break;
+    }
+    const int top = wt.surfaceY(tx, tz, DIM_OVERWORLD);
+    check(chestY > 0 && loot >= 3 && top > chestY, "a chest of loot lies buried under the X (" + std::to_string(loot) + " stacks, " + std::to_string(top - chestY) + " down)");
+    const bool again = !use("treasure_map");
+    check(again && P->inv[0].tag.value("tx", 0) == tx, "using it again shows the same X");
+    for (auto& q : P->inv) q = ItemStack();
   }
 
   printf("[stacking]\n");
