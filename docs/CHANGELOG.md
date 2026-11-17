@@ -5,6 +5,14 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.32 (November 2026)
+
+**Multiplayer (the fix for joining from outside):**
+- **The router is found even when it doesn't answer the usual search:** some Wi-Fi networks never deliver the search to some computers, so the router stayed silent and nothing was forwarded. Now the game asks the router directly too, and the forward is made to the computer that's hosting.
+- **The launcher updates itself:** it had stayed at an old version (and so had the dedicated server inside it) while only the game updated. From now on an update brings the new launcher too, and it takes over the next time you start it.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.31 (November 2026)
 
 **Fonts:**

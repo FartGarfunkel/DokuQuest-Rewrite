@@ -1,6 +1,11 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.32 | November 2026
+**Multiplayer (the fix for joining from outside):**
+- **The router is found even when it doesn't answer the usual search:** some Wi-Fi networks never deliver the search to some computers, so the router stayed silent and nothing was forwarded. Now the game asks the router directly too, and the forward is made to the computer that's hosting.
+- **The launcher updates itself:** it had stayed at an old version (and so had the dedicated server inside it) while only the game updated. From now on an update brings the new launcher too, and it takes over the next time you start it.
+- Removed Herobrine.
 ## Alpha 1.0.0.31 | November 2026
 **Fonts:**
 - **Choose the game's fonts:** Options → User Interface → Text Font and Heading Font. Any .ttf or .otf you put in the fonts folder in your DokuQuest folder shows up there too. Each font is sized to match, so text keeps its size, and characters a font lacks come from the game's own. The launcher uses your choice too.
