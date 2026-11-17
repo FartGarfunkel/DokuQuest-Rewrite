@@ -40,7 +40,7 @@ static GateParts gateParts(Level& lv, const VGate& G) {
   const ivec3 sl(mid.x, G.h0 + 9, mid.z);
   if (mach(sl)) {
     r.kind = 1; r.mach = {sl};
-    const ivec3 d(mid.x, G.h0, mid.z);
+    const ivec3 d(first.x - G.inX, G.h0, first.z - G.inZ);   // (the drawbridge's hinge: beside the deck's first row, outside the way's first column)
     if (mach(d)) { r.hasDraw = true; r.draw = d; }
     return r;
   }
@@ -63,7 +63,7 @@ static void gateTurns(Level& lv, const VGate& G, const GateParts& P) {
     const ivec3 probe(mid.x, G.h0 + 1, mid.z);
     setQ(h, probe, [&](ivec3 c) { return glm::dot(vec3(c - h), in) > 0; });
   }
-  if (P.hasDraw) setQ(P.draw, P.draw + faceDir(machineFace(w, P.draw)) * 2, [&](ivec3 c) { return c.y > P.draw.y; });
+  if (P.hasDraw) setQ(P.draw, P.draw + faceDir(machineFace(w, P.draw)) + ivec3(-G.inX, 0, -G.inZ) * 2, [&](ivec3 c) { return c.y > P.draw.y; });
 }
 // the drawbridge hangs from the gatehouse on two chains (sim/strung.h), once
 static void gateChains(Level& lv, const VGate& G, const GateParts& P) {
@@ -71,14 +71,13 @@ static void gateChains(Level& lv, const VGate& G, const GateParts& P) {
   json& done = lv.info.data["gateChains"]; if (!done.is_object()) done = json::object();
   if (done.contains(G.key)) return;
   World& w = lv.world(REALM_MAIN);
-  const ivec3 out = faceDir(machineFace(w, P.draw));
-  int L = 0; while (L < 8 && w.getBlock(P.draw.x + out.x * (L + 1), P.draw.y, P.draw.z + out.z * (L + 1)) != AIR && glueMask(w, P.draw + out * (L + 1))) L++;
-  if (L < 2) return;
-  const ivec3 across = out.x ? ivec3(0, 0, 1) : ivec3(1, 0, 0);
-  for (int sd : {-1, 1}) {
-    const ivec3 deckEnd = P.draw + out * L + across * (sd * G.hw), top(P.draw.x + across.x * sd * (G.hw + 1), G.h0 + 9, P.draw.z + across.z * sd * (G.hw + 1));
-    strungAdd(lv, REALM_MAIN, deckEnd, top, true);
-  }
+  const ivec3 out(-G.inX, 0, -G.inZ), along = faceDir(machineFace(w, P.draw)), first = P.draw + along;
+  int L = 0; while (L < 8 && w.getBlock(first.x + out.x * (L + 1), first.y, first.z + out.z * (L + 1)) != AIR && glueMask(w, first + out * (L + 1))) L++;
+  if (L < 1) return;
+  const ivec3 farA = first + out * L, farB = farA + along * (2 * G.hw);
+  const ivec3 topA(G.cells.front().x, G.h0 + 9, G.cells.front().z), topB(G.cells.back().x, G.h0 + 9, G.cells.back().z);
+  strungAdd(lv, REALM_MAIN, farA, topA, true);
+  strungAdd(lv, REALM_MAIN, farB, topB, true);
   done[G.key] = true;
 }
 

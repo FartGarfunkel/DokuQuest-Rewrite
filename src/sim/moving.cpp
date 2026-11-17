@@ -289,8 +289,10 @@ public:
     return true;
   }
 
+  double clock = 0;
   void tick(Level&, double dt) override {
     attachHooks();
+    clock += dt;
     for (size_t i = 0; i < bodies.size();) {
       Body& b = bodies[i];
       if (lv.isRemote() && b.t >= b.dur) {   // (a guest: there until the host says it's down; gone after 3 s whatever)
@@ -321,7 +323,14 @@ public:
       if (st.contains("goto")) { start(realm, p, nullptr, speed); st.erase("goto"); ++it; continue; }   // (a lift called while it was moving)
       if (st.value("spin", false)) { std::string why; if (!start(realm, p, &why, speed, true)) { DQ_LOG("moving: spin %s", why.c_str()); st["spin"] = false; } ++it; continue; }
       if (!st.contains("want") || st["want"].get<bool>() == st.value("open", false)) { it = driven.erase(it); continue; }
-      if (!start(realm, p, nullptr, speed)) st.erase("want");   // (blocked: it gives up until told again)
+      // blocked (someone in the way, the other leaf still swinging): it tries again every half second for 10 s, then gives
+      // up until told again
+      if (clock < st.value("wantNext", 0.0)) { ++it; continue; }
+      if (!start(realm, p, nullptr, speed)) {
+        const int tries = st.value("wantTries", 0) + 1;
+        if (tries >= 20) { st.erase("want"); st.erase("wantTries"); st.erase("wantNext"); }
+        else { st["wantTries"] = tries; st["wantNext"] = clock + 0.5; }
+      } else { st.erase("wantTries"); st.erase("wantNext"); }
       ++it;
     }
   }

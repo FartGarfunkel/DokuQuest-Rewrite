@@ -803,16 +803,21 @@ static void townMovingGate(SP& P, const Town& v, const VStyle& st, const GateCel
     bool wet = false;
     for (int k = 2; k <= 4; k++) { const int x = G.cx - G.inX * k, z = G.cz - G.inZ * k; if (P.ground(x, z) < SEA_LEVEL) wet = true; }
     if (wet) {
+      // a drawbridge: a plank deck the road's width, rows 1..L out from the threshold, on a hinge beside its first row
+      // (just outside the west/north column of the way) facing along the wall: it turns about that line, so the deck
+      // swings up to stand in front of the gate
       const int L = 5, ox = -G.inX, oz = -G.inZ;
       std::set<std::array<int, 3>> deck;
       for (int k = 1; k <= L; k++) for (int s = -G.hw; s <= G.hw; s++) { const auto c = col(s); deck.insert({c[0] + ox * k, h0, c[1] + oz * k}); }
+      const auto hc = col(-G.hw - 1);
+      const int hx = hc[0] + ox, hz = hc[1] + oz, ax = along ? 1 : 0, az = along ? 0 : 1;   // (the hinge, and along the wall from it)
       for (auto& d : deck) {
         if (!P.in(d[0], d[2])) continue;
-        const bool first = d[0] == m[0] + ox && d[2] == m[1] + oz;
-        putGlued(d[0], d[1], d[2], PLK("spruce_planks", st.planks), 0, deck, first ? 1 << faceOf(-ox, 0, -oz) : 0);
+        const bool first = d[0] == hx + ax && d[2] == hz + az;
+        putGlued(d[0], d[1], d[2], PLK("spruce_planks", st.planks), 0, deck, first ? 1 << faceOf(-ax, 0, -az) : 0);
         for (int y = d[1] + 1; y <= d[1] + 6; y++) P.put(d[0], y, d[2], "air");
       }
-      if (P.in(m[0], m[1])) { const int i = P.put(m[0], h0, m[1], "hinge", sixWayOf(ox, 0, oz)); P.setEntity(i, json{{"type", "machine_state"}, {"glue", 1 << faceOf(ox, 0, oz)}, {"quarters", 1}, {"draw", true}}); }
+      if (P.in(hx, hz)) { const int i = P.put(hx, h0, hz, "hinge", sixWayOf(ax, 0, az)); P.setEntity(i, json{{"type", "machine_state"}, {"glue", 1 << faceOf(ax, 0, az)}, {"quarters", 1}, {"draw", true}}); }
     }
   } else {
     // two leaves, shut: the west/north one from -g to 0, the other from 1 to g, each on a hinge under its outer column

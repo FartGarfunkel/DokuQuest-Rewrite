@@ -20,6 +20,7 @@
 #include "sim/moving.h"
 #include "sim/glue.h"
 #include "sim/strung.h"
+#include "sim/lift.h"
 #include <thread>
 #include <cstdio>
 using namespace dq;
@@ -585,6 +586,27 @@ int main(int argc, char** argv) {
     P->pos = vec3(GX + 0.5f, Y + 1, GZ + 0.5f);
     check(!gateSet(*L, G, false, false), "not let down on someone standing under it");
     P->pos = vec3(GX + 0.5f, Y + 1, GZ + 6.5f);
+    // a drawbridge before it (water outside): a plank deck on a hinge at the threshold, facing out (north), lowered
+    {
+      const BlockId hingeB = reg().blockId("hinge"), plk = reg().blockId("planks"), water = reg().blockId("water");
+      for (int x = GX - 3; x <= GX + 3; x++) for (int z = GZ - 7; z <= GZ - 1; z++) { w.setBlock(x, h0 - 1, z, water); w.setBlock(x, h0, z, water); }
+      // (as a town builds it: the deck rows 1..5 out, the hinge beside row 1 outside the way's west column, facing east)
+      w.setBlock(GX - g, h0, GZ - 1, hingeB, 5);
+      for (int k = 1; k <= 5; k++) for (int s2 = -hw; s2 <= hw; s2++) w.setBlock(GX + s2, h0, GZ - k, plk);
+      for (int k = 1; k <= 5; k++) for (int s2 = -hw; s2 <= hw; s2++) { if (s2 < hw) setGlue(w, ivec3(GX + s2, h0, GZ - k), 0, true); if (k < 5) setGlue(w, ivec3(GX + s2, h0, GZ - k), 5, true); }
+      setGlue(w, ivec3(GX - g, h0, GZ - 1), 0, true);
+      const size_t chains0 = strungList(*L).size();
+      VGate D = G; D.key = "test:draw";
+      check(gateSet(*L, D, false, false), "a gate with a drawbridge: the town shuts it");
+      tick(3.0);
+      check(gateShutAt(*L, D) && w.getBlock(GX, h0 + 4, GZ - 1) == plk && w.getBlock(GX, h0, GZ - 3) != plk && w.getBlock(GX, h0 + 1, GZ) == reg().blockId("iron_bars"), "the drawbridge is raised in front of the gate, the portcullis down behind it");
+      check(strungList(*L).size() == chains0 + 2, "it hangs on two chains from the gatehouse");
+      check(gateSet(*L, D, true, false), "and opens it");
+      tick(3.0);
+      check(!gateShutAt(*L, D) && w.getBlock(GX, h0, GZ - 5) == plk && w.getBlock(GX, h0 + 3, GZ - 1) != plk, "the drawbridge is let down over the water");
+      for (int x = GX - 3; x <= GX + 3; x++) for (int z = GZ - 7; z <= GZ; z++) { w.setBlock(x, h0 - 1, z, stone); w.setBlock(x, h0, z, stone); }
+      L->info.data["strung"] = json::array();
+    }
     // a palisade's leaves on hinges under the road at the outer edges
     for (int x = GX - 8; x <= GX + 8; x++) for (int z = GZ - 8; z <= GZ + 8; z++) for (int y = Y + 1; y < Y + 14; y++) w.setBlock(x, y, z, AIR);
     finishAll(*L);
@@ -610,39 +632,58 @@ int main(int argc, char** argv) {
     finishAll(*L);
   }
 
-  printf("[a generated walled town's moving gates]\n");
-  {
-    // the nearest walled town from a few places about the world
+  printf("[generated walled towns' moving gates]\n");
+  for (const char* want : {"palisade", "stone"}) {
     const StructurePlan* town = nullptr;
-    for (int k = 0; k < 40 && !town; k++) {
-      const int x = (k % 7 - 3) * 4000, z = (k / 7 - 3) * 4000;
+    for (int k = 0; k < 160 && !town; k++) {
+      const int step = k < 40 ? 4000 : 3000, kk = k < 40 ? k : k - 40;
+      const int x = k < 40 ? (kk % 7 - 3) * step : (kk % 11 - 5) * step, z = k < 40 ? (kk / 7 - 3) * step : (kk / 11 - 5) * step;
       const StructurePlan* sp = locateStructure(*L->gen, DIM_OVERWORLD, "village", x, z, 24);
-      if (sp && sp->data.contains("wall") && sp->data.contains("gates") && !sp->data["gates"].empty()) town = sp;
+      if (sp && sp->data.contains("wall") && (sp->data["wall"].value("kind", "") == "stone") == (std::string(want) == "stone") && sp->data.contains("gates") && !sp->data["gates"].empty()) town = sp;
     }
-    check(town != nullptr, "a walled town is found");
-    if (town) {
-      const bool stone = town->data["wall"].value("kind", "") == "stone";
-      VillageRef v = villageById(*L, town->data.value("id", std::string()));
-      check(v && !v->gates.empty(), std::string("its gates (") + (stone ? "stone" : "palisade") + ")");
-      if (v && !v->gates.empty()) {
-        const VGate& G = v->gates[0];
-        P->pos = G.center + vec3(G.inX * 6, 1, G.inZ * 6);
-        for (double t0 = nowSeconds(); nowSeconds() - t0 < 120;) {
-          w.stream({{P->pos, 3, false}}, 20);
-          bool all = true; for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) if (!w.isLoaded((int)G.center.x + dx * 16, (int)G.center.y, (int)G.center.z + dz * 16)) all = false;
-          if (all) break;
-          std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    check(town != nullptr, std::string("a town with a ") + want + " wall is found");
+    if (!town) continue;
+    const bool stone = std::string(want) == "stone";
+    VillageRef v = villageById(*L, town->data.value("id", std::string()));
+    check(v && !v->gates.empty(), "its gates");
+    if (!v || v->gates.empty()) continue;
+    const VGate& G = v->gates[0];
+    P->pos = G.center + vec3(G.inX * 6, 1, G.inZ * 6);
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 120;) {
+      w.stream({{P->pos, 3, false}}, 20);
+      bool all = true; for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) if (!w.isLoaded((int)G.center.x + dx * 16, (int)G.center.y, (int)G.center.z + dz * 16)) all = false;
+      if (all) break;
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    int machines = 0; for (int dx = -5; dx <= 5; dx++) for (int dz = -5; dz <= 5; dz++) for (int y = G.h0 - 1; y <= G.h0 + 11; y++) if (isMachine(w.getBlock((int)G.center.x + dx, y, (int)G.center.z + dz))) machines++;
+    check(machines >= (stone ? 1 : 2), std::string("the ") + want + " gate has its " + (stone ? "slider" : "hinges") + " (" + std::to_string(machines) + ")");
+    const bool shut0 = gateShutAt(*L, G);
+    if (VillagerSystem* VS = vsys(*L)) VS->gateManual[G.key] = 600;   // (worked by hand: the town leaves it be meanwhile)
+    check(gateSet(*L, G, shut0, false), std::string("the town ") + (shut0 ? "opens" : "shuts") + " it");
+    for (int k = 0; k < 100; k++) L->tick(0.05);
+    check(gateShutAt(*L, G) != shut0, "and it moves");
+    check(gateSet(*L, G, !shut0, false), "and back");
+    for (int k = 0; k < 100; k++) L->tick(0.05);
+    check(gateShutAt(*L, G) == shut0, "the way it was");
+    printf("  (%s: %s at %.0f %.0f %.0f)\n", town->name.c_str(), G.name.c_str(), G.center.x, G.center.y, G.center.z);
+    if (stone) {   // a corner tower's lift
+      const int x0 = town->data["wall"].value("x0", 0), z0 = town->data["wall"].value("z0", 0);
+      P->pos = vec3(x0 + 0.5f, G.h0 + 1, z0 + 0.5f);
+      for (double t0 = nowSeconds(); nowSeconds() - t0 < 120 && !w.isLoaded(x0, G.h0, z0);) { w.stream({{P->pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+      for (int k = 0; k < 10; k++) { w.stream({{P->pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+      ivec3 sl(0); bool found = false;
+      for (int dx = -3; dx <= 3 && !found; dx++) for (int dz = -3; dz <= 3 && !found; dz++) for (int y = G.h0 - 40; y <= G.h0 + 40 && !found; y++)
+        if (reg().block(w.getBlock(x0 + dx, y, z0 + dz)).str("machine") == "slider") { sl = ivec3(x0 + dx, y, z0 + dz); found = true; }
+      check(found, "a corner tower has a lift (its slider)");
+      if (found) {
+        Lift lf; const bool isLift = liftOfSlider(w, sl, lf);
+        check(isLift && lf.stops.size() == 2, "on a rail with a stop at the bottom and the top (" + std::to_string(lf.stops.size()) + " stops)");
+        if (isLift && lf.stops.size() == 2) {
+          liftCall(*L, REALM_MAIN, sl, lf.stops.back().second);
+          for (int k = 0; k < 120; k++) L->tick(0.05);
+          check(machineState(w, sl).value("at", 0) == lf.stops.back().second, "called, it rises to the wall walk");
+          liftCall(*L, REALM_MAIN, sl, 0); for (int k = 0; k < 120; k++) L->tick(0.05);
         }
-        int machines = 0; for (int dx = -5; dx <= 5; dx++) for (int dz = -5; dz <= 5; dz++) for (int y = G.h0 - 1; y <= G.h0 + 11; y++) if (isMachine(w.getBlock((int)G.center.x + dx, y, (int)G.center.z + dz))) machines++;
-        check(machines >= (stone ? 1 : 2), "the gate has its hinges or slider in the wall (" + std::to_string(machines) + ")");
-        const bool shut0 = gateShutAt(*L, G);
-        check(gateSet(*L, G, shut0, false), std::string("the town ") + (shut0 ? "opens" : "shuts") + " it");
-        for (int k = 0; k < 100; k++) L->tick(0.05);
-        check(gateShutAt(*L, G) != shut0, "and it moves");
-        check(gateSet(*L, G, !shut0, false), "and back");
-        for (int k = 0; k < 100; k++) L->tick(0.05);
-        check(gateShutAt(*L, G) == shut0, "the way it was");
-        printf("  (the town: %s, %s gate at %.0f %.0f %.0f)\n", town->name.c_str(), G.name.c_str(), G.center.x, G.center.y, G.center.z);
       }
     }
   }
