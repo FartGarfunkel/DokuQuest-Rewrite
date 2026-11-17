@@ -237,6 +237,16 @@ void drawServerDashboard(Launcher& L, DedicatedServer& srv, const ServerStatus& 
       }
       if (tried) { ImGui::SameLine(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "(couldn't: search \"what is my IP\")"); }
     }
+    {   // this computer's own IPv6 address, if it has one: friends can join that directly
+      static std::string six; static double sixAt = -100;
+      if (ImGui::GetTime() - sixAt > 10) { sixAt = ImGui::GetTime(); six = net::internetAddress6(); }
+      if (!six.empty()) {
+        const std::string full6 = "[" + six + "]:" + std::to_string(port);
+        ImGui::AlignTextToFramePadding(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "Over IPv6"); ImGui::SameLine();
+        ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_FROST), "%s", full6.c_str()); ImGui::SameLine();
+        if (ImGui::SmallButton("Copy##inet6")) ImGui::SetClipboardText(full6.c_str());
+      }
+    }
     if (std::string v = net::vpnAdvice(port); !v.empty()) { ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + right - 24); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_EMBER), "%s", v.c_str()); ImGui::PopTextWrapPos(); }
     const std::string fw = "sudo firewall-cmd --permanent --add-port=" + std::to_string(port) + "/udp --add-port=" + std::to_string(port) + "/tcp && sudo firewall-cmd --reload";
     ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "Router: forward %d to this computer (TCP; UDP too if you like). openSUSE firewall: %s", port, fw.c_str()); ImGui::SameLine();

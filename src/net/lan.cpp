@@ -18,6 +18,8 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
+#include <unistd.h>
 #endif
 
 namespace dq::net {
@@ -266,6 +268,36 @@ std::string internetAddress() {
   while (!a.empty() && (a.back() == '\n' || a.back() == '\r' || a.back() == ' ')) a.pop_back();
   for (char c : a) if (!(std::isdigit((unsigned char)c) || c == '.' || c == ':' || std::isxdigit((unsigned char)c))) return "";
   return a.size() >= 7 && a.size() <= 45 ? a : "";
+}
+
+// this device's own public IPv6 address, if it has one (a phone on mobile data usually does; many homes don't): a UDP
+// "connect" toward a public IPv6 address sends nothing, it only picks the route, and the socket's own address is then the
+// one the internet would see. Only global addresses (2000::/3) count.
+std::string internetAddress6() {
+  if (!enetInit()) return "";
+  std::string out;
+#ifdef _WIN32
+  SOCKET s = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+  const bool ok = s != INVALID_SOCKET;
+#else
+  int s = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+  const bool ok = s >= 0;
+#endif
+  if (ok) {
+    sockaddr_in6 to{}; to.sin6_family = AF_INET6; to.sin6_port = htons(53);
+    inet_pton(AF_INET6, "2001:4860:4860::8888", &to.sin6_addr);
+    sockaddr_in6 me{}; socklen_t ml = sizeof me;
+    if (::connect(s, (sockaddr*)&to, sizeof to) == 0 && ::getsockname(s, (sockaddr*)&me, &ml) == 0 && (me.sin6_addr.s6_addr[0] & 0xE0) == 0x20) {
+      char b[INET6_ADDRSTRLEN] = ""; inet_ntop(AF_INET6, &me.sin6_addr, b, sizeof b); out = b;
+    }
+#ifdef _WIN32
+    closesocket(s);
+#else
+    ::close(s);
+#endif
+  }
+  enetDone();
+  return out;
 }
 
 } // namespace dq::net

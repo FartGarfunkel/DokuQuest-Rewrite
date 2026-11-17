@@ -108,9 +108,10 @@ bool NetClient::begin(const JoinOptions& o) {
   host->intercept = hairpinIntercept;
   host->mtu = 1200;   // fits inside VPN tunnels and PPPoE links without being cut in pieces on the way (ENet: 1392)
   ENetAddress a;
-  if (enet_address_set_host(&a, h.c_str()) != 0) { err = "Could not find " + h; st = State::Failed; return false; }
+  // an IPv6 address (or a name with only IPv6 addresses): ENet's UDP can't reach it, the TCP connection can (net/tcp_relay.cpp)
+  if (enet_address_set_host(&a, h.c_str()) != 0) { opts.tcpOnly = true; udpNowhere = true; DQ_LOG("net: %s has no IPv4 address (IPv6, or a name not found yet): trying TCP", h.c_str()); }
   a.port = (enet_uint16)port;
-  if (o.testUdpLost || o.tcpOnly) { enet_address_set_host_ip(&a, "127.0.0.1"); a.port = 9; }   // (UDP goes nowhere: the discard port)
+  if (o.testUdpLost || opts.tcpOnly) { enet_address_set_host_ip(&a, "127.0.0.1"); a.port = 9; }   // (UDP goes nowhere: the discard port)
   peer = enet_host_connect(host, &a, CHANNELS, 0);
   if (!peer) { err = "Could not connect to that address"; st = State::Failed; return false; }
   enet_peer_timeout(peer, 0, 10000, 30000);
@@ -185,12 +186,13 @@ NetClient::State NetClient::poll() {
   const double now = nowSeconds();
   // no answer over UDP: some home connections let TCP in from outside but drop UDP. Try TCP alongside (the UDP attempt
   // goes on too: a host slow to answer over UDP still gets through that way); whichever answers first is kept.
-  if (st == State::Connecting && !triedTcp && opts.tcpAfter >= 0 && (opts.tcpOnly || now - startedAt > opts.tcpAfter)) {
+  if (st == State::Connecting && !triedTcp && (opts.tcpAfter >= 0 || opts.tcpOnly) && (opts.tcpOnly || now - startedAt > opts.tcpAfter)) {
     triedTcp = true;
     std::string h; int pt = 0;
     if (parseAddress(opts.address, h, pt)) {
       auto r = std::make_unique<TcpRelayClient>();
-      if (r->start(h, (u16)pt)) {
+      lookupFailed = !r->start(h, (u16)pt);
+      if (!lookupFailed) {
         host2 = enet_host_create(nullptr, 1, CHANNELS, 0, 0);
         if (host2) {
           host2->mtu = 1200;
@@ -202,6 +204,7 @@ NetClient::State NetClient::poll() {
       }
     }
   }
+  if (st == State::Connecting && udpNowhere && triedTcp && lookupFailed) { std::string hh; int pp; parseAddress(opts.address, hh, pp); err = "Could not find " + hh; st = State::Failed; }
   if (st == State::Connecting && now - startedAt > opts.timeout) {
     std::string h; int pt = 0; parseAddress(opts.address, h, pt);
     // a home-network address (192.168.x.x, 10.x.x.x, 172.16-31.x.x) only reaches a computer in that same home: from

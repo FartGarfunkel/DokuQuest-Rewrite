@@ -8,6 +8,7 @@
 #include "net/protocol.h"
 #include "net/lan.h"
 #include "net/tcp_relay.h"
+#include "net/portmap.h"
 #include "sim/level.h"
 #include "sim/player.h"
 #include <unordered_map>
@@ -24,6 +25,7 @@ struct HostOptions {
   std::string motd;                        // said to each player soon after they arrive
   std::string password;                    // "" = anyone may join
   bool lan = true;                         // announce on the home network
+  bool upnp = true;                        // ask the router to forward the port here (net/portmap.h; off in tests)
   int viewDistance = 8;                    // chunks; a player's own setting is capped to this
   bool pvp = true;
   bool dedicated = true;                   // false = "Open to LAN" (the host plays in the same level)
@@ -110,6 +112,7 @@ private:
   std::set<int> watched;
   LanAnnouncer lanAnn;
   TcpRelayServer tcpRelay;   // joins carried over TCP on the same port number (net/tcp_relay.h)
+  PortMapper portMap;        // the router asked to forward the port here (net/portmap.h)
 public:
   std::string tcpRealAddress(u16 loopPort) { return tcpRelay.realAddress(loopPort); }
 private:

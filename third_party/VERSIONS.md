@@ -10,5 +10,6 @@
 | stb (image, image_write, vorbis, truetype) | master | MIT / public domain |
 | GLM | 1.0.1 | MIT |
 | miniz | 3.0.2 | MIT |
+| miniupnpc | 2.3.5 (miniupnpc_2_3_5) | BSD-3-Clause |
 | nlohmann/json | v3.11.3 | MIT |
 Fonts in assets/fonts: Pixelify Sans, Jersey 15 (SIL Open Font License, see the OFL files).

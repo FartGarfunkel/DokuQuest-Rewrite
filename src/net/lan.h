@@ -46,6 +46,7 @@ bool firewallAllowSelf(std::string* err = nullptr);   // Windows: let this progr
                                                        // an administrator's Yes; blocks up to ~20 s, so off the main thread)
 std::string vpnOn();          // the name of a VPN that's on ("NordVPN", "Proton VPN", or the adapter's name), "" if none
 std::string vpnAdvice(int port);   // what to do about it for friends joining over the internet ("" when no VPN is on)
+std::string internetAddress6();   // this device's public IPv6 address ("" if it has none): friends join it as [address]:port
 std::string localAddress();   // this computer's address on the home network ("" if it has none), for "open on <address>:<port>"
 
 } // namespace dq::net

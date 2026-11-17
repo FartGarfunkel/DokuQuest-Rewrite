@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(DokuQuest VERSION 1.0.0 LANGUAGES C CXX)
 # DokuQuest C++ — game client, launcher (with dedicated server + Mod Studio) and headless server.
-set(DQ_VERSION "1.0.0-alpha.29" CACHE STRING "Full game version shown in game and launcher")
+set(DQ_VERSION "1.0.0-alpha.30" CACHE STRING "Full game version shown in game and launcher")
 # the launcher's own version: raised only when the launcher itself changes. Updates install just the game (the "-game"
 # packages); the whole package, launcher and all, only when this is newer than the running launcher's (launcher/updater.cpp)
 set(DQ_LAUNCHER_VERSION "1.0.0-alpha.21")
@@ -31,7 +31,7 @@ add_library(dqcore STATIC ${DQ_CORE_SRC})
 target_include_directories(dqcore PUBLIC src)
 target_compile_definitions(dqcore PUBLIC DQ_VERSION="${DQ_VERSION}" DQ_LAUNCHER_VERSION="${DQ_LAUNCHER_VERSION}")
 target_compile_options(dqcore PRIVATE ${DQ_WARN})
-target_link_libraries(dqcore PUBLIC dq_headers miniz enet quickjs Threads::Threads ${CMAKE_DL_LIBS})
+target_link_libraries(dqcore PUBLIC dq_headers miniz enet miniupnpc quickjs Threads::Threads ${CMAKE_DL_LIBS})
 
 file(GLOB_RECURSE DQ_CLIENT_SRC CONFIGURE_DEPENDS
   src/render/*.cpp src/audio/*.cpp src/ui/*.cpp src/input/*.cpp src/assets/*.cpp src/client/*.cpp)

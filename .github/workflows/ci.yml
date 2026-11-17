@@ -38,6 +38,7 @@ jobs:
             third_party/glm
             third_party/miniz
             third_party/json
+            third_party/miniupnpc
             third_party/vulkan
           key: deps-${{ runner.os }}-${{ hashFiles('tools/fetch_deps.sh') }}
       # compiler cache: a push that touches a few files rebuilds only those (the cold build is ~12 min)

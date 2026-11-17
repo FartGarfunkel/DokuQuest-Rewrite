@@ -19,7 +19,8 @@ std::shared_ptr<net::NetClient> netJoinBegin(App& app, const std::string& addres
 bool netJoinFinish(App& app, std::shared_ptr<net::NetClient> nc, const std::string& address);
 
 // Pause menu → Open to LAN: serve the open single-player world (the world keeps running while the menu is up).
-struct LanOpenOptions { int port = 25580; int maxPlayers = 8; std::string motd, password; bool announce = true, pvp = true; int viewDistance = 12; };
+struct LanOpenOptions { int port = 25580; int maxPlayers = 8; std::string motd, password; bool announce = true, pvp = true; int viewDistance = 12;
+                        bool internet = true; };   // internet: ask the router to let friends in from outside (net/portmap.h)
 bool openToLan(App& app, const LanOpenOptions& o = {}, std::string* err = nullptr);
 void closeLan(App& app);
 struct LanStatus { bool open = false; int port = 0; std::string address; std::vector<std::string> players; };
