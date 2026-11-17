@@ -33,13 +33,13 @@ Herobrine and always end with "Removed Herobrine."; no phantoms, ever.
 
 ## Build & test
 ```
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && ninja -C build -j2
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && ninja -C build
 # headless run (Xvfb + Mesa): SDL here only has EGL, so force it
 Xvfb :99 -screen 0 1280x720x24 & export DISPLAY=:99 SDL_VIDEO_X11_FORCE_EGL=1
 ./build/dokuquest --userdir /tmp/ud --create Test --seed hello --smoke-frames 300 --smoke-shot /tmp/shot.png
 ./build/dokuquest --renderer legacy ...   # the GL 3.3 path
 ```
-Only 2 CPU cores: compile single files while iterating (`ninja -C build CMakeFiles/dqcore.dir/src/gen/worldgen.cpp.o`).
+The dev PC has 12 threads (Ryzen 5 7600, 46 GB): build with all of them (plain `ninja`), and run independent test suites in parallel. To check one file quickly (`ninja -C build CMakeFiles/dqcore.dir/src/gen/worldgen.cpp.o`).
 Third-party code is in `third_party/` (SDL2, imgui, glad, miniaudio, enet, quickjs-ng, stb, glm, miniz,
 nlohmann json) — `tools/fetch_deps.sh` fetches it on a clean checkout.
 
