@@ -88,7 +88,8 @@ bool pathClear(const World& w, const Motion& m, const Piece& p, std::vector<ivec
       if (in.count(t) || t == m.machine || !checked.insert(t).second) continue;
       const BlockId id = w.getBlock(t.x, t.y, t.z);
       if (!id) continue;
-      if (reg().tReplaceable[id] && !reg().tLiquid[id]) { if (breakable) breakable->push_back(t); continue; }   // (grass, flowers, snow: broken as it goes; water and lava stop it, and stay)
+      if (reg().tLiquid[id] == 1 || reg().tLiquid[id] == 3) continue;   // (water: it goes through, as a gate by a river must; lava stops it)
+      if (reg().tReplaceable[id] && !reg().tLiquid[id]) { if (breakable) breakable->push_back(t); continue; }   // (grass, flowers, snow: broken as it goes)
       if (blockedAt) *blockedAt = t;
       return false;
     }

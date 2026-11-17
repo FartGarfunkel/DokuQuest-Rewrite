@@ -110,6 +110,9 @@ private:
   std::set<int> watched;
   LanAnnouncer lanAnn;
   TcpRelayServer tcpRelay;   // joins carried over TCP on the same port number (net/tcp_relay.h)
+public:
+  std::string tcpRealAddress(u16 loopPort) { return tcpRelay.realAddress(loopPort); }
+private:
   double t = 0, tEnts = 0, tEnv = 0, tChunks = 0, tSave = 0;
   std::string storySig; double storyAt = -1e9;   // (sendEnv: the story's state, sent when it changes)
   bool logging = false;

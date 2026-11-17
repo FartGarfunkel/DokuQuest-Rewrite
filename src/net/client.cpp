@@ -110,7 +110,7 @@ bool NetClient::begin(const JoinOptions& o) {
   ENetAddress a;
   if (enet_address_set_host(&a, h.c_str()) != 0) { err = "Could not find " + h; st = State::Failed; return false; }
   a.port = (enet_uint16)port;
-  if (o.testUdpLost) { enet_address_set_host_ip(&a, "127.0.0.1"); a.port = 9; }   // (the discard port: nothing ever answers)
+  if (o.testUdpLost || o.tcpOnly) { enet_address_set_host_ip(&a, "127.0.0.1"); a.port = 9; }   // (UDP goes nowhere: the discard port)   // (the discard port: nothing ever answers)
   peer = enet_host_connect(host, &a, CHANNELS, 0);
   if (!peer) { err = "Could not connect to that address"; st = State::Failed; return false; }
   enet_peer_timeout(peer, 0, 10000, 30000);
@@ -129,30 +129,33 @@ float NetClient::progress() const {
 }
 
 void NetClient::dropTcpTry() {
-  if (host2) { if (peer2) enet_peer_reset(peer2); enet_host_destroy(host2); host2 = nullptr; peer2 = nullptr; tcp.reset(); }
+  if (host2) { if (peer2) enet_peer_disconnect_now(peer2, BYE_NORMAL); enet_host_destroy(host2); host2 = nullptr; peer2 = nullptr; tcp.reset(); }
 }
 
 NetClient::State NetClient::poll() {
   if (!host || st == State::Ready || st == State::Failed || st == State::Closed) return st;
   ENetEvent ev;
-  // the TCP attempt, while the UDP one goes on: the first to get through is kept, the other let go
-  if (host2) {
+  // the TCP attempt, while the UDP one goes on: the first to get through is kept, the other let go (UDP when both are:
+  // it's the better way; the UDP side is looked at first, below, every time)
+  auto serviceTcpTry = [&] {
+    if (!host2) return;
     bool won = false;
     while (host2 && enet_host_service(host2, &ev, 0) > 0) {
       if (ev.type == ENET_EVENT_TYPE_CONNECT) { won = true; break; }
       if (ev.type == ENET_EVENT_TYPE_RECEIVE) enet_packet_destroy(ev.packet);
-      if (ev.type == ENET_EVENT_TYPE_DISCONNECT) { DQ_LOG("net: the TCP attempt was turned away"); dropTcpTry(); break; }
+      if (ev.type == ENET_EVENT_TYPE_DISCONNECT) { DQ_LOG("net: the TCP attempt was turned away"); dropTcpTry(); return; }
     }
-    if (won) {
-      if (peer) enet_peer_reset(peer);
+    if (won && st == State::Connecting) {
+      if (peer) enet_peer_disconnect_now(peer, BYE_NORMAL);   // (tells the host at once if the UDP side got half way)
       enet_host_destroy(host);
       host = host2; peer = peer2; host2 = nullptr; peer2 = nullptr;
       DQ_LOG("net: the host answered over TCP: going on that way");
       heardAt = nowSeconds();
       st = State::Joining;
       send(peer, HELLO, {{"proto", PROTO}, {"version", DQ_VERSION}, {"name", opts.name}, {"skin", opts.skin}, {"skinData", opts.skinData}, {"password", opts.password}, {"R", opts.viewDistance}, {"sub", subMode}});
-    } else if (tcp && tcp->failed() && host2) { DQ_LOG("net: TCP got no answer either"); dropTcpTry(); }
-  }
+    } else if (won) dropTcpTry();
+    else if (tcp && tcp->failed() && host2) { DQ_LOG("net: TCP got no answer either"); dropTcpTry(); }
+  };
   while (host && enet_host_service(host, &ev, 0) > 0) {
     heardAt = nowSeconds();   // anything at all from the host: it's there, and the world is still coming
     if (ev.type == ENET_EVENT_TYPE_CONNECT) {
@@ -178,6 +181,7 @@ NetClient::State NetClient::poll() {
       st = State::Failed; peer = nullptr; break;
     }
   }
+  if (st == State::Connecting) serviceTcpTry();
   const double now = nowSeconds();
   // no answer over UDP: some home connections let TCP in from outside but drop UDP. Try TCP alongside (the UDP attempt
   // goes on too: a host slow to answer over UDP still gets through that way); whichever answers first is kept.

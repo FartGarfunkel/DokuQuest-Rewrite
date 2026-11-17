@@ -56,7 +56,9 @@ bool TcpRelayServer::start(u16 tcpPort, u16 gamePort) {
   stop();
   ENetSocket s = enet_socket_create(ENET_SOCKET_TYPE_STREAM);
   if (s == ENET_SOCKET_NULL) return false;
-  enet_socket_set_option(s, ENET_SOCKOPT_REUSEADDR, 1);
+#ifndef _WIN32
+  enet_socket_set_option(s, ENET_SOCKOPT_REUSEADDR, 1);   // (on Windows it would let us share a port another program holds)
+#endif
   ENetAddress a; a.host = ENET_HOST_ANY; a.port = tcpPort;
   if (enet_socket_bind(s, &a) < 0 || enet_socket_listen(s, 16) < 0) { enet_socket_destroy(s); return false; }
   enet_socket_set_option(s, ENET_SOCKOPT_NONBLOCK, 1);
@@ -132,6 +134,8 @@ void TcpRelayServer::run() {
 // ------------------------------------------------------------------ the joining game's side
 bool TcpRelayClient::start(const std::string& host, u16 port) {
   stop();
+  ENetAddress t; if (enet_address_set_host(&t, host.c_str()) != 0) return false;   // (looked up here: a slow lookup in the thread would hold up leaving)
+  targetHost = t.host; targetPort = port;
   ENetSocket u = loopUdp(&local);
   if (u == ENET_SOCKET_NULL) return false;
   udp = (intptr_t)u; running = true; dead = false;
@@ -144,8 +148,7 @@ void TcpRelayClient::stop() {
   if (udp != -1) { enet_socket_destroy(S(udp)); udp = -1; }
 }
 void TcpRelayClient::run(std::string host, u16 port) {
-  ENetAddress at; at.port = port;
-  if (enet_address_set_host(&at, host.c_str()) != 0) { dead = true; return; }
+  ENetAddress at; at.host = targetHost; at.port = targetPort;
   ENetSocket t = enet_socket_create(ENET_SOCKET_TYPE_STREAM);
   if (t == ENET_SOCKET_NULL) { dead = true; return; }
   // connect without blocking, a little at a time, so leaving the join never waits on it (a dropped handshake would

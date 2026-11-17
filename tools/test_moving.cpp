@@ -246,10 +246,16 @@ int main(int argc, char** argv) {
     check(startMove(*L, REALM_MAIN, S, nullptr), "a slider set further while out still comes back");
     tick(3.0);
     check(!machineOpen(w, S) && w.getBlock(S.x + 1, S.y, S.z) == planks && w.getBlock(S.x + 2, S.y, S.z) == AIR, "back against the slider");
-    // water in its way: it doesn't go, and the water stays
+    // water in its way: it goes through (a gate by a river); lava stops it
     w.setBlock(S.x + 3, S.y, S.z, water);
     machineState(w, S)["distance"] = 3;
-    check(!startMove(*L, REALM_MAIN, S, nullptr) && w.getBlock(S.x + 3, S.y, S.z) == water && w.getBlock(S.x + 1, S.y, S.z) == planks, "water in the way stops it, and stays");
+    check(startMove(*L, REALM_MAIN, S, nullptr), "water in the way doesn't stop it");
+    tick(3.0);
+    check(machineOpen(w, S) && w.getBlock(S.x + 4, S.y, S.z) == planks, "it slides on through the water");
+    startMove(*L, REALM_MAIN, S, nullptr); tick(3.0);
+    for (int x = S.x + 2; x <= S.x + 6; x++) w.setBlock(x, S.y, S.z, AIR);
+    w.setBlock(S.x + 3, S.y, S.z, reg().blockId("lava"));
+    check(!startMove(*L, REALM_MAIN, S, nullptr) && w.getBlock(S.x + 1, S.y, S.z) == planks, "lava in the way stops it");
     w.setBlock(S.x + 3, S.y, S.z, AIR);
     // a guest's use reaches the host as an action: the host moves it
     check(!bus.emit("netAction", json::array({P->name, "movingUse", json::array({P->name, "", S.x, S.y, S.z, 2})})) && !movingBodiesList(*L).empty(), "a guest's use, sent to the host, starts it there");

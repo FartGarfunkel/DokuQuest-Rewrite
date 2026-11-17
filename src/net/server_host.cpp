@@ -39,6 +39,7 @@ int ENET_CALLBACK knockIntercept(ENetHost* h, ENetEvent*) {
     if (pe.state != ENET_PEER_STATE_DISCONNECTED && pe.address.host == h->receivedAddress.host && pe.address.port == h->receivedAddress.port) return 0;
   }
   char ip[64] = "?"; enet_address_get_host_ip(&h->receivedAddress, ip, sizeof ip);
+  if (std::string(ip) == "127.0.0.1" && !sh->tcpRealAddress(h->receivedAddress.port).empty()) return 0;   // (a TCP player's relay: it said so itself)
   const std::string who = std::string(ip) + ":" + std::to_string(h->receivedAddress.port);
   const double now = nowSeconds();
   bool say = false;

@@ -42,6 +42,7 @@ struct RecFx : LevelFx {
 struct StationProbe { std::atomic<bool> armed{false}, listed{false}; std::atomic<int> x{0}, y{0}, z{0}, fuel{-1}; std::atomic<double> pump{0}; };
 static StationProbe g_st;
 // a slider the host moves (the moving-parts sync checks): 1 = build it and start it, then 2
+static std::atomic<bool> g_freeze{false};   // the server's next tick stalls 8 s (a busy host: start-up, an autosave)
 static struct { std::atomic<int> stage{0}; int x = 0, y = 0, z = 0; std::atomic<bool> started{false}; } g_mv;
 struct Client {
   std::string name;
@@ -174,6 +175,7 @@ int main(int argc, char** argv) {
   // the host's weather, read on the server thread (weather sync checks below)
   static std::atomic<int> hostKind{0}; static std::atomic<float> hostWind{0};
   srv.onTick = [](Level& lv) {
+    if (g_freeze.exchange(false)) std::this_thread::sleep_for(std::chrono::seconds(8));
     if (g_mv.stage == 1) {
       World& w = lv.world(REALM_MAIN);
       const int x = g_mv.x, y = g_mv.y, z = g_mv.z;
@@ -336,6 +338,14 @@ int main(int argc, char** argv) {
     check(ok2 && U.overTcp(), strFormat("UDP lost on the way: the join goes through over TCP (%.1f s)", nowSeconds() - t0));
     if (ok2) check(pump(4, [&] { return B.ghost("player", "Uma") != nullptr; }), "and she plays like anyone else");
     U.close();
+    // a host that stalls for 8 s while someone joins: UDP and TCP both answer when it wakes; UDP is kept
+    net::NetClient V; net::JoinOptions vo; vo.address = addr; vo.name = "Vic";
+    V.begin(vo); g_freeze = true;
+    while (V.state() == net::NetClient::State::Connecting || V.state() == net::NetClient::State::Joining) { V.poll(); std::this_thread::sleep_for(std::chrono::milliseconds(5)); }
+    check(V.state() == net::NetClient::State::Ready && !V.overTcp(), "a host busy for 8 s: the join still goes through, and stays on UDP");
+    int vics = 0; pump(3, [&] { vics = 0; for (auto& e : B.lv->entities()) if (!e->removed && e->type == "player" && static_cast<Player*>(e.get())->name == "Vic") vics++; return vics > 0; });
+    check(vics == 1, "one of them, not two (" + std::to_string(vics) + ")");
+    V.close();
   }
 
   // ---- chat & commands ----

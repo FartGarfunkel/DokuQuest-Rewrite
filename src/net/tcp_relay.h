@@ -39,6 +39,7 @@ private:
   void run(std::string host, u16 port);
   std::thread th; std::atomic<bool> running{false}, dead{false};
   intptr_t udp = -1; u16 local = 0;
+  u32 targetHost = 0; u16 targetPort = 0;   // (where to, looked up by start())
 };
 
 } // namespace dq::net
