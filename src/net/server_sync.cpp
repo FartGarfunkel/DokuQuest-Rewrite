@@ -32,7 +32,8 @@ static std::string stacksSig(const std::vector<ItemStack>& v) {
 }
 std::string playerInvSig(const Player& p) {
   return stacksSig(p.inv) + "|" + stacksSig(p.armor) + "|" + stacksSig(p.offhand) + "|" + stacksSig(p.back) + stacksSig(p.hook) + stacksSig(p.charm) +
-         stacksSig(p.cape) + stacksSig(p.quiver) + stacksSig(p.shield) + "|" + std::to_string(p.xp) + "|" + std::to_string(p.level);
+         stacksSig(p.cape) + stacksSig(p.quiver) + stacksSig(p.shield) + "|" + std::to_string(p.xp) + "|" + std::to_string(p.level) +
+         (p.carrying.is_object() ? "|ca" + std::to_string(std::hash<std::string>()(p.carrying.dump())) : "");   // (an animal or a chest in the arms)
 }
 static json stacksJson(const std::vector<ItemStack>& v) { json a = json::array(); for (auto& s : v) a.push_back(s.toJson()); return a; }
 static void stacksFrom(const json& a, std::vector<ItemStack>& v) { if (!a.is_array()) return; for (size_t i = 0; i < v.size(); i++) v[i] = i < a.size() ? ItemStack::fromJson(a[i]) : ItemStack(); }
@@ -53,6 +54,7 @@ void applyPlayerInv(Player& p, const json& j) {
   if (j.contains("sh")) stacksFrom(j["sh"], p.shield);
   p.selected = clampv(j.value("sel", p.selected), 0, 8);
   p.xp = j.value("xp", p.xp); p.level = j.value("lv", p.level);
+  if (j.contains("ca")) p.carrying = j["ca"].is_object() ? j["ca"] : json();   // (only the host sends it: what it lifted into a joined player's arms)
 }
 
 // ---- what a player's game sees of an entity (netsync.js netSnap) ----

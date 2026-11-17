@@ -748,7 +748,7 @@ void ServerHost::diffMirrors() {
     else if (pl.hp > p.aHp + 0.01f) s["hp"] = pl.hp;
     p.aHp = pl.hp;
     std::string sig = playerInvSig(pl);
-    if (sig != p.aInv) { s["inv"] = playerInvJson(pl); s["seq"] = ++p.invSeq; p.aInv = sig; p.aXp = pl.xp; p.aLevel = pl.level; }
+    if (sig != p.aInv) { s["inv"] = playerInvJson(pl); s["inv"]["ca"] = pl.carrying; s["seq"] = ++p.invSeq; p.aInv = sig; p.aXp = pl.xp; p.aLevel = pl.level; }   // (ca: what the host lifted into their arms)
     if (pl.mode != p.aMode) { s["md"] = pl.mode; p.aMode = pl.mode; }
     if (pl.xp != p.aXp || pl.level != p.aLevel) { s["xp"] = pl.xp; s["lv"] = pl.level; p.aXp = pl.xp; p.aLevel = pl.level; }
     if (pl.flying != p.aFly) { s["fl"] = pl.flying; p.aFly = pl.flying; }

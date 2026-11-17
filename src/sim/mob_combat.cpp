@@ -52,8 +52,8 @@ float damageEntity(Level& lv, Entity& target, float amount, Entity* attacker, co
   src.type = cause;
   if (attacker) src.attacker = attacker->id;
   // a spell's summoned ally (owned, not a kept pet) strikes harder with its summoner's talents
-  if (attacker && attacker->data.is_object() && attacker->data.value("kept", true) == false && attacker->data.contains("owner") && attacker->data["owner"].is_string())
-    for (auto& e : lv.entities()) if (e->isPlayer() && !e->removed && static_cast<Player*>(e.get())->name == attacker->data["owner"].get<std::string>()) { amount *= summonDamageFactor(*static_cast<Player*>(e.get())); break; }
+  if (auto* ac = dynamic_cast<Creature*>(attacker); ac && !ac->kept && !ac->owner.empty())
+    for (auto& e : lv.entities()) if (e->isPlayer() && !e->removed && static_cast<Player*>(e.get())->name == ac->owner) { amount *= summonDamageFactor(*static_cast<Player*>(e.get())); break; }
   if (auto* c = dynamic_cast<Creature*>(&target)) return c->hurt(lv, amount, src);
   if (auto* p = dynamic_cast<Player*>(&target)) return hurtPlayer(lv, *p, amount, attacker, src);
   return 0;

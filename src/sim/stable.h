@@ -7,8 +7,8 @@
 //
 // The book: LevelInfo.data["stable"][owner] = [{uid, gen, state: out|stabled|resting, type, name, saddled, variant,
 // color, size, baby, hp, maxHp, dim, x, y, z, restUntil, fav, joined, hs}].
-// Creatures (Entity::data, shared with the creatures area): "owner" (player name; set when tamed), "uid", "sgen",
-// "petName", "saddled", "variant", "color", "size", "baby", "growT", "tamed", "kept", "hs"; "riddenBy" (player id).
+// Creatures: their owner, name, saddle, coat, size and age are the creature's own (sim/creature.h Creature::owner...,
+// read through petOwnerOf); the stable keeps "uid", "sgen" and "hs" in Entity::data (and the mount's gear keys).
 // When a companion dies the creatures area calls stableCreatureDies() first: true = it went home to rest (no drops).
 #pragma once
 #include "sim/content.h"

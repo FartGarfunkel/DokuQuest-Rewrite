@@ -31,6 +31,7 @@
 namespace dq {
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
 void stormFalls(Level& lv, Creature& m);   // sim/wither.cpp
+bool stableCreatureDies(Level& lv, Entity& m);   // sim/stable.h (not included: its helpers clash with gameplay's here)
 
 // ------------------------------------------------------------------ types
 static std::unordered_map<std::string, CreatureType>& typeMap() { static std::unordered_map<std::string, CreatureType> m; return m; }
@@ -67,9 +68,10 @@ static CreatureType parseType(const std::string& key, const json& j) {
     if (tm.contains("foods") && tm["foods"].is_array()) for (auto& e : tm["foods"]) if (e.is_string() && reg().item(e.get<std::string>())) t.tameFoods.push_back(e);
     t.tameChance = tm.value("chance", 0.3f);
   }
-  if (j.contains("mount") && j["mount"].is_object()) { t.mount = true; t.mountSpeed = j["mount"].value("speed", 7.f); t.mountJump = j["mount"].value("jump", 8.f); }
+  if (j.contains("mount") && j["mount"].is_object()) { t.mount = true; t.mountSpeed = j["mount"].value("speed", 7.f); t.mountJump = j["mount"].value("jump", 8.f); t.mountSeatY = j["mount"].value("seatY", 0.f); }
   t.aquatic = j.contains("aquatic") ? b("aquatic") : (t.water && t.swims && !t.walks);
   t.amphibious = j.contains("amphibious") ? b("amphibious") : (!t.aquatic && t.ai == "amphibian");
+  if (s("swimsIn") == "lava") t.medium = 2;
   if (j.contains("tint") && j["tint"].is_array() && j["tint"].size() >= 4) { t.hasTint = true; for (int i = 0; i < 4; i++) t.tint[i] = j["tint"][i].get<float>(); }
   if (j.contains("drops") && j["drops"].is_array())
     for (auto& d : j["drops"]) if (d.is_array() && d.size() >= 4 && d[0].is_string() && reg().item(d[0].get<std::string>()))
@@ -451,6 +453,36 @@ Player* Creature::ownerPawn(Level& lv) const {
   for (auto& e : lv.entities()) if (auto* p = dynamic_cast<Player*>(e.get())) if (!p->dead && !p->removed && p->name == owner && p->realm == realm) return p;
   return nullptr;
 }
+std::string petOwnerOf(const Entity& e) {
+  if (auto* c = dynamic_cast<const Creature*>(&e)) return c->owner;
+  auto it = e.data.find("owner");
+  return it != e.data.end() && it->is_string() ? it->get<std::string>() : std::string();
+}
+float Creature::riderSeatY() const {
+  if (T->mountSeatY > 0) return T->mountSeatY * (baby ? 0.55f : 1.f);
+  float s = h * 0.7f;
+  if (reg().models.contains(modelKey())) s = reg().models[modelKey()].value("seatY", s);
+  return s;
+}
+void Creature::adoptDataOwner() {
+  if (!data.is_object()) return;
+  auto it = data.find("owner");
+  if (it == data.end() || !it->is_string()) return;   // (a number there is a bolt's shooter, not a pet's owner)
+  if (!it->get<std::string>().empty()) { owner = it->get<std::string>(); tamed = true; }
+  data.erase("owner"); data.erase("tamed");
+  if (auto n = data.find("petName"); n != data.end()) { if (n->is_string()) petName = n->get<std::string>(); data.erase(n); }
+  if (auto s = data.find("saddled"); s != data.end()) { if (s->is_boolean()) saddled = s->get<bool>(); data.erase(s); }
+  if (auto k = data.find("kept"); k != data.end()) { if (k->is_boolean()) kept = k->get<bool>(); data.erase(k); }
+  if (auto v = data.find("variant"); v != data.end()) { if (v->is_string()) variant = v->get<std::string>(); data.erase(v); }
+  if (auto c = data.find("color"); c != data.end()) { if (c->is_string()) color = c->get<std::string>(); data.erase(c); }
+  if (auto z = data.find("size"); z != data.end()) { if (z->is_number() && z->get<int>() > 0) { float keep = hp; setSize(z->get<int>()); hp = std::min(keep > 0 ? keep : maxHp, maxHp); } data.erase(z); }
+  if (auto b = data.find("baby"); b != data.end()) {
+    if (b->is_boolean() && b->get<bool>() && !baby) { float g = data.value("growT", 300.f); makeBaby(); growT = g; }
+    data.erase(b); data.erase("growT");
+  }
+  if (auto st = data.find("stay"); st != data.end()) { if (st->is_boolean()) stay = st->get<bool>(); data.erase(st); }
+  data.erase("sitting");
+}
 bool Creature::isPetOf(const Entity* who) const { auto* p = dynamic_cast<const Player*>(who); return p && !owner.empty() && owner == p->name; }
 
 // ------------------------------------------------------------------ contacts (physics.js sampleContacts)
@@ -584,6 +616,13 @@ void Creature::takeQuarrel(Creature& a) {
 void Creature::die(Level& lv, const DamageSrc& src) {
   // pets.js: the rider gets off first
   if (riddenBy) if (auto* r = dynamic_cast<Player*>(ent(lv, riddenBy))) dismount(lv, *this, *r);
+  // a companion in your stable doesn't die: it's hurt, and goes home to rest a while (sim/stable.h); summon it again later
+  if (!owner.empty() && !ghost && stableCreatureDies(lv, *this)) {
+    lv.fx->particles("white", pos + vec3(0, h * 0.5f, 0), 14, {{"spread", 1.2}, {"vel", 2}});
+    lv.fx->particles("mana_light", pos + vec3(0, h * 0.5f, 0), 18, {{"spread", 0.8}, {"life", 0.6}, {"size", 0.07}});
+    hp = 0; removed = true;
+    return;
+  }
   deathTime = 0.0001f;
   {   // the killing blow's push, for the limp body (sim/ragdoll.h; sent to guests with the data so their copy falls the same way)
     vec3 k(vel.x, 0, vel.z);
@@ -710,6 +749,7 @@ void Creature::tick(Level& lv, double dtd) {
   float dt = (float)dtd;
   World& w = lv.world(realm);
   if (ghost) { ghostStep(lv, dt); if (hurtTime > 0) hurtTime -= dt; if (deathTime > 0) deathTime += dt; return; }
+  if (data.contains("owner")) adoptDataOwner();   // (a summon or a mod named its owner in data: sim/creature.h)
   // Halloween: about one in four ghouls and skeletons (and their kin) wears a carved pumpkin or a jack-o'-lantern on its head,
   // rolled once per creature on its first tick (so cages, /summon and eggs get it too; drawn by render/creature_layer, the jack glows)
   if (halloween() && !data.contains("hatRolled")) {
@@ -756,8 +796,7 @@ void Creature::tick(Level& lv, double dtd) {
     auto* r = dynamic_cast<Player*>(ent(lv, riddenBy));
     if (!r || r->riding != id || r->dead) riddenBy = 0;
     else {
-      float seatY = h * 0.7f;
-      if (reg().models.contains(modelKey())) seatY = reg().models[modelKey()].value("seatY", seatY);
+      const float seatY = riderSeatY();
       r->pos = vec3(pos.x, pos.y + seatY - 0.28f, pos.z); r->vel = vec3(vel.x, 0, vel.z); r->onGround = true; r->fallDist = 0;
     }
   }
@@ -801,6 +840,8 @@ void Creature::update(Level& lv, float dt) {
   if (attackCd > 0) attackCd -= dt;
   if (slowT > 0) slowT -= dt;
   MobContacts c = contacts(wd, *this);
+  // its own element to swim in: water, or lava for a lava dweller (data "swimsIn"); inWater means "in it" for the AI and rig
+  const bool inMedium = T->medium == 2 ? c.lava : c.water;
   if (calm) burn = 0;   // the dev zoo: on show, not on fire
   inLava = c.lava;
   bool lavaBoat = false;   // a pet riding a lava boat is kept out of the lava
@@ -940,7 +981,7 @@ void Creature::update(Level& lv, float dt) {
   float k = std::min(1.f, dt * (onGround ? 10 : 2));
   if (!lockMove) { vel.x += (tx - vel.x) * k; vel.z += (tz - vel.z) * k; }
   if (noGravity && hasFlyVy) vel.y += (flyVy - vel.y) * std::min(1.f, dt * 4);
-  else if (c.water && T->swims) vel.y += (swimVy - vel.y) * std::min(1.f, dt * 3);
+  else if (inMedium && T->swims) vel.y += (swimVy - vel.y) * std::min(1.f, dt * 3);
   else if (c.water) {
     // a land animal floats at the surface and paddles on, steadily — a spring toward the height where
     // a bit over half its body is under (no kick up and fall back), and a hop out when it swims into a bank
@@ -976,11 +1017,11 @@ void Creature::update(Level& lv, float dt) {
   }
   // walked into something: hop up only if it's a step it can get onto. (Next tick, as a wanted jump: set here, after the
   // move, a tick of gravity came off it first and it topped out at 0.96, never onto the block)
-  if (hitWall && onGround && want > 0 && !(T->swims && !T->walks && c.water) && stepAhead(lv)) wantJump = true;
+  if (hitWall && onGround && want > 0 && !(T->swims && !T->walks && inMedium) && stepAhead(lv)) wantJump = true;
   if (!wasGround && onGround && type == "cinder_golem" && fallV < -8) lv.fx->shake(0, 0.3f);
   if (!wasGround && onGround && fallV < -2.5f) { landT = 0.18f; life.landK = std::clamp(std::sqrt(-fallV) / 3.f, 0.5f, 1.6f); }   // (the squash as hard as the drop)
   if (landT > 0) landT -= dt;
-  inWater = c.water;
+  inWater = inMedium;
   if (inWater && !T->swims) {   // where the surface is (rigs2.js floats land animals low in it)
     int bx = ifloor(pos.x), bz = ifloor(pos.z);
     for (int y = ifloor(pos.y) + 2; y >= ifloor(pos.y) - 1; y--)
@@ -1026,7 +1067,7 @@ json Creature::save() const {
 }
 void Creature::load(const json& j) {
   Entity::load(j);
-  if (!j.contains("c")) return;
+  if (!j.contains("c")) { adoptDataOwner(); return; }
   const json& c = j["c"];
   variant = c.value("v", variant); stag = c.value("stag", stag); kept = c.value("kept", kept);
   if (c.value("baby", false)) { makeBaby(); growT = c.value("growT", 300.f); }
@@ -1038,6 +1079,7 @@ void Creature::load(const json& j) {
   if (c.contains("hive") && c["hive"].is_array()) { hasHive = true; hive = ivec3(c["hive"][0], c["hive"][1], c["hive"][2]); }
   if (c.contains("lost") && c["lost"].is_array()) for (auto& n : c["lost"]) lost.insert(n.get<std::string>());
   if (type == "cinder_golem") state = "chase";
+  adoptDataOwner();   // (a save from before: a stable companion kept its owner in data)
 }
 
 static int mobFlags(const Creature& m) {

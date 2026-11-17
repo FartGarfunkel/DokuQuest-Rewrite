@@ -38,8 +38,9 @@ struct CreatureType {
   // "aquatic": lives in water only (swims at depth, flops and suffocates on land); "amphibious": swims and walks.
   std::string carryMode;
   std::vector<std::string> tameFoods; float tameChance = 0;
-  bool mount = false; float mountSpeed = 7, mountJump = 8;
+  bool mount = false; float mountSpeed = 7, mountJump = 8, mountSeatY = 0;   // seatY: the rider's seat over its feet (blocks; 0: the model's, or 0.7 of its height)
   bool aquatic = false, amphibious = false;
+  int medium = 1;   // what it swims in (data "swimsIn"): 1 water, 2 lava (the laviathan) — reg().tLiquid's numbers
   bool tameable() const { return !tameFoods.empty() && tameChance > 0; }
   bool tamesWith(const std::string& item) const { return std::find(tameFoods.begin(), tameFoods.end(), item) != tameFoods.end(); }
   bool hasTint = false; vec4 tint{0};
@@ -227,6 +228,10 @@ public:
   void breedWith(Level& lv, Creature& mate);
   Player* ownerPawn(Level& lv) const;
   bool isPetOf(const Entity* who) const;
+  // the owner and its pet's particulars live in the members above; anything that wrote them into data (an old save, the
+  // stable's book, a spell's summon, a mod) is taken in here and the data keys dropped, so there is one place to look
+  void adoptDataOwner();
+  float riderSeatY() const;   // where a rider sits, over its feet (blocks): "mount" seatY, else its model's seatY, else 0.7 of its height
 
 private:
   void update(Level& lv, float dt);

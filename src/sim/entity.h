@@ -80,5 +80,8 @@ public:
 using EntityFactory = std::function<std::unique_ptr<Entity>(const std::string& type)>;
 void registerEntityFactory(const std::string& typeOrPrefix, EntityFactory f);   // "" = fallback for mobs
 std::unique_ptr<Entity> createEntity(const std::string& type);
+// whose pet/companion/summon this is ("" = nobody's): a creature's own owner (sim/creature.h Creature::owner, the one
+// place it's kept); for anything else its data "owner" name (sim/creature.cpp)
+std::string petOwnerOf(const Entity& e);
 
 } // namespace dq
