@@ -7,6 +7,7 @@
 #include "sim/hallow.h"
 #include "render/creature_draw.h"
 #include "render/creature_models.h"
+#include "render/ragdoll_layer.h"
 #include "render/char_anim.h"
 #include "render/char_layer.h"
 #include "assets/char_model.h"
@@ -142,6 +143,17 @@ static vec4 dyeTint(const std::string& c) {
   u32 h = it == C.end() ? 0xffffff : it->second;
   return vec4(((h >> 16) & 255) / 255.f, ((h >> 8) & 255) / 255.f, (h & 255) / 255.f, 0.62f);
 }
+const std::string& creatureDrawKey(const Creature& m) {
+  static std::string k;
+  const CreatureModelGL* M = modelFor(m);
+  k = m.modelKey();
+  if (!M || M == creatureModel(k)) return k;
+  std::vector<std::string> alt = {"#shooting", "#angry_nectar", "#angry", "#nectar"};
+  if (auto it = m.data.find("climate"); it != m.data.end() && it->is_string()) alt.push_back("#" + it->get<std::string>());
+  for (auto& a : alt) if (creatureModel(k + a) == M) { k += a; break; }
+  return k;
+}
+vec4 creatureWoolTint(const Creature& m) { return m.T->woolly && !m.color.empty() && m.color != "white" ? dyeTint(m.color) : vec4(0); }
 static mat4 heldMatrix(float tilt, float s, vec2 grip, bool upright) {
   vec3 X, Y;
   if (upright) { X = vec3(0, 0, -s); Y = vec3(0, s * std::cos(tilt), -s * std::sin(tilt)); }
@@ -195,6 +207,7 @@ void registerCreatureLayers() {
   if (done) return;
   done = true;
   registerRenderLayer([](GameSession&) { return std::make_shared<CreatureLayer>(); });
+  registerRagdollLayer();   // render/ragdoll_layer.cpp: limp bodies (creatures that died, players' bodies)
 }
 
 void CreatureLayer::update(GameSession& s, double dt) {
@@ -290,7 +303,8 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     vec3 rel = f.cam.rel(glm::dvec3(ip.pos));
     if (glm::dot(rel, rel) > maxD * maxD && !(e.type == "wither_storm" && glm::dot(rel, rel) < 480.f * 480.f)) continue;   // (a Storm is seen from afar)
     if (auto* m = dynamic_cast<Creature*>(&e)) {
-      if (m->T->npc) continue;   // villagers are voxel people (render/villager_layer)
+      if (m->T->npc) continue;
+      if (m->deathTime > 0 && clientRagdolls().find(m->id)) continue;   // gone limp: render/ragdoll_layer.cpp draws the body   // villagers are voxel people (render/villager_layer)
       // a mob whose mobs.json says "skin": "<file>.png" is drawn as a voxel character from that player skin,
       // exactly like the players (and villagers): so herobrine.png — or any regular 64x64 skin dropped in
       // userDir()/skins — dresses it. Its render rig is always the biped, whatever the skin's arms are.
@@ -627,6 +641,7 @@ void CreatureLayer::drawTranslucent(GameSession& s, const FrameCtx& f) {
   for (auto& up : s.level->entities()) {
     auto* m = dynamic_cast<Creature*>(up.get());
     if (!m || m->removed || m->realm != s.player->realm || m->mats.empty()) continue;
+    if (m->deathTime > 0 && clientRagdolls().find(m->id)) continue;
     Interp ip = interp(*m, a);
     vec3 rel = f.cam.rel(glm::dvec3(ip.pos));
     if (glm::dot(rel, rel) > 64.f * 64.f || !f.cam.frustum.sphere(rel + vec3(0, m->h * 0.5f, 0), std::max(m->h, m->w * 2) + 1)) continue;

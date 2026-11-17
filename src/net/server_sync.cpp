@@ -31,17 +31,26 @@ static std::string stacksSig(const std::vector<ItemStack>& v) {
   return s;
 }
 std::string playerInvSig(const Player& p) {
-  return stacksSig(p.inv) + "|" + stacksSig(p.armor) + "|" + stacksSig(p.offhand) + "|" + std::to_string(p.xp) + "|" + std::to_string(p.level);
+  return stacksSig(p.inv) + "|" + stacksSig(p.armor) + "|" + stacksSig(p.offhand) + "|" + stacksSig(p.back) + stacksSig(p.hook) + stacksSig(p.charm) +
+         stacksSig(p.cape) + stacksSig(p.quiver) + stacksSig(p.shield) + "|" + std::to_string(p.xp) + "|" + std::to_string(p.level);
 }
 static json stacksJson(const std::vector<ItemStack>& v) { json a = json::array(); for (auto& s : v) a.push_back(s.toJson()); return a; }
 static void stacksFrom(const json& a, std::vector<ItemStack>& v) { if (!a.is_array()) return; for (size_t i = 0; i < v.size(); i++) v[i] = i < a.size() ? ItemStack::fromJson(a[i]) : ItemStack(); }
 json playerInvJson(const Player& p) {
-  return {{"inv", stacksJson(p.inv)}, {"ar", stacksJson(p.armor)}, {"of", stacksJson(p.offhand)}, {"sel", p.selected}, {"xp", p.xp}, {"lv", p.level}};
+  // (the gear slots too: a guest's body handed back by the host puts the backpack, charm, cape... back where they were)
+  return {{"inv", stacksJson(p.inv)}, {"ar", stacksJson(p.armor)}, {"of", stacksJson(p.offhand)}, {"bk", stacksJson(p.back)}, {"hk", stacksJson(p.hook)},
+          {"ch", stacksJson(p.charm)}, {"cp", stacksJson(p.cape)}, {"qv", stacksJson(p.quiver)}, {"sh", stacksJson(p.shield)}, {"sel", p.selected}, {"xp", p.xp}, {"lv", p.level}};
 }
 void applyPlayerInv(Player& p, const json& j) {
   if (j.contains("inv")) stacksFrom(j["inv"], p.inv);
   if (j.contains("ar")) stacksFrom(j["ar"], p.armor);
   if (j.contains("of")) stacksFrom(j["of"], p.offhand);
+  if (j.contains("bk")) stacksFrom(j["bk"], p.back);
+  if (j.contains("hk")) stacksFrom(j["hk"], p.hook);
+  if (j.contains("ch")) stacksFrom(j["ch"], p.charm);
+  if (j.contains("cp")) stacksFrom(j["cp"], p.cape);
+  if (j.contains("qv")) stacksFrom(j["qv"], p.quiver);
+  if (j.contains("sh")) stacksFrom(j["sh"], p.shield);
   p.selected = clampv(j.value("sel", p.selected), 0, 8);
   p.xp = j.value("xp", p.xp); p.level = j.value("lv", p.level);
 }

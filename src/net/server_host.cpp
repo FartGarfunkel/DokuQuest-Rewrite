@@ -543,7 +543,7 @@ void ServerHost::receive(Peer& p, u8 ty, json& m) {
     case HIT: {
       Entity* e = level.entity(m.value("id", 0u));
       float a = m.value("a", 0.f);
-      if (!e || e->removed || e == p.pl || a <= 0 || glm::distance(e->pos, p.pl->pos) > 12) break;
+      if (!e || e->removed || e == p.pl || a <= 0 || glm::distance(e->pos, p.pl->pos) > 12 || e->type == "corpse") break;   // (a body can't be hurt)
       if (e->isPlayer() && !opts.pvp) break;
       json src = m.value("s", json::object()); src["attacker"] = p.eid; src["attackerName"] = p.name;
       // gameplay code takes it (returns false = handled); otherwise a plain hit

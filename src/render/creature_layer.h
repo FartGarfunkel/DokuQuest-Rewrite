@@ -34,5 +34,8 @@ void registerCreatureLayers();   // idempotent
 // when the player has a skin of their own for him (assets/char_creator.cpp userHerobrineSkin)
 class Creature;
 void drawSkinFigure(const Creature& m, vec3 pos, float yaw, World& w, const FrameCtx& f);
+// the voxel model key a creature is drawn with right now (a "#state" face, a climate's coat), and its wool's dye tint
+const std::string& creatureDrawKey(const Creature& m);
+vec4 creatureWoolTint(const Creature& m);
 
 } // namespace dq

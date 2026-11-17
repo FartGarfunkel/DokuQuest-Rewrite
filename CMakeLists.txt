@@ -216,3 +216,8 @@ foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-t
     add_dependencies(${t} dq_runtime_data)
   endif()
 endforeach()
+# Dying (headless: the player's body keeps every slot and gives it back, the death compass with two bodies, saving,
+# lava and the void, a creature going limp). Run: build/test_death
+add_executable(test_death tools/test_death.cpp)
+target_link_libraries(test_death PRIVATE dqcore)
+add_test(NAME death COMMAND test_death)

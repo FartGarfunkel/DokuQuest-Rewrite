@@ -599,6 +599,11 @@ void CharacterLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
     if (!e || e->removed || e->type != "player" || e->realm != s.player->realm) continue;
     Player* p = dynamic_cast<Player*>(e);
     if (!p) continue;
+    if (p->dead) {   // dead: their body lies there limp (sim/corpse.h, drawn by render/ragdoll_layer.cpp), not this one
+      bool body = false;
+      for (auto& c : s.level->entities()) if (!c->removed && c->type == "corpse" && c->realm == p->realm && glm::distance(c->pos, p->pos) < 6 && c->data.value("of", std::string()) == p->name) { body = true; break; }
+      if (body) continue;
+    }
     bool local = p == s.player, fp = false;
     if (local && photoMode().active && !s.split()) { if (!photoMode().showPlayer) continue; }   // photo mode: the camera is elsewhere
     else if (local && s.viewMode == 0) {
@@ -1005,6 +1010,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   }
   auto bodyClip = [&](bool on) { voxelRenderer().clip = on ? fpClip : NOCLIP; };   // (the torso's own pieces only: raised arms and what they hold stay whole)
   struct ClipOff { ~ClipOff() { voxelRenderer().clip = vec4(0, 0, 0, -1); } } clipOff;
+  if (o.rig) R = *o.rig;
   // the 3D outer layer goes under armour: whatever a piece covers isn't drawn
   bool hid[CP_COUNT] = {};
   hid[CP_HEAD] = !AR[0].empty() && !hatItem;

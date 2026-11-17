@@ -389,7 +389,7 @@ void PlayerController::updateTarget() {
   for (auto& e : lv.entities()) {
     if (e->removed || e->realm != p.realm || e.get() == &p || e->id == p.riding) continue;
     bool vehicle = startsWith(e->type, "boat") || startsWith(e->type, "minecart") || e->data.value("vehicle", false);
-    if (!vehicle && !(isMob(*e) && e->hp > 0)) continue;
+    if (!vehicle && !(isMob(*e) && e->hp > 0) && e->type != "corpse") continue;   // (a player's body: use it to take your things back)
     double tt = -1;
     bool rigged = false;
     if (!vehicle) if (auto* c = dynamic_cast<Creature*>(e.get())) {

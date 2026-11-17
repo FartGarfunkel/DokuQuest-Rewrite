@@ -11,6 +11,7 @@
 #include "sim/leads.h"
 #include "sim/weapon_rack.h"
 #include "sim/slime_goo.h"
+#include "sim/corpse.h"
 #include "sim/creature.h"
 #include "sim/portals.h"
 #include "sim/creature_entities.h"
@@ -1048,6 +1049,7 @@ void registerCreatures() {
   registerTrickOrTreat();
   registerWeaponRack();
   registerSlimeGoo();
+  registerCorpses();            // sim/corpse.cpp: players' bodies (what they carried, the death compass's mark)
   // every MOB_TYPES key is a creature (the "" fallback catches types added later by data packs and mods)
   registerEntityFactory("", [](const std::string& t) -> std::unique_ptr<Entity> { if (!isCreatureType(t)) return nullptr; return std::make_unique<Creature>(t); });
   registerLevelSystem([](Level& lv) { return std::make_shared<CreatureSystem>(lv); });
