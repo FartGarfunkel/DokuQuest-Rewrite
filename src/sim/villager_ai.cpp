@@ -86,18 +86,26 @@ OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float speed)
   M.navT -= dt;
   const bool newGoal = !M.hasNavGoal || std::hypot(t.x - M.navGoal.x, t.z - M.navGoal.z) > 1 || std::fabs(t.y - M.navGoal.y) > 1.5f;
   if (newGoal) { M.partialN = 0; M.lostT = 0; }
+  // (off the way they were on — knocked aside, round someone — think again)
+  if (M.hasPath && M.pathI < M.path.size() && std::hypot(M.path[M.pathI].at.x + 0.5f - e.pos.x, M.path[M.pathI].at.z + 0.5f - e.pos.z) > 3.f) M.navT = 0;
   if (M.navT <= 0 || newGoal) {
-    M.navT = 2 + rnd();
     bool partial = false;
+    NpcNavStats& st = npcNavStats();
+    // the usual search first; a long one (a city across, round a whole quarter) when that one got nowhere new
+    auto endsHere = [&](const std::vector<NpcStep>& p) {
+      return p.empty() || (std::hypot(p.back().at.x + 0.5f - e.pos.x, p.back().at.z + 0.5f - e.pos.z) < 1.6f && std::fabs(p.back().floor - e.pos.y) < 1.2f);
+    };
     M.path = npcPath(w, e.pos, t, e.w, e.h, &partial);
-    NpcNavStats& st = npcNavStats(); st.plans++; if (partial) st.partial++;
+    st.plans++;
+    if (partial && (endsHere(M.path) || M.partialN >= 2)) { M.path = npcPath(w, e.pos, t, e.w, e.h, &partial, 12000); st.plans++; }
+    if (partial) st.partial++;
     M.pathI = 0; M.navGoal = t; M.hasNavGoal = true; M.pathPartial = partial; M.hasPath = !M.path.empty();
     M.partialN = partial ? M.partialN + 1 : 0;
+    // a whole way is kept till they stray from it or stick (a door shut, someone in the way); a partial one is looked
+    // at again as they go
+    M.navT = partial ? 2.5f + rnd() : 8 + rnd() * 2;
     // a partial way that ends about where they are already: there's no way on from here
-    if (M.hasPath && partial) {
-      const NpcStep& last = M.path.back();
-      if (std::hypot(last.at.x + 0.5f - e.pos.x, last.at.z + 0.5f - e.pos.z) < 1.6f && std::fabs(last.floor - e.pos.y) < 1.2f) M.hasPath = false;
-    }
+    if (M.hasPath && partial && endsHere(M.path)) M.hasPath = false;
     if (!M.hasPath) {
       st.failed++;
       M.stuckGo++; M.navT = 1 + rnd() * 0.5f;   // (asked again in a second, not every tick)
@@ -403,7 +411,8 @@ void npcStuckCheck(Level& lv, Creature& m, NpcMind& M) {
   bool voidFall = fy - landBottomY(fy) < 2;
   // in a fountain or a well a few seconds: out onto the nearest dry ground beside it (they climbed in after a spot to
   // stand in the square, and the basin's rim was too high to step back over)
-  if (R.tLiquid[w.getBlock(fx, fy, fz)] || R.tLiquid[w.getBlock(fx, hy, fz)]) {
+  // (wading a ford on their way, their head dry, isn't it: only when they're out of their depth or not getting out)
+  if (R.tLiquid[w.getBlock(fx, hy, fz)] || (R.tLiquid[w.getBlock(fx, fy, fz)] && (!M.hasPath || M.stuckGo > 3))) {
     if (++M.wetN >= 3) {
       M.wetN = 0;
       float bd = 1e9f; ivec3 best(0); bool found = false;

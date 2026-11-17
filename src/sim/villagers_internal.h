@@ -47,7 +47,7 @@ struct NpcMind {
   // the lookout (sim/villager_lookout.cpp): a guard rides a tower's lift up to the wall walk to keep watch, and back down
   int look = 0; float lookLeft = 0, lookStateT = 0; double nextLookAt = 0, lookClock = 0; ivec3 lookLift{0}; vec3 lookSpot{0};
   // riding a lift (npcRideLift): which, to which floor, how far along (0 to it and on, 1 riding), how long at it
-  ivec3 rideS{INT32_MIN}; int rideTo = 0, rideStage = 0; float rideT = 0, rideStageT = 0;
+  ivec3 rideS{INT32_MIN}; int rideTo = 0, rideStage = 0; float rideT = 0, rideStageT = 0; double rideSeen = -1e9;
   ivec3 workLift{INT32_MIN}; float workLiftT = 0;   // the lift at their work (the miller's up to the stones), looked for now and then
   // hearth.js: the missing
   std::string lostQ; u32 follow = 0;

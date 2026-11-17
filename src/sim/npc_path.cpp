@@ -33,7 +33,14 @@ void tables() {
 
 // one cell as the way finder sees it: the span of its collision boxes over a body's footprint in it (relative to the
 // cell's floor; none: lo > hi), and its flags
-struct Cell { float lo = 9, hi = -9; u8 f = 0, liquid = 0; bool loaded = true; bool any() const { return lo <= hi; } };
+// and the spans of what's beside the footprint toward each side (0 +x, 1 -x, 2 +z, 3 -z: an open trapdoor's plate, a
+// sign, a pane's arm at the cell's edge), which a body crossing that side goes through
+struct Cell {
+  float lo = 9, hi = -9; u8 f = 0, liquid = 0; bool loaded = true;
+  float slo[4] = {9, 9, 9, 9}, shi[4] = {-9, -9, -9, -9};
+  float alo = 9, ahi = -9;   // (every box in the cell, footprint or not: a corner cut across on a diagonal)
+  bool any() const { return lo <= hi; }
+};
 
 struct Finder {
   const World& w; float hw, H;
@@ -52,11 +59,32 @@ struct Finder {
     if (c.f & F_DOOR) return c;   // (walked through: opened on the way)
     boxes.clear(); blockBoxes(w, x, y, z, boxes);
     const float fx0 = x + 0.5f - hw, fx1 = x + 0.5f + hw, fz0 = z + 0.5f - hw, fz1 = z + 0.5f + hw;
+    auto side = [&](int k, const AABB& b) { c.slo[k] = std::min(c.slo[k], b.lo.y - y); c.shi[k] = std::max(c.shi[k], b.hi.y - y); };
     for (const AABB& b : boxes) {
-      if (b.hi.x <= fx0 || b.lo.x >= fx1 || b.hi.z <= fz0 || b.lo.z >= fz1) continue;
-      c.lo = std::min(c.lo, b.lo.y - y); c.hi = std::max(c.hi, b.hi.y - y);
+      c.alo = std::min(c.alo, b.lo.y - y); c.ahi = std::max(c.ahi, b.hi.y - y);
+      const bool midZ = b.hi.z > fz0 && b.lo.z < fz1, midX = b.hi.x > fx0 && b.lo.x < fx1;
+      if (midZ && midX) { c.lo = std::min(c.lo, b.lo.y - y); c.hi = std::max(c.hi, b.hi.y - y); continue; }
+      if (midZ) { if (b.hi.x > fx1) side(0, b); if (b.lo.x < fx0) side(1, b); }
+      if (midX) { if (b.hi.z > fz1) side(2, b); if (b.lo.z < fz0) side(3, b); }
     }
     return c;
+  }
+  // nothing at all in this column over [y0, y1] (the corner a diagonal step cuts across)
+  bool emptySpan(int x, int z, float y0, float y1) {
+    for (int y = ifloor(y0) - 1; y <= ifloor(y1); y++) {
+      const Cell& c = cell(x, y, z);
+      if (!c.loaded || (c.f & (F_DANGER | F_DOOR))) return false;
+      if (c.alo <= c.ahi && y + c.ahi > y0 + 0.001f && y + c.alo < y1 - 0.001f) return false;
+    }
+    return true;
+  }
+  // nothing at the edge of this column toward side k in the way of a body crossing it over [y0, y1]
+  bool crossClear(int x, int z, int k, float y0, float y1) {
+    for (int y = ifloor(y0) - 1; y <= ifloor(y1); y++) {
+      const Cell& c = cell(x, y, z);
+      if (c.slo[k] <= c.shi[k] && y + c.shi[k] > y0 + 0.001f && y + c.slo[k] < y1 - 0.001f) return false;
+    }
+    return true;
   }
   // nothing in the way of a body over [y0, y1] in this column (doors don't count: they're opened)
   bool clearSpan(int x, int z, float y0, float y1) {
@@ -75,21 +103,21 @@ constexpr float NONE = -1e9f;
 
 // where a body stands at step (x, y, z): its feet's height, or NONE. *climb: on a ladder (or a vine, a rope...), not on
 // a floor. *wet: in water.
-static float standAt(Finder& F, int x, int y, int z, bool* climb, bool* wet) {
+static float standAt(Finder& F, int x, int y, int z, bool* climb, int* wet) {
   const Cell& a = F.cell(x, y, z);
   const Cell& b = F.cell(x, y - 1, z);
   if (!a.loaded || !b.loaded) return NONE;
   if ((a.f | b.f) & F_DANGER) return NONE;
   float f = NONE;
-  *climb = false; *wet = false;
+  *climb = false; *wet = 0;
   if (a.any()) {   // a low shape in the cell itself: a bottom slab, a lift's platform, a carpet, a snow layer
     if (a.hi <= 0.6f && a.lo < 0.3f && !(a.f & F_NOSTAND)) f = y + a.hi;
     else return NONE;
   } else if (b.any() && b.hi > 0.6f && !(b.f & (F_NOSTAND | F_DOOR))) f = (y - 1) + std::min(b.hi, 1.f);
-  else if (b.liquid == 1 || a.liquid == 1) { f = (float)y; *wet = true; }
+  else if (b.liquid == 1 || a.liquid == 1) { f = (float)y; *wet = 2; }   // (out of their depth: swimming)
   else if ((a.f & F_CLIMB) || (b.f & F_CLIMB)) { f = (float)y; *climb = true; }
   if (f == NONE) return NONE;
-  if (a.liquid == 1) *wet = true;
+  if (a.liquid == 1 && !*wet) *wet = F.cell(x, y + 1, z).liquid == 1 ? 2 : 1;   // (on the bottom: wading if it's below the waist)
   if (!F.clearSpan(x, z, f + 0.02f, f + F.H)) {
     return NONE;
   }
@@ -98,20 +126,20 @@ static float standAt(Finder& F, int x, int y, int z, bool* climb, bool* wet) {
 
 std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, float bodyH, bool* partial, int maxNodes) {
   tables();
-  const int RR = 56;
+  const int RR = maxNodes > 4000 ? 110 : 56;   // (a bigger search looks further: across a city)
   std::vector<NpcStep> none;
   if (partial) *partial = true;
   Finder F(w, bodyW, std::max(1.f, bodyH));
   const int sx = ifloor(from.x), sz = ifloor(from.z), tx = ifloor(to.x), tz = ifloor(to.z);
   int sy = ifloor(from.y + 0.45f);
   const int ty = ifloor(to.y + 0.45f);
-  bool c0, w0;
+  bool c0; int w0;
   float f0 = standAt(F, sx, sy, sz, &c0, &w0);
   if (f0 == NONE) {   // (mid-step, mid-jump, on a ladder: the nearest step that will hold them)
     for (int dy : {1, -1, 2, -2}) if ((f0 = standAt(F, sx, sy + dy, sz, &c0, &w0)) != NONE) { sy += dy; break; }
     if (f0 == NONE) f0 = (float)sy;
   }
-  const bool startWet = w0;
+  const bool startWet = w0 != 0;
   struct Node { int x, y, z; float g, f, floor; int parent; bool closed, climb; };
   std::vector<Node> nodes; nodes.reserve(maxNodes * 3);
   std::unordered_map<i64, int> seen;
@@ -147,7 +175,7 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
       if (diag && (c.climb || cDoor)) continue;
       // the step there: level, up a step or a jump (to a little over a block), or down a drop of up to 3
       for (int ny = c.y + 1; ny >= c.y - 4; ny--) {
-        bool cl, wt;
+        bool cl; int wt;
         const float nf = standAt(F, nx, ny, nz, &cl, &wt);
         if (nf == NONE) continue;
         // (the highest step in that column that holds is the one: they can't walk under a ledge they'd step onto)
@@ -161,14 +189,19 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
         const float top = std::max(nf, c.floor);
         if (rise > 0.55f && !F.clearSpan(c.x, c.z, c.floor + 0.02f, nf + F.H)) break;
         if (rise < -0.05f && !F.clearSpan(nx, nz, nf + 0.02f, c.floor + F.H)) break;
-        if (diag && (!F.clearSpan(c.x + dx, c.z, top + 0.02f, top + F.H) || !F.clearSpan(c.x, c.z + dz, top + 0.02f, top + F.H)
-                     || (F.cell(c.x + dx, ny, c.z).f & F_DOOR) || (F.cell(c.x, ny, c.z + dz).f & F_DOOR))) break;
+        if (diag && (!F.emptySpan(c.x + dx, c.z, top + 0.02f, top + F.H) || !F.emptySpan(c.x, c.z + dz, top + 0.02f, top + F.H))) break;
+        // (and nothing at the edges they cross: a plate, a shutter, a sign)
+        const int kx = dx > 0 ? 0 : 1, kz = dz > 0 ? 2 : 3;
+        if (dx && (!F.crossClear(c.x, c.z, kx, top + 0.02f, top + F.H) || !F.crossClear(nx, nz, kx ^ 1, top + 0.02f, top + F.H))) break;
+        if (dz && (!F.crossClear(c.x, c.z, kz, top + 0.02f, top + F.H) || !F.crossClear(nx, nz, kz ^ 1, top + 0.02f, top + F.H))) break;
         float cost = diag ? 1.414f : 1.f;
         if (rise > 0.55f) cost += 0.8f;          // a jump
         else if (rise > 0.05f) cost += 0.15f;    // a half step
         if (rise < -0.55f) cost += 0.35f * -rise;
         if (F.cell(nx, ny - 1, nz).f & F_FARM) cost += 4;   // keep off the crops
-        if (wt) { if (!startWet) break; cost += 14; }     // never into a fountain or a pond (only out of one)
+        // never into a fountain or a pond out of their depth (only out of one); a ford waded, if there's no way round
+        if (wt == 2) { if (!startWet) break; cost += 14; }
+        else if (wt == 1) cost += 6;
         if (cl) cost += 0.5f;
         push(ci, nx, ny, nz, nf, cost, cl);
         break;
@@ -178,11 +211,11 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
     const Cell& here = F.cell(c.x, c.y, c.z);
     const Cell& below = F.cell(c.x, c.y - 1, c.z);
     if ((here.f & F_CLIMB) && F.clearSpan(c.x, c.z, c.y + 1.02f, c.y + 1 + F.H)) {
-      bool cl, wt; const float nf = standAt(F, c.x, c.y + 1, c.z, &cl, &wt);
+      bool cl; int wt; const float nf = standAt(F, c.x, c.y + 1, c.z, &cl, &wt);
       if (nf != NONE) push(ci, c.x, c.y + 1, c.z, nf, 1.6f, true);
     }
     if (below.f & F_CLIMB) {
-      bool cl, wt; const float nf = standAt(F, c.x, c.y - 1, c.z, &cl, &wt);
+      bool cl; int wt; const float nf = standAt(F, c.x, c.y - 1, c.z, &cl, &wt);
       if (nf != NONE && nf < c.floor - 0.5f) push(ci, c.x, c.y - 1, c.z, nf, 1.4f, true);
     }
   }
@@ -196,7 +229,7 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
 
 float npcStandAt(const World& w, int x, int y, int z, float bodyW, float bodyH) {
   tables();
-  Finder F(w, bodyW, bodyH); bool cl, wt;
+  Finder F(w, bodyW, bodyH); bool cl; int wt;
   const float f = standAt(F, x, y, z, &cl, &wt);
   return f == NONE || cl ? NAN : f;
 }

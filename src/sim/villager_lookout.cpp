@@ -40,16 +40,23 @@ OptMove npcRideLift(Level& lv, Creature& e, NpcMind& M, ivec3 s, int to, float d
   auto done = [&]() { M.rideS = ivec3(INT32_MIN); M.rideStage = 0; M.rideT = M.rideStageT = 0; return std::optional<Move>(); };
   auto quit = [&]() { if (gaveUp) *gaveUp = true; return done(); };
   Lift L; if (!liftOfSlider(w, s, L) || L.stops.size() < 2) return quit();
-  if (M.rideS != s || M.rideTo != to) { M.rideS = s; M.rideTo = to; M.rideStage = 0; M.rideT = M.rideStageT = 0; }
+  // (a new ride, or an old one let drop a while back — they went off to do something else — starts afresh)
+  const double now = vsys(lv) ? vsys(lv)->now : 0;
+  if (M.rideS != s || M.rideTo != to || now - M.rideSeen > 1.0) { M.rideS = s; M.rideTo = to; M.rideStage = 0; M.rideT = M.rideStageT = 0; }
+  M.rideSeen = now;
   M.rideT += dt; M.rideStageT += dt;
   const bool moving = liftMoving(lv, e.realm, s);
   const int at = liftAt(w, s);
   const vec3 mid(s.x + 0.5f, platY(s, at), s.z + 0.5f);
   const float off = std::hypot(e.pos.x - mid.x, e.pos.z - mid.z);
   const bool on = off < 0.42f && std::fabs(e.pos.y - mid.y) < 0.3f;
+  const bool centred = off < 0.15f && std::fabs(e.pos.y - mid.y) < 0.3f;   // (in the middle: through a one-block shaft in a floor)
   const float toShaft = std::atan2(-(mid.x - e.pos.x), -(mid.z - e.pos.z));
-  if (M.rideStage == 1) {   // riding: stand still, the lift carries them; there when it's stopped at their floor
+  if (M.rideStage == 1) {   // riding: stand still in the middle, the lift carries them; there when it's stopped at their floor
+    // (kept to the middle all the way: through a one-block shaft in a floor, an inch off and the floor's edge holds them
+    // up, and the lift with them)
     e.vel.x = e.vel.z = 0;
+    if (off < 0.7f) { const float k = std::min(1.f, dt * 8); e.pos.x += (mid.x - e.pos.x) * k; e.pos.z += (mid.z - e.pos.z) * k; }
     if (!moving && at == to && M.rideStageT > 0.3f) return done();
     if (!moving && at != to) {
       if (!on) { M.rideStage = 0; M.rideStageT = 0; }   // (off it somehow: start again)
@@ -61,18 +68,13 @@ OptMove npcRideLift(Level& lv, Creature& e, NpcMind& M, ivec3 s, int to, float d
   const int mine = npcLiftFloorOf(w, s, e.pos.y);
   if (mine == to && !on) return done();   // (on that floor already)
   if (M.rideT > RIDE_LIMIT) return quit();
-  if (mine < 0) {   // nowhere near one of its floors: walk to the shaft at the floor nearest them, the lift's own way in
-    int best = L.stops.front().second; float bd = 1e9f;
-    for (auto& [stop, a] : L.stops) { const float d = std::fabs(e.pos.y - platY(s, a)); if (d < bd) { bd = d; best = a; } }
-    if (OptMove m = npcGo(lv, e, M, vec3(s.x + 0.5f, platY(s, best), s.z + 0.5f), dt, e.T->speed * 0.42f)) return m;
-    return Move{0, toShaft};
-  }
+  if (mine < 0) return quit();   // (not on one of its floors: no ride from here; they walk, or climb, instead)
   // the lift to their floor first (and wait clear of the shaft while it comes)
   if (moving) return Move{0, toShaft};
   if (at != mine) { liftCall(lv, e.realm, s, mine); return Move{0, toShaft}; }
-  if (on) { liftCall(lv, e.realm, s, to); M.rideStage = 1; M.rideStageT = 0; e.vel.x = e.vel.z = 0; return Move{0, e.yaw}; }
+  if (centred) { liftCall(lv, e.realm, s, to); M.rideStage = 1; M.rideStageT = 0; e.vel.x = e.vel.z = 0; return Move{0, e.yaw}; }
   // onto the platform, to its middle
-  if (off < 1.2f) return Move{e.T->speed * 0.25f, toShaft};
+  if (off < 1.2f) return Move{e.T->speed * (off < 0.4f ? 0.12f : 0.25f), toShaft};
   if (OptMove m = npcGo(lv, e, M, mid, dt, e.T->speed * 0.4f)) return m;
   return Move{e.T->speed * 0.25f, toShaft};
 }
