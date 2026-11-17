@@ -416,6 +416,24 @@ int main(int argc, char** argv) {
   A.leave(); B2.leave();
   g_clients.clear();
 
+  // ---- a dedicated server's new world: a newcomer starts on dry land (it put them on the sea floor: a black screen) ----
+  {
+    EventBus sb;
+    LevelInfo li; li.name = "SpawnWorld"; li.seedText = "hello";
+    auto lv = Level::create(userSub("saves"), li, &pool, &sb);
+    net::HostOptions ho; ho.name = "SpawnWorld"; ho.port = port + 3; ho.dedicated = true; ho.lan = false;
+    net::ServerHost sh(*lv, ho);
+    const vec3 sp = sh.spawnFor("Newcomer");
+    ColumnSample s; if (DimGenerator* g = lv->gen->forDim(DIM_OVERWORLD)) g->sample(ifloor(sp.x), ifloor(sp.z), s);
+    check(s.water < 0 && s.height > 0, "a dedicated server's newcomer starts on dry land, not under the sea (" + std::to_string((int)sp.x) + ", " + std::to_string((int)sp.z) + ")");
+    // a world an older server saved with its start on the sea floor: chosen again
+    lv->info.spawn = vec3(0.5f, dimBase(DIM_OVERWORLD) + 20, 0.5f);
+    const vec3 sp2 = sh.spawnFor("Another");
+    ColumnSample s2; if (DimGenerator* g = lv->gen->forDim(DIM_OVERWORLD)) g->sample(ifloor(sp2.x), ifloor(sp2.z), s2);
+    check(s2.water < 0 && s2.height > 0, "a start an older server left on the sea floor is chosen again on dry land");
+    lv->close();
+  }
+
   // ---- "Open to LAN": a single-player world served by the game itself (the host plays in the same level) ----
   {
     EventBus hostBus;
