@@ -1,4 +1,5 @@
 {
+ "fixedStep": true,
  "steps": [
   {
    "wait": 150,

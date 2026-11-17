@@ -369,7 +369,11 @@ void App::frameLoop() {
   double focusAt = last;   // losing focus waits 250 ms, and the first moments of a run do not count
   while (!quit) {
     double now = nowSeconds();
-    dt = std::min(0.1, now - last); last = now; time += dt;
+    dt = std::min(0.1, now - last); last = now;
+    // a scripted playtest that asks for it ("fixedStep": true) gets 1/60 s of game time a frame, so its frame counts mean
+    // the same on a fast machine as on a slow software-drawn one (a 120-frame dig was 0.4 s here and 12 s on the CI)
+    if (args.smokeScript.is_object() && args.smokeScript.value("fixedStep", false)) dt = 1.0 / 60;
+    time += dt;
     input.dt = dt;
     input.beginFrame();
     testScriptFrame(*this);   // --smoke-script: scripted keys/pad/commands (client/test_script.cpp)
