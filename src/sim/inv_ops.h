@@ -95,6 +95,10 @@ public:
   void giveBack(const ItemStack& s);
   int bagAdd(ItemStack& s);         // main, then the worn backpack (PlayerInventory.add)
   Bags bags();
+  // at a crafting table: the chests and barrels touching it, what's in each (the recipe book counts and takes from them)
+  std::vector<std::pair<ivec3, std::vector<ItemStack>>> nearStores;
+  void loadNearStores();
+  void storeNearStores();
 
   // effects the caller turns into sounds, drops, toasts
   std::function<void(const ItemStack&)> onThrow;            // drop this stack in front of the player

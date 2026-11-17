@@ -16,6 +16,7 @@
 #include "core/tool_parts.h"
 #include "sim/creature.h"
 #include "sim/treasure_maps.h"
+#include "sim/inv_ops.h"
 #include "sim/creature_entities.h"
 #include "sim/creature_rig.h"
 #include "sim/trough.h"
@@ -697,6 +698,29 @@ int main(int argc, char** argv) {
     const bool again = !use("treasure_map");
     check(again && P->inv[0].tag.value("tx", 0) == tx, "using it again shows the same X");
     for (auto& q : P->inv) q = ItemStack();
+  }
+
+  printf("[crafting from the chests beside the table]\n");
+  {
+    World& wc = L->world();
+    const int BY2 = dimBase(DIM_OVERWORLD) + 200;
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 30 && !wc.isLoaded(4, BY2 + 1, 4);) { wc.stream({{vec3(4, BY2 + 1, 4), 1, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+    const ivec3 tb(4, BY2 + 1, 4), ch = tb + ivec3(1, 0, 0);
+    wc.setBlock(tb.x, tb.y, tb.z, B("crafting_table")); wc.setBlock(ch.x, ch.y, ch.z, B("chest"));
+    json items = json::array(); for (int i = 0; i < 27; i++) items.push_back(nullptr); items[5] = ItemStack("planks", 10).toJson();
+    wc.setBlockEntity(ch.x, ch.y, ch.z, json{{"type", "chest"}, {"items", items}});
+    for (auto& q : P->inv) q = ItemStack();
+    InvOpen o; o.mode = "table"; o.hasPos = true; o.pos = tb;
+    InvSession S(*P, &wc, o, false);
+    int ri = -1; for (int i = 0; i < (int)reg().recipes.size(); i++) { const Recipe& r = reg().recipes[i]; if (r.out == "crafting_table" && !r.shaped() == false) { ri = i; break; } }
+    if (ri < 0) for (int i = 0; i < (int)reg().recipes.size(); i++) if (reg().recipes[i].out == "crafting_table") { ri = i; break; }
+    check(ri >= 0 && canCraft(S.bags(), reg().recipes[ri]), "the recipe book counts the planks in the chest beside the table");
+    S.bookPick(ri, false, true);
+    int onGrid = 0; for (auto& g : S.grid) if (g.id == "planks") onGrid += g.n;
+    int left = 0; for (auto& it : (*wc.blockEntity(ch.x, ch.y, ch.z))["items"]) if (!it.is_null()) left += ItemStack::fromJson(it).n;
+    check(onGrid == 4 && left == 6, "picking it lays 4 planks out of the chest on the grid (" + std::to_string(onGrid) + " laid, " + std::to_string(left) + " left)");
+    for (auto& g : S.grid) g.clear();
+    wc.setBlock(ch.x, ch.y, ch.z, AIR); wc.setBlock(tb.x, tb.y, tb.z, AIR);
   }
 
   printf("[stacking]\n");

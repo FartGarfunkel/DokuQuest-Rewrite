@@ -46,6 +46,7 @@ bool isRedstoneItem(const ItemDef* d);
 struct Bags {
   std::vector<ItemStack>* main = nullptr;
   std::vector<ItemStack>* bp = nullptr;      // may be null
+  std::vector<std::vector<ItemStack>*> more; // the chests and barrels beside a crafting table (taken from after your own)
   int count(const std::string& id) const;
   int countTag(const std::string& key) const;
   int remove(const std::string& id, int n);  // returns what couldn't be removed
