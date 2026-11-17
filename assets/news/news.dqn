@@ -1,6 +1,33 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.28 — Things That Move | November 2026
+**Multiplayer:**
+- **Joining over the internet works on networks that block UDP.** A server now also listens for TCP on its port, and a joining game that gets no answer over UDP within 6 seconds tries TCP alongside and keeps whichever answers first. No settings to change: the same address and port. The router should forward the port for TCP as well as UDP (most routers have a "both" option).
+- **The server's log says why a player left:** they said goodbye, or their connection ended without one (and how long after connecting). Players who join over TCP are shown by their real address.
+- **A join that gets no answer from a home-network address (192.168.x.x) says so:** that address only works on the host's own Wi-Fi; from mobile data use the host's internet address.
+**Things that move:**
+- **Hinges, Sliders and Glue:** glue blocks together and set them on a Hinge to swing them (gates and doors facing up, drawbridges and hatches on a wall) or on a Slider to slide them out and back, up to 512 blocks at a time. Use the hinge or any block of what it carries to open and shut it; sneak-use to set which way it turns or how far it slides. Chests keep what's in them, stairs and logs turn with the piece, and nothing is ever lost if the game saves mid-move.
+- **Redstone and mills drive them:** held power opens, a button's pulse toggles, a comparator reads shut, open or moving, and a signal holds it against hands. An axle ending at one drives it at the axle's speed; a turning hinge on an axle goes round and round.
+- **Ride them:** stand on a moving piece and it carries you; it pushes you out of its way, and if you're trapped against something it stops and goes back. It never hurts anyone. Moving pieces go through water; lava stops them.
+- **Lifts:** a Slider with Lift Rails beside it carries its piece along the rail. Lift Stops by the rail are floors: their button calls the lift, and they give a redstone signal while it's there. Using the lift or a signal sends it to the next floor.
+- **In multiplayer** everyone sees the pieces move smoothly and can ride them.
+**Chains and ropes:**
+- **String them between blocks:** sneak-use a chain or rope on one block, then on another up to 16 blocks away. They sag, chains as interlocking links and ropes as twisted strands. Breaking an end drops them, and an end on a moving piece goes with it.
+- **Rope bridges:** use planks or slabs on a near-level rope to lay slats you can walk across.
+- **Climb them:** hanging chains now climb like ropes, and so do steep strung ones.
+**Towns:**
+- **New towns' gates move:** stone walls have an iron-bar portcullis that drops at the evening bell and rises at dawn, with a plank drawbridge hung on chains where water lies before the gate. Palisades have two timber gates that swing open by day. The guards, the lever and raids work them as before. Towns already in your world keep their gates.
+- **Stone towers have a lift** up to the wall walk.
+**Adventure:**
+- **Treasure maps work:** use one to mark its X on dry land some way off (which way and how far, and a red X on your maps). A chest of treasure lies buried under it.
+- **A crafting table uses the chests and barrels touching it:** the recipe book counts what's in them and lays it on the grid (yours first).
+**Bosses:**
+- **The Night Lord's second phase fights properly:** its big moves land their blows.
+- **No more pillar tricks:** a boss you've climbed away from shoots at you (and calls lightning in its second phase).
+- **A dragon set in a hall stays there** instead of flying off.
+- **Every boss gives one Realm Fragment** the first time its kind is beaten, never again.
+- Removed Herobrine.
 ## Alpha 1.0.0.27 | November 2026
 **Multiplayer:**
 - **Joining a dedicated server no longer drops you on the sea floor** (a black screen on the phone): newcomers start on dry land, as a single-player world does, and a server world or player left under the sea by an older version is moved up onto land.

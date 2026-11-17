@@ -7,6 +7,7 @@
 #include "sim/level.h"
 #include "sim/player.h"
 #include "sim/redstone.h"
+#include "sim/villagers.h"
 #include "sim/redstone_entities.h"
 #include "sim/minecart.h"
 #include "sim/vehicles.h"
@@ -380,17 +381,22 @@ int main(int argc, char** argv) {
       double g0 = nowSeconds();
       auto ready = [&] { for (auto& c : G->at("cells")) if (!gw.isLoaded(c[0], base + c[1].get<int>(), c[2])) return false; return gw.isLoaded(L.x, L.y, L.z); };
       while (!ready() && nowSeconds() - g0 < 240) { gw.stream({{vec3(L), 3, false}}, 20); gw.pumpMain(20); std::this_thread::sleep_for(std::chrono::milliseconds(5)); }
-      BlockId bar = R.blockId("gate_barrier");
-      auto barriers = [&] { int n = 0; for (auto& c : G->at("cells")) n += gw.getBlock(c[0], base + c[1].get<int>(), c[2]) == bar; return n; };
-      int before = barriers();
-      check(ready() && gw.getBlock(L.x, L.y, L.z) == R.blockId("lever"), "the town gate's lever is there (" + S->name + ")");
-      q.inv[q.selected].clear();
-      int lm0 = gw.getMeta(L.x, L.y, L.z);
-      bus.emit("itemUse", json::array({q.name, "", L.x, L.y, L.z, (int)FACE_PY}));
-      int after = barriers();
-      check(before > 0 && after == 0, "pulling the lever opens the gate (" + std::to_string(before) + " -> " + std::to_string(after) + ", lever " + std::to_string(lm0) + " -> " + std::to_string(gw.getMeta(L.x, L.y, L.z)) + ")");
-      bus.emit("itemUse", json::array({q.name, "", L.x, L.y, L.z, (int)FACE_PY}));
-      check(barriers() == before, "pulling it again lets the gate down");
+      // (a new town's gate moves: sim/villager_life.cpp gateShutAt reads its portcullis or leaves; an older one its barriers)
+      VillageRef vr = villageById(*gl, S->data.value("id", std::string()));
+      const VGate* VG = vr && !vr->gates.empty() ? &vr->gates[0] : nullptr;
+      auto settle = [&] { for (int k = 0; k < 80; k++) gl->tick(0.05); };
+      check(ready() && VG && gw.getBlock(L.x, L.y, L.z) == R.blockId("lever"), "the town gate's lever is there (" + S->name + ")");
+      if (VG) {
+        settle();
+        const bool before = gateShutAt(*gl, *VG);
+        q.inv[q.selected].clear();
+        bus.emit("itemUse", json::array({q.name, "", L.x, L.y, L.z, (int)FACE_PY}));
+        settle();
+        check(gateShutAt(*gl, *VG) != before, std::string("pulling the lever ") + (before ? "opens" : "shuts") + " the gate");
+        bus.emit("itemUse", json::array({q.name, "", L.x, L.y, L.z, (int)FACE_PY}));
+        settle();
+        check(gateShutAt(*gl, *VG) == before, "pulling it again puts it back");
+      }
     }
     gl->close();
   }
