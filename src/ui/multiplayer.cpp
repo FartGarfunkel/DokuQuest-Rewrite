@@ -444,7 +444,17 @@ public:
           }
           if (done) label(F_MID, col::muted, "Couldn't find it out (no curl, or offline). Search \"what is my IP\" in a browser instead.", w);
         }
-        label(F_MID, col::muted, "Still nothing? If your router's own internet (WAN) address isn't the one above, your provider shares one address among many homes (CGNAT) and nobody can reach you from outside: ask them for a public IPv4 address. And you both need the same DokuQuest version.", w);
+        {   // this device's own IPv6 address (phones on mobile data have one): friends can join that, no forwarding needed
+          static std::string six; static double sixAt = -100;
+          if (nowSeconds() - sixAt > 10) { sixAt = nowSeconds(); six = net::internetAddress6(); }
+          if (!six.empty()) {
+            const std::string full6 = "[" + six + "]:" + port;
+            label(F_MID, col::text, "Or, over IPv6 (this device has its own internet address: no router forwarding needed, though a home router may still need to allow it):", w);
+            label(F_BIG, col::ember, full6.c_str());
+            if (button("Copy##net6", BTN_NORMAL, true)) { SDL_SetClipboardText(full6.c_str()); msg = "Copied"; }
+          }
+        }
+        label(F_MID, col::muted, "Still nothing? If your router's own internet (WAN) address isn't the one above, your provider shares one address among many homes (CGNAT) and nobody can reach you over IPv4: use the IPv6 address if one shows above, or ask your provider for a public IPv4 address. And you both need the same DokuQuest version.", w);
       }
       ImGui::Dummy(ImVec2(1, 6 * z));
       if (button("Stop sharing this world")) { closeLan(a); a.toast("Your world is just yours again", ""); }

@@ -338,6 +338,18 @@ int main(int argc, char** argv) {
     check(ok2 && U.overTcp(), strFormat("UDP lost on the way: the join goes through over TCP at once (%.1f s)", nowSeconds() - t0));
     if (ok2) check(pump(4, [&] { return B.ghost("player", "Uma") != nullptr; }), "and she plays like anyone else");
     U.close();
+    // over IPv6 (a phone on mobile data is reached that way): the address typed in brackets, the join carried over TCP
+    {
+      std::string h6; int p6 = 0; net::parseAddress(addr, h6, p6);
+      net::NetClient W; net::JoinOptions wo; wo.address = "[::1]:" + std::to_string(p6); wo.name = "Wren";
+      const bool ok6 = W.connect(wo);
+      check(ok6 && W.overTcp(), "joining by an IPv6 address works (over TCP) " + W.error());
+      if (ok6) check(pump(4, [&] { return B.ghost("player", "Wren") != nullptr; }), "and she's in the world like anyone");
+      W.close();
+      net::NetClient X; net::JoinOptions xo; xo.address = "no-such-host.invalid:" + std::to_string(p6); xo.name = "Xan";
+      const double tx = nowSeconds(); const bool okx = X.connect(xo);
+      check(!okx && X.error().find("Could not find") != std::string::npos && nowSeconds() - tx < 10, "a name that doesn't exist says so (" + X.error() + ")");
+    }
     // a host that stalls for 8 s while someone joins: UDP and TCP both answer when it wakes; UDP is kept
     net::NetClient V; net::JoinOptions vo; vo.address = addr; vo.name = "Vic";
     V.begin(vo); g_freeze = true;

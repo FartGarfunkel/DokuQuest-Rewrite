@@ -25,6 +25,9 @@ private:
   void run();
   std::thread th; std::atomic<bool> running{false};
   intptr_t listener = -1; u16 game = 0;
+public:
+  bool dual = false;   // the listener takes IPv6 as well as IPv4
+private:
   std::mutex mx; std::vector<std::string> log; std::unordered_map<u16, std::string> real;
 };
 
@@ -39,7 +42,7 @@ private:
   void run(std::string host, u16 port);
   std::thread th; std::atomic<bool> running{false}, dead{false};
   intptr_t udp = -1; u16 local = 0;
-  u32 targetHost = 0; u16 targetPort = 0;   // (where to, looked up by start())
+  std::vector<std::string> targets;   // (where to: the addresses start() looked up, each a sockaddr_storage's bytes)
 };
 
 } // namespace dq::net

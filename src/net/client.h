@@ -85,7 +85,7 @@ private:
   std::unique_ptr<TcpRelayClient> tcp;   // the connection carried over TCP (when UDP got no answer)
   struct _ENetHost* host2 = nullptr;     // while both are tried: the TCP attempt's own connection (the UDP one goes on in `host`)
   struct _ENetPeer* peer2 = nullptr;
-  bool triedTcp = false;
+  bool triedTcp = false, udpNowhere = false;   // (udpNowhere: an address ENet's UDP can't reach, such as IPv6)
   void dropTcpTry();
   State st = State::Idle;
   std::string err;
