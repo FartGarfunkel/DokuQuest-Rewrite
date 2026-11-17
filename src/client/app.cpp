@@ -1,6 +1,7 @@
 #include "assets/pack_models.h"
 #include "assets/local_models.h"
 #include "client/app.h"
+#include "assets/font_files.h"
 #include "render/ore_overlay.h"
 #include "ui/book_ui.h"
 #include "render/gpu_select.h"
@@ -230,9 +231,9 @@ void App::initImGui() {
   float dpi = 1; int dw, dh; SDL_GL_GetDrawableSize(window, &dw, &dh); if (width > 0) dpi = (float)dw / width;
   uiScale = clampv(height / 720.f, 0.75f, 2.5f);
   ImFontConfig cfg; cfg.OversampleH = 1; cfg.OversampleV = 1; cfg.PixelSnapH = true;
-  std::string ui = (assetsDir() / "fonts" / "PixelifySans.ttf").string(), title = (assetsDir() / "fonts" / "Jersey15.ttf").string();
+  std::string ui = fontPath(settings.extra.value("fontUi", std::string(DEFAULT_UI_FONT)), DEFAULT_UI_FONT).string(), title = fontPath(settings.extra.value("fontTitle", std::string(DEFAULT_TITLE_FONT)), DEFAULT_TITLE_FONT).string();
   static const ImWchar ranges[] = {0x0020, 0x00FF, 0x2010, 0x2027, 0x2190, 0x21FF, 0x2600, 0x26FF, 0};
-  auto load = [&](const std::string& f, float px) { return fs::exists(f) ? io.Fonts->AddFontFromFileTTF(f.c_str(), px * uiScale * dpi, &cfg, ranges) : io.Fonts->AddFontDefault(); };
+  auto load = [&](const std::string& f, float px) { return fs::exists(f) ? io.Fonts->AddFontFromFileTTF(f.c_str(), px * uiScale * dpi * fontEmRatio(f) / (f == title ? 1.f : 1.2f), &cfg, ranges) : io.Fonts->AddFontDefault(); };
   fontUi = load(ui, 18); fontSmall = load(ui, 14); fontUiBig = load(ui, 24); fontTitle = load(title, 56);
   io.FontGlobalScale = 1.f / dpi;
 }

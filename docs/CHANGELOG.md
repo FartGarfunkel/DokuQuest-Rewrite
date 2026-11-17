@@ -5,6 +5,17 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.31 (November 2026)
+
+**Fonts:**
+- **Choose the game's fonts:** Options → User Interface → Text Font and Heading Font. Any .ttf or .otf you put in the fonts folder in your DokuQuest folder shows up there too. Each font is sized to match, so text keeps its size, and characters a font lacks come from the game's own. The launcher uses your choice too.
+- **A new font to pick:** Cairopixel.
+
+**Fixes:**
+- **The Windows download is back:** alpha.30's Windows build failed while fetching the router library.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.30 (November 2026)
 
 **Multiplayer:**

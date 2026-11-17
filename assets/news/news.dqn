@@ -1,6 +1,13 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.31 | November 2026
+**Fonts:**
+- **Choose the game's fonts:** Options → User Interface → Text Font and Heading Font. Any .ttf or .otf you put in the fonts folder in your DokuQuest folder shows up there too. Each font is sized to match, so text keeps its size, and characters a font lacks come from the game's own. The launcher uses your choice too.
+- **A new font to pick:** Cairopixel.
+**Fixes:**
+- **The Windows download is back:** alpha.30's Windows build failed while fetching the router library.
+- Removed Herobrine.
 ## Alpha 1.0.0.30 | November 2026
 **Multiplayer:**
 - **Hosting opens the way in by itself:** when you open a world to LAN or start a dedicated server, the game asks your home router to forward the port (TCP and UDP) to the computer that's hosting, and to open its IPv6 firewall where the router allows it. No port forwarding by hand. It's taken back when you stop. The server's log says what the router answered (and if it refused, why). Open to LAN has a switch for it.
