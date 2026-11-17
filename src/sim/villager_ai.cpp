@@ -749,6 +749,9 @@ OptMove npcBrain(Level& lv, Creature& e, Entity* p, float dist, float dt) {
     out = brainInner(lv, e, M, N, *v, p, dist, dt);
     // towns3.js: the watch at the gates — each guard keeps one, either side of the road just inside, looking out
     const int i = N.value("i", 0);
+    // the first guard takes a turn on lookout now and then, up a corner tower's lift (sim/villager_lookout.cpp)
+    if (i == 100 && e.type == "village_guard" && !M.foe && !M.confront && v->hasWall)
+      if (OptMove m = lookoutAI(lv, e, M, *v, dt)) { N["p"] = M.pose; return *m; }
     if (i >= 100 && i < 200 && e.type == "village_guard" && !M.foe && !M.confront && v->hasWall) {
       const auto& gates = gatesOf(lv, *v);
       if (!gates.empty()) {

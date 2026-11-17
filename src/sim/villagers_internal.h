@@ -28,6 +28,8 @@ struct NpcMind {
   ivec3 badSeat{INT32_MIN}; double badSeatUntil = 0;   // a seat it couldn't reach: left alone for a while
   // towns3.js: the watch at the gates
   float watchT = 0, watchLen = 0; bool patrol = false;
+  // the lookout (sim/villager_lookout.cpp): a guard rides a tower's lift up to the wall walk to keep watch, and back down
+  int look = 0; float lookLeft = 0, lookStateT = 0; double nextLookAt = 0, lookClock = 0; ivec3 lookLift{0}; vec3 lookSpot{0};
   // hearth.js: the missing
   std::string lostQ; u32 follow = 0;
   bool pinned = false; std::string sitHeld;
@@ -92,6 +94,8 @@ void later(Level& lv, double secs, const Player& p, const std::string& text);
 // villager_ai.cpp
 OptMove npcBrain(Level& lv, Creature& e, Entity* p, float dist, float dt);
 OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float speed);   // walk there (its own A*)
+// a guard's turn on lookout, up a stone tower's lift (sim/villager_lookout.cpp): a move while it's on that duty, else none
+OptMove lookoutAI(Level& lv, Creature& e, NpcMind& M, const Village& v, float dt);
 // the working village (sim/villager_chores.cpp): farmers reap their farms and carry the wheat to the mill, the miller
 // feeds the millstone and bags the flour, the baker fetches it and bakes bread. A move while they're about it, or none.
 OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFolk& f, float ph, float dt);

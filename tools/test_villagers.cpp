@@ -683,6 +683,32 @@ int main(int argc, char** argv) {
           for (int k = 0; k < 120; k++) L->tick(0.05);
           check(machineState(w, sl).value("at", 0) == lf.stops.back().second, "called, it rises to the wall walk");
           liftCall(*L, REALM_MAIN, sl, 0); for (int k = 0; k < 120; k++) L->tick(0.05);
+          // the town's first guard takes a turn on lookout: onto the lift, up to the wall walk, a watch, and back down
+          P->pos = vec3(v->x + 0.5f, v->y + 1, v->z + 0.5f);
+          for (double t0 = nowSeconds(); nowSeconds() - t0 < 60;) { w.stream({{P->pos, 4, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); L->tick(0.05); }
+          Creature* guard = nullptr;
+          for (auto& up : L->entities()) if (auto* c = dynamic_cast<Creature*>(up.get())) if (const json* N = npcOf(*c))
+            if (c->type == "village_guard" && !c->removed && N->value("v", "") == v->id && N->value("i", 0) == 100) guard = c;
+          check(guard != nullptr, "the town's first guard is about");
+          if (guard) {
+            L->info.time = 3600;   // (morning)
+            // (near the tower, so the test doesn't wait on a long walk; the land there loaded first)
+            for (double t0 = nowSeconds(); nowSeconds() - t0 < 60;) { w.stream({{vec3(sl) + vec3(6, 1, 6), 3, false}}, 20); bool all = true; for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (!w.isLoaded(sl.x + dx * 16, sl.y, sl.z + dz * 16)) all = false; if (all) break; std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+            guard->pos = vec3(sl.x + 0.5f, sl.y + 3, sl.z + 5.5f);   // (in the town, before the tower's doorway: a corner tower's way in faces the town)
+            const float topY = sl.y + 1 + lf.stops.back().second;
+            for (int dy = 0; dy <= 2; dy++) { printf("dbg layer y+%d\n", dy); for (int dz = -4; dz <= 5; dz++) { std::string r; for (int dx = -4; dx <= 4; dx++) { const BlockId q = w.getBlock(sl.x + dx, sl.y + dy, sl.z + dz); const std::string k = reg().block(q).key; r += q == AIR ? '.' : k == "slider" ? 'S' : k == "lift_rail" ? 'R' : k == "lift_stop" ? 'T' : k == "ladder" ? 'L' : k.find("slab") != std::string::npos ? '_' : '#'; } printf("dbg  z%+d %s\n", dz, r.c_str()); } }
+            bool wentUp = false, cameDown = false;
+            for (int k = 0; k < 20 * 300 && !cameDown; k++) {
+              L->tick(0.05);
+              P->pos = guard->pos + vec3(6, 0, 6);   // (the player near, so the village stays awake)
+              if (k % 20 == 0) w.stream({{P->pos, 3, false}}, 20);
+              if (guard->pos.y > topY - 0.6f) wentUp = true;
+              if (k % 100 == 0) { NpcMind& GM = vsys(*L)->mind(guard->id); printf("dbg t%d look=%d st=%.1f pos %.1f %.1f %.1f lift %d %d %d at=%d phase=%.2f\n", k / 20, GM.look, GM.lookStateT, guard->pos.x - sl.x, guard->pos.y - sl.y, guard->pos.z - sl.z, GM.lookLift.x - sl.x, GM.lookLift.y - sl.y, GM.lookLift.z - sl.z, machineState(w, sl).value("at", 0), npcPhase(*L)); }
+              if (wentUp && guard->pos.y < sl.y + 2.6f) cameDown = true;
+            }
+            check(wentUp, "the guard rides the lift up to the wall walk on lookout");
+            check(cameDown, "and comes back down after the watch");
+          }
         }
       }
     }
