@@ -454,17 +454,19 @@ void strandedFlop(Level& lv, Creature& m, float dt, float air, float every, floa
 
 // ---- swimming for real (data "aquatic" / "amphibious", sim/creature.h): neutral in the water, at depth, in three dimensions
 // the water column at (x, z) about y: its top (the first dry block up) and its floor (the first dry block down)
-static void waterColumn(World& w, float x, float y, float z, float& top, float& floor) {
+// (med: what it swims in, reg().tLiquid's number: 1 water, 2 lava)
+static void waterColumn(World& w, float x, float y, float z, float& top, float& floor, int med = 1) {
   const int bx = ifloor(x), by = ifloor(y), bz = ifloor(z);
   top = (float)by + 16; floor = (float)by - 16;
-  for (int k = by; k < by + 16; k++) if (reg().tLiquid[w.getBlock(bx, k, bz)] != 1) { top = (float)k; break; }
-  for (int k = by; k > by - 16; k--) if (reg().tLiquid[w.getBlock(bx, k, bz)] != 1) { floor = (float)k + 1; break; }
+  for (int k = by; k < by + 16; k++) if (reg().tLiquid[w.getBlock(bx, k, bz)] != med) { top = (float)k; break; }
+  for (int k = by; k > by - 16; k--) if (reg().tLiquid[w.getBlock(bx, k, bz)] != med) { floor = (float)k + 1; break; }
 }
+static bool inMediumAt(World& w, float x, float y, float z, int med) { return reg().tLiquid[w.getBlock(ifloor(x), ifloor(y), ifloor(z))] == med; }
 // the height an aquatic creature may swim at here: off the floor, its whole body under the surface (a fish no longer
 // rises to the top and bobs there); in water too shallow for that, along the bottom. under: how far below the top
 float aquaticDepth(Level& lv, const Creature& m, float ty, float under) {
   float top, floor;
-  waterColumn(lv.world(m.realm), m.pos.x, m.pos.y + std::min(m.h * 0.5f, 0.5f), m.pos.z, top, floor);
+  waterColumn(lv.world(m.realm), m.pos.x, m.pos.y + std::min(m.h * 0.5f, 0.5f), m.pos.z, top, floor, m.T->medium);
   const float lo = floor + 0.05f, hi = top - m.h - under;
   return hi < lo ? lo : clampv(ty, lo, hi);
 }
@@ -473,11 +475,12 @@ bool aquaticWaypoint(Level& lv, Creature& m, bool deep) {
   World& w = lv.world(m.realm);
   for (int i = 0; i < 10; i++) {
     float a = frand() * TAU, r = 3 + frand() * 5, nx = m.pos.x - std::sin(a) * r, nz = m.pos.z - std::cos(a) * r, ny = m.pos.y + (frand() - (deep ? 0.65f : 0.5f)) * 4;
-    if (!wetAt(w, nx, ny, nz) || !wetAt(w, nx, ny + std::min(m.h, 1.f), nz)) continue;
-    if (deep && !(wetAt(w, nx, ny + 1.6f, nz) && wetAt(w, nx, ny - 1.2f, nz))) continue;
+    const int md = m.T->medium;
+    if (!inMediumAt(w, nx, ny, nz, md) || !inMediumAt(w, nx, ny + std::min(m.h, 1.f), nz, md)) continue;
+    if (deep && !(inMediumAt(w, nx, ny + 1.6f, nz, md) && inMediumAt(w, nx, ny - 1.2f, nz, md))) continue;
     // (the way there in water too: not across a sand bar into the next pool)
     const float mx = (m.pos.x + nx) / 2, mz = (m.pos.z + nz) / 2;
-    if (!wetAt(w, mx, (m.pos.y + ny) / 2 + 0.2f, mz)) continue;
+    if (!inMediumAt(w, mx, (m.pos.y + ny) / 2 + 0.2f, mz, md)) continue;
     m.swimDir = a; m.hasSwimDir = true; m.swimY = ny; m.hasSwimY = true;
     return true;
   }
@@ -488,7 +491,7 @@ bool aquaticWaypoint(Level& lv, Creature& m, bool deep) {
 void aquaticSteer(Level& lv, Creature& m, float& dir, float& ty, float& want, float dt, bool chasing, bool surfacing) {
   World& w = lv.world(m.realm);
   const float reach = m.w + 0.6f, ax = m.pos.x - std::sin(dir) * reach, az = m.pos.z - std::cos(dir) * reach;
-  if (m.T->aquatic && want > 0.05f && !wetAt(w, ax, m.pos.y + std::min(m.h * 0.5f, 0.6f), az)) {   // (an amphibian may go ashore)
+  if (m.T->aquatic && want > 0.05f && !inMediumAt(w, ax, m.pos.y + std::min(m.h * 0.5f, 0.6f), az, m.T->medium)) {   // (an amphibian may go ashore)
     if (chasing) want = 0;
     else { m.swimDir = dir = dir + PI * (0.75f + frand() * 0.5f); m.hasSwimDir = true; m.swimT = 1.5f + frand() * 2; }
   }
@@ -795,8 +798,7 @@ Creature* rideControl(Level& lv, Player& p, float fwd, float strafe, bool jump, 
   if (sneak && !descend) { dismount(lv, *m, p); return nullptr; }
   m->rideIn = {fwd, strafe, jump, sprint, descend};
   if (m->ghost) {   // a joined world: the host moves the mount (net: ME "ri"); we sit where it is here
-    float seatY = m->h * 0.7f;
-    if (reg().models.contains(m->modelKey())) seatY = reg().models[m->modelKey()].value("seatY", seatY);
+    const float seatY = m->riderSeatY();
     p.pos = vec3(m->pos.x, m->pos.y + seatY - 0.28f, m->pos.z); p.vel = vec3(0); p.onGround = true; p.fallDist = 0;
   }
   return m;

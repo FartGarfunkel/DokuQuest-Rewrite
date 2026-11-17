@@ -41,7 +41,7 @@ void SpellBolt::hit(Level& lv, Entity* e) {
     for (int i = 0; i < 4; i++) { const float a = (float)mrand() * 6.2832f, rr = 1.f + (float)mrand() * 1.6f; igniteAt(lv, realm, pos + vec3(std::cos(a) * rr, 0.6f, std::sin(a) * rr), vec3(0, -1, 0), by); }
     for (auto& up : lv.entities()) {
       Entity& m = *up;
-      if (m.realm != realm || !isSpellTarget(m) || (m.data.contains("owner") && !m.data["owner"].is_null() && m.data["owner"] != "")) continue;
+      if (m.realm != realm || !isSpellTarget(m) || !petOwnerOf(m).empty()) continue;
       if (m.ghost && !lv.isRemote()) continue;
       float d = glm::distance(m.pos + vec3(0, m.h / 2, 0), pos);
       if (d > 3.4f) continue;

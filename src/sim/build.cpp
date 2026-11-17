@@ -1111,6 +1111,7 @@ void PlayerController::placeCarried() {
   const Registry& R = reg();
   json c = p.carrying;
   if (!target.hit) { toastMsg("Look at the ground to set it down"); return; }
+  if (lv.isRemote() && c.value("kind", "") == "mob") { useOnHost(*this, "block", &target); return; }   // (the host sets it down: sim/basket.cpp)
   ivec3 t = placeTarget(target);
   if (!inWorldY(t.y) || !R.tReplaceable[w.getBlock(t.x, t.y, t.z)]) return;
   if (c.value("kind", "") == "block") {

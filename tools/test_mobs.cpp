@@ -307,6 +307,62 @@ int main(int argc, char** argv) {
     }
   }
 
+  // ------------------------------------------------------------------ the stable
+  printf("the stable: tamed creatures join it, and a fallen companion goes home to rest\n");
+  {
+    clearCreatures(*lv);
+    p.pos = vec3(4.5f, Y, 4.5f);
+    lv->info.data.erase("stable");   // (a fresh book: the taming checks above filled it)
+    auto book = [&]() -> json { const json& D = lv->info.data; return D.contains("stable") && D["stable"].contains(p.name) ? D["stable"][p.name] : json::array(); };
+    Creature* dog = spawnCreature(*lv, 0, "wolf", vec3(6.5f, Y, 8.5f));
+    p.selected = 0; p.inv[0] = ItemStack("bone", 1);
+    useOnCreature(*lv, p, *dog, false);
+    dog->petName = "Rex";
+    run(*lv, {&p, &other}, 2.5f);
+    json b = book();
+    CHECK(b.is_array() && b.size() == 1 && b[0].value("type", "") == "wolf" && b[0].value("state", "") == "out", "a dog tamed with a bone joins your stable");
+    CHECK(!dog->data.contains("owner") && dog->owner == p.name, "  ...its owner kept in one place (the creature's own, not its data)");
+    CHECK(b.size() == 1 && b[0].value("name", json()) == "Rex", "  ...by its name");
+    const u32 dogId = dog->id;
+    DamageSrc src; src.type = "mob"; src.attacker = other.id;
+    dog->hurt(*lv, 1000, src);
+    lv->tick(TICK_DT);
+    int items = 0; for (auto& e : lv->entities()) if (!e->removed && e->type == "item") { items++; e->removed = true; }
+    b = book();
+    CHECK(!lv->entity(dogId) || lv->entity(dogId)->removed, "struck down, it leaves");
+    CHECK(b.size() == 1 && b[0].value("state", "") == "resting" && items == 0, "  ...goes home to the stable to rest, and leaves nothing behind");
+    // an old save: a companion the stable had called kept its owner in data; loaded, it's the creature's own
+    auto e = createEntity("cat"); auto* oc = dynamic_cast<Creature*>(e.get());
+    oc->data["owner"] = "Tester"; oc->data["petName"] = "Tibbles"; oc->data["tamed"] = true; oc->data["uid"] = "c1234";
+    json saved = oc->save();
+    auto e2 = createEntity("cat"); auto* nc = dynamic_cast<Creature*>(e2.get());
+    nc->load(saved);
+    CHECK(nc->owner == "Tester" && nc->tamed && nc->petName == "Tibbles" && !nc->data.contains("owner") && nc->data.value("uid", "") == "c1234", "an old save's companion: owner and name move onto the creature, its stable place stays");
+    CHECK(petOwnerOf(*nc) == "Tester", "  ...and everything that asks whose it is hears the same");
+    clearCreatures(*lv);
+  }
+
+  // ------------------------------------------------------------------ lava
+  printf("a lava dweller swims in lava\n");
+  if (creatureType("laviathan")) {
+    clearCreatures(*lv);
+    const BlockId lava = reg().blockId("lava");
+    for (int x = TX0; x <= TX1; x++) for (int z = TZ0; z <= TZ1; z++) for (int y = Y; y < TOP; y++) w.setBlock(x, y, z, lava);
+    lv->tick(TICK_DT);
+    const CreatureType* T = creatureType("laviathan");
+    CHECK(T->medium == 2 && T->amphibious, "the laviathan's element is lava");
+    Creature* c = spawnCreature(*lv, 0, "laviathan", vec3(36.5f, Y + 6, 18.5f));
+    if (c) {
+      c->kept = true;
+      const float hp0 = c->hp;
+      int ticks = 0, in = 0; float ylo = 1e9f, yhi = -1e9f, path = 0; vec3 last = c->pos;
+      for (int i = 0; i < (int)(10 / TICK_DT) && !c->removed; i++) { lv->tick(TICK_DT); p.hp = p.maxHp; ticks++; in += c->inWater; ylo = std::min(ylo, c->pos.y); yhi = std::max(yhi, c->pos.y); path += glm::distance(c->pos, last); last = c->pos; }
+      CHECK(in >= ticks * 0.95f && path > 2 && ylo < TOP - T->h - 0.5f, "it swims through the lava, not floating on it nor sunk (%.1f..%.1f under, swam %.1f)", TOP - yhi - T->h, TOP - ylo - T->h, path);
+      CHECK(!c->removed && c->hp >= hp0, "  ...unharmed");
+    } else CHECK(false, "a laviathan spawned");
+    clearCreatures(*lv);
+  }
+
   printf(fails ? "\n%d check(s) FAILED\n" : "\nall passed\n", fails);
   return fails ? 1 : 0;
 }

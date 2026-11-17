@@ -10,6 +10,7 @@
 #include "sim/gameplay.h"
 #include "sim/redstone.h"
 #include "core/registry.h"
+#include "sim/commands.h"
 
 namespace dq {
 
@@ -38,11 +39,57 @@ void registerBasket() {
     return releaseBasket(pc, pc.target, &held);
   });
   hooks().useBlock.push_back([](PlayerController& pc, const RayHit& hit, ItemStack* held, const ItemDef*) { return releaseBasket(pc, hit, held); });
+
+  // (a testing command, like /summon: a creature of yours, tamed and saddled, with you on its back)
+  registerChatCommand("ride", "Summon a tamed, saddled mount of yours and get on it", [](CommandSource& src, const std::vector<std::string>& a) -> std::string {
+    if (!src.player || !src.level || a.empty()) return "Usage: /ride <creature>";
+    Player& p = *src.player;
+    const CreatureType* T = creatureType(a[0]);
+    if (!T) return "No creature called " + a[0];
+    if (!T->mount) return "A " + a[0] + " can't be ridden";
+    if (p.riding) return "You're riding already";
+    Creature* c = spawnCreature(*src.level, p.realm, a[0], p.pos + vec3(0, 0.05f, 0));
+    if (!c) return "It can't be summoned here";
+    c->owner = p.name; c->tamed = true; c->kept = true; c->saddled = true; c->yaw = p.yaw;
+    c->riddenBy = p.id; p.riding = c->id; p.vel = vec3(0);
+    return "Riding " + (T->label.empty() ? a[0] : T->label);
+  }, true, "<creature>");
+  // and setting a creature carried in the arms down where they look (the host's side of a joined player's set-down;
+  // your own goes through placeCarried)
+  hooks().useBlock.insert(hooks().useBlock.begin(), [](PlayerController& pc, const RayHit& hit, ItemStack*, const ItemDef*) {
+    if (pc.lv.isRemote() || !pc.p.carrying.is_object() || pc.p.carrying.value("kind", "") != "mob") return false;
+    pc.target = hit;
+    pc.placeCarried();
+    return true;
+  });
+}
+
+// lifting a creature in your arms: sneak + use with an empty hand, after every other use of it (sim/mob_carry.h). The
+// controller calls it for you, runGuestUse for a joined player's use asked of the host; what they carry comes back to
+// them with their bags (net/server_sync.cpp)
+bool liftInArms(PlayerController& pc, Entity& e) {
+  {
+    const ItemStack& held = pc.p.held();
+    if (!pc.p.sneaking || !held.empty() || pc.lv.isRemote()) return false;
+    auto* c = dynamic_cast<Creature*>(&e);
+    if (!c || !c->alive() || c->ghost) return false;
+    std::string why;
+    if (pickUpCreature(pc.lv, pc.p, *c, &why)) {
+      pc.lv.fx->soundUi(pc.p.id, c->type == "boar" ? "boar" : "pop"); pc.swingArm();
+      std::string who = !c->petName.empty() ? c->petName : c->label();
+      if (who.empty()) { who = c->type; for (auto& ch : who) if (ch == '_') ch = ' '; who = "a " + who; }
+      toast(pc.lv, pc.p, "Carrying " + who + " \xE2\x80\x94 use to set it down", "good");
+      return true;
+    }
+    if (!why.empty()) { toast(pc.lv, pc.p, why); return true; }
+    return false;
+  }
 }
 
 bool releaseBasket(PlayerController& pc, const RayHit& hit, ItemStack* held) {
   {
-    if (!held || held->id != "wicker_basket" || pc.lv.isRemote() || !held->tag.is_object() || !held->tag.contains("mob")) return false;
+    if (!held || held->id != "wicker_basket" || !held->tag.is_object() || !held->tag.contains("mob")) return false;
+    if (pc.lv.isRemote()) return useOnHost(pc, "block", &hit);   // (a joined world: the host lets it out, from their basket there)
     std::string type = held->tag.value("mob", std::string());
     vec3 at = vec3(hit.block) + vec3(0.5f, 0, 0.5f) + vec3(hit.normal);
     if (hit.normal.y == 0) at.y = (float)hit.block.y;

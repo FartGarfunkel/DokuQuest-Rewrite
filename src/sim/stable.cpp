@@ -2,6 +2,7 @@
 #include "sim/stable.h"
 #include "sim/mount_gear.h"
 #include "sim/travel.h"
+#include "sim/creature.h"
 
 namespace dq {
 
@@ -31,12 +32,21 @@ std::string sdata(const Entity& e, const char* k) { auto it = e.data.find(k); re
 
 void stableSync(json& r, const Entity& m) {
   r["type"] = m.type;
-  r["name"] = m.data.contains("petName") && m.data["petName"].is_string() ? m.data["petName"] : json();
-  r["saddled"] = m.data.value("saddled", false);
-  r["variant"] = m.data.value("variant", json());
-  r["color"] = m.data.value("color", json());
-  r["size"] = m.data.value("size", json());
-  r["baby"] = m.data.value("baby", false) ? (int)std::lround(m.data.value("growT", 0.0)) : 0;
+  if (auto* c = dynamic_cast<const Creature*>(&m)) {   // (a creature keeps these as its own: sim/creature.h)
+    r["name"] = c->petName.empty() ? json() : json(c->petName);
+    r["saddled"] = c->saddled;
+    r["variant"] = c->variant.empty() ? json() : json(c->variant);
+    r["color"] = c->color.empty() ? json() : json(c->color);
+    r["size"] = c->size > 0 ? json(c->size) : json();
+    r["baby"] = c->baby ? std::max(1, (int)std::lround(c->growT)) : 0;
+  } else {
+    r["name"] = m.data.contains("petName") && m.data["petName"].is_string() ? m.data["petName"] : json();
+    r["saddled"] = m.data.value("saddled", false);
+    r["variant"] = m.data.value("variant", json());
+    r["color"] = m.data.value("color", json());
+    r["size"] = m.data.value("size", json());
+    r["baby"] = m.data.value("baby", false) ? (int)std::lround(m.data.value("growT", 0.0)) : 0;
+  }
   r["hp"] = std::max(1, (int)std::lround(m.hp)); r["maxHp"] = m.maxHp;
   r["dim"] = jsDimOf(m); r["realm"] = m.realm;
   r["x"] = (int)std::lround(m.pos.x); r["y"] = (int)std::lround(m.pos.y); r["z"] = (int)std::lround(m.pos.z);
@@ -52,7 +62,11 @@ Player* riderOf(Level& lv, const Entity& m) {
   for (Player* p : levelPlayers(lv, true)) if (p->riding == m.id) return p;
   return nullptr;
 }
-void dismountAll(Level& lv, Entity& m) { for (Player* p : levelPlayers(lv, true)) if (p->riding == m.id) p->riding = 0; m.data.erase("riddenBy"); }
+void dismountAll(Level& lv, Entity& m) {
+  for (Player* p : levelPlayers(lv, true)) if (p->riding == m.id) p->riding = 0;
+  m.data.erase("riddenBy");
+  if (auto* c = dynamic_cast<Creature*>(&m)) c->riddenBy = 0;
+}
 bool collides(World& w, vec3 lo, vec3 hi) {
   for (int x = ifloor(lo.x); x <= ifloor(hi.x - 1e-3f); x++) for (int y = ifloor(lo.y); y <= ifloor(hi.y - 1e-3f); y++) for (int z = ifloor(lo.z); z <= ifloor(hi.z - 1e-3f); z++)
     if (reg().tSolid[w.getBlock(x, y, z)]) return true;
@@ -83,7 +97,7 @@ bool stableIsMount(const std::string& type) { return mountBase(type).has_value()
 
 // keep the book in step with the creature, and see off any copy that's been replaced
 static void stableTickOne(Level& lv, Entity& m, double dt) {
-  std::string owner = sdata(m, "owner");
+  std::string owner = petOwnerOf(m);
   std::string uid = sdata(m, "uid");
   if (uid.empty()) {
     uid = "c" + newId().substr(2, 4) + newId().substr(6, 5);
@@ -111,7 +125,7 @@ void stableTick(Level& lv, double dt) {
   if (lv.isRemote()) return;
   for (size_t i = 0; i < lv.entities().size(); i++) {
     Entity& e = *lv.entities()[i];
-    if (e.removed || e.ghost || e.isPlayer() || e.hp <= 0 || sdata(e, "owner").empty() || e.data.contains("mountedOn")) continue;
+    if (e.removed || e.ghost || e.isPlayer() || e.hp <= 0 || petOwnerOf(e).empty() || e.data.contains("mountedOn")) continue;
     if (mobT(e.type).value("spirit", false)) continue;
     stableTickOne(lv, e, dt);
   }
@@ -131,7 +145,7 @@ std::string stableSummon(Level& lv, Player& p, const std::string& uid) {
     poof(lv, *live);
     live->realm = p.realm;
     live->pos = stableSpot(lv, p, live->w, live->h); live->prevPos = live->pos; live->vel = vec3(0);
-    live->data["stay"] = false; live->data["sitting"] = false;
+    if (auto* c = dynamic_cast<Creature*>(live)) { c->stay = false; c->sitting = false; }
     poof(lv, *live);
     return "";
   }
@@ -151,6 +165,7 @@ std::string stableSummon(Level& lv, Player& p, const std::string& uid) {
   for (const char* k : {"color", "variant", "size"}) if (r.contains(k) && !r[k].is_null()) D[k] = r[k];
   for (const char* k : MOUNT_GEAR_KEYS) if (r.contains(k) && !r[k].is_null()) D[k] = r[k];
   if (baby) { D["baby"] = true; D["growT"] = r["baby"]; }
+  if (auto* c = dynamic_cast<Creature*>(e.get())) c->adoptDataOwner();   // (a creature keeps its owner, name, saddle and coat as its own)
   if (r.contains("hs") && r["hs"].is_array()) { D["hs"] = r["hs"]; e->hp = e->maxHp; hsApplyHp(*e); }
   e->hp = std::min(e->maxHp, r.value("hp", e->maxHp) > 0 ? r.value("hp", e->maxHp) : e->maxHp);
   if (T.value("flyingMount", false) && !p.onGround) e->noGravity = true;
@@ -180,7 +195,10 @@ void stableRename(Level& lv, Player& p, const std::string& uid, const std::strin
   while (!n.empty() && isspace((unsigned char)n.back())) n.pop_back();
   while (!n.empty() && isspace((unsigned char)n.front())) n.erase(n.begin());
   (*r)["name"] = n.empty() ? json() : json(n);
-  if (Entity* live = stableLive(lv, uid)) { if (n.empty()) live->data.erase("petName"); else live->data["petName"] = n; }
+  if (Entity* live = stableLive(lv, uid)) {
+    if (auto* c = dynamic_cast<Creature*>(live)) c->petName = n;
+    else if (n.empty()) live->data.erase("petName"); else live->data["petName"] = n;
+  }
 }
 
 void stableRelease(Level& lv, Player& p, const std::string& uid) {
@@ -190,6 +208,7 @@ void stableRelease(Level& lv, Player& p, const std::string& uid) {
     if (Entity* live = stableLive(lv, uid)) {
       dismountAll(lv, *live);
       for (const char* k : {"owner", "tamed", "kept", "uid", "petName", "sgen"}) live->data.erase(k);
+      if (auto* c = dynamic_cast<Creature*>(live)) { c->owner.clear(); c->tamed = false; c->petName.clear(); c->stay = false; c->petFoe = 0; }
       poof(lv, *live);
     }
     book.erase(book.begin() + i);
@@ -240,7 +259,7 @@ std::string stableQuick(Level& lv, Player& p) {
 
 bool stableCreatureDies(Level& lv, Entity& m) {
   if (lv.isRemote()) return false;
-  std::string owner = sdata(m, "owner");
+  std::string owner = petOwnerOf(m);
   json* r = stableRec(lv, owner, sdata(m, "uid"));
   if (!r) return false;
   stableSync(*r, m);

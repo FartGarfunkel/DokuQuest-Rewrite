@@ -276,7 +276,7 @@ bool castOldSpell(Level& lv, Player& p, const std::string& k, const json& st, fl
 void spawnFamiliar(Level& lv, Player& p, float power) {
   World& w = lv.world(p.realm);
   std::vector<Entity*> mine;   // one at a time (two for a master)
-  for (auto& e : lv.entities()) if (!e->removed && e->type == "spirit_wolf" && e->data.value("owner", "") == p.name) mine.push_back(e.get());
+  for (auto& e : lv.entities()) if (!e->removed && e->type == "spirit_wolf" && petOwnerOf(*e) == p.name) mine.push_back(e.get());
   size_t max = power >= 2 ? 2 : 1;
   while (mine.size() >= max) { mine.front()->data["spiritT"] = 0; mine.erase(mine.begin()); }
   vec3 L = lookVec(p), at = p.pos + vec3(L.x * 1.5f, 0.2f, L.z * 1.5f);

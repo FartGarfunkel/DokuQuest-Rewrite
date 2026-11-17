@@ -24,6 +24,7 @@
 #include "sim/moving.h"
 #include "sim/glue.h"
 #include "sim/combat.h"
+#include "sim/controller.h"
 #include <thread>
 #include <cstdio>
 
@@ -1185,6 +1186,52 @@ int main(int argc, char** argv) {
         check(glm::distance(C.me->pos, gp->pos) < 2.5f, strFormat("the friend sits on the pig in their own game (%.1f from it; riding %u, its rider %u, me %u)", glm::distance(C.me->pos, gp->pos), C.me->riding, gp->riddenBy, C.me->id));
         rideControl(*C.lv, *C.me, 0, 0, false, false, true);   // sneak: off
         check(both(4, [&] { return pig->riddenBy == 0 && C.me->riding == 0; }), "and gets off again");
+      }
+      // the friend's own dog: sneak + use with an empty hand lifts it (asked of the host), use on the ground sets it down
+      // again (sim/mob_carry.h; what they carry comes back with their bags, net/server_sync.cpp)
+      if (mirror) {
+        Creature* dog = spawnCreature(*lv, 0, "wolf", C.me->pos + vec3(1.5f, 0, 0));
+        if (dog) { dog->owner = "Carol"; dog->tamed = true; dog->kept = true; dog->petName = "Rex"; dog->stay = true; }
+        Creature* gd = nullptr;
+        both(5, [&] { gd = ghostOf(dog); return gd != nullptr; });
+        C.me->inv[C.me->selected] = ItemStack();
+        both(2, [&] { return mirror->held().empty(); });
+        if (gd) C.lv->net->action(*C.me, "useEnt", json{{"id", gd->id}, {"sel", C.me->selected}, {"sn", 1}});
+        check(both(5, [&] { return dog && dog->removed && C.me->carrying.is_object() && C.me->carrying.value("type", "") == "wolf"; }), "a friend picks up their dog (asked of the host; it's in their arms in their game)");
+        const int bx = ifloor(C.me->pos.x) - 2, by = ifloor(C.me->pos.y) - 1, bz = ifloor(C.me->pos.z);
+        {
+          PlayerController gpc(*C.lv, *C.me);
+          gpc.target = RayHit{}; gpc.target.hit = true; gpc.target.block = ivec3(bx, by, bz); gpc.target.normal = ivec3(0, 1, 0);
+          gpc.target.id = C.lv->world().getBlock(bx, by, bz);
+          gpc.placeCarried();
+        }
+        Creature* back = nullptr;
+        bool down = both(5, [&] {
+          for (auto& e : lv->entities()) if (auto* c = dynamic_cast<Creature*>(e.get())) if (!c->removed && c->type == "wolf" && c->owner == "Carol") back = c;
+          return back && C.me->carrying.is_null();
+        });
+        check(down && back && back->petName == "Rex" && std::fabs(back->pos.x - (bx + 0.5f)) < 0.7f, "and sets it down again: the same dog, where they put it, their arms empty");
+        // a wild cat in their wicker basket, and out again
+        C.me->inv[C.me->selected] = ItemStack("wicker_basket", 1);
+        both(4, [&] { return mirror->held().id == "wicker_basket"; });
+        Creature* cat = spawnCreature(*lv, 0, "cat", C.me->pos + vec3(-1.5f, 0, 1.5f));
+        if (cat) cat->stay = true;
+        Creature* gc = nullptr;
+        both(5, [&] { gc = ghostOf(cat); return gc != nullptr; });
+        if (gc) C.lv->net->action(*C.me, "useEnt", json{{"id", gc->id}, {"sel", C.me->selected}, {"sn", 0}});
+        check(both(5, [&] { return cat && cat->removed && C.me->held().tag.is_object() && C.me->held().tag.contains("mob"); }), "a friend lifts a wild cat into their basket (the host's game; the basket comes back full)");
+        {
+          PlayerController gpc(*C.lv, *C.me);
+          gpc.target = RayHit{}; gpc.target.hit = true; gpc.target.block = ivec3(bx, by, bz + 2); gpc.target.normal = ivec3(0, 1, 0);
+          gpc.target.id = C.lv->world().getBlock(bx, by, bz + 2);
+          gpc.use(false, PlayerInput{});
+        }
+        bool out = both(5, [&] {
+          int n = 0; for (auto& e : lv->entities()) if (!e->removed && e->type == "cat") n++;
+          return n == 1 && !(C.me->held().tag.is_object() && C.me->held().tag.contains("mob"));
+        });
+        check(out, "and lets it out again where they look");
+        C.me->inv[C.me->selected] = ItemStack();
       }
       // a screen the host's game opens for the friend opens on the friend's game
       int opened = 0;

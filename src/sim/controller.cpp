@@ -87,7 +87,9 @@ void runGuestUse(Level& lv, Player& p, const json& a) {
     Entity* e = lv.entity(a.value("id", 0u));
     if (e && !e->removed && e->realm == p.realm && glm::distance(e->pos, p.pos) < 8) {
       pc.targetEnt = e->id;
-      for (auto& h : hooks().useEntity) if (h(pc, *e, held.empty() ? nullptr : &held, def)) break;
+      bool used = false;
+      for (auto& h : hooks().useEntity) if (h(pc, *e, held.empty() ? nullptr : &held, def)) { used = true; break; }
+      if (!used) liftInArms(pc, *e);   // (sneak + use, empty hand: into their arms, sim/mob_carry.h)
     }
   } else if (k == "block" && a.contains("b") && a["b"].is_array() && a["b"].size() == 3) {
     RayHit hit; hit.hit = true; hit.block = ivec3(a["b"][0].get<int>(), a["b"][1].get<int>(), a["b"][2].get<int>());
@@ -1033,17 +1035,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   if (!fromOff && !repeat && te) for (auto& h : hooks().useEntity) if (h(*this, *te, held.empty() ? nullptr : &held, def)) return;
   // Carrying: sneak + use with an empty hand picks up containers, stations and animals
   if (!fromOff && !repeat && p.sneaking && held.empty()) {
-    if (auto* tc = te && te->hp > 0 ? dynamic_cast<Creature*>(te) : nullptr) {   // who may lift what: sim/mob_carry.h (the data's "carry")
-      std::string why;
-      if (pickUpCreature(lv, p, *tc, &why)) {
-        sfxUi(lv, p, tc->type == "boar" ? "boar" : "pop"); swingArm();
-        std::string who = !tc->petName.empty() ? tc->petName : tc->label();
-        if (who.empty()) { who = tc->type; for (auto& ch : who) if (ch == '_') ch = ' '; who = "a " + who; }
-        toastMsg("Carrying " + who + " \xE2\x80\x94 use to set it down", "good");
-        return;
-      }
-      if (!why.empty()) { toastMsg(why); return; }
-    }
+    if (te && te->hp > 0 && liftInArms(*this, *te)) return;   // a creature (sim/mob_carry.h)
     if (hit && bhas(hit->id, BF::Carry)) { pickUpBlock(hit->block.x, hit->block.y, hit->block.z); return; }
   }
   // (a shield in the main hand is carried, not used on things: the hand is free for them, taking, crafting, opening)
