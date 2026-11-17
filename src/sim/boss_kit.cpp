@@ -117,7 +117,10 @@ OptMove bossBrain(Level& lv, Creature& m, Entity* p, float dist, float dt) {
     m.data["hitMask"] = done;
     if (t >= len) {
       m.data["atk"] = -1; m.data.erase("clip");
-      m.data["cd"] = m.age + 0.4f + A.value("cooldown", 0.f) + (phase == 2 ? 0.f : 0.4f);
+      // a move's own cooldown keeps that move from coming round again so soon; the boss itself only draws breath (a
+      // 45-60 s cooldown taken as the whole boss's pause left the Night Lord standing idle for most of its second phase)
+      m.data["cd"] = m.age + 0.4f + (phase == 2 ? 0.f : 0.4f);
+      if (const float own = A.value("cooldown", 0.f); own > 0) m.data["moveCd"][std::to_string(atk)] = m.age + own;
     }
     return Move{want, dir};
   }
@@ -129,6 +132,7 @@ OptMove bossBrain(Level& lv, Creature& m, Entity* p, float dist, float dt) {
       const json& A = (*K)[i];
       const double w = A.value("weight", 0.0);
       if (w <= 0 || A.value("moveset", std::string("soc")) != "soc") continue;
+      if (const auto mc = m.data.find("moveCd"); mc != m.data.end() && mc->is_object() && mc->value(std::to_string(i), 0.f) > m.age) continue;   // (still cooling)
       bool ph = false; for (auto& x : A.value("phases", json::array({1, 2}))) if (x.get<int>() == phase) ph = true;
       bool rg = false; for (auto& x : A.value("ranges", json::array())) if (x.get<std::string>() == range) rg = true;
       if (!ph || !rg || geoClipLength(model, A.value("clip", std::string())) <= 0) continue;
