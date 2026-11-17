@@ -243,7 +243,11 @@ void ServerHost::sendEntities(Peer& p, const std::unordered_map<u32, Snap>& snap
     bool fresh = was.at == 0;
     if (!fresh && was.hash == sn.hash && was.dataHash == sn.dataHash && t - was.at < 2) continue;
     json s = sn.s;
-    if (fresh || was.dataHash != sn.dataHash) s["d"] = e->data;
+    if (fresh || was.dataHash != sn.dataHash) {
+      s["d"] = e->data;
+      // a player's body (sim/corpse.h) wears its owner's skin: the host's own players' skins go by their net names
+      if (e->type == "corpse") { auto& A = netSkinAliases(); auto a = A.find(e->data.value("skin", std::string())); if (a != A.end()) s["d"]["skin"] = a->second; }
+    }
     was.hash = sn.hash; was.dataHash = sn.dataHash; was.at = t;
     list.push_back(std::move(s));
   }
