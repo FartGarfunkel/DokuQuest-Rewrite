@@ -394,6 +394,7 @@ int main(int argc, char** argv) {
   {
     BlockId farmland = r.B("farmland"), wheat = r.B("wheat_crop");
     r.put(0.5f, Y, 4.5f); r.step(0.2);
+    if (r.p->dead || r.p->hp < r.p->maxHp) { printf("  (the player: dead %d, hp %.1f; last hurt by %s; near:", (int)r.p->dead, r.p->hp, r.p->stats.value("lastHurtBy", std::string("?")).c_str()); for (auto& e : r.lv->entities()) if (!e->removed && !e->isPlayer() && glm::distance(e->pos, r.p->pos) < 24) printf(" %s", e->type.c_str()); printf(")\n"); }
     r.set(0, Y - 1, 6, dirt);
     r.hold(0, "wood_hoe");
     r.lookAt(vec3(0.5f, Y, 6.5f)); r.c->updateTarget();
