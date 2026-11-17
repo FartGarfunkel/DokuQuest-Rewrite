@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(DokuQuest VERSION 1.0.0 LANGUAGES C CXX)
 # DokuQuest C++ — game client, launcher (with dedicated server + Mod Studio) and headless server.
-set(DQ_VERSION "1.0.0-alpha.31" CACHE STRING "Full game version shown in game and launcher")
+set(DQ_VERSION "1.0.0-alpha.32" CACHE STRING "Full game version shown in game and launcher")
 # the launcher's own version: always the game's. The launcher holds the dedicated server (all the game's world and network
 # code), so every release changes it; an update installs the whole package and the new launcher takes over at its next
 # start (launcher/updater.cpp, launcher_main.cpp handOff). (It was set apart once and never raised: updates fetched only
