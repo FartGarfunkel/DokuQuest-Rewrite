@@ -15,6 +15,9 @@
 #include "gen/generator.h"
 #include "sim/creature.h"
 #include "sim/gameplay.h"
+#include "sim/controller.h"
+#include <map>
+#include <array>
 #include "sim/weather.h"
 #include <atomic>
 #include "sim/forge.h"
@@ -53,9 +56,12 @@ struct Client {
   Player* me = nullptr;
   RecFx fx;
   std::string err;
+  bool tcpOnly = false;   // (joined over a TCP connection)
+  double tickAt = 0;
+  bool noWorld = false;   // (only watching the others: no land made round them)
   bool join(const std::string& addr, ThreadPool* pool) {
     nc = std::make_shared<net::NetClient>();
-    net::JoinOptions o; o.address = addr; o.name = name; o.viewDistance = 3; o.timeout = 15;
+    net::JoinOptions o; o.address = addr; o.name = name; o.viewDistance = 3; o.timeout = 15; o.tcpOnly = tcpOnly;
     o.skin = name + ".png"; o.skinData = {{"png", "c2tpbg=="}, {"slim", name == "Alice"}};   // (a stand-in picture: only the plumbing is checked)
     if (!nc->connect(o)) { err = nc->error(); nc.reset(); return false; }
     fs::path dir = userSub("cache") / "test" / name;
@@ -73,8 +79,9 @@ struct Client {
     if (!lv) return;
     lv->net->update(*lv, dt);
     if (!lv) return;
+    tickAt = nowSeconds();   // (its replicas glide to this moment)
     lv->tick(dt);
-    lv->world(me->realm).stream({{me->pos, 3, false}}, 4);
+    if (!noWorld) lv->world(me->realm).stream({{me->pos, 3, false}}, 4);
   }
   bool heard(const std::string& s) const { for (auto& m : fx.msgs) if (m.find(s) != std::string::npos) return true; return false; }
   Entity* ghost(const std::string& type, const std::string& pname = "") {
@@ -128,33 +135,294 @@ setTimeout(() => DQ.log('timer fired'), 50);
 #endif
 }
 
-// a replica's path under uneven delivery: the host walks a creature at 2 blocks a second and sends where it is ten
-// times a second; each packet arrives 0-80 ms late. The guest's view should move at a steady speed (sim/entity.h glide)
-static double replicaSpeedSpread(bool timed) {
-  using dq::g_netViewTime;
+// ---- smooth replicas (sim/net_interp.cpp) ----
+// A path drawn on the viewer's screen, frame by frame: (time, x, yaw). Smooth means: never a step backwards along the
+// way it walks, the speed steady (no lurches), near the true path (a steady lag behind it), the turning never spun the
+// long way round.
+struct PathStats { double minV = 1e9, maxV = -1e9, maxAcc = 0, back = 0, lagMean = 0, lagSpread = 0, offPath = 0, maxTurn = 0; int frames = 0; };
+static PathStats pathStats(const std::vector<std::array<double, 6>>& f, double speed, double omega, double x0, double t0) {
+  // f: {t, x, y_off_path, z_off_path, yaw, segment} (a new segment after a spell with nothing heard: not compared across)
+  PathStats s;
+  std::vector<double> lags;
+  for (size_t i = 1; i < f.size(); i++) {
+    const double dt = f[i][0] - f[i - 1][0];
+    if (dt <= 1e-4 || f[i][5] != f[i - 1][5]) continue;
+    s.back = std::max(s.back, f[i - 1][1] - f[i][1]);
+    s.maxTurn = std::max(s.maxTurn, std::fabs(std::remainder(f[i][4] - f[i - 1][4], 2 * PI)) / dt);
+    s.offPath = std::max({s.offPath, std::fabs(f[i][2]), std::fabs(f[i][3])});
+    lags.push_back((f[i][0] - t0) - (f[i][1] - x0) / speed);
+  }
+  // speeds over 50 ms windows (a frame's own timing is noisy in a test loop)
+  std::vector<std::pair<double, double>> v;
+  size_t j = 0;
+  for (size_t i = 0; i < f.size(); i++) {
+    if (j < i) j = i;
+    while (j < f.size() && f[j][0] - f[i][0] < 0.05) j++;
+    if (j >= f.size()) break;
+    if (f[j][5] != f[i][5]) { v.push_back({-1, 0}); continue; }   // (a break: the windows either side aren't compared)
+    v.push_back({(f[i][0] + f[j][0]) / 2, (f[j][1] - f[i][1]) / (f[j][0] - f[i][0])});
+  }
+  for (size_t i = 0; i < v.size(); i++) {
+    if (v[i].first < 0) continue;
+    s.minV = std::min(s.minV, v[i].second); s.maxV = std::max(s.maxV, v[i].second);
+    if (i >= 3 && v[i - 1].first >= 0 && v[i - 2].first >= 0 && v[i - 3].first >= 0) s.maxAcc = std::max(s.maxAcc, std::fabs(v[i].second - v[i - 3].second) / std::max(1e-3, v[i].first - v[i - 3].first));
+  }
+  double m = 0; for (double l : lags) m += l; m /= std::max<size_t>(1, lags.size());
+  double sd = 0; for (double l : lags) sd += (l - m) * (l - m); sd = std::sqrt(sd / std::max<size_t>(1, lags.size()));
+  s.lagMean = m; s.lagSpread = sd; s.frames = (int)f.size();
+  (void)omega;
+  return s;
+}
+static std::string describe(const PathStats& s) {
+  return strFormat("speed %.2f..%.2f b/s, accel <= %.1f b/s2, back %.3f, lag %.0f ms (+-%.0f), off path %.3f, turn <= %.1f rad/s, %d frames",
+                   s.minV, s.maxV, s.maxAcc, s.back, s.lagMean * 1000, s.lagSpread * 1000, s.offPath, s.maxTurn, s.frames);
+}
+
+// The sender walks at 4 b/s turning at 2 rad/s (through the half-turn where the angle wraps), sending 20 times a second;
+// each packet comes 20-220 ms late (so they overtake each other), one in ten never, and once nothing at all for 0.4 s.
+// The viewer draws at 60 frames a second.
+static bool g_dumpPath = false;   // (DQ_INTERP_ONLY: the path printed, and nothing else run)
+static PathStats replicaUnderJitter(u32 seed, double lo = 0.02, double hi = 0.22, double loss = 0.1, bool outage = true) {
   Entity e; e.ghost = true;
-  u32 seed = 12345; auto rnd01 = [&] { seed = seed * 1664525u + 1013904223u; return (seed >> 8) / 16777216.0; };
-  struct Pkt { double arrive, st; vec3 p; };
+  auto rnd01 = [&] { seed = seed * 1664525u + 1013904223u; return (seed >> 8) / 16777216.0; };
+  const double speed = 4, omega = 2, base = 50;   // (both clocks: ours starts at 50, the sender's at 0 — a different clock)
+  struct Pkt { double arrive, st; vec3 p; float yaw; };
   std::vector<Pkt> pkts;
-  for (double st = 0; st < 4.0; st += 0.1) pkts.push_back({st + 0.02 + rnd01() * 0.08 + 100.0, st, vec3((float)(st * 2.0), 0, 0)});
-  double off = 0; bool known = false; size_t next = 0;
-  std::vector<float> xs;
-  for (double now = 100.0; now < 104.0; now += 0.05) {
+  for (double st = 0; st < 8.0; st += 0.05) {
+    if (rnd01() < loss) continue;
+    if (outage && st > 4.0 && st < 4.3) continue;   // an outage (nothing for 0.3 s, and the losses either side)
+    const float yaw = (float)std::remainder(omega * st + 3.0, 2 * PI);
+    pkts.push_back({base + st + lo + rnd01() * (hi - lo), st, vec3((float)(st * speed), 7, 3), yaw});
+  }
+  std::sort(pkts.begin(), pkts.end(), [](const Pkt& a, const Pkt& b) { return a.arrive < b.arrive; });
+  net::NetClock clock;
+  size_t next = 0;
+  std::vector<std::array<double, 6>> f;
+  for (double now = base; now < base + 8.0; now += 1.0 / 60) {
     while (next < pkts.size() && pkts[next].arrive <= now) {
       const Pkt& k = pkts[next++];
-      const double o = k.st - k.arrive; if (!known || o > off) off = o; known = true;
-      e.netPos = k.p; e.netYaw = 0;
-      if (timed) e.netSample(k.st, k.p, 0);
+      clock.heard(k.st, k.arrive);
+      e.netSample(clock.toLocal(k.st), k.arrive, k.p, k.yaw, 0, k.yaw);
     }
-    g_netViewTime = timed && known ? now + off - 0.15 : -1;
-    e.glide(0.05);
-    xs.push_back(e.pos.x);
+    if (e.netHist.empty()) continue;
+    e.netUpdateView(now);
+    if (now > base + 1.0 && now < base + 7.5) f.push_back({now, e.viewPos.x, e.viewPos.y - 7, e.viewPos.z - 3, e.viewYaw, 0});
   }
-  g_netViewTime = -1;
-  float lo = 1e9f, hi = -1e9f;
-  for (size_t i = 20; i + 1 < xs.size() - 10; i++) { const float v = (xs[i + 1] - xs[i]) / 0.05f; lo = std::min(lo, v); hi = std::max(hi, v); }
-  return hi - lo;   // the spread of speeds seen (blocks a second): 0 is perfectly steady
+  if (g_dumpPath) for (auto& r : f) printf("path %.4f %.4f %.4f delay %.3f\n", r[0] - base, r[1], r[4], e.netDelay);
+  return pathStats(f, speed, omega, 0, base);
 }
+// ---- the others' arms under a bad link ----
+// Digging: the sender's arm cycles 3.3 times a second (a swing counted at each start: Player::swingN), sending 20 times a
+// second over a link lo..hi late (overtaking), `loss` lost. The viewer plays it (sim/net_interp.cpp remoteSwingStep) at
+// 60 frames a second. Smooth: never restarted mid-swing, never standing idle while they dig.
+struct SwingStats { int restarts = 0, idle = 0, frames = 0, cycles = 0; };
+static SwingStats diggingUnderJitter(u32 seed, double lo, double hi, double loss) {
+  auto rnd01 = [&] { seed = seed * 1664525u + 1013904223u; return (seed >> 8) / 16777216.0; };
+  const double rate = 3.3;
+  struct Pkt { double arrive, st; int sn; };
+  std::vector<Pkt> pkts;
+  for (double st = 0; st < 6.0; st += 0.05) {
+    if (rnd01() < loss) continue;
+    pkts.push_back({st + lo + (hi - lo) * rnd01(), st, (int)std::floor(st * rate) + 1});
+  }
+  std::sort(pkts.begin(), pkts.end(), [](const Pkt& a, const Pkt& b) { return a.arrive < b.arrive; });
+  Player p; p.ghost = true;
+  SwingStats s; size_t next = 0; float last = 0;
+  for (double now = 0; now < 6.0; now += 1.0 / 60) {
+    while (next < pkts.size() && pkts[next].arrive <= now) {
+      const Pkt& k = pkts[next++];
+      net::applyPlayerPose(p, json{{"sn", k.sn & 255}, {"mn", json::array({1, 2, 3, 40})}}, false);
+    }
+    remoteSwingStep(p, 1.f / 60, (float)rate);
+    if (now > 1.0) {
+      s.frames++;
+      if (p.swingT <= 0) s.idle++;
+      if (p.swingT < last) { if (last < 0.9f) s.restarts++; else s.cycles++; }
+    }
+    last = p.swingT;
+  }
+  return s;
+}
+
+// A weapon swing (sim/attack_moves.h), 0.5 s each with 0.3 s between, its move and time sent 20 a second: how far the
+// viewer's swing is ever pulled back (a stutter) and how much of each swing's end is cut off. The old way (alpha.33)
+// re-synced to every message more than 0.12 s off and stopped the swing when a message without one came.
+struct AtkStats { int pulledBack = 0; double cut = 0; int swings = 0; };
+static AtkStats attackUnderJitter(u32 seed, double lo, double hi, double loss, bool oldWay) {
+  auto rnd01 = [&] { seed = seed * 1664525u + 1013904223u; return (seed >> 8) / 16777216.0; };
+  const u8 mv = MV_SWORD2; const float len = attackMove(mv).len;
+  struct Pkt { double arrive, st; json m; };
+  std::vector<Pkt> pkts;
+  for (double st = 0; st < 6.0; st += 0.05) {
+    if (rnd01() < loss) continue;
+    const double ph = std::fmod(st, len + 0.3);
+    json m = json::object();
+    if (ph < len) { m["am"] = mv; m["at"] = net::r3((float)ph); m["ay"] = 0; }
+    pkts.push_back({st + lo + (hi - lo) * rnd01(), st, m});
+  }
+  std::sort(pkts.begin(), pkts.end(), [](const Pkt& a, const Pkt& b) { return a.arrive < b.arrive; });
+  Player p; p.ghost = true;
+  AtkStats s; size_t next = 0; float lastT = 0; u8 lastMv = 0; double newest = -1;
+  for (double now = 0; now < 6.0; now += 1.0 / 60) {
+    while (next < pkts.size() && pkts[next].arrive <= now) {
+      const Pkt& k = pkts[next++];
+      if (k.st < newest) continue;   // (overtaken: older than what's taken in, as net/client.cpp lets it go)
+      newest = k.st;
+      const json& m = k.m;
+      if (oldWay) {
+        const int id = m.value("am", 0);
+        if (id <= 0) { p.atkMove = MV_NONE; p.atkT = 0; }
+        else { const float t = m.value("at", 0.f); if (p.atkMove != id || std::fabs(p.atkT - t) > 0.12f) { p.atkMove = (u8)id; p.atkT = t; } }
+      } else net::netAttack(p, m);
+    }
+    if (p.atkMove) { p.atkT += 1.f / 60; if (p.atkT >= len) { p.atkMove = MV_NONE; p.atkT = 0; } }   // (as Level::tick plays it on)
+    if (now > 1.0) {
+      if (p.atkMove && lastMv && p.atkT < lastT - 0.001f && lastT - p.atkT < len * 0.6f) s.pulledBack++;
+      if (!p.atkMove && lastMv) { s.swings++; s.cut += std::max(0.f, len - lastT - 1.f / 60); }
+    }
+    lastT = p.atkT; lastMv = p.atkMove;
+  }
+  return s;
+}
+
+// The way replicas were drawn before (alpha.33), for comparison on the same link: entity snapshots reliable and in order
+// (a lost one sent again a round trip later, everything after it held back meanwhile), the place eased into the sim's
+// 30-a-second ticks and drawn as it stood at the last tick, a fixed 0.15 s behind, a late packet taken for a stop.
+static PathStats replicaTheOldWay(u32 seed, double lo = 0.02, double hi = 0.22, double loss = 0.1, bool outage = true) {
+  auto rnd01 = [&] { seed = seed * 1664525u + 1013904223u; return (seed >> 8) / 16777216.0; };
+  const double speed = 4, omega = 2, base = 50;
+  struct Pkt { double arrive, st; vec3 p; float yaw; };
+  std::vector<Pkt> pkts;
+  double held = 0;
+  for (double st = 0; st < 8.0; st += 0.05) {
+    double arrive = base + st + lo + rnd01() * (hi - lo);
+    if (rnd01() < loss || (outage && st > 4.0 && st < 4.3)) arrive += 0.25;   // (lost: sent again)
+    held = std::max(held, arrive);   // (in order: none before the one held up)
+    pkts.push_back({held, st, vec3((float)(st * speed), 7, 3), (float)std::remainder(omega * st + 3.0, 2 * PI)});
+  }
+  struct S { double t; vec3 p; float yaw; };
+  std::vector<S> hist;
+  double off = 0; bool known = false; size_t next = 0;
+  vec3 pos(0); float yaw = 0; double tickAcc = 0;
+  std::vector<std::array<double, 6>> f;
+  for (double now = base; now < base + 8.0; now += 1.0 / 60) {
+    while (next < pkts.size() && pkts[next].arrive <= now) {
+      const Pkt& k = pkts[next++];
+      const double o = k.st - k.arrive;
+      if (!known || o > off + 1 || o < off - 1) { off = o; known = true; } else off = o > off ? o : off + (o - off) * 0.02;
+      if (!hist.empty() && k.st <= hist.back().t) continue;
+      if (!hist.empty() && k.st - hist.back().t > 0.15) hist.push_back({k.st - 0.1, hist.back().p, hist.back().yaw});
+      hist.push_back({k.st, k.p, k.yaw});
+      if (hist.size() > 24) hist.erase(hist.begin());
+    }
+    tickAcc += 1.0 / 60;
+    while (tickAcc >= 1.0 / 30) {   // (moved in the sim's ticks only)
+      tickAcc -= 1.0 / 30;
+      if (hist.empty()) continue;
+      const double rt = now + off - 0.15;
+      if (rt <= hist.front().t) { pos = hist.front().p; yaw = hist.front().yaw; }
+      else if (rt >= hist.back().t) {
+        pos = hist.back().p; yaw = hist.back().yaw;
+        if (hist.size() >= 2) { const S& a = hist[hist.size() - 2]; const S& b = hist.back(); const double span = b.t - a.t, ahead = std::min(rt - b.t, 0.2);
+          if (span > 1e-3 && span < 0.5) pos = b.p + (b.p - a.p) * (float)(ahead / span); }
+      } else {
+        size_t i = 1; while (i < hist.size() && hist[i].t < rt) i++;
+        const S& a = hist[i - 1]; const S& b = hist[i]; const float k = (float)((rt - a.t) / std::max(1e-6, b.t - a.t));
+        pos = glm::mix(a.p, b.p, k); yaw = a.yaw + std::remainder(b.yaw - a.yaw, 2 * PI) * k;
+      }
+    }
+    if (now > base + 1.0 && now < base + 7.5 && !hist.empty()) f.push_back({now, pos.x, pos.y - 7, pos.z - 3, yaw, 0});
+  }
+  return pathStats(f, speed, omega, 0, base);
+}
+
+
+#ifndef _WIN32
+// A bad internet link between a player and the server, on this computer: every datagram held back a random while (so
+// they overtake each other), some lost. Or, for a join carried over TCP, the stream held back in random lumps.
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <poll.h>
+#include <sys/socket.h>
+#include <unistd.h>
+struct BadLink {
+  std::thread th; std::atomic<bool> run{true};
+  int port = 0;
+  ~BadLink() { run = false; if (th.joinable()) th.join(); }
+  static sockaddr_in at(int port) { sockaddr_in a{}; a.sin_family = AF_INET; a.sin_port = htons((u16)port); a.sin_addr.s_addr = htonl(INADDR_LOOPBACK); return a; }
+  // UDP: listens on `port`, passes to the server's; delays lo..hi seconds, `loss` of them dropped (both ways)
+  void udp(int listenPort, int serverPort, double lo, double hi, double loss) {
+    port = listenPort;
+    th = std::thread([=, this] {
+      int L = socket(AF_INET, SOCK_DGRAM, 0), U = socket(AF_INET, SOCK_DGRAM, 0);
+      sockaddr_in la = at(listenPort), sa = at(serverPort), ca{}; bool haveC = false;
+      bind(L, (sockaddr*)&la, sizeof la);
+      struct Q { double at; bool up; std::vector<u8> d; };
+      std::vector<Q> q; u32 seed = 777;
+      auto r01 = [&] { seed = seed * 1664525u + 1013904223u; return (seed >> 8) / 16777216.0; };
+      u8 buf[65536];
+      while (run) {
+        pollfd p[2] = {{L, POLLIN, 0}, {U, POLLIN, 0}};
+        poll(p, 2, 1);
+        const double now = nowSeconds();
+        for (int k = 0; k < 2; k++) if (p[k].revents & POLLIN) {
+          sockaddr_in from{}; socklen_t fl = sizeof from;
+          const ssize_t n = recvfrom(k == 0 ? L : U, buf, sizeof buf, 0, (sockaddr*)&from, &fl);
+          if (n <= 0) continue;
+          if (k == 0) { ca = from; haveC = true; }
+          if (r01() < loss) continue;
+          q.push_back({now + lo + (hi - lo) * r01(), k == 0, std::vector<u8>(buf, buf + n)});
+        }
+        for (size_t i = 0; i < q.size();) {
+          if (q[i].at > now) { i++; continue; }
+          if (q[i].up) sendto(U, q[i].d.data(), q[i].d.size(), 0, (sockaddr*)&sa, sizeof sa);
+          else if (haveC) sendto(L, q[i].d.data(), q[i].d.size(), 0, (sockaddr*)&ca, sizeof ca);
+          q[i] = std::move(q.back()); q.pop_back();
+        }
+      }
+      close(L); close(U);
+    });
+  }
+  // TCP: one connection on `port`, passed to the server's TCP port; each lump read waits lo..hi more (in order)
+  void tcp(int listenPort, int serverPort, double lo, double hi) {
+    port = listenPort;
+    int L = socket(AF_INET, SOCK_STREAM, 0); int one = 1; setsockopt(L, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one);
+    sockaddr_in la = at(listenPort); bind(L, (sockaddr*)&la, sizeof la); listen(L, 2);
+    th = std::thread([=, this] {
+      int C = -1, S = -1;
+      while (run && C < 0) { pollfd p{L, POLLIN, 0}; if (poll(&p, 1, 10) > 0) C = accept(L, nullptr, nullptr); }
+      if (C >= 0) { S = socket(AF_INET, SOCK_STREAM, 0); sockaddr_in sa = at(serverPort); if (connect(S, (sockaddr*)&sa, sizeof sa) != 0) { close(S); S = -1; } }
+      struct Q { double at; std::vector<u8> d; };
+      std::vector<Q> up, down; u32 seed = 4242;
+      auto r01 = [&] { seed = seed * 1664525u + 1013904223u; return (seed >> 8) / 16777216.0; };
+      u8 buf[65536];
+      while (run && C >= 0 && S >= 0) {
+        pollfd p[2] = {{C, POLLIN, 0}, {S, POLLIN, 0}};
+        poll(p, 2, 1);
+        const double now = nowSeconds();
+        bool shut = false;
+        for (int k = 0; k < 2; k++) if (p[k].revents & (POLLIN | POLLHUP)) {
+          const ssize_t n = recv(k == 0 ? C : S, buf, sizeof buf, 0);
+          if (n <= 0) { shut = true; continue; }
+          auto& qq = k == 0 ? up : down;
+          const double last = qq.empty() ? 0 : qq.back().at;
+          qq.push_back({std::max(last, now + lo + (hi - lo) * r01()), std::vector<u8>(buf, buf + n)});
+        }
+        for (auto* qq : {&up, &down}) while (!qq->empty() && qq->front().at <= now) {
+          const auto& d = qq->front().d; size_t o = 0;
+          while (o < d.size()) { const ssize_t w = send(qq == &up ? S : C, d.data() + o, d.size() - o, MSG_NOSIGNAL); if (w <= 0) break; o += (size_t)w; }
+          qq->erase(qq->begin());
+        }
+        if (shut) break;
+      }
+      if (C >= 0) close(C);
+      if (S >= 0) close(S);
+      close(L);
+    });
+  }
+};
+#endif
+
 
 int main(int argc, char** argv) {
   setvbuf(stdout, nullptr, _IOLBF, 0);
@@ -204,9 +472,34 @@ int main(int argc, char** argv) {
   };
   std::string err;
   net::netSkinHook() = [](const std::string& ref, const json&) { g_skinsSeen.insert(ref); };
-  {   // replicas drawn steadily between the host's positions (net/client.cpp clock, sim/entity.h glide)
-    const double timed = replicaSpeedSpread(true), eased = replicaSpeedSpread(false);
-    check(timed < 0.5, "a creature walking at 2 b/s is seen at a steady speed despite late packets (speeds spread " + std::to_string(timed) + " b/s; easing alone: " + std::to_string(eased) + ")");
+  {   // replicas drawn smoothly under a bad link (sim/net_interp.cpp): late, lost, overtaking packets and an outage
+    g_dumpPath = std::getenv("DQ_INTERP_DUMP") != nullptr;
+    const bool only = std::getenv("DQ_INTERP_ONLY") != nullptr;
+    for (u32 seed : {12345u, 999u, 31337u}) {
+      const PathStats s = replicaUnderJitter(seed);
+      check(s.back < 0.02 && s.minV > 2.0 && s.maxV < 6.0 && s.maxAcc < 40 && s.lagSpread < 0.06 && s.offPath < 0.02 && s.maxTurn < 6,
+            "a player walking at 4 b/s and turning, sent over a link 20-220 ms late, 10% lost, 0.3 s cut: drawn smoothly (" + describe(s) + ")");
+      printf("     (the old way, on the same link: %s)\n", describe(replicaTheOldWay(seed)).c_str());
+    }
+    // the link the players have (50-150 ms late, 2-5% lost): the walk, before and after
+    for (double loss : {0.02, 0.05}) {
+      const PathStats s = replicaUnderJitter(4242u + (u32)(loss * 100), 0.05, 0.15, loss, false), o = replicaTheOldWay(4242u + (u32)(loss * 100), 0.05, 0.15, loss, false);
+      check(s.back < 0.02 && s.minV > 2.0 && s.maxV < 6.0 && s.maxAcc < 40 && s.lagSpread < 0.06 && s.maxTurn < 6,
+            strFormat("walking over a 50-150 ms, %.0f%% lost link: %s", loss * 100, describe(s).c_str()));
+      printf("     (the old way: %s)\n", describe(o).c_str());
+    }
+    // the arm: digging cycles on smoothly, weapon swings play through, over the same links
+    for (double loss : {0.02, 0.05}) {
+      const SwingStats d = diggingUnderJitter(77u, 0.05, 0.15, loss);
+      check(d.restarts == 0 && d.idle == 0 && d.cycles > 12,
+            strFormat("their digging arm over a 50-150 ms, %.0f%% lost link: %d swings, restarted mid-swing %d times, idle %d of %d frames (the old way: never seen at all)",
+                      loss * 100, d.cycles, d.restarts, d.idle, d.frames));
+      const AtkStats a = attackUnderJitter(78u, 0.05, 0.15, loss, false), ao = attackUnderJitter(78u, 0.05, 0.15, loss, true);
+      check(a.pulledBack == 0 && a.cut < 0.05 * std::max(1, a.swings) && a.swings >= 5,
+            strFormat("their weapon swings over a 50-150 ms, %.0f%% lost link: %d swings, pulled back %d times, %.2f s of their ends cut (the old way: pulled back %d times, %.2f s cut)",
+                      loss * 100, a.swings, a.pulledBack, a.cut, ao.pulledBack, ao.cut));
+    }
+    if (only) return fails ? 1 : 0;
   }
   check(srv.start(&err), "server starts " + err);
   if (!srv.running()) return 1;
@@ -476,6 +769,253 @@ int main(int argc, char** argv) {
     check(pump(5, [&] { return g_st.pump > 0; }), "the guest's pumping reaches the host's bellows");
     g_st.armed = false;
   }
+#ifndef _WIN32
+  // ---- over a bad internet link: the others' movement smooth, and what they're doing seen ----
+  {
+    BadLink udpBad, tcpBad;
+    udpBad.udp(port + 10, port, 0.05, 0.15, 0.04);   // 50-150 ms late (overtaking), 4% lost, both ways
+    tcpBad.tcp(port + 11, port, 0.0, 0.15);          // the TCP stream held back in lumps of up to 150 ms
+    Client C, D; C.name = "Cara"; D.name = "Dan"; D.tcpOnly = true;
+    check(C.join("127.0.0.1:" + std::to_string(port + 10), &pool), "a player joins over a bad UDP link (late, overtaking, lost) " + C.err);
+    check(D.join("127.0.0.1:" + std::to_string(port + 11), &pool), "a player joins over TCP through a jittery link " + D.err);
+    std::vector<Client*> viewers = {&B};
+    if (C.lv) viewers.push_back(&C);
+    if (D.lv) viewers.push_back(&D);
+    g_clients = {&A, &B};
+    if (C.lv) g_clients.push_back(&C);
+    if (D.lv) g_clients.push_back(&D);
+    check(pump(20, [&] { for (Client* v : viewers) if (!v->ghost("player", "Alice")) return false; return true; }), "everyone sees Alice");
+    for (Client* v : viewers) { int n = 0; std::string names; for (auto& e : v->lv->entities()) if (!e->removed && e->ghost) { n++; if (auto* p = dynamic_cast<Player*>(e.get())) names += p->name + " "; }
+      printf("  %s: %d replicas (players: %s), %llu messages in (%llu movement), lost %d, me realm %d\n", v->name.c_str(), n, names.c_str(), (unsigned long long)v->nc->stats.msgsIn, (unsigned long long)v->nc->stats.movesIn, (int)v->nc->lost(), v->me ? v->me->realm : -1); }
+    // Alice walks along at 4 b/s turning at 2 rad/s (through the angle's wrap); each screen's Alice is followed frame by frame
+    const vec3 start = A.me->pos; const double speed = 4, omega = 2;
+    std::map<Client*, std::vector<std::array<double, 6>>> seen;
+    struct Starve { double until = 0; int seg = 0, frames = 0, total = 0; bool in = false; };
+    struct ArmSeen { double at = 0; float last = 0; int frames = 0, idle = 0, restarts = 0; };
+    std::map<Client*, double> busiest;   // (the longest gap between two frames of a viewer)
+    std::map<Client*, ArmSeen> arms;
+    const u8 swing0 = A.me->swingN;
+    std::map<Client*, Starve> starve;
+    auto walk = [&](double secs, double dir, bool record) {
+      const double t0 = nowSeconds();
+      const vec3 from = A.me->pos;
+      while (nowSeconds() - t0 < secs) {
+        const double tt = nowSeconds() - t0;
+        A.me->pos = from + vec3((float)(dir * speed * tt), 0, 0); A.me->vel = vec3((float)(dir * speed), 0, 0);
+        A.me->yaw = A.me->bodyYaw = (float)std::remainder(omega * tt + 3.0, 2 * PI);
+        if (record) { A.me->swingN = (u8)(swing0 + (int)std::floor(tt * 3.3)); A.me->mineP = 0.5f; A.me->mineAt = ivec3(A.me->pos) - ivec3(0, 1, 0); }   // (digging as she goes: her arm cycling)
+        else A.me->mineP = 0;
+        for (auto* c : g_clients) {
+          double& at = c->tickAt;   // (the moment its game drew this frame: its replicas glide to it)
+          c->step(1.0 / 30);
+          if (record && tt > 1.5 && tt < secs - 0.3 && c != &A)
+            if (Entity* g = c->ghost("player", "Alice")) {
+              // fed: drawing within what it has heard (or bridging a short gap). A spell with nothing heard — this
+              // computer starved by the other games in the test, the server not ticking — is counted, and not judged
+              // for smoothness (it can only wait, then catch up): the frames until 0.3 s after it start a new segment
+              Starve& sv = starve[c];
+              const bool fed = g->netHist.size() >= 2 && g->netLastRt <= g->netHist.back().t + 0.3;
+              if (!fed) { sv.until = at + 0.3; sv.frames++; }
+              if (auto* gp = dynamic_cast<Player*>(g)) {   // her arm, as the viewer's game plays it (render/char_layer.cpp)
+                ArmSeen& a = arms[c];
+                const float dt = a.at > 0 ? (float)(at - a.at) : 0.f; a.at = at;
+                busiest[c] = std::max(busiest[c], (double)dt);
+                remoteSwingStep(*gp, dt, 3.3f);
+                if (tt > 2.0 && gp->mineP > 0) { a.frames++; if (gp->swingT <= 0) a.idle++; if (gp->swingT < a.last && a.last + dt * 3.3f < 0.95f) a.restarts++; }   // (a drop the frame's time can't explain: a cut)
+                a.last = gp->swingT;
+              }
+              if (at < sv.until) { if (!sv.in) { sv.in = true; sv.seg++; } }
+              else { sv.in = false; seen[c].push_back({at, g->pos.x - start.x, g->pos.y - start.y, g->pos.z - start.z, g->yaw, (double)sv.seg}); }
+              sv.total++;
+            }
+          if (std::getenv("DQ_DUMP_WALK") && c->name == std::getenv("DQ_DUMP_WALK")) if (Entity* g = c->ghost("player", "Alice")) { static double lastT = 0; if (!g->netHist.empty() && g->netHist.back().t != lastT) { lastT = g->netHist.back().t; printf("hist %.4f newest %.4f rt %.4f x %.3f n %zu delay %.3f corr %.3f\n", nowSeconds(), lastT, g->netLastRt, g->netHist.back().p.x - start.x, g->netHist.size(), g->netDelay, glm::length(g->netCorr)); } }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(6));
+      }
+    };
+    std::map<Client*, u64> moves0; for (Client* v : viewers) moves0[v] = v->nc->stats.movesIn;
+    walk(5.0, 1, true);
+    {   // the movement packets that got through (ENet once dropped most of them on a jittery link: net/protocol.cpp steadyPeer)
+      const double direct = (double)(B.nc->stats.movesIn - moves0[&B]);
+      for (Client* v : viewers) if (v != &B) {
+        const double got = (double)(v->nc->stats.movesIn - moves0[v]);
+        check(got > direct * 0.75, strFormat("%s gets the movement through the bad link (%.0f packets; %.0f directly)", v->name.c_str(), got, direct));
+      }
+    }
+    const char* how[3] = {"directly", "over the bad UDP link", "over TCP through the jittery link"};
+    for (size_t i = 0; i < viewers.size(); i++) {
+      const auto& f = seen[viewers[i]];
+      if (std::getenv("DQ_DUMP_WALK")) for (auto& r : f) printf("walk%zu %.4f %.4f %.4f %.0f\n", i, r[0], r[1], r[4], r[5]);
+      if (f.size() < 20) { check(false, std::string("Alice's walk is seen ") + how[i]); continue; }
+      const PathStats s = pathStats(f, speed, omega, 0, f.front()[0] - f.front()[1] / speed);   // (the lag measured from the first frame)
+      const ArmSeen& a = arms[viewers[i]];
+      const std::string what = std::string("Alice's walk is drawn smoothly ") + how[i] + " (" + describe(s) +
+          strFormat("; %d of %d frames with nothing heard for a while: waited out", starve[viewers[i]].frames, starve[viewers[i]].total) + ")";
+      const std::string arm = strFormat("her digging arm cycles smoothly as she walks, %s (restarted mid-swing %d times, idle %d of %d frames)", how[i], a.restarts, a.idle, a.frames);
+      // Every game, the server and the bad links share this one process: when the computer is too busy to run it in step
+      // (a frame of this test over 0.15 s apart: other work on the machine), smoothness can't be judged — only that she
+      // never steps back, stays on her path and her arm is never cut short. Otherwise all of it.
+      if (busiest[viewers[i]] > 0.15) {
+        printf("     (this computer was too busy to judge smoothness: frames up to %.2f s apart) %s; %s\n", busiest[viewers[i]], what.c_str(), arm.c_str());
+        check(s.back < 0.05 && s.offPath < 0.05 && a.restarts <= 1, std::string("Alice never steps back or off her path, her arm never cut short, ") + how[i] + " (busy machine)");
+      } else {
+        check(s.back < 0.03 && s.minV > 1.5 && s.maxV < 7 && s.lagSpread < 0.08 && s.offPath < 0.05 && s.maxTurn < 8, what);
+        check(a.frames > 20 && a.restarts == 0 && a.idle <= a.frames / 50, arm);
+      }
+    }
+    // what she does with her hands and body reaches everyone, over the bad links too
+    {
+      World& aw = A.lv->world(A.me->realm);
+      const int mx = ifloor(A.me->pos.x), mz = ifloor(A.me->pos.z);
+      const int my = aw.surfaceY(mx, mz, dimOfY(ifloor(A.me->pos.y)));
+      A.me->swingN = (u8)(A.me->swingN + 3);
+      A.me->mineAt = ivec3(mx, my, mz); A.me->mineP = 0.55f;
+      const ItemStack chestWas = A.me->armor[1]; A.me->armor[1] = ItemStack("elytra", 1);   // (wings on: gliding needs them)
+      A.me->bowPull = 0.7f; A.me->scoping = true; A.me->sneaking = true; A.me->gliding = true;
+      A.me->hang.emplace(); A.me->hang->shimT = 1;
+      A.me->carrying = {{"kind", "block"}, {"key", "stone"}, {"meta", 0}};
+      for (Client* v : viewers) {
+        auto ga = [&] { Entity* e = v->ghost("player", "Alice"); return e ? dynamic_cast<Player*>(e) : nullptr; };
+        const bool ok = pump(6, [&] {
+          Player* g = ga();
+          return g && g->swingN == A.me->swingN && g->mineP > 0.5f && g->mineAt == A.me->mineAt && g->bowPull > 0.65f && g->scoping &&
+                 g->sneaking && g->gliding && g->hang && g->hang->shimT > 0 && g->netCarry.is_object() && g->netCarry.value("key", "") == "stone";
+        });
+        Player* g = ga();
+        check(ok, strFormat("Alice's swing, digging (55%%), drawn bow, spyglass, sneak, glide, ledge shimmy and the block in her arms reach a viewer %s (swings %d/%d, dig %.2f, bow %.2f, scope %d sneak %d glide %d hang %d carry %d; hers: sneak %d glide %d hang %d)",
+                            how[v == &B ? 0 : v == &C ? 1 : 2], g ? g->swingN : -1, A.me->swingN, g ? g->mineP : -1.f, g ? g->bowPull : -1.f, g && g->scoping, g && g->sneaking, g && g->gliding, g && g->hang.has_value(), g && g->netCarry.is_object(), (int)A.me->sneaking, (int)A.me->gliding, (int)A.me->hang.has_value()));
+        // her cracks on their screen (the block she digs, by how far)
+        World& vw = v->lv->world(A.me->realm);
+        if (vw.getBlock(mx, my, mz) != AIR) {
+          int stage = -1; for (auto& c : damageCracks(*v->lv, vw, A.me->pos, nullptr)) if (c.x == mx && c.y == my && c.z == mz) stage = c.stage;
+          check(stage == 5, strFormat("and her cracks show on the block she digs, %s (stage %d)", how[v == &B ? 0 : v == &C ? 1 : 2], stage));
+        }
+      }
+      A.me->mineP = 0; A.me->bowPull = 0; A.me->scoping = A.me->sneaking = A.me->gliding = false; A.me->hang.reset(); A.me->carrying = nullptr; A.me->armor[1] = chestWas;
+      check(pump(6, [&] { for (Client* v : viewers) { Entity* e = v->ghost("player", "Alice"); auto* g = e ? dynamic_cast<Player*>(e) : nullptr;
+                            if (!g || g->mineP > 0 || g->bowPull > 0 || g->scoping || g->gliding || g->hang || g->netCarry.is_object()) return false; } return true; }),
+            "...and when she stops, it stops for everyone");
+    }
+    // ---- everything her body does, compared over time: what her own game shows against what each viewer's shows ----
+    // Alice goes through every pose and action the game draws, one after another (0.7 s each); every frame, each field
+    // of her own player and of each viewer's replica of her is read. The replica must go through exactly the same
+    // values in the same order (none missing, none flickering in between) a little later (the link, plus the drawing
+    // delay), and her drawn place must lag her by about the same (state and body together).
+    {
+      struct Field { const char* name; std::function<std::string(const Player&)> get; };
+      auto held = [](const Player& p) { return p.ghost ? p.inv[0].id : p.inv[clampv(p.selected, 0, (int)p.inv.size() - 1)].id; };
+      const std::vector<Field> fields = {
+        {"sneak", [](const Player& p) { return std::to_string(p.sneaking); }}, {"sprint", [](const Player& p) { return std::to_string(p.sprinting); }},
+        {"swim", [](const Player& p) { return std::to_string(p.swimming); }}, {"fly", [](const Player& p) { return std::to_string(p.flying); }},
+        {"crawl", [](const Player& p) { return std::to_string(p.crawling); }},
+        {"eat/drink", [](const Player& p) { return (p.ghost ? p.eatT > 0 : p.eatAnim > 0) ? p.eatId : std::string(); }},
+        {"bow draw", [](const Player& p) { return std::to_string(p.bowPull > 0); }}, {"shield up", [](const Player& p) { return std::to_string(p.blockT > 0); }},
+        {"held item", held}, {"offhand", [](const Player& p) { return p.offhand.empty() ? std::string() : p.offhand[0].id; }},
+        {"spyglass", [](const Player& p) { return std::to_string(p.scoping); }}, {"glide", [](const Player& p) { return std::to_string(p.gliding); }},
+        {"ledge hang", [](const Player& p) { return std::to_string(p.hang.has_value()) + (p.hang && p.hang->shimT > 0 ? "s" : ""); }},
+        {"ledge climb", [](const Player& p) { return std::to_string(p.climb.has_value()); }},
+        {"ladder", [](const Player& p) { return std::to_string(p.contacts.ladder); }}, {"in water", [](const Player& p) { return std::to_string(p.contacts.water); }},
+        {"carrying", [](const Player& p) { const json& c = p.carrying.is_object() ? p.carrying : p.netCarry; return c.is_object() ? c.value("key", std::string("?")) : std::string(); }},
+        {"journal/typing/doze", [](const Player& p) { return std::to_string(p.activity); }}, {"page turned", [](const Player& p) { return std::to_string(p.bookFlip); }},
+        {"station work", [](const Player& p) { return p.stationKind < 0 ? std::string("-") : std::to_string(p.stationKind) + "/" + std::to_string(p.workTap); }},
+        {"digging", [](const Player& p) { return p.mineP > 0 ? strFormat("%d,%d,%d", p.mineAt.x, p.mineAt.y, p.mineAt.z) : std::string(); }},
+        {"weapon swing", [](const Player& p) { return std::to_string(p.atkMove); }}, {"dodge roll", [](const Player& p) { return std::to_string(p.dodgeT > 0); }},
+        {"armour", [](const Player& p) { std::string s; for (auto& a : p.armor) s += a.id + ","; return s; }},
+      };
+      const ItemStack heldWas = A.me->held(), chestWas = A.me->armor[1];
+      A.me->armor[1] = ItemStack("elytra", 1);
+      const ivec3 dig = ivec3(A.me->pos) - ivec3(0, 1, 0);
+      const u8 mv = MV_SWORD2; const float mvLen = attackMove(mv).len;
+      // the steps: what she does in each (held each frame, as her own game would keep it)
+      const std::vector<std::pair<const char*, std::function<void(Player&, double)>>> steps = {
+        {"stand", [](Player&, double) {}}, {"sneak", [](Player& p, double) { p.sneaking = true; }}, {"sprint", [](Player& p, double) { p.sprinting = true; }},
+        {"swim", [](Player& p, double) { p.swimming = true; p.contacts.water = true; }}, {"fly", [](Player& p, double) { p.flying = true; }},
+        {"crawl", [](Player& p, double) { p.crawling = true; }},
+        {"eat", [](Player& p, double) { p.eatAnim = EAT_ANIM; p.eatId = "apple"; }}, {"drink", [](Player& p, double) { p.eatAnim = EAT_ANIM; p.eatId = "milk_bucket"; }},
+        {"bow", [](Player& p, double) { p.held() = ItemStack("bow", 1); p.bowPull = 0.8f; }},
+        {"shield", [](Player& p, double) { p.offhand[0] = ItemStack("shield", 1); p.blockT = 0.5f; }},
+        {"held item", [](Player& p, double) { p.held() = ItemStack("diamond_sword", 1); }},
+        {"spyglass", [](Player& p, double) { p.held() = ItemStack("spyglass", 1); p.scoping = true; }},
+        {"glide", [](Player& p, double) { p.gliding = true; }},
+        {"ledge hang", [](Player& p, double) { p.hang.emplace(); }}, {"shimmy", [](Player& p, double) { p.hang.emplace(); p.hang->shimT = 1; }},
+        {"ledge climb", [](Player& p, double t) { p.climb.emplace(); p.climb->t = (float)std::min(0.5, t); }},
+        {"ladder", [](Player& p, double) { p.contacts.ladder = true; }}, {"paddle", [](Player& p, double) { p.contacts.water = true; }},
+        {"carry", [](Player& p, double) { p.carrying = {{"kind", "block"}, {"key", "chest"}, {"meta", 0}}; }},
+        {"journal", [](Player& p, double t) { p.activity = Player::ACT_SCREEN; p.bookFlip = (u8)(t > 0.35 ? 1 : 0); }},
+        {"typing", [](Player& p, double) { p.activity = Player::ACT_TYPING; p.typeRate = 6; }},
+        {"doze", [](Player& p, double) { p.activity = Player::ACT_DOZE; }},
+        {"station", [](Player& p, double t) { p.stationKind = 1; p.workAt = p.pos + vec3(0.5f, 0.6f, -1.f); p.workTap = (u8)(t > 0.35 ? 1 : 0); }},
+        {"dig", [dig](Player& p, double) { p.mineAt = dig; p.mineP = 0.4f; }},
+        {"weapon swing", [mv, mvLen](Player& p, double t) { if (t < mvLen) { p.atkMove = mv; p.atkT = (float)t; p.atkYaw = p.yaw; } }},
+        {"roll", [](Player& p, double t) { p.dodgeT = (float)std::max(0.0, 0.4 - t); p.dodgeYaw = p.yaw; }},   // (counting down, as a roll does)
+        {"armour", [](Player& p, double) { p.armor[0] = ItemStack("iron_helmet", 1); }},
+        {"stand", [](Player&, double) {}},
+      };
+      auto neutral = [&](Player& p) {
+        p.sneaking = p.sprinting = p.swimming = p.flying = p.crawling = p.scoping = p.gliding = false;
+        p.eatAnim = 0; p.eatId.clear(); p.bowPull = 0; p.blockT = 0; p.hang.reset(); p.climb.reset();
+        p.contacts.ladder = p.contacts.water = false; p.carrying = nullptr; p.activity = 0; p.typeRate = 0; p.bookFlip = 0;
+        p.stationKind = -1; p.workTap = 0; p.mineP = 0; p.atkMove = MV_NONE; p.atkT = 0; p.dodgeT = 0;
+        p.held() = ItemStack("stone", 1); if (p.offhand.empty()) p.offhand.resize(1); p.offhand[0] = ItemStack(); p.armor[0] = ItemStack();
+      };
+      struct Trace { std::vector<std::vector<std::string>> runs; std::vector<std::vector<double>> at; };
+      auto note = [&](Trace& tr, const Player& p, double t) {
+        if (tr.runs.empty()) { tr.runs.resize(fields.size()); tr.at.resize(fields.size()); }
+        for (size_t k = 0; k < fields.size(); k++) {
+          const std::string v = fields[k].get(p);
+          if (tr.runs[k].empty() || tr.runs[k].back() != v) { tr.runs[k].push_back(v); tr.at[k].push_back(t); }
+        }
+      };
+      Trace mine; std::map<Client*, Trace> theirs; std::map<Client*, std::vector<double>> delays;
+      neutral(*A.me);
+      pump(1.5, [] { return false; });   // (everyone settled on the neutral pose)
+      for (auto& [name, set] : steps) {
+        const double t0 = nowSeconds();
+        while (nowSeconds() - t0 < 0.7) {
+          const double t = nowSeconds() - t0;
+          neutral(*A.me); set(*A.me, t);
+          note(mine, *A.me, nowSeconds());
+          for (auto* c : g_clients) {
+            c->step(1.0 / 30);
+            if (c != &A) if (Entity* g = c->ghost("player", "Alice")) if (auto* gp = dynamic_cast<Player*>(g)) {
+              note(theirs[c], *gp, c->tickAt);
+              delays[c].push_back(gp->netDelay);
+            }
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(6));
+        }
+      }
+      { const double t0 = nowSeconds(); while (nowSeconds() - t0 < 1.5) { neutral(*A.me); for (auto* c : g_clients) { c->step(1.0 / 30); if (c != &A) if (Entity* g = c->ghost("player", "Alice")) if (auto* gp = dynamic_cast<Player*>(g)) note(theirs[c], *gp, c->tickAt); } std::this_thread::sleep_for(std::chrono::milliseconds(6)); } }
+      std::string names; for (auto& f : fields) names += std::string(names.empty() ? "" : ", ") + f.name;
+      printf("     (fields compared: %s)\n", names.c_str());
+      for (Client* v : viewers) {
+        Trace& tr = theirs[v];
+        int wrong = 0; double maxLate = 0, sumLate = 0; int n = 0; std::string bad;
+        for (size_t k = 0; k < fields.size() && !tr.runs.empty(); k++) {
+          if (tr.runs[k] != mine.runs[k]) {
+            wrong++;
+            std::string a, b; for (auto& s : mine.runs[k]) a += "[" + s + "]"; for (auto& s : tr.runs[k]) b += "[" + s + "]";
+            bad += std::string(" ") + fields[k].name + ": hers " + a + " seen " + b + ";";
+            continue;
+          }
+          for (size_t j = 1; j < mine.at[k].size(); j++) { const double late = tr.at[k][j] - mine.at[k][j]; maxLate = std::max(maxLate, late); sumLate += late; n++; }
+        }
+        double dl = 0; for (double d : delays[v]) dl += d; dl /= std::max<size_t>(1, delays[v].size());
+        const char* how2 = v == &B ? "directly" : v == &C ? "over the bad UDP link" : "over TCP through the jittery link";
+        const double meanLate = n ? sumLate / n : 0;
+        check(!tr.runs.empty() && wrong == 0 && maxLate < 0.9 && std::fabs(meanLate - dl) < 0.12,   // (her doings shown with her body: as late as it)
+              strFormat("every pose and action of Alice's is seen %s, in order, none missing or flickering (%zu fields, %d transitions, late by %.0f ms on average, %.0f ms at most; her body is drawn %.0f ms behind)%s",
+                        how2, fields.size(), n, n ? sumLate / n * 1000 : 0.0, maxLate * 1000, dl * 1000, bad.c_str()));
+      }
+      neutral(*A.me); A.me->held() = heldWas; A.me->armor[1] = chestWas;
+      pumpFor(1.0);
+    }
+    walk(5.0, -1, false);   // (back where she was, for what follows)
+    C.leave(); D.leave();
+    g_clients = {&A, &B};
+    pumpFor(0.5);
+  }
+#endif
 
   srv.command("kick Bob Testing kicks");
   check(pump(4, [&] { return B.nc && B.nc->lost(); }), "kick: Bob's game is let go");
@@ -580,6 +1120,38 @@ int main(int argc, char** argv) {
     check(both(3, [&] { return mirror && mirror->stationKind == 4 && mirror->workTap == 3 && glm::distance(mirror->workAt, C.me->workAt) < 0.01f; }), "a friend at a furnace: the host sees where their hand works");
     C.me->stationKind = -1;
     check(both(3, [&] { return mirror && mirror->stationKind == -1; }), "  ...and sees them leave it");
+    // the host draws its guest between the places their game said, at the times it said them (sim/net_interp.cpp; the game
+    // swaps the view in to draw: client/session.cpp showReplicas), while the body keeps its newest place for the rules
+    if (mirror) {
+      const vec3 from = C.me->pos; const double t0 = nowSeconds();
+      std::vector<std::array<double, 6>> f;
+      both(3.5, [&] {
+        const double tt = nowSeconds() - t0;
+        C.me->pos = from + vec3((float)(4 * tt), 0, 0); C.me->yaw = C.me->bodyYaw = (float)std::remainder(2 * tt, 2 * PI);
+        mirror->netUpdateView(nowSeconds());
+        if (tt > 1.0 && mirror->hasView) f.push_back({nowSeconds(), mirror->viewPos.x - from.x, mirror->viewPos.y - from.y, mirror->viewPos.z - from.z, mirror->viewYaw, 0});
+        return false;
+      });
+      const PathStats s = pathStats(f, 4, 2, 0, f.empty() ? 0 : f.front()[0] - f.front()[1] / 4);
+      check(f.size() > 20 && s.back < 0.03 && s.minV > 1.5 && s.maxV < 7 && s.lagSpread < 0.08 && s.offPath < 0.05 && s.maxTurn < 8,
+            "the host draws a walking guest smoothly (" + describe(s) + ")");
+      check(glm::distance(mirror->pos, C.me->pos) < 1.0f, "...while their body for the rules is where they newly are");
+      // and their doings, for the host's screen and passed on
+      C.me->swingN = 9; C.me->mineAt = ivec3(C.me->pos) - ivec3(0, 1, 0); C.me->mineP = 0.3f; C.me->bowPull = 0.4f;
+      C.me->carrying = {{"kind", "mob"}, {"type", "chicken"}, {"hp", 4}};
+      check(both(3, [&] { return mirror->swingN == 9 && mirror->mineP > 0.25f && mirror->bowPull > 0.35f && mirror->netCarry.value("type", "") == "chicken" && mirror->carrying.is_null(); }),
+            "a guest's swing, digging, bow and what they carry reach the host (drawn, not taken as the host's own carrying)");
+      Entity* hg = C.lv->entity(host->id); auto* hgp = hg ? dynamic_cast<Player*>(hg) : nullptr;
+      host->swingN = 4; host->bowPull = 0.9f;
+      check(both(3, [&] { return hgp && hgp->swingN == 4 && hgp->bowPull > 0.85f && hgp->fxSent; }), "the host's own swing and bow reach the guest (its sounds marked as the host's)");
+      C.me->mineP = 0; C.me->bowPull = 0; C.me->carrying = nullptr; host->bowPull = 0;
+      {   // (walked back where they were, for what follows)
+        const vec3 there = C.me->pos; const double t1 = nowSeconds(), back = glm::distance(there, from) / 4;
+        both(back + 0.05, [&] { const float k = (float)std::min(1.0, (nowSeconds() - t1) / back); C.me->pos = glm::mix(there, from, k); return false; });
+        C.me->pos = from; C.me->vel = vec3(0);
+        both(1.0, [] { return false; });
+      }
+    }
     // ---- creatures between host and friend: how they look, using them, riding (net/server_sync.cpp, server_host.cpp) ----
     {
       vec3 at = C.me->pos + vec3(2.5f, 0, 0);

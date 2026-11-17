@@ -10,6 +10,7 @@
 #include "sim/player.h"
 #include <unordered_map>
 #include <unordered_set>
+#include <deque>
 
 namespace dq::net {
 
@@ -72,7 +73,7 @@ public:
   void close(const std::string& why = "");   // leave politely (sends our latest bags)
 
   // for tests and the debug overlay
-  struct Stats { u64 msgsIn = 0, msgsOut = 0, records = 0, sumsIn = 0, sums = 0, needs = 0, mismatches = 0, blocksIn = 0, blocksOut = 0; } stats;   // needs: asked again (a mismatch, or a chunk the host changed before it loaded here)
+  struct Stats { u64 movesIn = 0, msgsIn = 0, msgsOut = 0, records = 0, sumsIn = 0, sums = 0, needs = 0, mismatches = 0, blocksIn = 0, blocksOut = 0; } stats;   // needs: asked again (a mismatch, or a chunk the host changed before it loaded here)
   size_t sumsWaiting() const { return sums.size(); }
   Player* localPlayer() const { return me; }
 
@@ -91,7 +92,8 @@ private:
   std::string err;
   JoinOptions opts;
   double startedAt = 0, t = 0, heardAt = 0;
-  double clockOff = 0; bool clockKnown = false;   // the host's clock minus ours (applyEntities): replicas are drawn by it
+  NetClock clock;   // the host's clock against ours (applyEntities): the places it sends are put on ours by it
+  std::unordered_map<u32, double> goneAt;   // when (the host's clock) it said an entity went: older movement for it is let go
   json welcomeMsg;
   int expectRecords = -1, gotRecords = 0;
   Level* lv = nullptr;
@@ -123,6 +125,10 @@ private:
   void handle(u8 ty, json& m);
   void onWelcome(json& m);
   void applyEntities(const json& m);
+  void applyState(Entity* e, const json& s);
+  void applyPendingState();
+  std::unordered_map<u32, json> lastState;   // the state each replica shows now (as it came)
+  std::unordered_map<u32, std::deque<std::pair<double, json>>> pendingState;   // replicas' state waiting for its moment (our clock)
   void applySelf(const json& m);
   void applyEnv(const json& m);
   void applyFx(const json& m);

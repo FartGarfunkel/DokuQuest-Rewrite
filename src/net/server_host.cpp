@@ -444,6 +444,7 @@ void ServerHost::update(Level& lv, double dt) {
         if (p.addr == "127.0.0.1") if (std::string r = tcpRelay.realAddress(ev.peer->address.port); !r.empty()) p.addr = r;   // (over TCP: who it really is)
         ev.peer->data = (void*)(uintptr_t)p.id;
         enet_peer_timeout(ev.peer, 0, 10000, 30000);   // half a minute without a word: they've gone (NET_SILENT)
+        steadyPeer(ev.peer);
         peers[p.id] = p;
         serverLog("A connection from " + p.addr, "");
         break;
@@ -501,16 +502,28 @@ void ServerHost::update(Level& lv, double dt) {
     for (auto& [id, p] : peers) if (p.ready && p.pl && p.enet && !p.lite) { updateRange(p, false); flushChunks(p, 10); }
   }
   if ((tEnts += dt) >= SEND_ENTS) {
-    tEnts = 0;
+    tEnts = std::min(tEnts - SEND_ENTS, SEND_ENTS);   // (kept in step, not drifting by a frame each time)
+    const bool all = (++entRound & 1) == 0;   // players every round (20 a second), everything else every other
     std::unordered_map<u32, Snap> snaps;
     bool any = false; for (auto& [id, p] : peers) if (p.ready) any = true;
     if (any) {
-      for (auto& e : level.entities()) if (!e->removed && !e->netLocal) {
-        Snap sn; sn.s = entitySnapshot(*e); sn.hash = std::hash<std::string>()(sn.s.dump());
-        sn.dataHash = e->data.is_null() || e->data.empty() ? 0 : std::hash<std::string>()(e->data.dump());
+      for (auto& e : level.entities()) if (!e->removed && !e->netLocal && (all || e->isPlayer())) {
+        Snap sn; sn.s = entitySnapshot(*e); sn.player = e->isPlayer();
+        { json h = sn.s; h.erase("ts"); sn.hash = std::hash<std::string>()(h.dump()); }   // (its time alone isn't news)
+        if (e->data.is_null() || e->data.empty()) sn.dataHash = 0;
+        else if (!sn.player) sn.dataHash = std::hash<std::string>()(e->data.dump());
+        else {   // a player's: its running clocks aren't news (the stamina's idle time alone changed it every tick, and every
+                 // update of every player went the reliable way with all its data, held up behind any packet lost)
+          json d = e->data;
+          if (d.is_object()) {
+            for (const char* k : {"stamIdle", "sleepT", "spikeT", "singeT", "dreadT", "frozenT", "rubyT", "darkT", "burnT", "lvlScan", "ubAt"}) d.erase(k);
+            if (d.contains("fx") && d["fx"].is_object()) for (auto& [k, v] : d["fx"].items()) v = true;   // (which effects, not how long)
+          }
+          sn.dataHash = std::hash<std::string>()(d.dump());
+        }
         snaps.emplace(e->id, std::move(sn));
       }
-      for (auto& [id, p] : peers) if (p.ready && p.pl && p.enet && !p.lite) sendEntities(p, snaps);
+      for (auto& [id, p] : peers) if (p.ready && p.pl && p.enet && !p.lite) sendEntities(p, snaps, all);
     }
   }
   if ((tEnv += dt) >= SEND_ENV) { tEnv = 0; sendEnv(); }
@@ -636,6 +649,19 @@ void ServerHost::applyMe(Peer& p, const json& m) {
   vec3 np(m.value("x", pl.pos.x), m.value("y", pl.pos.y), m.value("z", pl.pos.z));
   int realm = m.value("rl", pl.realm);
   bool dead = m.value("dead", 0) != 0;
+  // its time on their game's clock (put on ours: when they were there); one older than the newest taken in (a ME that
+  // came the reliable way with a book's pages, overtaken) gives only its pages
+  const double ct = m.value("ct", -1.0);
+  if (ct >= 0) {
+    p.clock.heard(ct, nowSeconds());
+    if (ct <= p.lastCt) {
+      if (m.contains("bp") && m["bp"].is_string() && m["bp"].get_ref<const std::string&>().size() < 200000 && m["bp"].get_ref<const std::string&>() != pl.bookPic) { pl.bookPic = m["bp"]; pl.bookPicV++; pl.bookLay = m.value("bl", std::string()).substr(0, 2000); pl.bookPicAt = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
+      if (!pl.riding && std::isfinite(np.x) && std::isfinite(np.y) && std::isfinite(np.z) && glm::distance(np, pl.pos) < 16)   // (overtaken on the way: still a place they were, for drawing)
+        pl.netSample(p.clock.toLocal(ct), nowSeconds(), np, m.value("r", pl.yaw), m.value("p", pl.pitch), m.value("b", pl.yaw));
+      return;
+    }
+    p.lastCt = ct;
+  }
   double now = t, since = std::max(0.05, now - p.lastMeAt);
   p.lastMeAt = now;
   if (!std::isfinite(np.x) || !std::isfinite(np.y) || !std::isfinite(np.z)) return;
@@ -654,6 +680,16 @@ void ServerHost::applyMe(Peer& p, const json& m) {
   pl.realm = realm;
   pl.vel = vec3(m.value("vx", 0.f), m.value("vy", 0.f), m.value("vz", 0.f));
   pl.yaw = pl.netYaw = m.value("r", pl.yaw); pl.pitch = m.value("p", pl.pitch); pl.bodyYaw = m.value("b", pl.yaw);
+  // drawn here between the places their game said, at the times it said them (client/session.cpp), and passed on with
+  // that time (server_sync.cpp entitySnapshot "ts")
+  if (ct >= 0) pl.netSample(p.clock.toLocal(ct), nowSeconds(), pl.pos, pl.yaw, pl.pitch, pl.bodyYaw);
+  applyPlayerPose(pl, m, true);   // their swings, digging, bow, glide, ledge, ladder, what's in their arms
+  if (m.contains("hd")) {   // what's in their hands and on them now (drawn and passed on; the rules use their saved bags)
+    pl.netHands = true;
+    pl.netHeld = m.value("hd", std::string()); pl.netHeldModel = m.value("hm", std::string());
+    pl.netOff = m.value("of", std::string()); pl.netOffModel = m.value("om", std::string());
+    pl.netArmor = m.contains("ar") && m["ar"].is_array() && m["ar"].size() <= 8 ? m["ar"] : json();
+  }
   int f = m.value("f", 0);
   pl.onGround = f & 1; pl.inWater = f & 2; pl.sneaking = f & 4; pl.sprinting = f & 8; pl.flying = f & 16; pl.swimming = f & 32; pl.crawling = f & 64;
   pl.hp = m.value("hp", pl.hp); pl.dead = dead;

@@ -85,6 +85,7 @@ GameSession::GameSession(App& a, std::unique_ptr<Level> lv) : app(a), level(std:
   frame.settings = &app.settings;
   setHolidayEventsEnabled(app.settings.extra.value("holidayEvents", true));
   fx = std::make_unique<ClientFx>(*this); level->fx = fx.get();
+  level->frameGlide = true;   // (replicas moved every frame: update)
   worldRenderer.init(app.settings, app.tileTex);
   sky = std::make_unique<SkyRenderer>();
   sky->init();
@@ -212,6 +213,16 @@ void GameSession::update(double dt) {
     { ProfScope ps("sim.tick"); while (tickAcc >= TICK_DT && ticks < 4) { level->tick(TICK_DT); tickAcc -= TICK_DT; ticks++; } }
     if (ticks == 4) tickAcc = 0;
   }
+  {   // the others' replicas move every frame, not in the sim's 30-a-second steps (which judder at any other frame rate):
+      // in someone else's world they glide to their place at this moment (sim/net_interp.cpp); hosting, a guest's body
+      // keeps its newest place for the rules and is only drawn at its view (showReplicas)
+    const double now = nowSeconds();
+    for (auto& e : level->entities()) {
+      if (e->removed || !e->ghost) continue;
+      if (level->isRemote()) { e->glide(dt); e->prevPos = e->pos; e->prevYaw = e->yaw; }
+      else if (!e->netHist.empty()) e->netUpdateView(now);
+    }
+  }
   World& w = world();
   if (worldRenderer.world() != &w) { worldRenderer.setWorld(&w); worldRenderer.remeshAll(); }   // a new realm: mesh what is already loaded there
   std::vector<StreamAnchor> anchors = {{player->pos, app.settings.renderDist, true}};
@@ -243,13 +254,47 @@ void GameSession::update(double dt) {
     { ProfScope ps("world.meshUpdate"); worldRenderer.update(cam, *app.pool, 4.0 / n); }
   }
   selectLocal(0);
+  showReplicas(true);   // (the layers animate the guests as they are drawn)
   if (!split()) for (auto& l : layers) { ProfScope ps(l->name(), ".update"); l->update(*this, dt); }
   else for (int i = 0; i < n; i++) {
     enterLocal(i);
     for (auto& l : layers) if (i == 0) l->update(*this, dt); else if (perViewerLayer(l->name())) l->update(*this, 0.0);
     leaveLocal();
   }
+  showReplicas(false);
   if (app.audio) app.audio->setListener(vec3(frame.cam.pos), frame.cam.forward(), vec3(0, 1, 0));
+}
+
+void GameSession::showReplicas(bool on) {
+  if (on) {
+    shownAt.clear(); shownGear.clear();
+    if (level->isRemote()) return;   // (in someone else's world the replicas are already where they're drawn)
+    for (auto& e : level->entities()) {
+      if (e->removed || !e->ghost) continue;
+      // (riding: on the mount, which moves here, so where the mount has them)
+      if (e->hasView && !e->riding) {
+        shownAt.push_back({e.get(), {e->pos.x, e->pos.y, e->pos.z, e->yaw, e->pitch, e->bodyYaw}});
+        e->pos = e->viewPos; e->yaw = e->viewYaw; e->pitch = e->viewPitch; e->bodyYaw = e->viewBody;
+      }
+      // a guest's hands and armour as their game has them now (their bags here change only when their game saves them)
+      auto* p = e->isPlayer() ? dynamic_cast<Player*>(e.get()) : nullptr;
+      if (!p || !p->netHands || p->inv.empty()) continue;
+      Gear g; g.p = p; g.sel = clampv(p->selected, 0, (int)p->inv.size() - 1);
+      g.held = p->inv[g.sel]; g.off = p->offhand.empty() ? ItemStack() : p->offhand[0]; g.armor = p->armor;
+      if (g.held.id != p->netHeld) p->inv[g.sel] = p->netHeld.empty() ? ItemStack() : ItemStack(p->netHeld, 1);
+      if (!p->offhand.empty() && p->offhand[0].id != p->netOff) p->offhand[0] = p->netOff.empty() ? ItemStack() : ItemStack(p->netOff, 1);
+      if (p->netArmor.is_array())
+        for (size_t i = 0; i < p->armor.size() && i < p->netArmor.size(); i++) {
+          const std::string id = p->netArmor[i].is_string() ? p->netArmor[i].get<std::string>() : std::string();
+          if (p->armor[i].id != id) p->armor[i] = id.empty() ? ItemStack() : ItemStack(id, 1);
+        }
+      shownGear.push_back(std::move(g));
+    }
+  } else {
+    for (auto& [e, a] : shownAt) { e->pos = vec3(a[0], a[1], a[2]); e->yaw = a[3]; e->pitch = a[4]; e->bodyYaw = a[5]; }
+    for (auto& g : shownGear) { g.p->inv[g.sel] = g.held; if (!g.p->offhand.empty()) g.p->offhand[0] = g.off; g.p->armor = g.armor; }
+    shownAt.clear(); shownGear.clear();
+  }
 }
 
 void GameSession::render() {

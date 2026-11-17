@@ -79,8 +79,8 @@ public:
   Level& level;
 
   // ---- internals shared with the sync code (server_sync.cpp) ----
-  struct SentEnt { size_t hash = 0, dataHash = 0; double at = 0; };
-  struct Snap { json s; size_t hash = 0, dataHash = 0; };
+  struct SentEnt { size_t hash = 0, dataHash = 0; double at = 0; bool again = false; };   // again: sent once more after it stopped changing (the stop itself is seen)
+  struct Snap { json s; size_t hash = 0, dataHash = 0; bool player = false; };
   struct CkQ { RCKey k; bool force; int d; };
   struct Peer {
     u32 id = 0; struct _ENetPeer* enet = nullptr; std::string addr;
@@ -99,6 +99,8 @@ public:
     std::vector<CkQ> ckQ;
     std::unordered_map<u32, SentEnt> sent;
     std::vector<std::pair<std::string, json>> fxOut;
+    NetClock clock;        // their game's clock against ours (the times on their ME)
+    double lastCt = -1;    // the newest ME's time taken in (an older one coming late moves nothing)
   };
 
 private:
@@ -116,7 +118,7 @@ private:
 public:
   std::string tcpRealAddress(u16 loopPort) { return tcpRelay.realAddress(loopPort); }
 private:
-  double t = 0, tEnts = 0, tEnv = 0, tChunks = 0, tSave = 0;
+  double t = 0, tEnts = 0, tEnv = 0, tChunks = 0, tSave = 0; int entRound = 0;
   std::string storySig; double storyAt = -1e9;   // (sendEnv: the story's state, sent when it changes)
   bool logging = false;
   // queued for everyone
@@ -152,7 +154,7 @@ private:
   // server_sync.cpp
   void updateRange(Peer& p, bool first);
   void flushChunks(Peer& p, int maxRecords);
-  void sendEntities(Peer& p, const std::unordered_map<u32, Snap>& snaps);
+  void sendEntities(Peer& p, const std::unordered_map<u32, Snap>& snaps, bool all);   // all: the creatures and things too (every other round)
   void flushBlocks();
   void flushEffects();
   void sendEnv();

@@ -420,7 +420,7 @@ void App::frameLoop() {
     int dw, dh; SDL_GL_GetDrawableSize(window, &dw, &dh);
     glViewport(0, 0, dw, dh);
     glClearColor(0.05f, 0.04f, 0.035f, 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    if (session && (!topScreen() || topScreen()->showsWorld())) { session->render(); if (session->split()) session->splitUi(); else if (!bookUiOn(*this)) session->drawHud(); }   // (the journal up before you: the HUD put away)
+    if (session && (!topScreen() || topScreen()->showsWorld())) { session->showReplicas(true); session->render(); if (session->split()) session->splitUi(); else if (!bookUiOn(*this)) session->drawHud(); session->showReplicas(false); }   // (the journal up before you: the HUD put away; guests drawn where they smoothly are)
     // screens draw back to front (an overlay may sit over another menu)
     { static bool hid = false; const bool on = bookUiOn(*this); if (on != hid) { SDL_ShowCursor(on ? SDL_DISABLE : SDL_ENABLE); hid = on; } }   // (in the book: its own pointer, on the pages)
     if (session && !session->split() && !bookUiOn(*this)) session->uiWantsText = false;   // (only the journal's pages set it: off with them)

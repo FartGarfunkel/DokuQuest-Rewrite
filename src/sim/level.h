@@ -111,6 +111,7 @@ public:
   double autosaveEvery = 60;   // seconds; 0 is off. The client and the dedicated server set this from Settings.
   std::shared_ptr<LevelNet> net;    // set while this level is served or joined over the network (net/)
   bool isRemote() const { return info.remote; }
+  bool frameGlide = false;          // the game moves replicas every frame (client/session.cpp), not on the sim's ticks
 
 private:
   std::map<int, std::unique_ptr<World>> realms;

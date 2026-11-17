@@ -70,6 +70,11 @@ public:
   void update(double dt);
   void render();
   void drawHud();
+  // hosting: the guests' bodies drawn where their smooth view is (on), then put back at their newest place (off)
+  void showReplicas(bool on);
+  std::vector<std::pair<Entity*, std::array<float, 6>>> shownAt;
+  struct Gear { Player* p = nullptr; int sel = 0; ItemStack held, off; std::vector<ItemStack> armor; };
+  std::vector<Gear> shownGear;
   void save();
 
   // camera / view

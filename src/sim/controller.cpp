@@ -570,6 +570,9 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
       if (mining.progress >= 1) { breakBlock(tg.block.x, tg.block.y, tg.block.z); forgetDamage(lv, tg.block.x, tg.block.y, tg.block.z); mining.active = false; breakCd = 0.18f; }
     }
   } else { if (mining.active) rememberDamage(lv, mining); mining.active = false; }
+  // what the others see you dig (net/ sends it: the cracks on their screens too)
+  p.mineP = mining.active ? std::clamp(mining.progress, 0.f, 1.f) : 0.f;
+  if (mining.active) p.mineAt = ivec3(mining.x, mining.y, mining.z);
   // holding use repeats only after a fresh press in the game
   if (!in.use || t - interactAt > 0.15) useArmed = false;
   interactAt = t;
@@ -1423,6 +1426,18 @@ std::vector<Crack> damageCracks(Level& lv, World& w, vec3 cam, const Mining* cur
     ++it;
   }
   if (cur && cur->active && cur->progress > 0) out.push_back({cur->x, cur->y, cur->z, std::min(9, (int)std::floor(cur->progress * 10))});
+  // the others digging (their game's progress, sent: net/): their cracks too
+  for (auto& e : lv.entities()) {
+    if (e->removed || !e->ghost || !e->isPlayer() || e->realm != w.realm) continue;
+    const Player& o = *static_cast<const Player*>(e.get());
+    if (o.mineP <= 0 || o.dead) continue;
+    const ivec3 b = o.mineAt;
+    if (std::fabs(b.x - cam.x) > 48 || std::fabs(b.z - cam.z) > 48 || w.getBlock(b.x, b.y, b.z) == AIR) continue;
+    const int stage = std::min(9, (int)std::floor(o.mineP * 10));
+    bool dup = false;
+    for (auto& c : out) if (c.x == b.x && c.y == b.y && c.z == b.z) { c.stage = std::max(c.stage, stage); dup = true; }
+    if (!dup) out.push_back({b.x, b.y, b.z, stage});
+  }
   return out;
 }
 
