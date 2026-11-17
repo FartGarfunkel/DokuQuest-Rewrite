@@ -1,6 +1,7 @@
 // sim/moving.cpp — see moving.h.
 #include "sim/moving.h"
 #include "sim/glue.h"
+#include "sim/blockinfo.h"
 #include "sim/rotate.h"
 #include "sim/gameplay.h"
 #include "sim/worldsys.h"
@@ -33,7 +34,8 @@ bool isMachine(BlockId id) { const std::string m = reg().block(id).str("machine"
 
 int machineFace(const World& w, ivec3 p) {
   static const int D6F[6] = {3, 2, 5, 4, 1, 0};   // six-way facing (0 down, 1 up, 2 north, 3 south, 4 west, 5 east) -> face index
-  return D6F[w.getMeta(p.x, p.y, p.z) % 6];
+  const int f = w.getMeta(p.x, p.y, p.z) & 7;   // (the facing's own bits: % 6 turned a meta with other bits set into another face)
+  return f < 6 ? D6F[f] : D6F[1];
 }
 
 json& machineState(World& w, ivec3 p) {
@@ -210,7 +212,8 @@ public:
       if (!freeAt(place)) { place = from; meta = k.meta; e = k.entity; carve = k.carve; }   // (filled since it set off: back where it was)
       if (!freeAt(place)) {   // nowhere: never lost, it drops (a container's contents too)
         const std::string drop = reg().block(k.id).drop.empty() ? reg().block(k.id).key : reg().block(k.id).drop;
-        dropItem(lv, b.realm, ItemStack(drop, 1), vec3(to) + vec3(0.5f), true);
+        const bool secondHalf = (bhas(k.id, BF::Door) && (k.meta & 16)) || (bhas(k.id, BF::Bed) && (k.meta & 4));   // (a door or bed is one item: its other half drops nothing)
+        if (!secondHalf) dropItem(lv, b.realm, ItemStack(drop, 1), vec3(to) + vec3(0.5f), true);
         if (e.is_object() && e.contains("items") && e["items"].is_array()) for (auto& it : e["items"]) if (!it.is_null()) dropItem(lv, b.realm, ItemStack::fromJson(it), vec3(to) + vec3(0.5f), true);
         continue;
       }

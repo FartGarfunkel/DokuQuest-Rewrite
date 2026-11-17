@@ -64,6 +64,8 @@ void TileTextures::bind(Shader& s, int u) const {
 
 WorldRenderer::~WorldRenderer() {
   for (auto& pg : pages) { glDeleteVertexArrays(1, &pg.vao); glDeleteBuffers(1, &pg.vbo); }
+  for (auto& [id, L] : loose) { glDeleteVertexArrays(1, &L.vao); glDeleteBuffers(1, &L.vbo); }   // (moving pieces still drawn when the world closed)
+  loose.clear();
   if (tq[0]) glDeleteQueries(2, tq);
   GLuint b[2] = {instVbo, cmdBuf};
   for (GLuint x : b) if (x) glDeleteBuffers(1, &x);

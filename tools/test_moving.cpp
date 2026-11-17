@@ -494,6 +494,28 @@ int main(int argc, char** argv) {
     finishAll(*L);
   }
 
+  printf("[review leftovers]\n");
+  {
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 14; y++) w.setBlock(x, y, z, AIR);
+    check(glueable(reg().blockId("campfire")) && !glueable(reg().blockId("fire")), "a campfire can be glued; fire itself can't");
+    // a long arm (9 blocks) on a hinge: a block just off its line, a little way into the swing, stops it (the swing was
+    // checked every 15 degrees, which stepped right over it this far out)
+    const ivec3 H(0, Y + 1, 0);
+    w.setBlock(H.x, H.y, H.z, reg().blockId("hinge"), 1);
+    for (int i = 0; i <= 9; i++) w.setBlock(H.x + i, H.y + 1, H.z, planks);
+    for (int i = 0; i < 9; i++) setGlue(w, H + ivec3(i, 1, 0), 0, true);
+    setGlue(w, H, 2, true);
+    w.setBlock(H.x + 9, H.y + 1, H.z + 1, reg().blockId("stone")); w.setBlock(H.x + 9, H.y + 1, H.z - 1, reg().blockId("stone"));
+    P->pos = vec3(18.5f, Y + 1, 18.5f);
+    std::string why1, why2;
+    machineState(w, H)["quarters"] = 1; const bool a1 = startMove(*L, REALM_MAIN, H, &why1);
+    finishAll(*L);
+    machineState(w, H)["quarters"] = -1; const bool a2 = !a1 && startMove(*L, REALM_MAIN, H, &why2);
+    check(!a1 && !a2, "a long arm's swing notices a block just off its line, either way (" + why1 + " / " + why2 + ")");
+    finishAll(*L);
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 14; y++) w.setBlock(x, y, z, AIR);
+  }
+
   printf("[chains and ropes]\n");
   {
     for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 14; y++) w.setBlock(x, y, z, AIR);
