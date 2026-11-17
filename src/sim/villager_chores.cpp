@@ -16,6 +16,7 @@
 // (sim/villager_quests.cpp).
 #include "gen/town_mine.h"
 #include "sim/villagers_internal.h"
+#include "sim/lift.h"
 #include "sim/creature.h"
 #include "sim/felled.h"
 #include "sim/player.h"
@@ -314,8 +315,21 @@ OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFo
   if (job == "miller") {
     // the wheat carried in his arms from the stores to the stones, poured in; the ground flour bagged up and carried off
     // (he walks there and back: nothing goes in or comes out of the millstone from across the village)
-    if (M.choreT > 0) return std::nullopt;
     const VBld* mill = nearestOf(v, "windmill", vec3(f.work));
+    // the mill's lift up to the loft (gen/structures_townbld.cpp bWindmill), looked for now and then: he rides it up to
+    // the stones and back down when he's done up there
+    if (mill && (M.workLiftT -= dt) <= 0) {
+      M.workLiftT = 30;
+      if (!npcLiftIn(w, std::min(mill->x0, mill->x1), mill->y - 1, std::min(mill->z0, mill->z1), std::max(mill->x0, mill->x1), mill->y + 1, std::max(mill->z0, mill->z1), M.workLift)) M.workLift = ivec3(INT32_MIN);
+    }
+    const bool lift = mill && M.workLift.x != INT32_MIN;
+    Lift LL; const bool liftOk = lift && liftOfSlider(w, M.workLift, LL) && LL.stops.size() >= 2;
+    const bool inMill = mill && e.pos.x >= std::min(mill->x0, mill->x1) - 0.5f && e.pos.x <= std::max(mill->x0, mill->x1) + 1.5f && e.pos.z >= std::min(mill->z0, mill->z1) - 0.5f && e.pos.z <= std::max(mill->z0, mill->z1) + 1.5f;
+    const bool upTop = liftOk && inMill && npcLiftFloorOf(w, M.workLift, e.pos.y) == LL.stops.back().second;
+    if (M.choreT > 0) {
+      if (upTop) if (OptMove m = npcRideLift(lv, e, M, M.workLift, LL.stops.front().second, dt)) return m;   // (done up there for now: down)
+      return std::nullopt;
+    }
     ivec3 ms;
     const bool found = mill && millstoneIn(w, *mill, ms);
     if (std::getenv("DQ_CHORE_DEBUG")) DQ_LOG("chore miller: mill %d (%d,%d..%d,%d y%d) stones %d at %d %d %d, wheat %d", mill ? 1 : 0, mill ? mill->x0 : 0, mill ? mill->z0 : 0, mill ? mill->x1 : 0, mill ? mill->z1 : 0, mill ? mill->y : 0, (int)found, ms.x, ms.y, ms.z, stockOf(S, "wheat"));
@@ -328,7 +342,13 @@ OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFo
         const vec3 at = vec3(ms) + vec3(0.5f, 0, 0.5f);
         if (!by(e, at, 2.0f)) {
           M.jobT += dt;
-          if (M.jobT < 40) return go(at);
+          if (liftOk && at.y - e.pos.y > 2.5f && M.jobT < 70) {   // (the stones are up in the loft: the lift, then the last steps)
+            bool gave = false;
+            if (OptMove m = npcRideLift(lv, e, M, M.workLift, LL.stops.back().second, dt, &gave)) return m;
+            if (gave) M.workLiftT = 600;   // (it wouldn't take him: the ladder, for a while)
+            if (gave) M.workLift = ivec3(INT32_MIN);
+          }
+          if (M.jobT < (liftOk ? 70 : 40)) return go(at);
           M.jobT = 0;   // (no way to the stones from here: the quern by hand below, this once)
           M.carry.clear(); M.carryN = 0; holding(e, M, job);
           if (stockOf(S, "wheat") > 0) { M.choreT = 12; stockAdd(S, "wheat", -1); stockAdd(S, "flour", 1); e.swingT = 0.3f; lv.fx->sound("grind", e.pos + vec3(0, 1, 0), 12); }
@@ -447,7 +467,7 @@ OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFo
       M.jobT += dt * 0.25f;
       if (M.jobT > 25) { M.hasCrop = false; M.choreT = 4; return std::nullopt; }   // (can't get there: another spot)
       // stuck a long while and nobody about to see: they know the way (as the village's own walk home does)
-      if (M.stuckGo > 10 && !nearestPawn(lv, e.realm, e.pos, 24)) { e.pos = st + vec3(0, 0.01f, 0); M.stuckGo = 0; M.hasPath = false; return Move{0, e.yaw}; }
+      if (M.stuckGo > 10 && !nearestPawn(lv, e.realm, e.pos, 24)) { npcNavStats().rescues++; npcUnclimb(e, M); e.pos = st + vec3(0, 0.01f, 0); M.stuckGo = 0; M.hasPath = false; return Move{0, e.yaw}; }
       // a walled town: out (or in) by the nearest gate, not straight at the wall
       if (v.hasWall && !v.gates.empty()) {
         auto inside = [&](vec3 p) { return p.x > v.wx0 && p.x < v.wx1 + 1 && p.z > v.wz0 && p.z < v.wz1 + 1; };

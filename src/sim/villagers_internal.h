@@ -9,6 +9,19 @@
 
 namespace dq {
 
+// a step of a townsperson's way (sim/npc_path.cpp): the cell their feet are in, the height they stand at there, and
+// whether it's up or down a ladder (a vine, a rope...) rather than on a floor
+struct NpcStep { ivec3 at{0}; float floor = 0; bool climb = false; };
+// the way from `from` to `to` for a body bodyW (half width) by bodyH: the steps after the first. *partial: it doesn't get
+// there (the steps go as near as the search got). Empty: no step to take at all.
+std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, float bodyH, bool* partial = nullptr, int maxNodes = 2400);
+// the height a body stands at in cell (x, y, z), or NaN: no floor there (or only a ladder)
+float npcStandAt(const World& w, int x, int y, int z, float bodyW = 0.3f, float bodyH = 1.8f);
+// the way-finding tallies (tools/test_villagers.cpp's audit reads them): replans, plans that couldn't get there, and the
+// times someone was moved to where they were going (stuck for good)
+struct NpcNavStats { long plans = 0, partial = 0, failed = 0, rescues = 0, climbs = 0; };
+NpcNavStats& npcNavStats();
+
 // a villager's mind (the original kept these on the Mob: goal, holdT, confront, greeted, npcDoors...)
 struct NpcMind {
   bool hasGoal = false; vec3 goal{0}; float goalT = 0; int goalSerial = 0, lastSerial = -1;
@@ -20,7 +33,10 @@ struct NpcMind {
   struct Door { ivec3 at; double t; };
   std::vector<Door> doors;
   // npcGo
-  std::vector<ivec3> path; size_t pathI = 0; bool hasPath = false; float navT = 0; bool hasNavGoal = false; vec3 navGoal{0};
+  std::vector<NpcStep> path; size_t pathI = 0; bool hasPath = false, pathPartial = false, climbing = false; float navT = 0; bool hasNavGoal = false; vec3 navGoal{0};
+  int partialN = 0;   // partial plans in a row toward this goal
+  bool wentLast = false;
+  bool sent = false; vec3 sentTo{0};   // sent somewhere (tools/test_npc_paths.cpp): they walk there, whatever the hour   // (npcGo walked them last tick: a climber not walked any more is let down)
   float lostT = 0; vec3 lostFrom{0};   // (no way there and not getting anywhere: sim/villager_ai.cpp npcGo's rescue)
   int stuckGo = 0; float stuckT = 0, sideStepT = 0; bool hasNav = false; vec2 navXZ{0};
   int wetN = 0;   // seconds in a row in water (a fountain, a well): climbs out after a few
@@ -28,6 +44,11 @@ struct NpcMind {
   ivec3 badSeat{INT32_MIN}; double badSeatUntil = 0;   // a seat it couldn't reach: left alone for a while
   // towns3.js: the watch at the gates
   float watchT = 0, watchLen = 0; bool patrol = false;
+  // the lookout (sim/villager_lookout.cpp): a guard rides a tower's lift up to the wall walk to keep watch, and back down
+  int look = 0; float lookLeft = 0, lookStateT = 0; double nextLookAt = 0, lookClock = 0; ivec3 lookLift{0}; vec3 lookSpot{0};
+  // riding a lift (npcRideLift): which, to which floor, how far along (0 to it and on, 1 riding), how long at it
+  ivec3 rideS{INT32_MIN}; int rideTo = 0, rideStage = 0; float rideT = 0, rideStageT = 0; double rideSeen = -1e9;
+  ivec3 workLift{INT32_MIN}; float workLiftT = 0;   // the lift at their work (the miller's up to the stones), looked for now and then
   // hearth.js: the missing
   std::string lostQ; u32 follow = 0;
   bool pinned = false; std::string sitHeld;
@@ -91,7 +112,18 @@ void later(Level& lv, double secs, const Player& p, const std::string& text);
 
 // villager_ai.cpp
 OptMove npcBrain(Level& lv, Creature& e, Entity* p, float dist, float dt);
-OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float speed);   // walk there (its own A*)
+OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float speed);   // walk there (its own A*: sim/npc_path.cpp)
+void npcUnclimb(Creature& e, NpcMind& M);   // off a ladder (gravity back)
+// a guard's turn on lookout, up a stone tower's lift (sim/villager_lookout.cpp): a move while it's on that duty, else none
+OptMove lookoutAI(Level& lv, Creature& e, NpcMind& M, const Village& v, float dt);
+// a ride on the lift whose slider is `s` from the floor they're on to floor `to` (its "at"): the lift called to them, onto
+// the platform, up or down, and there. A move while they're about it; none once they stand at that floor, or when they
+// gave it up (*gaveUp: no such lift, or a minute without getting there)
+OptMove npcRideLift(Level& lv, Creature& e, NpcMind& M, ivec3 s, int to, float dt, bool* gaveUp = nullptr);
+// the floor (a lift's "at" of one of its stops) a body at height y is on, or -1: none near
+int npcLiftFloorOf(const World& w, ivec3 s, float y);
+// a lift in the box (a windmill, a tower): its slider
+bool npcLiftIn(const World& w, int x0, int y0, int z0, int x1, int y1, int z1, ivec3& out);
 // the working village (sim/villager_chores.cpp): farmers reap their farms and carry the wheat to the mill, the miller
 // feeds the millstone and bags the flour, the baker fetches it and bakes bread. A move while they're about it, or none.
 OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFolk& f, float ph, float dt);
