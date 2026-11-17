@@ -5,6 +5,13 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.26 (November 2026)
+
+**Settings:**
+- **New players start with the Classic colour style and gentle Waves on the water** (Block Detail Flat, 3D plants near you).
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.25 — Honest Folk (November 2026)
 
 **Villages and thieves:**
@@ -26,7 +33,6 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 
 **Fixes:**
 - **Windows and Linux downloads now use all of the game's data:** the new lands, 82 of the game's own block pictures, the stations' textures (the chest and barrel buttons), imported creatures and their voices had been left out of the downloaded game (the phone build was fine). New worlds get the new lands.
-- **New players start with the Classic colour style and gentle Waves on the water** (Block Detail Flat, 3D plants near you).
 - **The title screen looks out across the land again,** with the sky above, as it used to (it had sunk into fog).
 - **Windows:** a new version unzipped over an older one no longer keeps the old version's leftover pictures, models and data (old skins, the barrel buttons and more).
 - **Skins:** the game's own creature skins are used even with an old copy of the DokuQuest Base pack in your player folder.

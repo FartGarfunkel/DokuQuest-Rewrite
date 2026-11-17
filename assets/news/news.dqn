@@ -1,6 +1,10 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.26 | November 2026
+**Settings:**
+- **New players start with the Classic colour style and gentle Waves on the water** (Block Detail Flat, 3D plants near you).
+- Removed Herobrine.
 ## Alpha 1.0.0.25 — Honest Folk | November 2026
 **Villages and thieves:**
 - **What's in a village belongs to it:** its chests, barrels and cupboards, its beds, work stations and crops. What you put down there yourself stays yours.
@@ -17,7 +21,6 @@
 - **Only what a thing does:** pickaxes, axes, shovels and hoes show their mining speed; swords and staffs only their attack. Staffs say they cast your chosen spell, and show their spell power, element boosts and mana while held.
 **Fixes:**
 - **Windows and Linux downloads now use all of the game's data:** the new lands, 82 of the game's own block pictures, the stations' textures (the chest and barrel buttons), imported creatures and their voices had been left out of the downloaded game (the phone build was fine). New worlds get the new lands.
-- **New players start with the Classic colour style and gentle Waves on the water** (Block Detail Flat, 3D plants near you).
 - **The title screen looks out across the land again,** with the sky above, as it used to (it had sunk into fog).
 - **Windows:** a new version unzipped over an older one no longer keeps the old version's leftover pictures, models and data (old skins, the barrel buttons and more).
 - **Skins:** the game's own creature skins are used even with an old copy of the DokuQuest Base pack in your player folder.
