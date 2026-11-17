@@ -492,7 +492,7 @@ public:
     // a heading: your name and level
     { float sc = is * 0.5f / z / fontPx(F_H3);
       text(dl, F_H3, p, ink::head, pl.name.c_str(), 0, sc);
-      std::string lv = "Level " + std::to_string(pl.level) + " \xC2\xB7 " + strFormat("%g", pl.hp / 2) + " / " + strFormat("%g", pl.maxHp / 2) + " hearts";
+      std::string lv = "XP level " + std::to_string(pl.level) + " \xC2\xB7 " + strFormat("%g", pl.hp / 2) + " / " + strFormat("%g", pl.maxHp / 2) + " hearts";
       float s2 = is * 0.28f / z / fontPx(F_BODY); ImVec2 ls = textSize(F_BODY, lv.c_str(), 0, s2);
       text(dl, F_BODY, ImVec2(p.x + w - ls.x, p.y + is * 0.12f), ink::muted, lv.c_str(), 0, s2);
       float hy = p.y + textSize(F_H3, "Ag", 0, sc).y + 2 * z;

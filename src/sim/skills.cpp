@@ -1,6 +1,10 @@
 // sim/skills.cpp — game/skills.js (+ the perk effects of rpg.js that touch breaking, crafting and fighting).
 #include "sim/skills.h"
 #include "sim/rpg.h"
+#include "sim/balance.h"
+#include "sim/gameplay.h"
+#include <deque>
+#include <unordered_set>
 #include "sim/magic_data.h"
 #include "sim/effects.h"
 
@@ -25,6 +29,7 @@ void skillGain(Level& lv, Player& p, const std::string& k, double xp) {
   if (xp <= 0 || p.creative()) return;
   if (pathSkill(p) == k) xp = std::round(xp * 1.1);   // paths.js
   int before = skillLv(p, k);
+  const int totalBefore = totalLevel(p);
   json& S = p.stats["skills"];
   if (!S.is_object()) S = json::object();
   S[k] = std::min(200000000.0, skillXp(p, k) + xp);
@@ -32,7 +37,10 @@ void skillGain(Level& lv, Player& p, const std::string& k, double xp) {
   if (lv.events) lv.events->emit("skillXp", json::array({p.name, k, xp, after}));
   const MagicData& md = magicData();
   if (after > before) {
-    lv.fx->message(p.id, md.skillName(k) + " level " + std::to_string(after) + "!", after % 10 == 0 || after == 99 ? "epic" : "good");
+    lv.fx->message(p.id, md.skillName(k) + " skill level " + std::to_string(after) + "!", after % 10 == 0 || after == 99 ? "epic" : "good");
+    // the total of your skills buys stat points (sim/balance.h): say so when one comes
+    const int totalAfter = totalBefore + (after - before);
+    if (totalAfter / bal::STAT_EVERY > totalBefore / bal::STAT_EVERY) lv.fx->message(p.id, "Skill total " + std::to_string(totalAfter) + ": a stat point to spend (Your Path)", "good");
     lv.fx->soundUi(p.id, "levelup");
     if (!p.stats.value("skillHint", false)) { p.stats["skillHint"] = true; lv.fx->message(p.id, "Press K to see your skills", ""); }
   }
@@ -172,6 +180,35 @@ void onFishCaught(Level& lv, Player& p, const std::string& kind) {
   gearGain(lv, p, p.held(), 3);
 }
 void onBred(Level& lv, Player& p) { skillGain(lv, p, "taming", 25); }
+
+void skillQueueSmelt(Player& p, const std::string& id, int n) {
+  if (n <= 0 || id.empty()) return;
+  json& q = p.data["smeltTaken"];
+  if (!q.is_array()) q = json::array();
+  q.push_back(json::array({id, n}));
+}
+void skillsTick(Level& lv, Player& p) {
+  if (!p.data.is_object()) return;
+  auto it = p.data.find("smeltTaken");
+  if (it == p.data.end()) return;
+  json q = std::move(*it); p.data.erase("smeltTaken");
+  if (q.is_array()) for (auto& e : q) if (e.is_array() && e.size() == 2 && e[0].is_string() && e[1].is_number_integer()) onSmeltedTaken(lv, p, e[0].get<std::string>(), e[1].get<int>());
+}
+namespace {
+struct PlacedBlocks { std::unordered_set<u64> set; std::deque<u64> order; };
+u64 placedKey(int realm, int x, int y, int z) { return ((u64)(u32)x * 73856093ull) ^ ((u64)(u32)y << 42) ^ ((u64)(u32)z * 19349663ull) ^ ((u64)(u32)z << 21) ^ ((u64)(u32)realm << 58); }
+}
+void skillNotePlaced(Level& lv, int realm, int x, int y, int z) {
+  auto& P = levelSlot<PlacedBlocks>(lv, "skillPlaced");
+  const u64 k = placedKey(realm, x, y, z);
+  if (!P.set.insert(k).second) return;
+  P.order.push_back(k);
+  while (P.order.size() > 8192) { P.set.erase(P.order.front()); P.order.pop_front(); }
+}
+bool skillTakePlaced(Level& lv, int realm, int x, int y, int z) {
+  auto& P = levelSlot<PlacedBlocks>(lv, "skillPlaced");
+  return P.set.erase(placedKey(realm, x, y, z)) > 0;   // (its order entry ages out on its own)
+}
 float cookingHealFactor(const Player& p) { return (1 + skillBonus(p, "cooking", 0.25f)) * (hasPerk(p, "cooking", 30) ? 1.1f : 1.f); }
 bool smithSavesWear(const Player& p) { return rnd() < skillBonus(p, "smithing", 0.3f); }
 

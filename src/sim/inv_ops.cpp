@@ -5,6 +5,7 @@
 #include "sim/trommel.h"
 #include "world/world.h"
 #include "sim/machines.h"
+#include "sim/skills.h"
 
 namespace dq {
 
@@ -305,7 +306,13 @@ void InvSession::slotClick(Grp g, int i, bool right, bool shift) {
   if (!a || i < 0 || i >= (int)a->size()) return;
   ItemStack& s = (*a)[i];
   ItemStack& cur = p.cursor;
-  if (shift && !s.empty()) { quickMove(g, i); changed(g); sound("click"); return; }
+  if (shift && !s.empty()) {
+    const bool furnOut = g == Grp::Furn && i == 2 && !furnaceKind.empty() && furnaceKind != "trommel";
+    const ItemStack had = s;
+    quickMove(g, i); changed(g); sound("click");
+    if (furnOut && had.n > s.n) skillQueueSmelt(p, had.id, had.n - (s.empty() ? 0 : s.n));
+    return;
+  }
   if (g == Grp::Mount) {   // a mount's gear: one thing to a slot (a saddle, a suit of armour)
     if (!cur.empty() && accepts(g, i, cur)) {
       if (s.empty()) { s = cur; s.n = 1; if (--cur.n <= 0) cur.clear(); }
@@ -319,9 +326,11 @@ void InvSession::slotClick(Grp g, int i, bool right, bool shift) {
   if ((g == Grp::Furn && i == 2 && furnaceKind != "trommel") || (g == Grp::Mach && i == 1)) {
     // furnace output: take only
     if (s.empty()) return;
+    const ItemStack had = s;
     if (cur.empty()) { cur = s; s.clear(); }
     else if (stacksMerge(cur, s) && cur.n + s.n <= maxStackOf(s.id)) { cur.n += s.n; s.clear(); }
     else return;
+    if (g == Grp::Furn && !furnaceKind.empty() && furnaceKind != "trommel") skillQueueSmelt(p, had.id, had.n);
     changed(g); sound("click"); return;
   }
   bool hadS = !s.empty(), hadCur = !cur.empty();

@@ -6,6 +6,8 @@
 #include "sim/combat.h"
 #include "sim/magic_combat.h"
 #include "sim/player.h"
+#include "sim/balance.h"
+#include "sim/skills.h"
 
 namespace dq {
 
@@ -34,8 +36,9 @@ static float hurtPlayer(Level& lv, Player& p, float amount, Entity* attacker, co
     const auto& fx = c->T->onHit;
     if (fx.any && !src.noEffect) {
       if (fx.poison > 0 && (c->type != "scorpion" || src.type == "mob")) setPlayerEffect(p, "poison", std::max(playerEffect(p, "poison"), fx.poison));
-      if (fx.slow > 0) setPlayerEffect(p, "slow", std::max(playerEffect(p, "slow"), fx.slow));
-      if (fx.chill > 0) setPlayerEffect(p, "chill", std::max(playerEffect(p, "chill"), fx.chill));
+      const float steady = 1 - stunResist(p);   // (stagger resistance: slows and chills wear off sooner)
+      if (fx.slow > 0) setPlayerEffect(p, "slow", std::max(playerEffect(p, "slow"), fx.slow * steady));
+      if (fx.chill > 0) setPlayerEffect(p, "chill", std::max(playerEffect(p, "chill"), fx.chill * steady));
       if (fx.fire > 0) setPlayerEffect(p, "burn", std::max(playerEffect(p, "burn"), fx.fire));
       if (fx.wither > 0) setPlayerEffect(p, "wither", std::max(playerEffect(p, "wither"), fx.wither));   // (the classic Nether's naga)
     }
@@ -48,6 +51,9 @@ float damageEntity(Level& lv, Entity& target, float amount, Entity* attacker, co
   DamageSrc src = extra;
   src.type = cause;
   if (attacker) src.attacker = attacker->id;
+  // a spell's summoned ally (owned, not a kept pet) strikes harder with its summoner's talents
+  if (attacker && attacker->data.is_object() && attacker->data.value("kept", true) == false && attacker->data.contains("owner") && attacker->data["owner"].is_string())
+    for (auto& e : lv.entities()) if (e->isPlayer() && !e->removed && static_cast<Player*>(e.get())->name == attacker->data["owner"].get<std::string>()) { amount *= summonDamageFactor(*static_cast<Player*>(e.get())); break; }
   if (auto* c = dynamic_cast<Creature*>(&target)) return c->hurt(lv, amount, src);
   if (auto* p = dynamic_cast<Player*>(&target)) return hurtPlayer(lv, *p, amount, attacker, src);
   return 0;
@@ -60,7 +66,7 @@ bool creatureTakesHit(Level& lv, Entity& e, float amount, const DamageSource& sr
   DamageSrc s;
   s.type = src.type; s.element = src.element; s.tool = src.tool; s.attacker = src.attacker; s.knock = src.knock;
   s.weapon = !src.weapon.empty(); s.bypassArmor = src.bypassArmor;
-  s.hasRay = src.hasRay; s.rayO = src.rayO; s.rayD = src.rayD; s.ench = src.ench;
+  s.hasRay = src.hasRay; s.rayO = src.rayO; s.rayD = src.rayD; s.ench = src.ench; s.pierce = src.pierce;
   if (s.type == "arrow" && s.tool.empty()) s.tool = "arrow";
   dealt = c->hurt(lv, amount, s);
   return true;
@@ -76,6 +82,7 @@ void poisonCreature(Entity& e, float secs) {
 }
 
 void knockback(Entity& e, vec3 v) {
+  if (e.isPlayer()) { const float k = 1 - knockResist(static_cast<const Player&>(e)); v.x *= k; v.z *= k; }   // (knockback-resistance talents)
   e.vel.x += v.x; e.vel.z += v.z;
   if (v.y) e.vel.y = std::max(e.vel.y, v.y);
 }
@@ -88,6 +95,7 @@ void igniteEntity(Entity& e, float t) {
 void tickPlayerEffects(Level& lv, Player& p, float dt) {
   if (p.dead) { if (p.data.contains("fx")) p.data.erase("fx"); return; }
   combatRpgTick(lv, p, dt);
+  skillsTick(lv, p);   // (furnace output taken: Cooking / Smithing, sim/skills.h)
   if (p.hurtTime > 0) p.hurtTime = std::max(0.f, p.hurtTime - dt);
   float poison = playerEffect(p, "poison");
   if (poison > 0) {

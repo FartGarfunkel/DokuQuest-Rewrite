@@ -5,6 +5,7 @@
 #include "sim/enchanting.h"
 #include "sim/skills.h"
 #include "sim/creature.h"
+#include "sim/balance.h"
 #include <regex>
 
 namespace dq {
@@ -87,6 +88,12 @@ float combatHeal(Level& lv, Entity& t, float amount) {
   if (amount <= 0 || t.removed) return 0;
   float before = t.hp;
   t.hp = std::min(t.maxHp, t.hp + amount);
+  // overheal talents: what heals past full is kept as a ward, up to a share of your health (sim/balance.h)
+  if (t.isPlayer()) if (const float over = before + amount - t.maxHp, share = overhealShare(static_cast<Player&>(t)); over > 0 && share > 0) {
+    MagicState& m = magicState(lv, static_cast<Player&>(t));
+    const float cap = t.maxHp * share;
+    if (m.ward < cap) { m.ward = std::min(cap, m.ward + over); m.wardT = std::max(m.wardT, 10.f); }
+  }
   return t.hp - before;
 }
 
@@ -124,7 +131,7 @@ void grantXP(Level& lv, Player& p, int n, const vec3* at) {
   if (n <= 0) { if (mended && at) lv.fx->particles("text", *at, 1, json{{"text", "Mended"}, {"col", "#c9a6ff"}}); return; }
   int ups = addXP(p, n);
   if (at) lv.fx->particles("text", *at, 1, json{{"text", "+" + std::to_string(n) + " XP"}, {"col", "#b6f06a"}});
-  if (ups) { lv.fx->soundUi(p.id, "levelup"); lv.fx->message(p.id, "Level " + std::to_string(p.level) + "!", "good"); }
+  if (ups) { lv.fx->soundUi(p.id, "levelup"); lv.fx->message(p.id, "Experience level " + std::to_string(p.level) + "! (spend it on enchanting and the anvil)", "good"); }
 }
 void spendLevels(Player& p, int n) { p.level = std::max(0, p.level - n); p.xp = std::min(p.xp, xpForLevel(p.level) - 1); }
 

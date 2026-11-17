@@ -192,6 +192,11 @@ add_executable(test_progression tools/test_progression.cpp)
 target_link_libraries(test_progression PRIVATE dqcore)
 add_test(NAME progression COMMAND test_progression)
 set_tests_properties(progression PROPERTIES RUN_SERIAL TRUE)   # (heavy: run on its own, so it doesn't slow the timing-sensitive tests beside it)
+# RPG balance (headless): stats, talents and their caps, creature levels and loot, and a time-to-kill / time-to-die table
+# for gear tier x skill level vs creature level x elite (sim/balance.h). Run: build/test_balance
+add_executable(test_balance tools/test_balance.cpp)
+target_link_libraries(test_balance PRIVATE dqcore)
+add_test(NAME balance COMMAND test_balance)
 # The End, dragons, the Deep Dark's guardian, the watcher and the story (headless). Run: build/test_endstory
 add_executable(test_endstory tools/test_endstory.cpp)
 target_link_libraries(test_endstory PRIVATE dqcore)
@@ -206,7 +211,7 @@ add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
 
 # every program finds data/ and assets/ next to it
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_weather)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_weather test_balance)
   if(TARGET ${t})
     add_dependencies(${t} dq_runtime_data)
   endif()

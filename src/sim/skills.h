@@ -1,5 +1,5 @@
 // sim/skills.h — skills that grow with use, and gear that grows with you (game/skills.js + rpg.js's two new
-// skills). Fourteen RuneScape-style skills, 1..99 on the classic curve (level 2 at 83 xp, 99 at 13,034,431),
+// skills). Fourteen skills, 1..99 on a long curve (level 2 at 83 xp, 99 at 13,034,431),
 // kept in Player::stats["skills"] = { skill: xp }. Tools, weapons and armour level to 50 with use
 // (ItemStack tag "gx"). Small, felt rewards — the hooks below are for the gameplay code to call.
 #pragma once
@@ -44,6 +44,12 @@ void onSmeltedTaken(Level& lv, Player& p, const std::string& id, int n);        
 void onFishCaught(Level& lv, Player& p, const std::string& kind);                                 // fish | treasure | junk
 void onBred(Level& lv, Player& p);
 float cookingHealFactor(const Player& p);      // food heals more (Cooking + Hearty)
+// from places without a Level at hand (the inventory screen): taken from a furnace's output, awarded on the next skillsTick
+void skillQueueSmelt(Player& p, const std::string& id, int n);
+void skillsTick(Level& lv, Player& p);
+// blocks a player put down: breaking them again teaches nothing (kept per level, the last 8192)
+void skillNotePlaced(Level& lv, int realm, int x, int y, int z);
+bool skillTakePlaced(Level& lv, int realm, int x, int y, int z);   // was it placed? (and forget it)
 bool smithSavesWear(const Player& p);          // a skilled smith's tools: this bit of wear doesn't happen
 
 } // namespace dq

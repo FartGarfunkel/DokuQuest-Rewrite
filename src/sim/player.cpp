@@ -2,6 +2,7 @@
 // game/movement.js (ledge shimmy, coyote time, jump buffering).
 #include "sim/player.h"
 #include "sim/skilltree.h"
+#include "sim/balance.h"
 #include "sim/attack_moves.h"
 #include "sim/inventory.h"
 #include "sim/blockinfo.h"
@@ -21,7 +22,7 @@ Player::Player() {
 float Player::heal(float n) { float before = hp; hp = std::min(maxHp, hp + n); return hp - before; }
 void Player::recalcMax() {
   float m = 20 + 2 * std::min(10, heartCrystals) + 2 * charmBonus(*this, "hearts");
-  m = std::round((m + treeAttr(*this, "health")) * (1 + treeAttrPct(*this, "health")));   // (the skill tree, sim/skilltree.h)
+  m = std::round((m + conHealth(*this) + treeAttr(*this, "health")) * (1 + talent(*this, "health")));   // (Constitution; the skill tree, sim/skilltree.h)
   if (m != maxHp) { maxHp = m; if (hp > m) hp = m; }
 }
 int Player::addXP(int n) {
@@ -142,6 +143,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   if (slow > 0) speed *= 0.55f;
   if (atkMove && atkT < attackMove(atkMove).recovery) speed *= 0.35f;
   speed *= pathSpeedFactor(*this);   // Fleet Foot (sim/villager_quests.cpp)
+  if (!flying) speed *= moveFactor(*this);   // Agility, speed talents, load (sim/balance.h)
   speed *= opts.slow;
   BlockId under = wd.getBlock(ifloor(pos.x), ifloor(pos.y - 0.1f), ifloor(pos.z));
   if (onGround && !flying) speed *= binfo(under).slow;   // soul sand and honey drag at your feet
@@ -216,7 +218,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   airStep = !onGround && !flying && !inWater && !inLava && !c.ladder && vel.y <= 0.5f && airT < 0.25f ? 0.26f : 0.f;
   MoveOut mo;
   if (mode == "spectator") { pos += vel * dt; onGround = false; }
-  else mo = moveEntity(wd, *this, dt, {0.6f, airStep, sneaking});
+  else mo = moveEntity(wd, *this, dt, {0.6f + stepBonus(*this), airStep, sneaking});   // (step-height talents)
   hitWall = mo.hitWall; hitCeiling = mo.hitCeiling;
   // slime blocks throw you back up (sneak to land softly)
   if (!wasGround && onGround && vyBefore < -2.5f && !sneaking) {
@@ -363,9 +365,10 @@ void Player::load(const json& j) {
   if (j.contains("secondChance") && j["secondChance"].is_number()) secondChanceCd = j["secondChance"].get<float>();
   if (j.contains("rpg") && j["rpg"].is_object()) {
     const json& r = j["rpg"];
-    statCon = clampv(r.value("con", 0), 0, 15); statStr = clampv(r.value("str", 0), 0, 15);
-    statAgi = clampv(r.value("agi", 0), 0, 15); statInt = clampv(r.value("int", 0), 0, 15);
-    statLck = clampv(r.value("lck", 0), 0, 15); statFoc = clampv(r.value("foc", 0), 0, 15);
+    const int C = bal::STAT_CAP;
+    statCon = clampv(r.value("con", 0), 0, C); statStr = clampv(r.value("str", 0), 0, C);
+    statAgi = clampv(r.value("agi", 0), 0, C); statInt = clampv(r.value("int", 0), 0, C);
+    statLck = clampv(r.value("lck", 0), 0, C); statFoc = clampv(r.value("foc", 0), 0, C);
   }
   air = j.contains("air") && j["air"].is_number() ? clampv(j["air"].get<float>(), 0.f, AIR_MAX) : AIR_MAX;
   // before 0.7, levels raised max health: those hearts come back as Heart Crystals

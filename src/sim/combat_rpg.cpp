@@ -1,6 +1,7 @@
 // sim/combat_rpg.cpp — the combat batch's rules. Bars and animations read the fields; they are not drawn here.
 #include "sim/combat_rpg.h"
 #include "sim/skilltree.h"
+#include "sim/balance.h"
 #include "sim/shield_shape.h"
 #include "sim/skills.h"
 #include "sim/gameplay.h"
@@ -16,16 +17,12 @@ namespace dq {
 
 namespace {
 static double rnd() { static thread_local std::mt19937 g(std::random_device{}()); return std::uniform_real_distribution<double>(0, 1)(g); }
-constexpr float STAMINA_MAX = 100;
-constexpr float STAMINA_REGEN = 28;
+using namespace bal;   // (the stats', talents' and levels' numbers: sim/balance.h)
 constexpr float STAMINA_DELAY = 0.45f;
-constexpr float DODGE_COST = 30;
-constexpr float DODGE_TIME = 0.40f;
 constexpr float BLOCK_COST = 14;
 constexpr float PARRY_WINDOW = 0.18f;
 constexpr float PARRY_COST = 18;
 constexpr float BLOCK_KEEP = 0.35f;
-constexpr int STAT_CAP = 15;
 constexpr float SECOND_CHANCE_CD = 180;
 constexpr float BOSS_CAP_FRAC = 0.08f;
 
@@ -43,10 +40,10 @@ void spend(Player& p, float n) {
 
 void combatRpgTick(Level& lv, Player& p, float dt) {
   if (p.dead || dt <= 0) return;
-  p.maxStamina = (STAMINA_MAX + p.statCon * 2.f + treeAttr(p, "stamina")) * (1 + treeAttrPct(p, "stamina"));
+  p.maxStamina = (STAMINA_MAX + conStamina(p) + treeAttr(p, "stamina")) * (1 + talent(p, "stamina"));
   if (p.stamina > p.maxStamina) p.stamina = p.maxStamina;
   float idle = p.data.value("stamIdle", 0.0f) + dt;
-  if (idle >= STAMINA_DELAY) p.stamina = std::min(p.maxStamina, p.stamina + STAMINA_REGEN * dt);
+  if (idle >= STAMINA_DELAY) p.stamina = std::min(p.maxStamina, p.stamina + STAMINA_REGEN * staminaRegenFactor(p) * dt);
   p.data["stamIdle"] = idle;
   if (p.dodgeT > 0) p.dodgeT = std::max(0.f, p.dodgeT - dt);
   if (p.parryFlash > 0) p.parryFlash = std::max(0.f, p.parryFlash - dt);
@@ -54,7 +51,8 @@ void combatRpgTick(Level& lv, Player& p, float dt) {
   if (p.staggerT > 0) p.staggerT = std::max(0.f, p.staggerT - dt);
   if (p.posture > 0 && p.staggerT <= 0) p.posture = std::max(0.f, p.posture - 8.f * dt);
   if (p.secondChanceCd > 0) p.secondChanceCd = std::max(0.f, p.secondChanceCd - dt);
-  const int earned = std::max(0, totalLevel(p) / 5);
+  const int earned = statPointsEarned(p);
+  if (p.data.value("conSeen", -1) != p.statCon) { p.data["conSeen"] = p.statCon; p.recalcMax(); }   // (Constitution's health)
   const int spent = p.statCon + p.statStr + p.statAgi + p.statInt + p.statLck + p.statFoc;
   p.statPoints = std::max(0, earned - spent);
   float scan = p.data.value("lvlScan", 0.0f) + dt;
@@ -76,10 +74,19 @@ void combatRpgTick(Level& lv, Player& p, float dt) {
 // players about, its health grows (40% for each beyond the first, while they stay near) so a party has a fight too.
 int playerCombatLevel(const Player& p) { return std::max(1, totalLevel(p) / 8); }
 namespace {
-float levelHp(int lvl) { return 1.f + 0.08f * (std::max(1, lvl) - 1); }
-float levelDmg(int lvl) { return 1.f + 0.05f * (std::max(1, lvl) - 1); }
+float levelHp(int lvl) { return mobLevelHp(lvl); }
+float levelDmg(int lvl) { return mobLevelDmg(lvl); }
 }
-float mobXpScale(const Entity& e) { return (1.f + 0.06f * (std::max(1, e.mobLevel) - 1)) * (mobIsElite(e.data) ? 2.f : 1.f); }
+float mobXpScale(const Entity& e) { return (1.f + MOB_XP_PER_LEVEL * (std::max(1, e.mobLevel) - 1)) * (mobIsElite(e.data) ? ELITE_XP : 1.f); }
+void mobApplyLevel(Entity& e, int lvl, bool elite, float base) {
+  if (elite) e.data["elite"] = true;
+  e.mobLevel = std::max(1, lvl);
+  e.data["hp0"] = base; e.data["coop"] = 1.f; e.data["lvlSet"] = true; e.data.erase("lvlHp");
+  const float k = levelHp(e.mobLevel) * (elite ? ELITE_HP : 1.f);
+  const float frac = e.maxHp > 0 ? e.hp / e.maxHp : 1.f;
+  e.maxHp = base * k; e.hp = std::max(0.5f, frac * e.maxHp);
+  e.maxPosture = (MOB_POSTURE_BASE + mobEffLevel(e.mobLevel) * MOB_POSTURE_PER_LEVEL) * (elite ? ELITE_POSTURE : 1.f);
+}
 void mobLevelUpdate(Level& lv, Entity& e) {
   if (e.isPlayer() || e.hp <= 0) return;
   if (e.data.contains("owner") && !e.data["owner"].is_null() && e.data["owner"] != "") return;   // (a pet or a summon: yours, not the world's)
@@ -100,26 +107,23 @@ void mobLevelUpdate(Level& lv, Entity& e) {
     if (e.data.value("lvlHp", false)) base /= 1.f + 0.03f * (std::max(1, e.mobLevel) - 1);
     const int party = (int)std::lround((sum / n + best) * 0.5f);
     int lvl = std::max(1, party + (int)std::floor(rnd() * 4) - 1);   // (-1 .. +2)
-    const bool elite = hostile && !boss && !e.data.value("boss", false) && rnd() < 1.0 / 14;
-    if (elite) { lvl += 3; e.data["elite"] = true; }
+    const bool elite = hostile && !boss && !e.data.value("boss", false) && rnd() < ELITE_CHANCE;
+    if (elite) lvl += ELITE_LEVELS;
     if (e.data.value("lvlHp", false)) lvl = std::max(lvl, e.mobLevel);   // (never lower than an older save gave it)
-    e.mobLevel = lvl;
-    e.data["hp0"] = base; e.data["coop"] = 1.f; e.data["lvlSet"] = true; e.data.erase("lvlHp");
-    const float k = levelHp(lvl) * (elite ? 1.6f : 1.f);
-    const float frac = e.maxHp > 0 ? e.hp / e.maxHp : 1.f;
-    e.maxHp = base * k; e.hp = std::max(0.5f, frac * e.maxHp);
+    mobApplyLevel(e, lvl, elite, base);
   }
   // the party near it: its health grows and shrinks with the players about it (kept as a share of the whole)
   const float coop = 1.f + 0.4f * (std::min(n, 6) - 1), was = e.data.value("coop", 1.f);
   if (std::fabs(coop - was) > 1e-3f) { const float frac = e.maxHp > 0 ? e.hp / e.maxHp : 1.f; e.maxHp *= coop / was; e.hp = std::max(0.5f, frac * e.maxHp); e.data["coop"] = coop; }
-  e.maxPosture = (40.f + e.mobLevel * 2.f) * (mobIsElite(e.data) ? 1.4f : 1.f);
+  e.maxPosture = (MOB_POSTURE_BASE + mobEffLevel(e.mobLevel) * MOB_POSTURE_PER_LEVEL) * (mobIsElite(e.data) ? ELITE_POSTURE : 1.f);
 }
 
 void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt) {
   if (p.dead) return;
-  if (in.dodge && p.dodgeT <= 0 && p.stamina >= DODGE_COST && !p.hang && !p.climb && !p.riding) {
-    spend(p, DODGE_COST);
-    p.dodgeT = DODGE_TIME;
+  const float dodgeCostNow = dodgeCost(p);   // (Agility, load)
+  if (in.dodge && p.dodgeT <= 0 && p.stamina >= dodgeCostNow && !p.hang && !p.climb && !p.riding) {
+    spend(p, dodgeCostNow);
+    p.dodgeT = dodgeTime(p);
     const float s = std::sin(p.yaw), co = std::cos(p.yaw);
     const float fx = -s, fz = -co, rx = co, rz = -s;
     float tx = rx * in.mx - fx * in.mz, tz = rz * in.mx - fz * in.mz;
@@ -139,7 +143,7 @@ void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt) {
   if (block) {
     if (p.blockT <= 0) p.blockT = 0.001f;
     else p.blockT += dt;
-    spend(p, BLOCK_COST * dt);
+    spend(p, BLOCK_COST * (1 - stunResist(p)) * dt);   // (stagger resistance: a steadier guard)
     if (p.stamina <= 0) p.blockT = 0;
   } else p.blockT = 0;
 }
@@ -159,8 +163,10 @@ float combatRpgIncoming(Level& lv, Player& p, float amount, DamageSource& src) {
     sfxUi(lv, p, "crit");
     return 0;
   }
-  if (p.blockT > 0) { p.guardFlash = 0.35f; return amount * BLOCK_KEEP; }
-  return amount;
+  // a talent's chance to slip a creature's or player's blow outright
+  if (src.attacker && src.type != "magic" && dodgeChance(p) > 0 && rnd() < dodgeChance(p)) { toast(lv, p, "Evaded", "good"); return 0; }
+  if (p.blockT > 0) { p.guardFlash = 0.35f; amount *= BLOCK_KEEP; }
+  return amount * (1 - conReduction(p));   // Constitution: toughness
 }
 
 bool combatRpgSecondChance(Level& lv, Player& p) {
@@ -177,12 +183,12 @@ bool combatRpgSecondChance(Level& lv, Player& p) {
 float combatRpgOutgoing(Level& lv, Player& p, Entity& e, float dmg, bool& finishing) {
   finishing = e.staggerT > 0;
   if (finishing) dmg = std::ceil(dmg * 1.75f);
-  dmg *= 1.f + p.statStr * 0.01f;
-  dmg = (dmg + treeAttr(p, "damage")) * (1 + treeAttrPct(p, "damage"));   // (the skill tree)
-  const float crit = p.statLck * 0.004f + treeAttr(p, "crit_chance") + treeAttrPct(p, "crit_chance");
-  if (crit > 0 && rnd() < crit) dmg = std::ceil(dmg * (1.5f + treeAttr(p, "crit_damage") + treeAttrPct(p, "crit_damage")));
-  e.maxPosture = (40.f + e.mobLevel * 2.f) * (mobIsElite(e.data) ? 1.4f : 1.f);
-  e.posture = std::min(e.maxPosture, e.posture + dmg * (2.f + p.statFoc * 0.02f));
+  dmg *= strDamageFactor(p);
+  dmg = (dmg + treeAttr(p, "damage")) * (1 + talent(p, "damage"));   // (the skill tree)
+  const float crit = critChance(p);
+  if (crit > 0 && rnd() < crit) dmg = std::ceil(dmg * critMultiplier(p));
+  e.maxPosture = (MOB_POSTURE_BASE + mobEffLevel(e.mobLevel) * MOB_POSTURE_PER_LEVEL) * (mobIsElite(e.data) ? ELITE_POSTURE : 1.f);
+  e.posture = std::min(e.maxPosture, e.posture + dmg * POSTURE_PER_DMG * postureFactor(p));
   if (e.posture >= e.maxPosture && e.staggerT <= 0) {
     e.staggerT = 1.2f;
     e.posture = 0;
@@ -205,7 +211,7 @@ float combatRpgBossCap(Level& lv, Entity& e, float dmg) {
 
 float combatRpgMobScale(const Entity& attacker, float amount) {
   if (attacker.isPlayer()) return amount;
-  return amount * levelDmg(attacker.mobLevel) * (mobIsElite(attacker.data) ? 1.25f : 1.f);
+  return amount * levelDmg(attacker.mobLevel) * (mobIsElite(attacker.data) ? ELITE_DMG : 1.f);
 }
 
 bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& to) {
