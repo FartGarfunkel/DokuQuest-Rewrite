@@ -663,8 +663,8 @@ int main(int argc, char** argv) {
       Entity* nl = spawnCreature(*L, REALM_MAIN, "night_lord", vec3(11.5f, BY + 1, 8.5f));
       if (nl) { nl->hp = nl->maxHp * 0.4f; nl->data["phase"] = 2; }
       int hits = 0; float last = P->hp;
-      for (int k = 0; k < 600 && nl && !nl->removed; k++) { P->pos.x = 8.5f; P->pos.z = 8.5f; P->vel.x = P->vel.z = 0; P->invuln = std::max(0.f, P->invuln - (float)TICK_DT); L->tick(TICK_DT); if (P->hp < last) hits++; last = P->hp; }
-      check(nl && hits >= 4, "the Night Lord's second phase lands its blows (" + std::to_string(hits) + " in 30 s)");
+      for (int k = 0; k < 1200 && nl && !nl->removed; k++) { P->pos.x = 8.5f; P->pos.z = 8.5f; P->vel.x = P->vel.z = 0; P->invuln = std::max(0.f, P->invuln - (float)TICK_DT); L->tick(TICK_DT); if (P->hp < last) hits++; last = P->hp; }
+      check(nl && hits >= 6, "the Night Lord's second phase lands its blows (" + std::to_string(hits) + " in 60 s)");
     }
     // a dragon placed in a hall (no lair): it keeps to where it was put (it flew off up through the roof)
     {

@@ -2,6 +2,7 @@
 // lamps, bulbs, note blocks, bells, TNT, doors, rails, timers (plates, hooks, detector rails, daylight),
 // hoppers, dispensers and droppers. Pistons live in sim/redstone_parts.cpp.
 #include "sim/redstone.h"
+#include "sim/moving.h"
 #include "sim/minecart.h"
 #include "sim/vehicles.h"
 #include "sim/machines.h"
@@ -49,6 +50,7 @@ const Tables& T() {
     else if (b.has("trapdoor")) r = TRAPDOOR;
     else if (b.shapeKind == ShapeKind::Gate) r = GATE;
     else if (b.has("bellBlock") || b.has("cmdBlock")) r = BELL;
+    else if (b.str("machine") == "hinge" || b.str("machine") == "slider") r = MACHINE;   // (sim/moving.cpp)
     t.role[i] = r;
     t.cond[i] = b.solid && b.opaque && !b.shapeKind && b.render == Render::Cube && r != BLOCK && r != OBSERVER && r != PISTON ? 1 : 0;
     t.ticker[i] = r == HOPPER ? 1 : r == DAYLIGHT ? 2 : r == PLATE ? 3 : r == HOOK ? 4 : r == DRAIL ? 5 : b.has("siphon") ? 6 : r == TIMER ? 8 : b.has("mesh") ? 9 : 0;
@@ -425,6 +427,7 @@ void Redstone::update(int x, int y, int z) {
       break;
     }
     case CONDUIT: updateConduit(x, y, z); break;
+    case MACHINE: machineRedstone(lv, w, ivec3(x, y, z), powerAt(x, y, z) > 0, (long long)now); break;
     case MATCHER: {
       int axis = matcherAxis(m), delay = 2;
       int d = axis == 0 ? 5 : axis == 1 ? 1 : 3;
@@ -622,6 +625,7 @@ int Redstone::measure(int x, int y, int z) {
   int m = w.getMeta(x, y, z);
   if (b.has("container") || b.has("furnace")) { Container c = inv(x, y, z); return c.items ? fillSignal(*c.items) : 0; }
   if (b.has("composter")) return std::min(8, m & 15);
+  if (T().role[id] == MACHINE) return machineSignal(w, ivec3(x, y, z));
   if (R.tShape[id] == ShapeKind::Cake) return 14 - 2 * (m & 7);
   if (b.has("cauldron")) return m & 3;
   if (b.has("jukebox")) { json* e = w.blockEntity(x, y, z); return e && e->contains("disc") && !(*e)["disc"].is_null() ? 15 : 0; }

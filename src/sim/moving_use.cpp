@@ -80,6 +80,7 @@ public:
         if (p->sneaking && !item.empty()) return true;   // (sneaking with something in hand: build against it as usual)
         if (p->sneaking) { cycle(w, *p, at, id); return false; }
         std::string why;
+        if (machineHeld(w, at)) { toast(lv, *p, "A redstone signal holds it"); return false; }
         if (!startMove(lv, p->realm, at, &why) && !why.empty()) toast(lv, *p, "It won't move: " + why);
         return false;
       }
@@ -88,6 +89,7 @@ public:
       if (!machineFor(w, at, m)) return true;
       if (lv.isRemote()) return toHost();
       std::string why;
+      if (machineHeld(w, m)) { toast(lv, *p, "A redstone signal holds it"); return false; }
       if (!startMove(lv, p->realm, m, &why) && !why.empty()) toast(lv, *p, "It won't move: " + why);
       return false;
     }

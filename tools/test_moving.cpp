@@ -13,7 +13,10 @@
 #include "sim/glue.h"
 #include "sim/moving_piece.h"
 #include "sim/moving.h"
+#include "sim/machines.h"
+#include "sim/vehicles.h"
 #include <thread>
+#include <set>
 #include <cstdio>
 
 using namespace dq;
@@ -342,6 +345,60 @@ int main(int argc, char** argv) {
     check(w.getBlock(Sl.x + 2, Sl.y, Sl.z) == planks && machineOpen(w, Sl), "using the slider slides its plank out");
     use("", Sl + ivec3(1, 0, 0) * 2, 2); tick(1.0);
     check(w.getBlock(Sl.x + 1, Sl.y, Sl.z) == planks && !machineOpen(w, Sl), "using the slid-out plank brings it back");
+  }
+
+  printf("[redstone and axles]\n");
+  {
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 12; y++) w.setBlock(x, y, z, AIR);
+    auto tick = [&](double s) { for (double t = 0; t < s; t += 0.05) L->tick(0.05); };
+    const BlockId sliderB = reg().blockId("slider"), hingeB = reg().blockId("hinge"), rblock = reg().blockId("redstone_block");
+    // a slider facing east, a plank glued to it; a redstone block put by its west side
+    const ivec3 S(4, Y + 1, 4);
+    w.setBlock(S.x, S.y, S.z, sliderB, 5); w.setBlock(S.x + 1, S.y, S.z, planks); setGlue(w, S, 0, true);
+    check(machineSignal(w, S) == 0, "a comparator reads a shut slider as 0");
+    w.setBlock(S.x - 1, S.y, S.z, rblock); tick(2.0);
+    check(machineOpen(w, S) && w.getBlock(S.x + 2, S.y, S.z) == planks, "powered, the slider slides out");
+    check(machineSignal(w, S) == 15, "and a comparator reads it open as 15");
+    w.setBlock(S.x - 1, S.y, S.z, AIR); tick(2.0);
+    check(!machineOpen(w, S) && w.getBlock(S.x + 1, S.y, S.z) == planks, "held power taken away: it slides back");
+    // a short pulse (a button) toggles it: open after one, shut after the next
+    auto pulse = [&] { w.setBlock(S.x - 1, S.y, S.z, rblock); tick(0.5); w.setBlock(S.x - 1, S.y, S.z, AIR); tick(2.0); };
+    pulse(); check(machineOpen(w, S), "a short pulse opens it and it stays open");
+    pulse(); check(!machineOpen(w, S), "the next pulse shuts it");
+    // power held while it's moving: it finishes, then does what the power says
+    w.setBlock(S.x - 1, S.y, S.z, rblock); tick(1.8); w.setBlock(S.x - 1, S.y, S.z, AIR);
+    for (int k = 0; k < 3; k++) L->tick(0.05);
+    const bool midShut = !movingBodiesList(*L).empty();
+    w.setBlock(S.x - 1, S.y, S.z, rblock); tick(3.0);
+    check(midShut, "(it was on its way back when the power came on again)");
+    check(machineOpen(w, S), "power that changes mid-move is caught up with afterwards");
+    use("", S + ivec3(2, 0, 0), 4); tick(1.5);
+    check(machineOpen(w, S), "held by a signal, it can't be shut by hand");
+    w.setBlock(S.x - 1, S.y, S.z, AIR); tick(2.0);
+    // an axle from a windmill ending at a continuous hinge: it keeps turning
+    const ivec3 H(12, Y + 6, 4);
+    w.setBlock(H.x - 3, H.y, H.z, reg().blockId("windmill"), 1); w.setBlock(H.x - 2, H.y, H.z, reg().blockId("axle"), 1); w.setBlock(H.x - 1, H.y, H.z, reg().blockId("axle"), 1);
+    w.setBlock(H.x, H.y, H.z, hingeB, 1); w.setBlock(H.x, H.y + 1, H.z, planks); w.setBlock(H.x + 1, H.y + 1, H.z, planks);
+    setGlue(w, H, 2, true); setGlue(w, H + ivec3(0, 1, 0), 0, true);
+    machineState(w, H)["quarters"] = 0;
+    windOf(*L).strength = 0.8f;
+    std::set<u32> turns;
+    for (int k = 0; k < 200; k++) { tick(0.05); for (const Body& b : movingBodiesList(*L)) if (b.m.machine == H) turns.insert(b.id); }
+    Mechanics* mc = mechanicsOf(*L, REALM_MAIN);
+    check(mc && mc->speedAt(H.x - 1, H.y, H.z) > 0.2f, "the windmill turns the axle");
+    check(turns.size() >= 4, "a turning hinge on the axle keeps going round (" + std::to_string(turns.size()) + " quarter turns in 10 s)");
+    // a quarter hinge on the axle: turning opens it, stopping shuts it
+    finishAll(*L);
+    machineState(w, H)["quarters"] = 1;
+    for (int x = H.x - 1; x <= H.x + 1; x++) for (int z = H.z - 1; z <= H.z + 1; z++) w.setBlock(x, H.y + 1, z, AIR);
+    w.setBlock(H.x, H.y + 1, H.z, planks); w.setBlock(H.x + 1, H.y + 1, H.z, planks); setGlue(w, H, 2, true); setGlue(w, H + ivec3(0, 1, 0), 0, true);
+    machineState(w, H)["open"] = false;
+    tick(3.0);
+    check(machineOpen(w, H), "a quarter hinge opens while its axle turns");
+    w.setBlock(H.x - 3, H.y, H.z, AIR); tick(3.0);
+    check(!machineOpen(w, H), "and shuts when the axle stops");
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 12; y++) w.setBlock(x, y, z, AIR);
+    finishAll(*L);
   }
 
   printf("%d passed, %d failed\n", passes, fails);
