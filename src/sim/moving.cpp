@@ -5,6 +5,8 @@
 #include "sim/gameplay.h"
 #include "sim/worldsys.h"
 #include "sim/machines.h"
+#include "sim/physics.h"
+#include "sim/entity.h"
 #include "common/common.h"
 #include <set>
 #include "core/registry.h"
@@ -117,11 +119,12 @@ public:
     if (!open && !spin) { st["usedQ"] = q; st["usedD"] = d; }   // (cleared when it's really shut again: finish())
     w.blockEntityChanged(machine.x, machine.y, machine.z);
     sfxAt(lv, m.kind == 1 ? "piston_out" : "door_open", vec3(machine) + vec3(0.5f));
+    body.boxes = boxesAt(body, worldXf(body, body.t));
     bodies.push_back(std::move(body));
     return true;
   }
 
-  void finish(Body& b) {
+  void finish(Body& b, bool forceBack = false) {
     World* wp = lv.worldIfOpen(b.realm);
     if (!wp) return;
     World& w = *wp;
@@ -129,7 +132,8 @@ public:
     auto freeCell = [&](ivec3 p) { const BlockId id = w.getBlock(p.x, p.y, p.z); return w.isLoaded(p.x, p.y, p.z) && (!id || reg().tReplaceable[id] || reg().tLiquid[id]); };
     // all of it where it was going, or (something put in the way since it set off) all of it back: never split
     bool arrive = true;
-    for (const BodyBlock& k : b.blocks) if (!freeCell(movedCell(b.m, b.m.machine + k.rel))) { arrive = false; break; }
+    if (forceBack) arrive = false;
+    else for (const BodyBlock& k : b.blocks) if (!freeCell(movedCell(b.m, b.m.machine + k.rel))) { arrive = false; break; }
     if (!arrive && !b.spin) {
       json& st = machineState(w, b.m.machine);
       st["open"] = !st.value("open", false);   // (it never got there: as it was)
@@ -168,11 +172,72 @@ public:
   double axleT = 0;
   bool moving(int realm, ivec3 p) const { for (const Body& b : bodies) if (b.realm == realm && b.m.machine == p) return true; return false; }
 
+  // the piece's placement in the world at time t (its machine's corner at the origin of Body::transform)
+  static mat4 worldXf(const Body& b, float t) { Body c; c.m = b.m; c.t = t; c.dur = b.dur; return glm::translate(mat4(1), vec3(b.m.machine)) * c.transform(); }
+  static std::vector<std::array<float, 6>> boxesAt(const Body& b, const mat4& X) {
+    std::vector<std::array<float, 6>> out;
+    for (const BodyBlock& k : b.blocks) {
+      if (!reg().tSolid[k.id]) continue;
+      const vec3 c = vec3(X * vec4(vec3(k.rel) + vec3(0.5f), 1));
+      out.push_back({c.x - 0.5f, c.y - 0.5f, c.z - 0.5f, c.x + 0.5f, c.y + 0.5f, c.z + 0.5f});
+    }
+    return out;
+  }
+  static void extraBoxes(const World& w, double x0, double y0, double z0, double x1, double y1, double z1, std::vector<DBox>& out) {
+    for (MovingBodies* m : all()) for (const Body& b : m->bodies) {
+      if (m->worldOf(b.realm) != &w) continue;
+      for (auto& q : b.boxes) if (q[3] > x0 && q[0] < x1 && q[4] > y0 && q[1] < y1 && q[5] > z0 && q[2] < z1) out.push_back({q[0], q[1], q[2], q[3], q[4], q[5]});
+    }
+  }
+
+  // §4: anything standing on the piece rides it; anything in its way is pushed along. Something with nowhere to go holds it
+  // up; held for 0.6 s, the piece goes back. Returns false when it's held up this tick.
+  bool carry(Body& b, float t1) {
+    World* wp = lv.worldIfOpen(b.realm); if (!wp) return true;
+    const mat4 X0 = worldXf(b, b.t), X1 = worldXf(b, t1), D = X1 * glm::inverse(X0);
+    const auto& B0 = b.boxes; const auto B1 = boxesAt(b, X1);
+    std::vector<std::pair<Entity*, vec3>> moves;
+    for (auto& up : lv.entities()) {
+      Entity* e = up.get();
+      if (e->removed || e->realm != b.realm || e->type == "moving") continue;
+      const float hw = e->w, h = e->h;
+      const vec3 p = e->pos;
+      bool rider = false, pushed = false;
+      for (auto& q : B0) if (p.x + hw > q[0] && p.x - hw < q[3] && p.z + hw > q[2] && p.z - hw < q[5] && std::fabs(p.y - q[4]) < 0.15f) { rider = true; break; }
+      if (!rider) for (auto& q : B1) if (p.x + hw - 0.01f > q[0] && p.x - hw + 0.01f < q[3] && p.z + hw - 0.01f > q[2] && p.z - hw + 0.01f < q[5] && p.y + h - 0.01f > q[1] && p.y + 0.01f < q[4]) { pushed = true; break; }
+      if (!rider && !pushed) continue;
+      vec3 np = vec3(D * vec4(p, 1));
+      if (pushed && b.m.kind == 1) {   // a slide: shoved clear of the face that hit it
+        const vec3 d = vec3(faceDir(b.m.face)) * (b.m.distance < 0 ? -1.f : 1.f);
+        for (auto& q : B1) {
+          if (!(np.x + hw > q[0] && np.x - hw < q[3] && np.z + hw > q[2] && np.z - hw < q[5] && np.y + h > q[1] && np.y < q[4])) continue;
+          if (d.x > 0) np.x = std::max(np.x, q[3] + hw + 0.001f); if (d.x < 0) np.x = std::min(np.x, q[0] - hw - 0.001f);
+          if (d.z > 0) np.z = std::max(np.z, q[5] + hw + 0.001f); if (d.z < 0) np.z = std::min(np.z, q[2] - hw - 0.001f);
+          if (d.y > 0) np.y = std::max(np.y, q[4] + 0.001f); if (d.y < 0) np.y = std::min(np.y, q[1] - h - 0.001f);
+        }
+      }
+      t_noExtraBoxes = true;
+      const bool room = !collides(*wp, np.x - hw + 0.02, np.y + 0.02, np.z - hw + 0.02, np.x + hw - 0.02, np.y + h - 0.02, np.z + hw - 0.02);
+      t_noExtraBoxes = false;
+      if (!room) return false;
+      moves.push_back({e, np});
+    }
+    for (auto& [e, np] : moves) { e->pos = np; if (e->vel.y < 0 && np.y >= e->pos.y) e->vel.y = 0; }
+    return true;
+  }
+
   void tick(Level&, double dt) override {
     attachHooks();
     for (size_t i = 0; i < bodies.size();) {
-      bodies[i].t += (float)dt;
-      if (bodies[i].t >= bodies[i].dur) { Body b = std::move(bodies[i]); bodies.erase(bodies.begin() + i); finish(b); }
+      Body& b = bodies[i];
+      const float t1 = std::min(b.t + (float)dt, b.dur);
+      if (!carry(b, t1)) {
+        if ((b.stuck += (float)dt) > 0.6f) { Body c = std::move(b); bodies.erase(bodies.begin() + i); finish(c, true); continue; }
+        i++; continue;
+      }
+      b.stuck = 0; b.t = t1;
+      b.boxes = boxesAt(b, worldXf(b, b.t));
+      if (b.t >= b.dur) { Body c = std::move(b); bodies.erase(bodies.begin() + i); finish(c); }
       else i++;
     }
     if (lv.isRemote()) return;
@@ -295,6 +360,6 @@ bool startMove(Level& lv, int realm, ivec3 machine, std::string* why) { auto* m 
 void finishAll(Level& lv) { if (auto* m = bodiesOf(lv)) m->finishAllNow(); }
 const std::vector<Body>& movingBodiesList(Level& lv) { static const std::vector<Body> none; auto* m = bodiesOf(lv); return m ? m->bodies : none; }
 void registerMovingUse();   // moving_use.cpp
-void registerMovingBodies() { registerLevelSystem([](Level& lv) { return std::make_shared<MovingBodies>(lv); }); registerMovingUse(); }
+void registerMovingBodies() { setExtraBoxes(&MovingBodies::extraBoxes); registerLevelSystem([](Level& lv) { return std::make_shared<MovingBodies>(lv); }); registerMovingUse(); }
 
 } // namespace dq

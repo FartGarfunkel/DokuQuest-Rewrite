@@ -15,6 +15,7 @@
 #include "sim/moving.h"
 #include "sim/machines.h"
 #include "sim/vehicles.h"
+#include "sim/controller.h"
 #include <thread>
 #include <set>
 #include <cstdio>
@@ -397,6 +398,57 @@ int main(int argc, char** argv) {
     check(machineOpen(w, H), "a quarter hinge opens while its axle turns");
     w.setBlock(H.x - 3, H.y, H.z, AIR); tick(3.0);
     check(!machineOpen(w, H), "and shuts when the axle stops");
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 12; y++) w.setBlock(x, y, z, AIR);
+    finishAll(*L);
+  }
+
+  printf("[riding and pushing]\n");
+  {
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 12; y++) w.setBlock(x, y, z, AIR);
+    PlayerController pc(*L, *P);
+    auto step = [&] { pc.update(0.05f, PlayerInput{}); L->tick(0.05); };
+    auto tick = [&](double s) { for (double t = 0; t < s; t += 0.05) step(); };
+    const BlockId sliderB = reg().blockId("slider");
+    P->mode = "survival"; P->flying = false; P->vel = vec3(0); P->sneaking = false; const float hp0 = P->hp;
+    // a slider facing up under a 3 x 3 plank floor, 3 blocks: stand on it and ride up
+    const ivec3 S(4, Y + 1, 4);
+    w.setBlock(S.x, S.y, S.z, sliderB, 1);
+    for (int i = -1; i <= 1; i++) for (int k = -1; k <= 1; k++) { w.setBlock(S.x + i, S.y + 1, S.z + k, planks); }
+    setGlue(w, S, 2, true);
+    for (int i = -1; i <= 1; i++) for (int k = -1; k <= 1; k++) { if (i < 1) setGlue(w, S + ivec3(i, 1, k), 0, true); if (k < 1) setGlue(w, S + ivec3(i, 1, k), 4, true); }
+    machineState(w, S)["distance"] = 3;
+    P->pos = vec3(S.x + 0.5f, S.y + 2, S.z + 0.5f); P->vel = vec3(0); tick(0.5);
+    const float y0 = P->pos.y;
+    check(std::fabs(y0 - (S.y + 2)) < 0.05f, "standing on the floor (" + std::to_string(y0 - S.y) + ")");
+    check(startMove(*L, REALM_MAIN, S, nullptr), "the floor starts up");
+    float lowest = 1e9f; for (int k = 0; k < 40; k++) { step(); lowest = std::min(lowest, P->pos.y - y0); }
+    check(std::fabs(P->pos.y - (y0 + 3)) < 0.15f && lowest > -0.2f, "you ride it up three blocks, never falling through (" + std::to_string(P->pos.y - y0) + ")");
+    check(std::fabs(P->pos.x - (S.x + 0.5f)) < 0.1f, "and stay where you stood on it");
+    startMove(*L, REALM_MAIN, S, nullptr); tick(2.5);
+    check(std::fabs(P->pos.y - y0) < 0.15f, "and ride it down again");
+    // a slider pushing east: you're shoved out of its way
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 12; y++) w.setBlock(x, y, z, AIR);
+    finishAll(*L);
+    const ivec3 E(4, Y + 1, 10);
+    w.setBlock(E.x, E.y, E.z, sliderB, 5); w.setBlock(E.x + 1, E.y, E.z, planks); w.setBlock(E.x + 1, E.y + 1, E.z, planks);
+    setGlue(w, E, 0, true); setGlue(w, E + ivec3(1, 0, 0), 2, true);
+    machineState(w, E)["distance"] = 2;
+    P->pos = vec3(E.x + 2.5f, E.y, E.z + 0.5f); P->vel = vec3(0); tick(0.3);
+    check(startMove(*L, REALM_MAIN, E, nullptr), "a wall slides out at you");
+    tick(2.0);
+    check(machineOpen(w, E) && w.getBlock(E.x + 3, E.y, E.z) == planks && P->pos.x >= E.x + 3.95f, "it pushes you out of its way (" + std::to_string(P->pos.x - E.x) + ")");
+    startMove(*L, REALM_MAIN, E, nullptr); tick(2.0);
+    // the same with a wall behind you: you can't go anywhere, so it goes back
+    for (int y = E.y; y < E.y + 3; y++) w.setBlock(E.x + 4, y, E.z, reg().blockId("stone"));
+    machineState(w, E)["distance"] = 1;
+    P->pos = vec3(E.x + 3.5f, E.y, E.z + 0.5f); P->vel = vec3(0); tick(0.3);
+    w.setBlock(E.x + 4, E.y, E.z, AIR); w.setBlock(E.x + 4, E.y + 1, E.z, AIR);   // (room for the path check: then shut again behind you)
+    P->pos = vec3(E.x + 2.5f, E.y, E.z + 0.5f);
+    for (int y = E.y; y < E.y + 3; y++) w.setBlock(E.x + 3, y, E.z, reg().blockId("stone"));
+    check(startMove(*L, REALM_MAIN, E, nullptr), "it starts at you with a wall behind you");
+    tick(3.0);
+    check(!machineOpen(w, E) && w.getBlock(E.x + 1, E.y, E.z) == planks && movingBodiesList(*L).empty(), "trapped against the wall, you stop it and it goes back");
+    check(P->hp >= hp0, "it never hurts you");
     for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 12; y++) w.setBlock(x, y, z, AIR);
     finishAll(*L);
   }

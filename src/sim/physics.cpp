@@ -51,6 +51,9 @@ static bool takeSpike(const World& w, int x, int y, int z, BlockId id, double mi
   if (out && !(d.x1 <= minX || d.x0 >= maxX || d.y1 <= minY || d.y0 >= maxY || d.z1 <= minZ || d.z0 >= maxZ)) out->push_back(d);
   return true;
 }
+static ExtraBoxesFn g_extraBoxes = nullptr;
+thread_local bool t_noExtraBoxes = false;
+void setExtraBoxes(ExtraBoxesFn f) { g_extraBoxes = f; }
 void gatherBoxes(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ,
                  std::vector<DBox>& out, double feet, bool sneak) {
   out.clear();
@@ -73,6 +76,7 @@ void gatherBoxes(const World& w, double minX, double minY, double minZ, double m
       out.push_back(d);
     }
   }
+  if (g_extraBoxes && !t_noExtraBoxes) g_extraBoxes(w, minX, minY - 1, minZ, maxX, maxY, maxZ, out);
 }
 
 bool collides(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {

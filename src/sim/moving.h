@@ -6,13 +6,16 @@
 #pragma once
 #include "sim/level.h"
 #include "sim/moving_piece.h"
+#include <array>
 
 namespace dq {
 
 struct BodyBlock { ivec3 rel; BlockId id; u8 meta; json entity; u8 carve = 0; };   // carve: a chiseled block's cut corners   // rel: offset from the machine
 struct Body {
   u32 id = 0; int realm = 0; Motion m; float t = 0, dur = 1;
-  bool spin = false;           // a turning hinge driven by an axle: each quarter turn leaves it "shut" for the next
+  bool spin = false;
+  float stuck = 0;             // how long something trapped by it has held it up (§4: then it goes back)
+  std::vector<std::array<float, 6>> boxes;   // its solid blocks' boxes where it is now (world units: physics stands on them)           // a turning hinge driven by an axle: each quarter turn leaves it "shut" for the next
   std::vector<BodyBlock> blocks;
   float fraction() const;      // 0..1, eased
   mat4 transform() const;      // the piece's placement now, in the machine's frame (its block's corner at the origin)
