@@ -1,7 +1,8 @@
 // tools/test_mobs.cpp — every creature's place in the world, headless (dqcore only): what can be carried, tamed and
 // ridden (mobs.json / data/mob_traits.json "carry", "tame", "mount": sim/creature.h, sim/mob_carry.h), and the water
 // creatures swimming for real ("aquatic" / "amphibious": sim/creature_beasts.cpp aquaticSteer).
-// Run: ./build/test_mobs [--userdir DIR] [--table]   (exit code 0 = all passed; --table prints every creature's row)
+// Run: ./build/test_mobs [--userdir DIR] [--table] [--drops]   (exit code 0 = all passed; --table prints every creature's
+// row, --drops what each one drops)
 #include "core/init.h"
 #include "core/registry.h"
 #include "sim/creature.h"
@@ -28,10 +29,11 @@ static Creature* findLive(Level& lv, const std::string& type) {
 
 int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = "/tmp/dq-test-mobs";
-  bool table = false;
+  bool table = false, dropsReport = false;
   for (int i = 1; i < argc; i++) {
     if (std::string(argv[i]) == "--userdir" && i + 1 < argc) co.userDirOverride = argv[++i];
     else if (std::string(argv[i]) == "--table") table = true;
+    else if (std::string(argv[i]) == "--drops") dropsReport = true;
   }
   fs::remove_all(co.userDirOverride);
   if (!initCore(co)) { printf("initCore failed\n"); return 2; }
@@ -139,6 +141,50 @@ int main(int argc, char** argv) {
     mw->removed = true;
   }
   clearCreatures(*lv);
+
+  // ------------------------------------------------------------------ drops
+  printf("drops: every creature you can kill leaves something\n");
+  lv->info.rules["mobGriefing"] = false;   // (a hydrogen jellyfish bursts as it dies: not through the floor)
+  {
+    // (special: the townsfolk, a summoned spirit, the End's crystals and him keep their own ways)
+    auto special = [](const std::string& k, const CreatureType* T) { return T->npc || T->spirit || k == "end_crystal" || k == "herobrine" || k == "villager" || k == "village_guard"; };
+    int empty = 0, killed = 0, gave = 0;
+    std::vector<std::string> none;
+    for (auto& [k, v] : reg().mobs.items()) {
+      const CreatureType* T = creatureType(k);
+      if (!T || special(k, T)) continue;
+      if (T->drops.empty() && !T->boss) { empty++; printf("  FAIL %s has nothing to drop\n", k.c_str()); }
+      if (dropsReport) {
+        std::string d; for (auto& e : T->drops) { char b[96]; std::snprintf(b, sizeof b, "%s%s %d-%d (%.0f%%)", d.empty() ? "" : ", ", e.id.c_str(), e.lo, e.hi, e.chance * 100); d += b; }
+        printf("  %-26s %s%s\n", k.c_str(), d.empty() ? "-" : d.c_str(), T->boss ? "  [boss: its fight's own loot too]" : "");
+      }
+      if (T->boss || T->drops.empty()) continue;   // (a boss's own death: its fight's code)
+      // the real death: killed by a player, up to 30 times until something falls
+      bool any = false;
+      for (int t = 0; t < 30 && !any; t++) {
+        clearCreatures(*lv);
+        Creature* c = spawnCreature(*lv, 0, k, T->aquatic ? vec3(36.5f, Y + 6, 18.5f) : vec3(8.5f, Y, 20.5f));
+        if (!c) break;
+        c->baby = false; c->data.erase("noDrops");
+        DamageSrc src; src.type = "mob"; src.attacker = p.id;
+        c->die(*lv, src);
+        for (auto& e : lv->entities()) if (!e->removed && e->type == "item") { any = true; e->removed = true; }
+      }
+      killed++; gave += any;
+      if (!any) none.push_back(k);
+    }
+    clearCreatures(*lv);
+    CHECK(empty == 0, "every creature but the special ones has a drop table");
+    std::string nl; for (auto& k : none) nl += " " + k;
+    CHECK(none.empty(), "%d of %d killed creatures dropped something%s%s", gave, killed, none.empty() ? "" : ": none from", nl.c_str());
+    // a tamed companion leaves nothing; a kept farm animal still gives its meat
+    Creature* dog = spawnCreature(*lv, 0, "wolf", vec3(8.5f, Y, 20.5f));
+    dog->owner = p.name; dog->tamed = true;
+    for (int t = 0; t < 6; t++) { dog->deathTime = 0; DamageSrc src; src.attacker = p.id; dog->die(*lv, src); }
+    int fell = 0; for (auto& e : lv->entities()) if (!e->removed && e->type == "item") { fell++; e->removed = true; }
+    CHECK(fell == 0, "a tamed dog leaves nothing behind");
+    clearCreatures(*lv);
+  }
 
   // ------------------------------------------------------------------ carrying
   printf("picking up a pet\n");
@@ -253,9 +299,10 @@ int main(int argc, char** argv) {
       Creature* c = spawnCreature(*lv, 0, k, vec3(36.5f, Y + 8, 18.5f));
       if (!c) continue;
       c->kept = true;
-      int ticks = 0, wet = 0; float ylo = 1e9f, yhi = -1e9f;
-      for (int i = 0; i < (int)(10 / TICK_DT) && !c->removed; i++) { lv->tick(TICK_DT); p.hp = p.maxHp; ticks++; wet += c->inWater; ylo = std::min(ylo, c->pos.y); yhi = std::max(yhi, c->pos.y); }
-      CHECK(wet >= ticks * 0.95f && yhi - ylo > 0.3f && ylo < TOP - T->h - 0.5f, "%s swims in the water, not floating on it (%.1f..%.1f under)", k.c_str(), TOP - yhi - T->h, TOP - ylo - T->h);
+      int ticks = 0, wet = 0; float ylo = 1e9f, yhi = -1e9f, path = 0; vec3 last = c->pos;
+      for (int i = 0; i < (int)(10 / TICK_DT) && !c->removed; i++) { lv->tick(TICK_DT); p.hp = p.maxHp; ticks++; wet += c->inWater; ylo = std::min(ylo, c->pos.y); yhi = std::max(yhi, c->pos.y); path += glm::distance(c->pos, last); last = c->pos; }
+      // (in the water the whole time, never up at the top bobbing, and getting about)
+      CHECK(wet >= ticks * 0.95f && path > 2 && ylo < TOP - T->h - 0.5f, "%s swims in the water, not floating on it (%.1f..%.1f under, swam %.1f)", k.c_str(), TOP - yhi - T->h, TOP - ylo - T->h, path);
       c->removed = true; lv->tick(TICK_DT);
     }
   }

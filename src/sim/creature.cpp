@@ -598,6 +598,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   auto roll = [](int a, int b) { return a + (int)std::floor(frand() * (b - a + 1)); };
   vec3 at = pos + vec3(0, 0.5f, 0);
   bool noDrops = data.contains("noDrops") && data["noDrops"] == true;   // summons, a called-back dragon (its own table)
+  if (!owner.empty() && !T->farm) noDrops = true;   // a tamed companion (a dog, a cat, a horse) leaves no pelt or bones, whoever brought it down; kept farm animals still give their meat
   const bool imm = rule(lv, "immersive");
   // its level, an elite, the killer's luck (sim/balance.h): more rolls, better odds, now and then a piece of gear
   Entity* killer = ent(lv, src.attacker);
