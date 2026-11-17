@@ -694,18 +694,25 @@ int main(int argc, char** argv) {
             L->info.time = 3600;   // (morning)
             // (near the tower, so the test doesn't wait on a long walk; the land there loaded first)
             for (double t0 = nowSeconds(); nowSeconds() - t0 < 60;) { w.stream({{vec3(sl) + vec3(6, 1, 6), 3, false}}, 20); bool all = true; for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (!w.isLoaded(sl.x + dx * 16, sl.y, sl.z + dz * 16)) all = false; if (all) break; std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
-            guard->pos = vec3(sl.x + 0.5f, sl.y + 3, sl.z + 5.5f);   // (in the town, before the tower's doorway: a corner tower's way in faces the town)
-            const float topY = sl.y + 1 + lf.stops.back().second;
-            for (int dy = 0; dy <= 2; dy++) { printf("dbg layer y+%d\n", dy); for (int dz = -4; dz <= 5; dz++) { std::string r; for (int dx = -4; dx <= 4; dx++) { const BlockId q = w.getBlock(sl.x + dx, sl.y + dy, sl.z + dz); const std::string k = reg().block(q).key; r += q == AIR ? '.' : k == "slider" ? 'S' : k == "lift_rail" ? 'R' : k == "lift_stop" ? 'T' : k == "ladder" ? 'L' : k.find("slab") != std::string::npos ? '_' : '#'; } printf("dbg  z%+d %s\n", dz, r.c_str()); } }
-            bool wentUp = false, cameDown = false;
-            for (int k = 0; k < 20 * 300 && !cameDown; k++) {
+            // (in the town, before the tower's way in: a corner tower's door is on its town-side corner)
+            const int ix = sl.x <= v->x ? 1 : -1, iz = sl.z <= v->z ? 1 : -1;
+            float gy = NAN; for (int y = sl.y + 6; y >= sl.y - 4 && std::isnan(gy); y--) gy = npcStandAt(w, sl.x + 4 * ix, y, sl.z + 4 * iz);
+            guard->pos = vec3(sl.x + 4 * ix + 0.5f, std::isnan(gy) ? sl.y + 1.f : gy, sl.z + 4 * iz + 0.5f);
+            const float topY = sl.y + 1 + lf.stops.back().second + 0.5f;
+            for (int dy : {1, 2, lf.stops.back().second + 1, lf.stops.back().second + 2}) { printf("dbg layer y+%d\n", dy); for (int dz = -4; dz <= 4; dz++) { std::string r; for (int dx = -4; dx <= 4; dx++) { const int x = sl.x + dx, y = sl.y + dy, z = sl.z + dz; const BlockId q = w.getBlock(x, y, z); const std::string k = reg().block(q).key; const bool st = !std::isnan(npcStandAt(w, x, y, z)); r += q == AIR ? (st ? ',' : '.') : k == "slider" ? 'S' : k == "lift_rail" ? 'R' : k == "lift_stop" ? 'T' : k == "ladder" ? 'L' : st ? '_' : '#'; } printf("dbg  z%+d %s\n", dz, r.c_str()); } }
+            printf("dbg platform %s guard at %.1f %.1f %.1f\n", reg().block(w.getBlock(sl.x, sl.y + 1, sl.z)).key.c_str(), guard->pos.x - sl.x, guard->pos.y - sl.y, guard->pos.z - sl.z);
+            bool wentUp = false, cameDown = false, onWalk = false;
+            for (int k = 0; k < 20 * 400 && !cameDown; k++) {
               L->tick(0.05);
               P->pos = guard->pos + vec3(6, 0, 6);   // (the player near, so the village stays awake)
               if (k % 20 == 0) w.stream({{P->pos, 3, false}}, 20);
-              if (guard->pos.y > topY - 0.6f) wentUp = true;
-              if (k % 100 == 0) { NpcMind& GM = vsys(*L)->mind(guard->id); printf("dbg t%d look=%d st=%.1f pos %.1f %.1f %.1f lift %d %d %d at=%d phase=%.2f\n", k / 20, GM.look, GM.lookStateT, guard->pos.x - sl.x, guard->pos.y - sl.y, guard->pos.z - sl.z, GM.lookLift.x - sl.x, GM.lookLift.y - sl.y, GM.lookLift.z - sl.z, machineState(w, sl).value("at", 0), npcPhase(*L)); }
-              if (wentUp && guard->pos.y < sl.y + 2.6f) cameDown = true;
+              const float dsh = std::hypot(guard->pos.x - sl.x - 0.5f, guard->pos.z - sl.z - 0.5f);
+              if (guard->pos.y > topY - 0.3f && guard->pos.y < topY + 1.2f && dsh < 1) wentUp = true;
+              if (wentUp && guard->pos.y > topY - 1.6f && dsh > 2.6f && dsh < 8) onWalk = true;
+              if (k % 100 == 0) { NpcMind& GM = vsys(*L)->mind(guard->id); printf("dbg t%d look=%d st=%.1f pos %.1f %.1f %.1f at=%d ride %d/%d path %d/%d%s\n", k / 20, GM.look, GM.lookStateT, guard->pos.x - sl.x, guard->pos.y - sl.y, guard->pos.z - sl.z, machineState(w, sl).value("at", 0), GM.rideStage, GM.rideTo, (int)GM.pathI, (int)GM.path.size(), GM.pathPartial ? " partial" : ""); }
+              if (wentUp && onWalk && guard->pos.y < sl.y + 2.6f && std::hypot(guard->pos.x - sl.x - 0.5f, guard->pos.z - sl.z - 0.5f) < 1) cameDown = true;
             }
+            check(onWalk, "and steps out onto the wall walk to keep watch");
             check(wentUp, "the guard rides the lift up to the wall walk on lookout");
             check(cameDown, "and comes back down after the watch");
           }

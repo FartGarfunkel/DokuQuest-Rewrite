@@ -201,12 +201,16 @@ add_test(NAME endstory COMMAND test_endstory)
 add_executable(test_villagers tools/test_villagers.cpp)
 target_link_libraries(test_villagers PRIVATE dqcore)
 add_test(NAME villagers COMMAND test_villagers)
+# Townsfolk way-finding audit (headless): errands about generated towns, arrival rate and time. Run: build/test_npc_paths
+add_executable(test_npc_paths tools/test_npc_paths.cpp)
+target_link_libraries(test_npc_paths PRIVATE dqcore)
+add_test(NAME npc_paths COMMAND test_npc_paths)
 # Redstone, rails/carts, boats/ships and machines test (headless). Run: build/test_redstone
 add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
 
 # every program finds data/ and assets/ next to it
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_weather)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_npc_paths test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_weather)
   if(TARGET ${t})
     add_dependencies(${t} dq_runtime_data)
   endif()

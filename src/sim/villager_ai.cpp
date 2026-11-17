@@ -4,6 +4,7 @@
 #include "sim/villagers_internal.h"
 #include "sim/mob_combat.h"
 #include "core/registry.h"
+#include "sim/physics.h"
 #include "world/dims.h"
 #include <queue>
 #include <unordered_set>
@@ -29,63 +30,7 @@ static void doorTables() {
 }
 static bool isNpcDoor(BlockId id) { doorTables(); return id < g_door.size() && g_door[id]; }
 
-static std::vector<ivec3> npcPath(const World& w, int sx, int sy, int sz, int tx, int ty, int tz, int maxNodes = 900) {
-  doorTables();
-  const Registry& R = reg();
-  const int H = 2, RR = 48;
-  std::vector<ivec3> none;
-  if (std::abs(tx - sx) > RR - 2 || std::abs(tz - sz) > RR - 2) return none;
-  static const BlockId farmland = reg().blockId("farmland");
-  auto pass = [&](int x, int y, int z) { BlockId id = w.getBlock(x, y, z); return (!R.tSolid[id] || g_door[id]) && !g_danger[id]; };
-  auto clear = [&](int x, int y, int z) { return pass(x, y, z) && pass(x, y + 1, z); };
-  auto ground = [&](int x, int y, int z) { BlockId id = w.getBlock(x, y - 1, z); return (R.tSolid[id] && !g_noStand[id] && !g_danger[id] && !g_door[id]) || R.tLiquid[id] == 1; };
-  auto stand = [&](int x, int y, int z) { return y > 0 && y < WORLD_H - H && clear(x, y, z) && ground(x, y, z); };
-  auto key = [&](int x, int y, int z) { return (i64)(x - sx + RR) | ((i64)(z - sz + RR) << 8) | ((i64)y << 16); };
-  auto hfn = [&](int x, int y, int z) { float dx = std::abs(x - tx), dz = std::abs(z - tz); return std::max(dx, dz) + 0.414f * std::min(dx, dz) + std::abs(y - ty) * 0.6f; };
-  struct Node { int x, y, z; float g, f; int parent; bool closed; };
-  std::vector<Node> nodes; nodes.reserve(maxNodes * 3);
-  std::unordered_map<i64, int> seen;
-  using QE = std::pair<float, int>;
-  std::priority_queue<QE, std::vector<QE>, std::greater<QE>> open;
-  const bool startWet = R.tLiquid[w.getBlock(sx, sy, sz)] || R.tLiquid[w.getBlock(sx, sy - 1, sz)];
-  nodes.push_back({sx, sy, sz, 0, hfn(sx, sy, sz), -1, false});
-  seen[key(sx, sy, sz)] = 0; open.push({nodes[0].f, 0});
-  int best = 0; float bestH = nodes[0].f; int n = 0;
-  static const int DIRS[8][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
-  while (!open.empty() && n++ < maxNodes) {
-    int ci = open.top().second; open.pop();
-    if (nodes[ci].closed) continue;
-    nodes[ci].closed = true;
-    const Node c = nodes[ci];
-    float hc = hfn(c.x, c.y, c.z);
-    if (hc < bestH) { bestH = hc; best = ci; }
-    if (c.x == tx && c.z == tz && std::abs(c.y - ty) <= 1) { best = ci; break; }
-    for (auto& dd : DIRS) {
-      int dx = dd[0], dz = dd[1], nx = c.x + dx, nz = c.z + dz;
-      if (std::abs(nx - sx) >= RR || std::abs(nz - sz) >= RR) continue;
-      if (dx && dz && (!clear(c.x + dx, c.y, c.z) || !clear(c.x, c.y, c.z + dz) || g_door[w.getBlock(c.x + dx, c.y, c.z)] || g_door[w.getBlock(c.x, c.y, c.z + dz)])) continue;
-      int ny = -1; float cost = dx && dz ? 1.414f : 1;
-      if (stand(nx, c.y, nz)) ny = c.y;
-      else if (!dx || !dz) {
-        if (pass(c.x, c.y + H, c.z) && stand(nx, c.y + 1, nz)) { ny = c.y + 1; cost += 0.6f; }
-        else if (clear(nx, c.y, nz)) { for (int d = 1; d <= 3; d++) { if (stand(nx, c.y - d, nz)) { ny = c.y - d; cost += 0.3f * d; break; } else if (!pass(nx, c.y - d, nz)) break; } }
-      }
-      if (ny < 0) continue;
-      if (farmland && w.getBlock(nx, ny - 1, nz) == farmland) cost += 4;   // keep off the crops
-      if (R.tLiquid[w.getBlock(nx, ny, nz)] || R.tLiquid[w.getBlock(nx, ny - 1, nz)]) { if (!startWet) continue; cost += 14; }   // never into a fountain or a pond (only out of one)
-      i64 k = key(nx, ny, nz); float g2 = c.g + cost;
-      auto it = seen.find(k);
-      if (it != seen.end() && (nodes[it->second].closed || nodes[it->second].g <= g2)) continue;
-      nodes.push_back({nx, ny, nz, g2, g2 + hfn(nx, ny, nz) * 1.1f, ci, false});
-      seen[k] = (int)nodes.size() - 1; open.push({nodes.back().f, (int)nodes.size() - 1});
-    }
-  }
-  if (best == 0) return none;
-  std::vector<ivec3> out;
-  for (int c = best; c > 0; c = nodes[c].parent) out.push_back(ivec3(nodes[c].x, nodes[c].y, nodes[c].z));
-  std::reverse(out.begin(), out.end());
-  return out;
-}
+NpcNavStats& npcNavStats() { static NpcNavStats s; return s; }
 
 static std::string doorSnd(const BlockDef& b, bool open) {
   const std::string& k = b.key;
@@ -128,63 +73,115 @@ void npcShutDoors(Level& lv, Creature& e, NpcMind& M, bool all) {
   M.doors = keep;
 }
 
-// walk to a spot: a path that goes through doors (opening them, and shutting them behind). nullopt = there.
+// off a ladder: their weight back on their feet
+void npcUnclimb(Creature& e, NpcMind& M) { if (M.climbing) { M.climbing = false; e.noGravity = false; e.climbing = false; } }
+
+// walk to a spot: a path that goes through doors (opening them, and shutting them behind), up and down ladders, onto
+// slabs and stairs at a walk. nullopt = there.
 OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float speed) {
-  float d = std::hypot(t.x - e.pos.x, t.z - e.pos.z);
-  if (d < 0.45f && std::fabs(t.y - e.pos.y) < 1.5f) { M.hasPath = false; return std::nullopt; }
+  World& w = lv.world(e.realm);
+  M.wentLast = true;
+  const float d = std::hypot(t.x - e.pos.x, t.z - e.pos.z);
+  if (d < 0.45f && std::fabs(t.y - e.pos.y) < 1.5f) { M.hasPath = false; npcUnclimb(e, M); return std::nullopt; }
   M.navT -= dt;
-  if (M.navT <= 0 || !M.hasPath || !M.hasNavGoal || std::hypot(t.x - M.navGoal.x, t.z - M.navGoal.z) > 1) {
+  const bool newGoal = !M.hasNavGoal || std::hypot(t.x - M.navGoal.x, t.z - M.navGoal.z) > 1 || std::fabs(t.y - M.navGoal.y) > 1.5f;
+  if (newGoal) { M.partialN = 0; M.lostT = 0; }
+  if (M.navT <= 0 || newGoal) {
     M.navT = 2 + rnd();
-    M.path = npcPath(lv.world(e.realm), ifloor(e.pos.x), ifloor(e.pos.y + 0.45f), ifloor(e.pos.z), ifloor(t.x), ifloor(t.y + 0.45f), ifloor(t.z));
-    M.pathI = 0; M.navGoal = t; M.hasNavGoal = true; M.hasPath = !M.path.empty();
-    if (!M.hasPath) {
-      M.stuckGo++;
-      // no way there, and not getting anywhere either (out on a roof, wedged in a corner, turning on the spot): fifteen
-      // seconds of that and they step to a free spot where they were going, watched or not (it had waited for nobody
-      // to be about, so whoever saw one stuck watched it turn round and round for good)
-      if (M.lostT <= 0 || glm::distance(e.pos, M.lostFrom) > 3) { M.lostFrom = e.pos; M.lostT = 0; }
-      M.lostT += std::max(dt, 0.f) + 1e-4f;
-      if (M.lostT > 15) {
-        M.lostT = 0;
-        World& w = lv.world(e.realm);
-        const int tx = ifloor(t.x), ty = ifloor(t.y + 0.45f), tz = ifloor(t.z);
-        for (int r = 0; r <= 2; r++) for (int dy : {0, 1, -1, -2})
-          for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
-            if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
-            const int x = tx + dx, y = ty + dy, z = tz + dz;
-            if (!reg().tSolid[w.getBlock(x, y - 1, z)] || reg().tSolid[w.getBlock(x, y, z)] || reg().tSolid[w.getBlock(x, y + 1, z)]) continue;
-            e.pos = vec3(x + 0.5f, (float)y + 0.01f, z + 0.5f); e.vel = vec3(0); M.stuckGo = 0; M.navT = 0;
-            return Move{0, e.yaw};
-          }
-      }
-      return Move{speed * 0.6f, hdg(e.pos, t)};
+    bool partial = false;
+    M.path = npcPath(w, e.pos, t, e.w, e.h, &partial);
+    NpcNavStats& st = npcNavStats(); st.plans++; if (partial) st.partial++;
+    M.pathI = 0; M.navGoal = t; M.hasNavGoal = true; M.pathPartial = partial; M.hasPath = !M.path.empty();
+    M.partialN = partial ? M.partialN + 1 : 0;
+    // a partial way that ends about where they are already: there's no way on from here
+    if (M.hasPath && partial) {
+      const NpcStep& last = M.path.back();
+      if (std::hypot(last.at.x + 0.5f - e.pos.x, last.at.z + 0.5f - e.pos.z) < 1.6f && std::fabs(last.floor - e.pos.y) < 1.2f) M.hasPath = false;
     }
-    M.lostT = 0;
+    if (!M.hasPath) {
+      st.failed++;
+      M.stuckGo++; M.navT = 1 + rnd() * 0.5f;   // (asked again in a second, not every tick)
+      npcUnclimb(e, M);
+    } else M.lostT = 0;
+  }
+  if (!M.hasPath) {
+    // no way there, and not getting anywhere either (out on a roof, wedged in a corner, shut in): fifteen seconds of
+    // that and they step to a free spot where they were going (it had waited for nobody to be about, so whoever saw one
+    // stuck watched it turn round and round for good)
+    if (M.lostT <= 0 || glm::distance(e.pos, M.lostFrom) > 3) { M.lostFrom = e.pos; M.lostT = 0; }
+    M.lostT += std::max(dt, 0.f) + 1e-4f;
+    if (M.lostT > 15) {
+      M.lostT = 0;
+      const int tx = ifloor(t.x), ty = ifloor(t.y + 0.45f), tz = ifloor(t.z);
+      for (int r = 0; r <= 2; r++) for (int dy : {0, 1, -1, -2})
+        for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
+          if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
+          const float f = npcStandAt(w, tx + dx, ty + dy, tz + dz, e.w, e.h);
+          if (std::isnan(f)) continue;
+          e.pos = vec3(tx + dx + 0.5f, f + 0.01f, tz + dz + 0.5f); e.vel = vec3(0); M.stuckGo = 0; M.navT = 0;
+          npcNavStats().rescues++;
+          return Move{0, e.yaw};
+        }
+    }
+    // (close by, the last step or two over the threshold; further off they stand and think, they don't set off
+    // across country in a straight line)
+    return d < 3 ? Move{speed * 0.5f, hdg(e.pos, t)} : Move{0, hdg(e.pos, t)};
   }
   auto& P = M.path;
+  auto near = [&](const NpcStep& s, float r) { return std::hypot(s.at.x + 0.5f - e.pos.x, s.at.z + 0.5f - e.pos.z) < r; };
   while (M.pathI < P.size()) {
-    const ivec3& nd = P[M.pathI];
-    if (std::hypot(nd.x + 0.5f - e.pos.x, nd.z + 0.5f - e.pos.z) < 0.4f && std::fabs(nd.y - e.pos.y) < 1.2f) M.pathI++;
-    else break;
+    const NpcStep& nd = P[M.pathI];
+    const float dy = std::fabs(nd.floor - e.pos.y);
+    if (near(nd, 0.4f) && dy < (nd.climb || M.climbing ? 0.3f : 1.0f)) { M.pathI++; continue; }
+    // (past it already, on the level, the next one nearer: on to that one, not back round)
+    if (M.pathI + 1 < P.size() && !nd.climb && !P[M.pathI + 1].climb && !M.climbing && dy < 0.4f && std::fabs(P[M.pathI + 1].floor - nd.floor) < 0.4f
+        && std::hypot(P[M.pathI + 1].at.x + 0.5f - e.pos.x, P[M.pathI + 1].at.z + 0.5f - e.pos.z) < std::hypot(nd.at.x + 0.5f - e.pos.x, nd.at.z + 0.5f - e.pos.z)
+        && near(nd, 1.2f)) { M.pathI++; continue; }
+    break;
   }
-  if (M.pathI >= P.size()) return Move{d < 0.45f ? 0 : speed * 0.5f, hdg(e.pos, t)};
-  const ivec3 nd = P[M.pathI];
-  if (nd.y - e.pos.y > 0.55f && e.onGround) e.wantJump = true;   // only a real step up: no hopping along the paths
+  if (M.pathI >= P.size()) {
+    npcUnclimb(e, M);
+    if (M.pathPartial) { M.navT = std::min(M.navT, 0.3f); return Move{0, hdg(e.pos, t)}; }   // (as far as that way went: think again)
+    return Move{d < 0.45f ? 0 : speed * 0.5f, hdg(e.pos, t)};
+  }
+  const NpcStep& nd = P[M.pathI];
+  const vec3 nc(nd.at.x + 0.5f, nd.floor, nd.at.z + 0.5f);
+  const int cx = ifloor(e.pos.x), cz = ifloor(e.pos.z);
+  const bool inCol = nd.at.x == cx && nd.at.z == cz;
+  // a ladder (a vine, a rope): up or down it hand over hand, then off at the top onto the floor beside it
+  const bool prevClimb = M.pathI > 0 && P[M.pathI - 1].climb && P[M.pathI - 1].at.x == cx && P[M.pathI - 1].at.z == cz;
+  if ((nd.climb && inCol) || prevClimb || (M.climbing && std::fabs(nd.floor - e.pos.y) > 0.3f && !inCol && nd.floor > e.pos.y)) {
+    if (!M.climbing) npcNavStats().climbs++;
+    M.climbing = true; e.noGravity = true; e.climbing = true;
+    e.vel.y = std::clamp((nd.floor + 0.03f - e.pos.y) * 5.f, -2.4f, 2.4f);
+    const float off = std::hypot(nc.x - e.pos.x, nc.z - e.pos.z);
+    // (in the shaft: kept to the middle of it while they climb; at the top, off sideways once they're up level)
+    if (inCol) return Move{off > 0.12f ? speed * 0.35f : 0, off > 0.12f ? hdg(e.pos, nc) : e.yaw};
+    if (nd.floor - e.pos.y > 0.15f) return Move{0, hdg(e.pos, nc)};
+    return Move{speed * 0.6f, hdg(e.pos, nc)};
+  }
+  npcUnclimb(e, M);
+  // up: a jump onto anything over a half step (stairs are walked: their low half is the step to the high one)
+  if (nd.floor - e.pos.y > 0.6f && e.onGround && near(nd, 1.6f)) {
+    const BlockId under = w.getBlock(nd.at.x, nd.at.y - 1, nd.at.z);
+    if (reg().tShape[under] != ShapeKind::Stairs || nd.floor - e.pos.y > 1.05f) e.wantJump = true;
+  }
   // a closed door on the way: open it
-  World& w = lv.world(e.realm);
   for (size_t k : {M.pathI, M.pathI + 1}) {
     if (k >= P.size()) continue;
-    const ivec3& q = P[k];
-    if (isNpcDoor(w.getBlock(q.x, q.y, q.z)) && std::hypot(q.x + 0.5f - e.pos.x, q.z + 0.5f - e.pos.z) < 2.2f) npcOpen(lv, e, M, q.x, q.y, q.z);
+    const ivec3& q = P[k].at;
+    for (int y : {q.y, q.y + 1})
+      if (isNpcDoor(w.getBlock(q.x, y, q.z)) && std::hypot(q.x + 0.5f - e.pos.x, q.z + 0.5f - e.pos.z) < 2.2f) { npcOpen(lv, e, M, q.x, y, q.z); break; }
   }
-  float prog = M.hasNav ? std::hypot(e.pos.x - M.navXZ.x, e.pos.z - M.navXZ.y) : 0;
+  const float prog = M.hasNav ? std::hypot(e.pos.x - M.navXZ.x, e.pos.z - M.navXZ.y) : 0;
   M.navXZ = vec2(e.pos.x, e.pos.z); M.hasNav = true;
   M.stuckT = prog < dt * 0.25f ? M.stuckT + dt : 0;
   if (M.stuckT > 1.5f) { M.stuckT = 0; M.navT = 0; if (e.stepAhead(lv)) e.wantJump = true; else M.sideStepT = 0.6f; M.stuckGo++; }
-  vec3 nc(nd.x + 0.5f, nd.y, nd.z + 0.5f);
   // blocked by someone in the way: step round them for a moment instead of jumping
   if (M.sideStepT > 0) { M.sideStepT -= dt; return Move{speed * 0.7f, hdg(e.pos, nc) + (e.id % 2 ? 1.2f : -1.2f)}; }
-  return Move{speed, hdg(e.pos, nc)};
+  // (slower into a turn, so they don't swing wide round a corner or a door post and circle the step)
+  const float turn = std::fabs(wrapAngle(hdg(e.pos, nc) - e.yaw));
+  return Move{speed * (turn > 1.2f ? 0.35f : turn > 0.6f ? 0.7f : 1.f), hdg(e.pos, nc)};
 }
 
 // ------------------------------------------------------------------ guards and golems
@@ -397,7 +394,12 @@ void npcStuckCheck(Level& lv, Creature& m, NpcMind& M) {
   const Registry& R = reg();
   int fx = ifloor(m.pos.x), fz = ifloor(m.pos.z), fy = ifloor(m.pos.y + 0.05f), hy = ifloor(m.pos.y + std::min(1.6f, m.h - 0.2f));
   if (!w.isLoaded(fx, fy, fz)) return;
-  bool inWall = R.tSolid[w.getBlock(fx, hy, fz)] && R.tSolid[w.getBlock(fx, fy, fz)];
+  // (in a wall: the body itself overlaps blocks at the feet and the head, by their real shapes: a ladder's cell, a slab's,
+  // a lift platform's aren't walls)
+  const float sw = std::max(0.05f, m.w - 0.08f);
+  bool inWall = R.tSolid[w.getBlock(fx, hy, fz)] && R.tSolid[w.getBlock(fx, fy, fz)]
+                && collides(w, m.pos.x - sw, m.pos.y + 0.15f, m.pos.z - sw, m.pos.x + sw, m.pos.y + 0.6f, m.pos.z + sw)
+                && collides(w, m.pos.x - sw, m.pos.y + m.h - 0.6f, m.pos.z - sw, m.pos.x + sw, m.pos.y + m.h - 0.15f, m.pos.z + sw);
   bool voidFall = fy - landBottomY(fy) < 2;
   // in a fountain or a well a few seconds: out onto the nearest dry ground beside it (they climbed in after a spot to
   // stand in the square, and the basin's rim was too high to step back over)
@@ -423,7 +425,7 @@ void npcStuckCheck(Level& lv, Creature& m, NpcMind& M) {
   int base = dimBase(dimOfY(fy));
   for (int y = std::max(base + 1, fy); y < base + DIM_H - 2; y++)
     if (R.tSolid[w.getBlock(fx, y - 1, fz)] && !R.tSolid[w.getBlock(fx, y, fz)] && !R.tSolid[w.getBlock(fx, y + 1, fz)]) {
-      m.pos = vec3(fx + 0.5f, y + 0.02f, fz + 0.5f); m.vel = vec3(0); m.fallDist = 0; return;
+      m.pos = vec3(fx + 0.5f, y + 0.02f, fz + 0.5f); m.vel = vec3(0); m.fallDist = 0; npcNavStats().rescues++; return;
     }
 }
 
@@ -676,7 +678,7 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
     }
     if (d > 0.6f && !seated && !byIt) {
       // stuck for a long time and nobody about to see it: step there (villagers know their way home)
-      if (M.stuckGo > 8 && !nearestPawn(lv, e.realm, e.pos, 24)) { e.pos = vec3(gx, goal.y + 0.01f, gz); M.stuckGo = 0; M.hasPath = false; return Move{0, e.yaw}; }
+      if (M.stuckGo > 8 && !nearestPawn(lv, e.realm, e.pos, 24)) { npcNavStats().rescues++; npcUnclimb(e, M); e.pos = vec3(gx, goal.y + 0.01f, gz); M.stuckGo = 0; M.hasPath = false; return Move{0, e.yaw}; }
       if (M.stuckGo > 10 && soc) { M.hasGoal = false; M.stuckGo = 0; }
       if (OptMove m = npcGo(lv, e, M, vec3(gx, goal.y, gz), dt, e.T->speed * (act == SLEEP ? 0.55f : 0.42f))) return *m;
     }
@@ -739,19 +741,26 @@ OptMove npcBrain(Level& lv, Creature& e, Entity* p, float dist, float dt) {
   json& N = e.data["npc"];
   NpcMind& M = S->mind(e.id);
   if (M.pinned) { e.noGravity = false; e.lockMove = false; M.pinned = false; }
+  if (M.climbing && !M.wentLast) npcUnclimb(e, M);   // (off a ladder when they've stopped walking a way)
+  M.wentLast = false;
   M.pose = 0; M.sitHeld.clear(); M.work.clear();
   // towns3.js: nobody stays stuck
   if ((M.stuckCheckT -= dt) <= 0) { M.stuckCheckT = 1; npcStuckCheck(lv, e, M); }
   Move out{0, e.yaw};
+  if (M.sent) {   // (sent somewhere: there first)
+    if (OptMove m = npcGo(lv, e, M, M.sentTo, dt, e.T->speed * 0.42f)) { N["p"] = M.pose; return *m; }
+    M.sent = false;
+  }
   if (N.value("i", 0) == 300) { OptMove m = lostAI(lv, e, M, dt); out = m ? *m : out; }
   else if (N.value("i", 0) == 400) { OptMove m = travellerAI(lv, e, M, p, dist, dt); out = m ? *m : out; }
   else if (VillageRef v = villageById(lv, N.value("v", std::string()))) {
+    const int i = N.value("i", 0);
+    // the first guard takes a turn on lookout now and then, up a corner tower's lift (sim/villager_lookout.cpp); a
+    // monster about, or someone to have a word with, comes first
+    if (i == 100 && e.type == "village_guard" && !M.confront && v->hasWall && M.holdT <= 0 && !npcFoe(lv, e, M, *v))
+      if (OptMove m = lookoutAI(lv, e, M, *v, dt)) { N["p"] = M.pose; return *m; }
     out = brainInner(lv, e, M, N, *v, p, dist, dt);
     // towns3.js: the watch at the gates — each guard keeps one, either side of the road just inside, looking out
-    const int i = N.value("i", 0);
-    // the first guard takes a turn on lookout now and then, up a corner tower's lift (sim/villager_lookout.cpp)
-    if (i == 100 && e.type == "village_guard" && !M.foe && !M.confront && v->hasWall)
-      if (OptMove m = lookoutAI(lv, e, M, *v, dt)) { N["p"] = M.pose; return *m; }
     if (i >= 100 && i < 200 && e.type == "village_guard" && !M.foe && !M.confront && v->hasWall) {
       const auto& gates = gatesOf(lv, *v);
       if (!gates.empty()) {

@@ -739,7 +739,26 @@ static void townWall(SP& P, const Town& v, const VStyle& st) {
     const int ix = tx == W.x0 ? 1 : tx == W.x1 ? -1 : tx < v.x ? 1 : -1, iz = tz == W.z0 ? 1 : tz == W.z1 ? -1 : tz < v.z ? 1 : -1;
     const bool sideX = (tx == W.x0 || tx == W.x1) && tz != W.z0 && tz != W.z1;
     const int dx0 = sideX ? ix * R : 0, dz0 = sideX ? 0 : iz * R;
-    if (P.in(tx + dx0, tz + dz0)) { P.put(tx + dx0, h + 1, tz + dz0, "air"); P.put(tx + dx0, h + 2, tz + dz0, "air"); }
+    const bool corner = (tx == W.x0 || tx == W.x1) && (tz == W.z0 || tz == W.z1);
+    auto doorway = [&](int x, int z, int y0, int y1) { if (P.in(x, z)) for (int y = y0; y <= y1; y++) P.put(x, y, z, "air"); };
+    if (stone && corner) {
+      // a corner tower's way in is on its town-side corner (straight ahead of the middle it opened into the wall walk's
+      // footing, the wall running on from the tower): through the corner, then in past the edge beside it
+      doorway(tx + ix * R, tz + iz * R, h + 1, h + 2);
+      doorway(tx + ix * (R - 1), tz + iz * R, h + 1, h + 2);
+    } else doorway(tx + dx0, tz + dz0, h + 1, h + 2);
+    if (stone) {
+      // out of the room up top onto the wall walk on either side (the walk's level is the wall's ground there + H, a
+      // step or so off the room's floor): the guards' way between the lift and the walk
+      auto walkFrom = [&](int ex, int ez, int ox, int oz, int wx, int wz) {
+        if (ox <= W.x0 || ox >= W.x1 || oz <= W.z0 || oz >= W.z1 || gate(wx, wz)) return;
+        const int ws = ground(wx, wz) + H, fl = h + H + 1;   // (where you stand on the walk; on the room's floor)
+        if (std::abs(ws - fl) > 1) return;
+        doorway(ex, ez, std::min(ws, fl), std::max(ws, fl) + 1);
+      };
+      if (tz == W.z0 || tz == W.z1) for (int s : {-1, 1}) walkFrom(tx + s * R, tz + iz, tx + s * (R + 1), tz + iz, tx + s * (R + 1), tz);
+      if (tx == W.x0 || tx == W.x1) for (int s : {-1, 1}) walkFrom(tx + ix, tz + s * R, tx + ix, tz + s * (R + 1), tx, tz + s * (R + 1));
+    }
     if (stone && P.in(tx, tz)) {
       const int lx = tx - (sideX ? ix : 0), lz = tz - (sideX ? 0 : iz);
       if (P.in(lx, lz)) for (int y = h + 1; y <= h + TH; y++) P.put(lx, y, lz, "ladder", sideX ? (ix > 0 ? 3 : 1) : (iz > 0 ? 0 : 2));
