@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
   const int base = dimBase(DIM_OVERWORLD), Y = base + 200, ly = 200;   // a test floor high in the sky
   { auto p = std::make_unique<Player>(); p->name = "Tester"; p->pos = vec3(8.5f, Y + 1, 20.5f); P = static_cast<Player*>(L->spawn(std::move(p))); }
   double t0 = nowSeconds();
-  while (nowSeconds() - t0 < 60) {
+  while (nowSeconds() - t0 < 900) {   // (till they've loaded: a busy machine streams slowly)
     w.stream({{P->pos, 3, false}}, 20);
     bool all = true;
     for (int cx = -2; cx <= 2; cx++) for (int cz = -2; cz <= 2; cz++) if (!w.chunk(DIM_OVERWORLD, cx, cz)) all = false;
@@ -556,7 +556,7 @@ int main(int argc, char** argv) {
     auto tick = [&](double s) { for (double t = 0; t < s; t += 0.05) L->tick(0.05); };
     const int GX = 30, GZ = -16, h0 = Y;   // a gate in a wall running east-west at z = GZ; the town to the south (+z)
     P->pos = vec3(GX + 0.5f, Y + 1, GZ + 6.5f);
-    for (double t0 = nowSeconds(); nowSeconds() - t0 < 60;) {
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 900;) {
       w.stream({{P->pos, 3, false}}, 20);
       bool all = true; for (int cx = 0; cx <= 3; cx++) for (int cz = -3; cz <= 0; cz++) if (!w.chunk(DIM_OVERWORLD, cx, cz)) all = false;
       if (all) break;
@@ -649,7 +649,7 @@ int main(int argc, char** argv) {
     if (!v || v->gates.empty()) continue;
     const VGate& G = v->gates[0];
     P->pos = G.center + vec3(G.inX * 6, 1, G.inZ * 6);
-    for (double t0 = nowSeconds(); nowSeconds() - t0 < 120;) {
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 900;) {
       w.stream({{P->pos, 3, false}}, 20);
       bool all = true; for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) if (!w.isLoaded((int)G.center.x + dx * 16, (int)G.center.y, (int)G.center.z + dz * 16)) all = false;
       if (all) break;
@@ -669,8 +669,8 @@ int main(int argc, char** argv) {
     if (stone) {   // a corner tower's lift
       const int x0 = town->data["wall"].value("x0", 0), z0 = town->data["wall"].value("z0", 0);
       P->pos = vec3(x0 + 0.5f, G.h0 + 1, z0 + 0.5f);
-      for (double t0 = nowSeconds(); nowSeconds() - t0 < 120 && !w.isLoaded(x0, G.h0, z0);) { w.stream({{P->pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
-      for (int k = 0; k < 10; k++) { w.stream({{P->pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+      auto cornerLoaded = [&]() { for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (!w.isLoaded(x0 + dx * 16, G.h0, z0 + dz * 16)) return false; return true; };
+      for (double t0 = nowSeconds(); nowSeconds() - t0 < 900 && !cornerLoaded();) { w.stream({{P->pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
       ivec3 sl(0); bool found = false;
       for (int dx = -3; dx <= 3 && !found; dx++) for (int dz = -3; dz <= 3 && !found; dz++) for (int y = G.h0 - 40; y <= G.h0 + 40 && !found; y++)
         if (reg().block(w.getBlock(x0 + dx, y, z0 + dz)).str("machine") == "slider") { sl = ivec3(x0 + dx, y, z0 + dz); found = true; }
@@ -684,26 +684,37 @@ int main(int argc, char** argv) {
           check(machineState(w, sl).value("at", 0) == lf.stops.back().second, "called, it rises to the wall walk");
           liftCall(*L, REALM_MAIN, sl, 0); for (int k = 0; k < 120; k++) L->tick(0.05);
           // the town's first guard takes a turn on lookout: onto the lift, up to the wall walk, a watch, and back down
+          // (everything waits on what it needs — the land loaded, the guard about — never on the clock: a busy machine
+          // streams slowly, and a wait by the clock started the watch on half-loaded land)
+          auto loadedRound = [&](ivec3 c, int r) { for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) if (!w.isLoaded(c.x + dx * 16, c.y, c.z + dz * 16)) return false; return true; };
           P->pos = vec3(v->x + 0.5f, v->y + 1, v->z + 0.5f);
-          for (double t0 = nowSeconds(); nowSeconds() - t0 < 60;) { w.stream({{P->pos, 4, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); L->tick(0.05); }
           Creature* guard = nullptr;
-          for (auto& up : L->entities()) if (auto* c = dynamic_cast<Creature*>(up.get())) if (const json* N = npcOf(*c))
-            if (c->type == "village_guard" && !c->removed && N->value("v", "") == v->id && N->value("i", 0) == 100) guard = c;
+          for (double t0 = nowSeconds(); nowSeconds() - t0 < 900 && !guard;) {
+            w.stream({{P->pos, 4, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); L->tick(0.05);
+            if (!loadedRound(ivec3(v->x, v->y, v->z), 2)) continue;
+            for (auto& up : L->entities()) if (auto* c = dynamic_cast<Creature*>(up.get())) if (const json* N = npcOf(*c))
+              if (c->type == "village_guard" && !c->removed && N->value("v", "") == v->id && N->value("i", 0) == 100) guard = c;
+          }
           check(guard != nullptr, "the town's first guard is about");
           if (guard) {
             L->info.time = 3600;   // (morning)
-            // (near the tower, so the test doesn't wait on a long walk; the land there loaded first)
-            for (double t0 = nowSeconds(); nowSeconds() - t0 < 60;) { w.stream({{vec3(sl) + vec3(6, 1, 6), 3, false}}, 20); bool all = true; for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (!w.isLoaded(sl.x + dx * 16, sl.y, sl.z + dz * 16)) all = false; if (all) break; std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+            // (near the tower, so the test doesn't wait on a long walk; the land there loaded first, the player kept by it)
+            const vec3 watchFrom = vec3(sl) + vec3(6, 1, 6);
+            P->pos = watchFrom;
+            for (double t0 = nowSeconds(); nowSeconds() - t0 < 900 && !loadedRound(sl, 1);) { w.stream({{watchFrom, 3, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+            check(loadedRound(sl, 1), "the land round the tower loads");
+            // (the watch starts afresh from here: whatever the guard was about while the town loaded is forgotten)
+            { NpcMind& GM = vsys(*L)->mind(guard->id); GM.look = 0; GM.nextLookAt = 0; GM.lookClock = 0; GM.rideS = ivec3(INT32_MIN); GM.rideStage = 0; GM.hasPath = false; GM.hasGoal = false; }
             // (in the town, before the tower's way in: a corner tower's door is on its town-side corner)
             const int ix = sl.x <= v->x ? 1 : -1, iz = sl.z <= v->z ? 1 : -1;
             float gy = NAN; for (int y = sl.y + 6; y >= sl.y - 4 && std::isnan(gy); y--) gy = npcStandAt(w, sl.x + 4 * ix, y, sl.z + 4 * iz);
             guard->pos = vec3(sl.x + 4 * ix + 0.5f, std::isnan(gy) ? sl.y + 1.f : gy, sl.z + 4 * iz + 0.5f);
             const float topY = sl.y + 1 + lf.stops.back().second + 0.5f;
             bool wentUp = false, cameDown = false, onWalk = false;
-            for (int k = 0; k < 20 * 400 && !cameDown; k++) {
+            for (int k = 0; k < 20 * 400 && !cameDown; k++) {   // (400 s of game time, however long it takes to run)
+              P->pos = watchFrom;   // (the player by the tower, so the village stays awake and its land stays loaded)
+              if (k % 20 == 0) w.stream({{watchFrom, 3, false}}, 20);
               L->tick(0.05);
-              P->pos = guard->pos + vec3(6, 0, 6);   // (the player near, so the village stays awake)
-              if (k % 20 == 0) w.stream({{P->pos, 3, false}}, 20);
               const float dsh = std::hypot(guard->pos.x - sl.x - 0.5f, guard->pos.z - sl.z - 0.5f);
               if (guard->pos.y > topY - 0.3f && guard->pos.y < topY + 1.2f && dsh < 1) wentUp = true;
               if (wentUp && guard->pos.y > topY - 1.6f && dsh > 2.6f && dsh < 8) onWalk = true;

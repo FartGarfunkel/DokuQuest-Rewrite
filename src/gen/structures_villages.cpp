@@ -216,7 +216,7 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
   const int y0 = c.y, y0js = c.jsY, fr = TT["fr"];
   auto e = std::make_shared<TownExt>(); Town& v = e->v;
   v.id = "t" + std::to_string(rx) + "_" + std::to_string(rz); v.name = name; v.style = style; v.tier = tier; v.P = P; v.hw = hw; v.fr = fr;
-  v.x = cx; v.z = cz; v.y = y0; v.seed = hash32(seed, rx, rz, 4244);
+  v.x = cx; v.z = cz; v.y = y0; v.seed = hash32(seed, rx, rz, 4244); v.genV = t.genVersion();
   { const u32 r = hash32(seed, 91, 7, 3) % 10; v.wind = r < 6 ? 1 : r < 8 ? 2 : r < 9 ? 0 : 3; }   // towns3.js townWindOf
   int X0 = cx - P - 1, Z0 = cz - P - 1, X1 = cx + P + 1, Z1 = cz + P + 1;
   // terrain version 9: the town of the village pieces, put together jigsaw-fashion (gen/structures_jigsaw_village.cpp)
@@ -739,7 +739,7 @@ static void townWall(SP& P, const Town& v, const VStyle& st) {
     const int ix = tx == W.x0 ? 1 : tx == W.x1 ? -1 : tx < v.x ? 1 : -1, iz = tz == W.z0 ? 1 : tz == W.z1 ? -1 : tz < v.z ? 1 : -1;
     const bool sideX = (tx == W.x0 || tx == W.x1) && tz != W.z0 && tz != W.z1;
     const int dx0 = sideX ? ix * R : 0, dz0 = sideX ? 0 : iz * R;
-    const bool corner = (tx == W.x0 || tx == W.x1) && (tz == W.z0 || tz == W.z1);
+    const bool corner = v.genV >= 24 && (tx == W.x0 || tx == W.x1) && (tz == W.z0 || tz == W.z1);   // (terrain 24)
     auto doorway = [&](int x, int z, int y0, int y1) { if (P.in(x, z)) for (int y = y0; y <= y1; y++) P.put(x, y, z, "air"); };
     if (stone && corner) {
       // a corner tower's way in is on its town-side corner (straight ahead of the middle it opened into the wall walk's
@@ -747,7 +747,7 @@ static void townWall(SP& P, const Town& v, const VStyle& st) {
       doorway(tx + ix * R, tz + iz * R, h + 1, h + 2);
       doorway(tx + ix * (R - 1), tz + iz * R, h + 1, h + 2);
     } else doorway(tx + dx0, tz + dz0, h + 1, h + 2);
-    if (stone) {
+    if (stone && v.genV >= 24) {   // (terrain 24)
       // out of the room up top onto the wall walk on either side (the walk's level is the wall's ground there + H, a
       // step or so off the room's floor): the guards' way between the lift and the walk
       auto walkFrom = [&](int ex, int ez, int ox, int oz, int wx, int wz) {

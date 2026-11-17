@@ -751,7 +751,7 @@ static void bWindmill(VS& S) {
     // a lift up to the loft beside the ladder (sim/lift.h; the miller rides it up to the stones with the wheat and down
     // again: sim/villager_chores.cpp): a Slider in the floor under a slab, a Lift Rail up the west wall, a Lift Stop at
     // the bottom and at the loft, the shaft open through the floor between
-    if (hasBlock("slider") && hasBlock("lift_rail") && hasBlock("lift_stop")) {
+    if (S.v.genV >= 24 && hasBlock("slider") && hasBlock("lift_rail") && hasBlock("lift_stop")) {   // (terrain 24)
       const int i = S.set(2, 0, 3, "slider", 1); if (i >= 0) S.P.setEntity(i, json{{"type", "machine_state"}, {"glue", 1 << 2}});
       const int j = S.set(2, 1, 3, VS::VB("spruce_slab", st.slab), 0); if (j >= 0) S.P.setEntity(j, json{{"glue", 1 << 3}});   // (glued down to the slider)
       S.set(2, 5, 3, "air"); S.set(2, 8, 3, "air");

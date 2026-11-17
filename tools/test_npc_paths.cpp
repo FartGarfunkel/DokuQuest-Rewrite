@@ -11,6 +11,8 @@
 #include "gen/structures.h"
 #include "gen/structures_api.h"
 #include "world/dims.h"
+#include "world/chunk.h"
+#include "gen/generator.h"
 #include "sim/moving.h"
 #include "sim/physics.h"
 #include <set>
@@ -51,7 +53,8 @@ int main(int argc, char** argv) {
   {
     const int Y = dimBase(DIM_OVERWORLD) + 220;
     P->pos = vec3(4.5f, Y + 1, 4.5f);
-    for (double t0 = nowSeconds(); nowSeconds() - t0 < 60 && !w.isLoaded(4, Y, 4);) { w.stream({{P->pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+    // (all the land the scene stands on loaded first: a busy machine streams slowly)
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 240 && !(w.isLoaded(-2, Y, -2) && w.isLoaded(12, Y, 12) && w.isLoaded(-2, Y, 12) && w.isLoaded(12, Y, -2));) { w.stream({{P->pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
     const BlockId stone = reg().blockId("stone"), ladder = reg().blockId("ladder"), planks = reg().blockId("planks");
     for (int x = -2; x < 12; x++) for (int z = -2; z < 12; z++) { w.setBlock(x, Y, z, stone); for (int y = Y + 1; y < Y + 12; y++) w.setBlock(x, y, z, AIR); }
     for (int x = 0; x < 9; x++) for (int y = Y + 1; y <= Y + 9; y++) w.setBlock(x, y, 9, stone);   // (the wall)
@@ -81,6 +84,39 @@ int main(int argc, char** argv) {
     if (!upOk || !downOk) millerFails++;
     fflush(stdout);
   }
+  // terrain versions: a world made before terrain 24 keeps its towns as they were (no corner tower half old, half new);
+  // one made at 24 has the corner towers' town-side doors
+  {
+    int opened[2] = {-1, -1}; std::string where;
+    for (int vi = 0; vi < 2; vi++) {
+      WorldGenOptions o; o.seed = L->info.seed; o.genVersion = vi ? 24 : 23; WorldGen g(o);
+      const StructurePlan* town = nullptr;
+      for (int k = 0; k < 160 && !town; k++) {
+        const int step = k < 40 ? 4000 : 3000, kk = k < 40 ? k : k - 40;
+        const int x = k < 40 ? (kk % 7 - 3) * step : (kk % 11 - 5) * step, z = k < 40 ? (kk / 7 - 3) * step : (kk / 11 - 5) * step;
+        const StructurePlan* sp = locateStructure(g, DIM_OVERWORLD, "village", x, z, 24);
+        if (sp && sp->data.contains("wall") && sp->data["wall"].value("kind", "") == "stone") town = sp;
+      }
+      if (!town) continue;
+      const int x0 = town->data["wall"].value("x0", 0), z0 = town->data["wall"].value("z0", 0);
+      // (the corner tower at the wall's north-west corner: its new door is the cell in from the corner, both ways)
+      const int dx = x0 + 2, dz = z0 + 2;
+      auto ch = std::make_unique<Chunk>(DIM_OVERWORLD, dx >> 4, dz >> 4);
+      g.forDim(DIM_OVERWORLD)->generate(*ch);
+      // a doorway: two open cells with the tower's wall over them and its floor under, somewhere up the column
+      int open = 0;
+      const BlockId SB = reg().blockId("stone_bricks");
+      for (int y = 2; y < DIM_H - 3; y++) {
+        const BlockId u = ch->get(dx & 15, y - 1, dz & 15), a = ch->get(dx & 15, y, dz & 15), b = ch->get(dx & 15, y + 1, dz & 15), c = ch->get(dx & 15, y + 2, dz & 15);
+        if (reg().tSolid[u] && a == AIR && b == AIR && reg().tSolid[c] && reg().block(c).key.find("brick") != std::string::npos) { open = 1; break; }
+      }
+      (void)SB;
+      opened[vi] = open; where = town->name;
+    }
+    printf("%s a world made at terrain 23 keeps its corner towers as they were (no door in from the corner, %s)\n", opened[0] == 0 ? "ok  " : "FAIL", where.c_str());
+    printf("%s and one made at 24 has it\n", opened[1] == 1 ? "ok  " : "FAIL");
+    if (opened[0] != 0 || opened[1] != 1) millerFails++;
+  }
   // the towns: one of each kind of wall, then any
   std::vector<const StructurePlan*> towns;
   auto kindOf = [](const StructurePlan* sp) { return !sp->data.contains("wall") ? std::string("open") : sp->data["wall"].value("kind", std::string("?")); };
@@ -103,7 +139,7 @@ int main(int argc, char** argv) {
     // the whole town loaded, and its people about
     P->pos = vec3(v->x + 0.5f, v->y + 2, v->z + 0.5f);
     const int rad = std::min(6, (v->r + 12) / 16 + 1);
-    for (double t0 = nowSeconds(); nowSeconds() - t0 < 240;) {
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 900;) {   // (till it has: a busy machine streams slowly)
       w.stream({{P->pos, rad, false}}, 40);
       bool loaded = true;
       for (int dx = -rad + 1; dx < rad; dx++) for (int dz = -rad + 1; dz < rad; dz++) if (!w.isLoaded(v->x + dx * 16, v->y, v->z + dz * 16)) loaded = false;
@@ -128,6 +164,25 @@ int main(int argc, char** argv) {
     }
     for (const VRoad& r : v->roads) for (size_t i = 0; i < r.cells.size(); i += std::max<size_t>(1, r.cells.size() / 4)) pts.push_back({vec3(r.cells[i]) + vec3(0.5f, 1, 0.5f), "street"});
     pts.push_back({vec3(v->bell) + vec3(0.5f, 0, 1.5f), "square"});
+    {   // a point nobody can stand on (a street's cell out over the water): the nearest place by it that holds, or dropped
+      int snappedN = 0, dropped = 0;
+      std::vector<Errand> ok;
+      for (Errand e : pts) {
+        const int x = ifloor(e.to.x), y = ifloor(e.to.y + 0.45f), z = ifloor(e.to.z);
+        auto standsAt = [&](int ax, int ay, int az) { return !std::isnan(npcStandAt(w, ax, ay, az)); };
+        if (standsAt(x, y, z) || standsAt(x, y + 1, z) || standsAt(x, y - 1, z)) { ok.push_back(e); continue; }
+        bool found = false;
+        for (int r = 1; r <= 3 && !found; r++) for (int dz = -r; dz <= r && !found; dz++) for (int dx = -r; dx <= r && !found; dx++) {
+          if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
+          for (int dy : {0, 1, -1, 2, -2}) if (standsAt(x + dx, y + dy, z + dz)) {
+            e.to = vec3(x + dx + 0.5f, npcStandAt(w, x + dx, y + dy, z + dz), z + dz + 0.5f); found = true; break;
+          }
+        }
+        if (found) { ok.push_back(e); snappedN++; } else dropped++;
+      }
+      pts = ok;
+      printf("  (%zu points; %d moved to the nearest place that holds, %d dropped: nowhere to stand by them)\n", pts.size(), snappedN, dropped);
+    }
     if (folk.empty() || pts.empty()) { printf("  (nobody about: %zu folk, %zu points)\n", folk.size(), pts.size()); continue; }
     Mulberry32 rng((u32)v->seed);
     VillagerSystem* S = vsys(*L);
@@ -137,10 +192,12 @@ int main(int argc, char** argv) {
       std::vector<Trip> trips;
       std::set<size_t> taken;   // (one to a spot at a time: not a crowd round the same doorstep)
       for (Creature* c : folk) {
-        if (c->removed || c->T->j.value("golem", false)) continue;   // (the golems keep to the square: too broad for a house door)
+        if (c->removed) continue;
+        const bool golem = c->T->j.value("golem", false);
         const size_t pick = (size_t)(rng() * pts.size()) % pts.size();
         if (taken.count(pick)) continue;
-        const Errand& e = pts[pick];
+        Errand e = pts[pick];
+        if (golem) { if (e.kind != "street" && e.kind != "square") continue; e.kind = "golem"; }   // (too broad for a house door: the open ground)
         if (std::hypot(e.to.x - c->pos.x, e.to.z - c->pos.z) < 3) continue;
         taken.insert(pick);
         NpcMind& M = S->mind(c->id);
