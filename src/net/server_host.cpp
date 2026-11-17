@@ -131,6 +131,12 @@ bool ServerHost::start(std::string* err) {
       return false;
     }, 50));
   }
+  // something the host's world sends every guest (netBroadcast [event, args]): their game hears the same event (moving pieces)
+  if (level.events) uiHandles.push_back(level.events->on("netBroadcast", [this](const json& a) {
+    if (!a.is_array() || a.size() < 2 || !a[0].is_string()) return true;
+    toAll(UIEV, {{"e", a[0]}, {"a", a[1]}});
+    return false;
+  }, 50));
   if (opts.lan) lanAnn.start();
   serverLog(strFormat("\"%s\" is open on port %d (%s)", opts.name.c_str(), boundPort, level.info.name.c_str()), "good");
   return true;

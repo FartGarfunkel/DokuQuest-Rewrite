@@ -18,6 +18,8 @@
 #include "sim/weather.h"
 #include <atomic>
 #include "sim/forge.h"
+#include "sim/moving.h"
+#include "sim/glue.h"
 #include <thread>
 #include <cstdio>
 
@@ -39,6 +41,8 @@ struct RecFx : LevelFx {
 
 struct StationProbe { std::atomic<bool> armed{false}, listed{false}; std::atomic<int> x{0}, y{0}, z{0}, fuel{-1}; std::atomic<double> pump{0}; };
 static StationProbe g_st;
+// a slider the host moves (the moving-parts sync checks): 1 = build it and start it, then 2
+static struct { std::atomic<int> stage{0}; int x = 0, y = 0, z = 0; std::atomic<bool> started{false}; } g_mv;
 struct Client {
   std::string name;
   EventBus bus;
@@ -170,6 +174,18 @@ int main(int argc, char** argv) {
   // the host's weather, read on the server thread (weather sync checks below)
   static std::atomic<int> hostKind{0}; static std::atomic<float> hostWind{0};
   srv.onTick = [](Level& lv) {
+    if (g_mv.stage == 1) {
+      World& w = lv.world(REALM_MAIN);
+      const int x = g_mv.x, y = g_mv.y, z = g_mv.z;
+      if (w.isLoaded(x, y, z) && w.isLoaded(x + 5, y, z)) {
+        for (int i = 0; i <= 5; i++) w.setBlock(x + i, y, z, AIR);
+        w.setBlock(x, y, z, reg().blockId("slider"), 5); w.setBlock(x + 1, y, z, reg().blockId("planks"));
+        setGlue(w, ivec3(x, y, z), 0, true);
+        machineState(w, ivec3(x, y, z))["distance"] = 4;
+        g_mv.started = startMove(lv, REALM_MAIN, ivec3(x, y, z), nullptr);
+        g_mv.stage = 2;
+      }
+    }
     if (g_st.armed) {   // a station a guest built and lit, as the host sees it (the immersive stations' sync checks below)
       World& w = lv.world(REALM_MAIN);
       const int x = g_st.x, y = g_st.y, z = g_st.z;
@@ -289,6 +305,19 @@ int main(int argc, char** argv) {
   pumpFor(0.3);
   A.lv->world().setBlockEntity(bx, by, bz + 1, {{"type", "chest"}, {"items", json::array({{{"id", "apple"}, {"n", 3}}})}});
   check(pump(4, [&] { json* e = B.lv->world().blockEntity(bx, by, bz + 1); return e && e->value("type", "") == "chest"; }), "a block entity (chest contents) syncs");
+
+  // ---- moving parts: the host moves a piece; a guest sees it move, then set down ----
+  {
+    g_mv.x = bx - 3; g_mv.y = by + 4; g_mv.z = bz + 3; g_mv.stage = 1;
+    pump(4, [&] { return g_mv.stage == 2; });
+    check(g_mv.started, "the host starts a slider moving");
+    float f0 = -1, f1 = -1;
+    check(pump(2, [&] { auto& L = movingBodiesList(*B.lv); if (!L.empty()) f0 = L[0].fraction(); return !L.empty() && L[0].blocks.size() == 1; }), "a guest gets the moving piece (what it carries and how it moves)");
+    pumpFor(0.4);
+    { auto& L = movingBodiesList(*B.lv); if (!L.empty()) f1 = L[0].fraction(); }
+    check(f1 > f0 && f1 > 0, strFormat("and sees it move smoothly on its own (%.2f then %.2f)", f0, f1));
+    check(pump(4, [&] { return movingBodiesList(*B.lv).empty() && B.lv->world().getBlock(g_mv.x + 5, g_mv.y, g_mv.z) == reg().blockId("planks"); }), "when it's set down the guest has the block where it ended");
+  }
 
   // ---- chat & commands ----
   submitChat(*A.lv, A.me, "hello there");

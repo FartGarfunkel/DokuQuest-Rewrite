@@ -7,6 +7,7 @@
 #include "sim/machines.h"
 #include "sim/physics.h"
 #include "sim/lift.h"
+#include "sim/events.h"
 #include "sim/entity.h"
 #include "common/common.h"
 #include <set>
@@ -70,8 +71,42 @@ u8 turnCarve(const Motion& m, u8 c) {
 
 class MovingBodies : public LevelSystem {
 public:
-  explicit MovingBodies(Level& l) : lv(l) { all().push_back(this); }
-  ~MovingBodies() override { auto& a = all(); a.erase(std::remove(a.begin(), a.end(), this), a.end()); }
+  explicit MovingBodies(Level& l) : lv(l) {
+    all().push_back(this);
+    // §4 a joined game: the host sends each body as it sets off and when it's set down; here it is only drawn and stood on
+    if (lv.events) {
+      hStart = lv.events->on("movingStart", [this](const json& a) { if (lv.isRemote()) fromNet(a); return true; });
+      hEnd = lv.events->on("movingEnd", [this](const json& a) {
+        if (!lv.isRemote() || !a.is_object()) return true;
+        const u32 id = a.value("id", 0u);
+        bodies.erase(std::remove_if(bodies.begin(), bodies.end(), [&](const Body& b) { return b.id == id; }), bodies.end());
+        return true;
+      });
+    }
+  }
+  ~MovingBodies() override {
+    auto& a = all(); a.erase(std::remove(a.begin(), a.end(), this), a.end());
+    if (lv.events) { lv.events->off(hStart); lv.events->off(hEnd); }
+  }
+  int hStart = -1, hEnd = -1;
+  static json toNet(const Body& b) {
+    json bl = json::array();
+    for (const BodyBlock& k : b.blocks) bl.push_back(json::array({k.rel.x, k.rel.y, k.rel.z, reg().block(k.id).key, k.meta, k.carve}));
+    return json{{"id", b.id}, {"realm", b.realm}, {"kind", b.m.kind}, {"mx", b.m.machine.x}, {"my", b.m.machine.y}, {"mz", b.m.machine.z}, {"face", b.m.face},
+                {"q", b.m.quarters}, {"d", b.m.distance}, {"reach", b.m.reach}, {"t", b.t}, {"dur", b.dur}, {"blocks", bl}};
+  }
+  void fromNet(const json& a) {
+    if (!a.is_object() || !a.contains("blocks")) return;
+    Body b; b.id = a.value("id", 0u); b.realm = a.value("realm", 0);
+    b.m.kind = a.value("kind", 0); b.m.machine = ivec3(a.value("mx", 0), a.value("my", 0), a.value("mz", 0)); b.m.face = a.value("face", 0);
+    b.m.quarters = a.value("q", 0); b.m.distance = a.value("d", 0); b.m.reach = a.value("reach", 1);
+    b.t = a.value("t", 0.f); b.dur = std::max(0.05f, a.value("dur", 1.f));
+    for (auto& k : a["blocks"]) if (k.is_array() && k.size() >= 6) b.blocks.push_back({ivec3(k[0].get<int>(), k[1].get<int>(), k[2].get<int>()), reg().blockId(k[3].get<std::string>()), (u8)k[4].get<int>(), json(), (u8)k[5].get<int>()});
+    bodies.erase(std::remove_if(bodies.begin(), bodies.end(), [&](const Body& o) { return o.id == b.id; }), bodies.end());
+    b.boxes = boxesAt(b, worldXf(b, b.t));
+    bodies.push_back(std::move(b));
+  }
+  void announce(const char* ev, const json& a) { if (lv.events && !lv.isRemote()) lv.events->emit("netBroadcast", json::array({ev, a})); }
   static std::vector<MovingBodies*>& all() { static std::vector<MovingBodies*> v; return v; }
   World* worldOf(int realm) { return lv.worldIfOpen(realm); }
   const char* name() const override { return "moving"; }
@@ -133,11 +168,13 @@ public:
     w.blockEntityChanged(machine.x, machine.y, machine.z);
     sfxAt(lv, m.kind == 1 ? "piston_out" : "door_open", vec3(machine) + vec3(0.5f));
     body.boxes = boxesAt(body, worldXf(body, body.t));
+    announce("movingStart", toNet(body));
     bodies.push_back(std::move(body));
     return true;
   }
 
   void finish(Body& b, bool forceBack = false) {
+    if (lv.isRemote()) return;   // (a guest: the host sets it down and its blocks come over as usual)
     World* wp = lv.worldIfOpen(b.realm);
     if (!wp) return;
     World& w = *wp;
@@ -181,6 +218,7 @@ public:
       if (!e.is_null()) w.setBlockEntity(place.x, place.y, place.z, e);
     }
     sfxAt(lv, b.m.kind == 1 ? "piston_in" : "door_close", vec3(b.m.machine) + vec3(0.5f));
+    announce("movingEnd", json{{"id", b.id}});
     if (b.lift) { Lift l; if (liftOfSlider(w, b.m.machine, l)) liftMarkStops(w, l, machineState(w, b.m.machine).value("at", 0)); }
   }
 
@@ -218,7 +256,7 @@ public:
     std::vector<std::pair<Entity*, vec3>> moves;
     for (auto& up : lv.entities()) {
       Entity* e = up.get();
-      if (e->removed || e->realm != b.realm || e->type == "moving") continue;
+      if (e->removed || e->realm != b.realm || e->type == "moving" || (lv.isRemote() && e->ghost)) continue;
       const float hw = e->w, h = e->h;
       const vec3 p = e->pos;
       bool rider = false, pushed = false;
@@ -238,7 +276,7 @@ public:
       t_noExtraBoxes = true;
       const bool room = !collides(*wp, np.x - hw + 0.02, np.y + 0.02, np.z - hw + 0.02, np.x + hw - 0.02, np.y + h - 0.02, np.z + hw - 0.02);
       t_noExtraBoxes = false;
-      if (!room) return false;
+      if (!room) { if (lv.isRemote()) continue; return false; }   // (a guest never holds it up: the host decides)
       moves.push_back({e, np});
     }
     for (auto& [e, np] : moves) { e->pos = np; if (e->vel.y < 0 && np.y >= e->pos.y) e->vel.y = 0; }
@@ -249,6 +287,10 @@ public:
     attachHooks();
     for (size_t i = 0; i < bodies.size();) {
       Body& b = bodies[i];
+      if (lv.isRemote() && b.t >= b.dur) {   // (a guest: there until the host says it's down; gone after 3 s whatever)
+        if ((b.stuck += (float)dt) > 3.f) bodies.erase(bodies.begin() + i); else i++;
+        continue;
+      }
       const float t1 = std::min(b.t + (float)dt, b.dur);
       if (!carry(b, t1)) {
         if ((b.stuck += (float)dt) > 0.6f) { Body c = std::move(b); bodies.erase(bodies.begin() + i); finish(c, true); continue; }
@@ -256,6 +298,7 @@ public:
       }
       b.stuck = 0; b.t = t1;
       b.boxes = boxesAt(b, worldXf(b, b.t));
+      if (lv.isRemote()) { i++; continue; }
       if (b.t >= b.dur) { Body c = std::move(b); bodies.erase(bodies.begin() + i); finish(c); }
       else i++;
     }
