@@ -373,7 +373,7 @@ std::string recipeCategory(const Recipe& r) {
 
 // ---- bags --------------------------------------------------------------------------------------------------
 static int countIn(const std::vector<ItemStack>* v, const std::string& id) { int n = 0; if (v) for (auto& s : *v) if (!s.empty() && s.id == id) n += s.n; return n; }
-int Bags::count(const std::string& id) const { return countIn(main, id) + countIn(bp, id); }
+int Bags::count(const std::string& id) const { int n = countIn(main, id) + countIn(bp, id); for (auto* v : more) n += countIn(v, id); return n; }
 int Bags::countTag(const std::string& key) const {
   if (key.empty() || key[0] != '#') return count(key);
   int n = 0; auto it = reg().tags.find(key); if (it != reg().tags.end()) for (auto& k : it->second) n += count(k);
@@ -388,7 +388,7 @@ static int removeIn(std::vector<ItemStack>* v, const std::string& id, int n) {
   }
   return n;
 }
-int Bags::remove(const std::string& id, int n) { n = removeIn(bp, id, n); return removeIn(main, id, n); }
+int Bags::remove(const std::string& id, int n) { n = removeIn(bp, id, n); n = removeIn(main, id, n); for (auto* v : more) { if (n <= 0) break; n = removeIn(v, id, n); } return n; }
 int Bags::removeTag(const std::string& key, int n) {
   if (key.empty() || key[0] != '#') return remove(key, n);
   auto it = reg().tags.find(key); if (it == reg().tags.end()) return n;
