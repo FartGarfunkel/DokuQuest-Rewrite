@@ -460,10 +460,11 @@ int main(int argc, char** argv) {
     if (body) retrieveCorpse(*r.lv, *r.p, *body);
     CHECK(r.p->inv[3].id == "dirt" && r.p->inv[3].n == 10 && playerCount(*r.p, "death_compass") == 0, "using the body gives everything back, to its slot");
     {   // an old world's grave block still opens
+      const int sticks0 = playerCount(*r.p, "stick");
       json g = makeGrave(*r.lv, *r.p, {ItemStack("stick", 4)});
       CHECK(g.is_object() && r.get(g["x"], g["y"], g["z"]) == KBk.grave, "an old grave block");
       openGrave(*r.lv, *r.p, g["x"], g["y"], g["z"]);
-      CHECK(playerCount(*r.p, "stick") == 4, "  ...still opens and gives its things back");
+      CHECK(playerCount(*r.p, "stick") == sticks0 + 4 && r.get(g["x"], g["y"], g["z"]) != KBk.grave, "  ...still opens and gives its things back (%d sticks, had %d)", playerCount(*r.p, "stick"), sticks0);
     }
     // lava hurts and sets you on fire; regen heals 1 HP / 4 s after 8 s unhurt
     r.p->hp = 10; r.p->invuln = 0; r.p->lastHurtT = gameClock(*r.lv);
