@@ -1,4 +1,4 @@
-// render/carry_draw.cpp — Carry On (game/local.js pickUpBlock / pickUpMob, render/skins.js, local.js handState): what a player holds in
+// render/carry_draw.cpp — carrying in the arms (game/local.js pickUpBlock / pickUpMob, render/skins.js, local.js handState): what a player holds in
 // both arms. A block shows as its item model; an animal as its creature model in the rest pose (the original's modelStillDraws).
 // Player::carrying is {kind:'block', key, meta, ent} or {kind:'mob', type, hp, data}.
 #include "render/char_layer.h"

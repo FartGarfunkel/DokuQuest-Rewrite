@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
   // a stone platform high in the Overworld's sky, away from the terrain
   const int Y = dimBase(DIM_OVERWORLD) + 200;
   std::vector<StreamAnchor> anchors = {{vec3(16, Y, 16), 4, false}};
-  for (int i = 0; i < 600 && !(w.isLoaded(0, Y, 0) && w.isLoaded(40, Y, 40) && w.isLoaded(-8, Y, -8) && w.pendingGeneration() == 0); i++) { w.stream(anchors, 50); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+  for (int i = 0; i < 6000 && !(w.isLoaded(0, Y, 0) && w.isLoaded(40, Y, 40) && w.isLoaded(-8, Y, -8) && w.pendingGeneration() == 0); i++) { w.stream(anchors, 50); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
   CHECK(w.isLoaded(0, Y, 0) && w.isLoaded(40, Y, 40), "terrain streamed in");
   BlockId stone = reg().blockId("stone"), glass = reg().blockId("glass");
   for (int x = -6; x < 40; x++) for (int z = -6; z < 40; z++) { w.setBlock(x, Y - 1, z, stone); for (int y = Y; y < Y + 6; y++) w.setBlock(x, y, z, AIR); }

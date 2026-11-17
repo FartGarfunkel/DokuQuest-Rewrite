@@ -89,6 +89,10 @@ bool Registry::loadBase(const fs::path& dir) {
       // and a few things of a kind we have (its imported voice): merged field by field
       if (j->contains("mobPatch") && mobs.is_object()) for (auto& [k, v] : (*j)["mobPatch"].items()) if (mobs.contains(k) && v.is_object()) mobs[k].update(v);
     } }
+  // what the imported creatures can be (carried, tamed, ridden; in the water or in and out of it: sim/creature.h), kept
+  // apart from the import file, which its tool writes afresh; merged field by field over whatever kind is there
+  if (auto t = readJson(dir / "mob_traits.json"); t && t->is_object() && mobs.is_object())
+    for (auto& [k, v] : t->items()) if (mobs.contains(k) && v.is_object()) mobs[k].update(v);
   finalize();
   DQ_LOG("registry: %zu blocks, %zu items, %zu recipes, %zu tiles", blocks.size(), items.size(), recipes.size(), tileIndex.size());
   return true;

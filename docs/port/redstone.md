@@ -26,7 +26,7 @@ trains, machines, TNT and save/load).
   `bool vehicleInput(Level&, Player&, vec2 move, bool jump, bool sneak)` every frame — true while riding (skip walking);
   `void vehiclesAfterPlayerMove(Level&, Player&, double dt)` after the player moved (seats, boat/deck standing, solid hulls);
   `vehiclePick`, `useVehicle`, `hurtVehicle(lv, e, attacker, blast)` (combat; a plain hp drop also counts as a hit),
-  `loadVehicle/unloadVehicle` (Carry On), `windOf(lv)`, `spawnBoat`, `placeCart`, `cartAt`.
+  `loadVehicle/unloadVehicle` (carried things), `windOf(lv)`, `spawnBoat`, `placeCart`, `cartAt`.
 - Events: `screenOpen` [player, "container", {pos:[x,y,z]} | {entity:id, name}] (hoppers, dispensers, chest carts/boats);
   `explode` [x,y,z,power,realm]; `skillGain` [owner, skill, xp] (crusher/harvester); `blockPlace` before placing.
 - Sounds: the original sfx names; note blocks play `note:<material of the block below>` with pitch 2^(n/12).
@@ -66,5 +66,5 @@ trains, machines, TNT and save/load).
 ## Left to do
 - The ship/boat water mask (hide water inside hulls, a depth-only lid in boats2.js).
 - Riding on joined clients (vehicles are ghosts there: forward input with `lv.net->action`), net `ride/own/unown`.
-- Carry On wiring (gameplay); torch placement stays with gameplay rules.
+- Carried-things wiring (gameplay); torch placement stays with gameplay rules.
 - trains.js pets: creatures must honour `riding`/`data.mountedOn`; travel.js carriage; seas.js.

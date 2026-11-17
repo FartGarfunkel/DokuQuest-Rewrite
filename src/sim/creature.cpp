@@ -58,6 +58,18 @@ static CreatureType parseType(const std::string& key, const json& j) {
   B(spit) B(curls) B(roosts) B(perches) B(stings) B(school) B(puffs) B(playful) B(needsAir) B(playsDead) B(frogTongue) B(ambient) B(displays)
   B(bear) B(snake) B(dayNeutral) B(noPush) B(fleesSun) B(npc) B(noDismember) B(carry) B(spirit) B(phase)
 #undef B
+  // carrying, taming, riding, water (see CreatureType)
+  if (j.contains("carry")) { const json& c = j["carry"]; if (c.is_string()) t.carryMode = c.get<std::string>(); else if (c.is_boolean() && c.get<bool>()) t.carryMode = "any"; }
+  if (t.carryMode != "any" && t.carryMode != "pet" && t.carryMode != "basket") t.carryMode.clear();
+  t.carry = t.carryMode == "any" || t.carryMode == "pet";
+  if (j.contains("tame") && j["tame"].is_object()) {
+    const json& tm = j["tame"];
+    if (tm.contains("foods") && tm["foods"].is_array()) for (auto& e : tm["foods"]) if (e.is_string() && reg().item(e.get<std::string>())) t.tameFoods.push_back(e);
+    t.tameChance = tm.value("chance", 0.3f);
+  }
+  if (j.contains("mount") && j["mount"].is_object()) { t.mount = true; t.mountSpeed = j["mount"].value("speed", 7.f); t.mountJump = j["mount"].value("jump", 8.f); }
+  t.aquatic = j.contains("aquatic") ? b("aquatic") : (t.water && t.swims && !t.walks);
+  t.amphibious = j.contains("amphibious") ? b("amphibious") : (!t.aquatic && t.ai == "amphibian");
   if (j.contains("tint") && j["tint"].is_array() && j["tint"].size() >= 4) { t.hasTint = true; for (int i = 0; i < 4; i++) t.tint[i] = j["tint"][i].get<float>(); }
   if (j.contains("drops") && j["drops"].is_array())
     for (auto& d : j["drops"]) if (d.is_array() && d.size() >= 4 && d[0].is_string() && reg().item(d[0].get<std::string>()))
@@ -980,7 +992,7 @@ void Creature::update(Level& lv, float dt) {
   idleHabits(lv, dt, want);
   fallV = vel.y;
   float hs = std::hypot(vel.x, vel.z);
-  if (climbing || surf) hs = glm::length(vel);   // (climbing: the legs keep walking)
+  if (climbing || surf || (inWater && T->swims)) hs = glm::length(vel);   // (climbing: the legs keep walking; swimming up or down, the tail beats)
   walkAmt += (std::min(1.f, hs / 2) - walkAmt) * std::min(1.f, dt * 6);
   walk += hs * dt * (type == "deer" ? 2.2f : 3.2f);
   if (swingT > 0) swingT -= dt;
