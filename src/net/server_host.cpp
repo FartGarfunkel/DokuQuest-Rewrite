@@ -435,6 +435,7 @@ void ServerHost::update(Level& lv, double dt) {
     switch (ev.type) {
       case ENET_EVENT_TYPE_CONNECT: {
         Peer p; p.id = nextPeerId++; p.enet = ev.peer; p.addr = peerAddress(ev.peer); p.joinedAt = nowSeconds();
+        if (p.addr == "127.0.0.1") if (std::string r = tcpRelay.realAddress(ev.peer->address.port); !r.empty()) p.addr = r;   // (over TCP: who it really is)
         ev.peer->data = (void*)(uintptr_t)p.id;
         enet_peer_timeout(ev.peer, 0, 10000, 30000);   // half a minute without a word: they've gone (NET_SILENT)
         peers[p.id] = p;

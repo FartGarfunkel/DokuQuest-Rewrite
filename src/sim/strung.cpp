@@ -70,6 +70,13 @@ vec3 strungPoint(Level& lv, const Strung& s, float t) {
   return glm::mix(a, b, t) - vec3(0, strungSag(s, len) * k * 4 * t * (1 - t), 0);
 }
 
+void strungAdd(Level& lv, int realm, ivec3 a, ivec3 b, bool chain) {
+  Strung s; s.realm = realm; s.a = a; s.b = b; s.chain = chain;
+  u32 id = lv.info.data.value("strungNext", 1u); lv.info.data["strungNext"] = id + 1; s.id = id;
+  rec(lv).push_back(toJson(s));
+  if (lv.events) lv.events->emit("netBroadcast", json::array({"strungSync", rec(lv)}));
+}
+
 namespace {
 class StrungSystem : public LevelSystem {
 public:
@@ -94,6 +101,7 @@ public:
   void fresh() { if (dirty) rebuild(); }
   void tick(Level&, double dt) override {
     if (!movingBodiesList(lv).empty() && !rec(lv).empty()) dirty = true;   // (an end may be riding a moving piece)
+    if (rec(lv).size() != lastN) { lastN = rec(lv).size(); dirty = true; }   // (an end may be riding a moving piece)
     if (dirty) rebuild();
     if (lv.isRemote()) return;
     if ((checkT += dt) < 1.0) return;
@@ -140,7 +148,7 @@ public:
 
 private:
   Level& lv; int hUse = -1, hAct = -1, hSync = -1, hMoved = -1;
-  double checkT = 0, syncT = 0; bool dirty = true;
+  double checkT = 0, syncT = 0; bool dirty = true; size_t lastN = 0;
   std::map<int, std::vector<DBox>> boxes;
   std::map<int, std::vector<std::vector<vec3>>> steep;
 

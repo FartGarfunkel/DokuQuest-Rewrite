@@ -1,6 +1,10 @@
 // net/tcp_relay.cpp — see tcp_relay.h. ENet's socket calls, so it works the same on Linux, Windows and Android.
+#ifdef _WIN32
+#define FD_SETSIZE 256   // (Windows' default 64 would cap the server at ~31 TCP players; must come before the socket headers)
+#endif
 #include "net/tcp_relay.h"
 #include <enet/enet.h>
+#include <chrono>
 #include <algorithm>
 
 namespace dq::net {
@@ -65,10 +69,12 @@ void TcpRelayServer::stop() {
   if (th.joinable()) th.join();
   if (listener != -1) { enet_socket_destroy(S(listener)); listener = -1; }
 }
+std::string TcpRelayServer::realAddress(u16 loopPort) { std::lock_guard<std::mutex> lk(mx); auto it = real.find(loopPort); return it == real.end() ? std::string() : it->second; }
 std::vector<std::string> TcpRelayServer::takeLog() { std::lock_guard<std::mutex> lk(mx); auto v = std::move(log); log.clear(); return v; }
 
 void TcpRelayServer::run() {
-  struct Conn { ENetSocket tcp, udp; std::string in, out, who; };
+  struct Conn { ENetSocket tcp, udp; std::string in, out, who; u16 loop = 0; double heard = 0; };
+  auto now = [] { return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); };
   std::vector<Conn> conns;
   ENetAddress gameAt; gameAt.port = game; enet_address_set_host_ip(&gameAt, "127.0.0.1");
   auto say = [&](const std::string& l) { std::lock_guard<std::mutex> lk(mx); log.push_back(l); };
@@ -82,17 +88,21 @@ void TcpRelayServer::run() {
       if (t != ENET_SOCKET_NULL) {
         enet_socket_set_option(t, ENET_SOCKOPT_NONBLOCK, 1);
         enet_socket_set_option(t, ENET_SOCKOPT_NODELAY, 1);
-        ENetSocket u = loopUdp(nullptr);
+        u16 loop = 0; ENetSocket u = loopUdp(&loop);
         char ip[64] = "?"; enet_address_get_host_ip(&from, ip, sizeof ip);
-        if (u == ENET_SOCKET_NULL || conns.size() >= 64) enet_socket_destroy(t);
-        else { conns.push_back({t, u, {}, {}, std::string(ip) + ":" + std::to_string(from.port)}); say("Heard from " + conns.back().who + " over TCP (someone trying to join)"); }
+        if (u == ENET_SOCKET_NULL || conns.size() >= 64) { enet_socket_destroy(t); if (u != ENET_SOCKET_NULL) enet_socket_destroy(u); }
+        else {
+          conns.push_back({t, u, {}, {}, std::string(ip) + ":" + std::to_string(from.port), loop, now()});
+          { std::lock_guard<std::mutex> lk(mx); real[loop] = ip; }
+          say("Heard from " + conns.back().who + " over TCP (someone trying to join)");
+        }
       }
     }
     for (size_t i = 0; i < conns.size();) {
       Conn& c = conns[i];
       bool alive = true;
       if (ENET_SOCKETSET_CHECK(rs, c.tcp)) {
-        alive = readTcp(c.tcp, c.in);
+        alive = readTcp(c.tcp, c.in); c.heard = now();
         frames(c.in, [&](const char* d, size_t n) { ENetBuffer b; b.data = (void*)d; b.dataLength = n; enet_socket_send(c.udp, &gameAt, &b, 1); });
       }
       if (alive && ENET_SOCKETSET_CHECK(rs, c.udp))
@@ -104,7 +114,15 @@ void TcpRelayServer::run() {
           frameTo(c.out, buf, (size_t)n);
         }
       if (alive) alive = flush(c.tcp, c.out) && c.out.size() < (8u << 20);
-      if (!alive) { say("The TCP connection from " + c.who + " closed"); enet_socket_destroy(c.tcp); enet_socket_destroy(c.udp); conns.erase(conns.begin() + i); continue; }
+      // a game in touch sends twice a second; a minute of nothing: it's gone without closing (a phone that lost its signal,
+      // a half-open probe), so its slot is freed
+      const bool idle = now() - c.heard > 60;
+      if (!alive || idle) {
+        say("The TCP connection from " + c.who + (idle ? " went quiet: closed" : " closed"));
+        enet_socket_destroy(c.tcp); enet_socket_destroy(c.udp);
+        { std::lock_guard<std::mutex> lk(mx); real.erase(c.loop); }
+        conns.erase(conns.begin() + i); continue;
+      }
       i++;
     }
   }
@@ -130,8 +148,21 @@ void TcpRelayClient::run(std::string host, u16 port) {
   if (enet_address_set_host(&at, host.c_str()) != 0) { dead = true; return; }
   ENetSocket t = enet_socket_create(ENET_SOCKET_TYPE_STREAM);
   if (t == ENET_SOCKET_NULL) { dead = true; return; }
-  if (enet_socket_connect(t, &at) < 0) { enet_socket_destroy(t); dead = true; DQ_WARN("net: TCP to %s:%u failed too", host.c_str(), (unsigned)port); return; }
+  // connect without blocking, a little at a time, so leaving the join never waits on it (a dropped handshake would
+  // otherwise hold for two minutes); 8 seconds in all
   enet_socket_set_option(t, ENET_SOCKOPT_NONBLOCK, 1);
+  enet_socket_connect(t, &at);   // (in progress)
+  bool up = false;
+  for (int k = 0; k < 160 && running; k++) {
+    ENetSocketSet ws; ENET_SOCKETSET_EMPTY(ws); ENET_SOCKETSET_ADD(ws, t);
+    const int r = enet_socketset_select(t, nullptr, &ws, 50);
+    if (r < 0) break;
+    if (r > 0 && ENET_SOCKETSET_CHECK(ws, t)) {
+      int e = 0; enet_socket_get_option(t, ENET_SOCKOPT_ERROR, &e);
+      up = e == 0; break;
+    }
+  }
+  if (!up) { enet_socket_destroy(t); dead = true; if (running) DQ_WARN("net: TCP to %s:%u failed too", host.c_str(), (unsigned)port); return; }
   enet_socket_set_option(t, ENET_SOCKOPT_NODELAY, 1);
   DQ_LOG("net: connected to %s:%u over TCP", host.c_str(), (unsigned)port);
   std::string in, out; ENetAddress game{}; bool haveGame = false;

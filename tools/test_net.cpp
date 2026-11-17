@@ -329,6 +329,13 @@ int main(int argc, char** argv) {
       check(pump(4, [&] { return B.ghost("player", "Tess") != nullptr; }), "and the others see them, as any player");
     }
     T.close();
+    // the case from a real home: not one UDP packet gets through, TCP does. The UDP attempt waits 4 s, then TCP takes over.
+    net::NetClient U; net::JoinOptions u; u.address = addr; u.name = "Uma"; u.testUdpLost = true;
+    const double t0 = nowSeconds();
+    const bool ok2 = U.connect(u);
+    check(ok2 && U.overTcp(), strFormat("UDP lost on the way: the join goes through over TCP (%.1f s)", nowSeconds() - t0));
+    if (ok2) check(pump(4, [&] { return B.ghost("player", "Uma") != nullptr; }), "and she plays like anyone else");
+    U.close();
   }
 
   // ---- chat & commands ----

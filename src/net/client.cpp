@@ -58,11 +58,14 @@ public:
 NetClient::NetClient() {}
 NetClient::~NetClient() {
   // the level (and our player) may already be gone: only the connection is closed here (close() says goodbye properly)
+  dropTcpTry();
   if (host) {
     if (peer) { if (st == State::Ready) send(peer, BYE, lastSave.is_null() ? json::object() : json{{"pl", lastSave}}); enet_host_flush(host); enet_peer_disconnect_now(peer, BYE_NORMAL); }
     enet_host_destroy(host); host = nullptr; peer = nullptr;
+    tcp.reset();   // (before the network is shut: its thread still uses it)
     enetDone();
   }
+  tcp.reset();
 }
 
 void NetClient::sendTo(Msg ty, const json& m, int channel, bool reliable) {
@@ -107,6 +110,7 @@ bool NetClient::begin(const JoinOptions& o) {
   ENetAddress a;
   if (enet_address_set_host(&a, h.c_str()) != 0) { err = "Could not find " + h; st = State::Failed; return false; }
   a.port = (enet_uint16)port;
+  if (o.testUdpLost) { enet_address_set_host_ip(&a, "127.0.0.1"); a.port = 9; }   // (the discard port: nothing ever answers)
   peer = enet_host_connect(host, &a, CHANNELS, 0);
   if (!peer) { err = "Could not connect to that address"; st = State::Failed; return false; }
   enet_peer_timeout(peer, 0, 10000, 30000);
@@ -124,12 +128,35 @@ float NetClient::progress() const {
   }
 }
 
+void NetClient::dropTcpTry() {
+  if (host2) { if (peer2) enet_peer_reset(peer2); enet_host_destroy(host2); host2 = nullptr; peer2 = nullptr; tcp.reset(); }
+}
+
 NetClient::State NetClient::poll() {
   if (!host || st == State::Ready || st == State::Failed || st == State::Closed) return st;
   ENetEvent ev;
+  // the TCP attempt, while the UDP one goes on: the first to get through is kept, the other let go
+  if (host2) {
+    bool won = false;
+    while (host2 && enet_host_service(host2, &ev, 0) > 0) {
+      if (ev.type == ENET_EVENT_TYPE_CONNECT) { won = true; break; }
+      if (ev.type == ENET_EVENT_TYPE_RECEIVE) enet_packet_destroy(ev.packet);
+      if (ev.type == ENET_EVENT_TYPE_DISCONNECT) { DQ_LOG("net: the TCP attempt was turned away"); dropTcpTry(); break; }
+    }
+    if (won) {
+      if (peer) enet_peer_reset(peer);
+      enet_host_destroy(host);
+      host = host2; peer = peer2; host2 = nullptr; peer2 = nullptr;
+      DQ_LOG("net: the host answered over TCP: going on that way");
+      heardAt = nowSeconds();
+      st = State::Joining;
+      send(peer, HELLO, {{"proto", PROTO}, {"version", DQ_VERSION}, {"name", opts.name}, {"skin", opts.skin}, {"skinData", opts.skinData}, {"password", opts.password}, {"R", opts.viewDistance}, {"sub", subMode}});
+    } else if (tcp && tcp->failed() && host2) { DQ_LOG("net: TCP got no answer either"); dropTcpTry(); }
+  }
   while (host && enet_host_service(host, &ev, 0) > 0) {
     heardAt = nowSeconds();   // anything at all from the host: it's there, and the world is still coming
     if (ev.type == ENET_EVENT_TYPE_CONNECT) {
+      if (host2) { DQ_LOG("net: the host answered over UDP after all"); dropTcpTry(); }
       st = State::Joining;
       send(peer, HELLO, {{"proto", PROTO}, {"version", DQ_VERSION}, {"name", opts.name}, {"skin", opts.skin}, {"skinData", opts.skinData}, {"password", opts.password}, {"R", opts.viewDistance}, {"sub", subMode}});
     } else if (ev.type == ENET_EVENT_TYPE_RECEIVE) {
@@ -152,21 +179,25 @@ NetClient::State NetClient::poll() {
     }
   }
   const double now = nowSeconds();
-  // no answer over UDP: some home connections let TCP in but drop UDP from outside, so carry on over TCP
-  if (st == State::Connecting && !tcp && opts.tcpAfter >= 0 && (opts.tcpOnly || now - startedAt > opts.tcpAfter)) {
+  // no answer over UDP: some home connections let TCP in from outside but drop UDP. Try TCP alongside (the UDP attempt
+  // goes on too: a host slow to answer over UDP still gets through that way); whichever answers first is kept.
+  if (st == State::Connecting && !triedTcp && opts.tcpAfter >= 0 && (opts.tcpOnly || now - startedAt > opts.tcpAfter)) {
+    triedTcp = true;
     std::string h; int pt = 0;
     if (parseAddress(opts.address, h, pt)) {
       auto r = std::make_unique<TcpRelayClient>();
       if (r->start(h, (u16)pt)) {
-        ENetAddress a; enet_address_set_host_ip(&a, "127.0.0.1"); a.port = r->localPort();
-        if (peer) enet_peer_reset(peer);
-        peer = enet_host_connect(host, &a, CHANNELS, 0);
-        // (from here every answer comes through the TCP connection: a late UDP answer must not move us back to UDP)
-        if (peer) { host->intercept = nullptr; enet_peer_timeout(peer, 0, 10000, 30000); tcp = std::move(r); startedAt = now; DQ_LOG("net: no answer over UDP: trying %s:%d over TCP", h.c_str(), pt); }
+        host2 = enet_host_create(nullptr, 1, CHANNELS, 0, 0);
+        if (host2) {
+          host2->mtu = 1200;
+          ENetAddress a; enet_address_set_host_ip(&a, "127.0.0.1"); a.port = r->localPort();
+          peer2 = enet_host_connect(host2, &a, CHANNELS, 0);
+          if (peer2) { enet_peer_timeout(peer2, 0, 10000, 30000); tcp = std::move(r); startedAt = now; DQ_LOG("net: no answer over UDP yet: trying %s:%d over TCP as well", h.c_str(), pt); }
+          else { enet_host_destroy(host2); host2 = nullptr; }
+        }
       }
     }
   }
-  if (tcp && tcp->failed() && st == State::Connecting) { err = "No answer from that address over UDP or TCP. The host's router must forward that port (UDP and TCP) to the host's computer"; st = State::Failed; }
   if (st == State::Connecting && now - startedAt > opts.timeout) {
     std::string h; int pt = 0; parseAddress(opts.address, h, pt);
     // a home-network address (192.168.x.x, 10.x.x.x, 172.16-31.x.x) only reaches a computer in that same home: from
@@ -177,13 +208,14 @@ NetClient::State NetClient::poll() {
     };
     err = privateAddr(h)
       ? "No answer from " + h + ". That's an address inside the host's home: it only works on the host's own Wi-Fi. From mobile data or another house, join by the host's internet address (the host can find it by searching \"what is my IP\")"
-      : "No answer from that address. On the internet: the host's router must forward that port as UDP (not TCP) to the host's computer, and its firewall must let UDP in";
+      : triedTcp ? "No answer from that address over UDP or TCP. On the internet: the host's router must forward that port (UDP, and TCP too) to the host's computer, and its firewall must let them in"
+                 : "No answer from that address. On the internet: the host's router must forward that port as UDP to the host's computer, and its firewall must let UDP in";
     st = State::Failed;
   } else if (st == State::Joining && (now - heardAt > opts.quiet || now - startedAt > opts.joinCap)) {
     err = "The host stopped answering while sending the world";
     st = State::Failed;
   }
-  if (st == State::Failed) { if (peer) enet_peer_reset(peer); peer = nullptr; DQ_WARN("net: join failed: %s", err.c_str()); }
+  if (st == State::Failed) { dropTcpTry(); if (peer) enet_peer_reset(peer); peer = nullptr; DQ_WARN("net: join failed: %s", err.c_str()); }
   if (st == State::Ready) DQ_LOG("net: joined '%s' (%d changed chunks)", serverName.c_str(), gotRecords);
   return st;
 }
@@ -351,6 +383,7 @@ bool NetClient::addCouch(Player& p, const json& skinData) {
   auto c = std::make_unique<NetClient>();
   c->subMode = true; c->subMe = &p; c->lv = lv;
   JoinOptions o = opts; o.name = p.name; o.skin = p.skin; o.skinData = skinData; o.viewDistance = 2;
+  o.tcpOnly = overTcp();   // (our way in was TCP: theirs goes that way at once)
   if (!c->begin(o)) return false;
   DQ_LOG("net: %s joins on a link of their own", p.name.c_str());
   subs.push_back(std::move(c));
@@ -695,7 +728,8 @@ void NetClient::close(const std::string& why) {
     if (peer) enet_peer_reset(peer);
     enet_host_destroy(host);
     host = nullptr; peer = nullptr;
-    tcp.reset();   // (the TCP connection, if it went that way)
+    dropTcpTry();
+    tcp.reset();   // (the TCP connection, if it went that way; before the network is shut: its thread still uses it)
     enetDone();
   }
   if (lv && watch) for (auto& [r, w] : lv->allRealms()) {

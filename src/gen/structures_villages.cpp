@@ -744,7 +744,87 @@ static void townWall(SP& P, const Town& v, const VStyle& st) {
       const int lx = tx - (sideX ? ix : 0), lz = tz - (sideX ? 0 : iz);
       if (P.in(lx, lz)) for (int y = h + 1; y <= h + TH; y++) P.put(lx, y, lz, "ladder", sideX ? (ix > 0 ? 3 : 1) : (iz > 0 ? 0 : 2));
     }
+    // a lift up the middle of a stone tower to the wall walk (moving structures §5): a Slider in the floor under a slab, a
+    // Lift Rail up the side, a Lift Stop at the bottom and at the top (sim/lift.h)
+    if (stone && bid("lift_rail") != NOBLOCK) {
+      const int px = sideX ? 0 : 1, pz = sideX ? 1 : 0;   // (across from the way in, beside the ladder's column)
+      if (P.in(tx, tz)) {
+        const int i = P.put(tx, h, tz, "slider", 1); P.setEntity(i, json{{"type", "machine_state"}, {"glue", 1 << 2}});
+        const int j = P.put(tx, h + 1, tz, PLK("spruce_slab", st.slab), 0); P.setEntity(j, json{{"glue", 1 << 3}});   // (glued down to the slider)
+        P.put(tx, h + H, tz, "air");   // (a shaft through the floor)
+      }
+      if (P.in(tx + px, tz + pz)) for (int y = h; y <= h + H; y++) P.put(tx + px, y, tz + pz, "lift_rail");
+      if (P.in(tx + 2 * px, tz + 2 * pz)) { P.put(tx + 2 * px, h + 1, tz + 2 * pz, "lift_stop"); P.put(tx + 2 * px, h + H, tz + 2 * pz, "lift_stop"); }
+    }
     if (P.in(tx, tz)) P.put(tx, h + TH + (stone ? 1 : 0), tz, "lantern");
+  }
+}
+
+// glue mask of a cell in a piece: a bit per face (0 east, 1 west, 2 up, 3 down, 4 south, 5 north: sim/glue.h) toward each
+// neighbour that's in the piece too
+static int glueTo(const std::set<std::array<int, 3>>& piece, int x, int y, int z) {
+  static const int D[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+  int m = 0;
+  for (int f = 0; f < 6; f++) if (piece.count({x + D[f][0], y + D[f][1], z + D[f][2]})) m |= 1 << f;
+  return m;
+}
+static int faceOf(int dx, int dy, int dz) { return dx > 0 ? 0 : dx < 0 ? 1 : dy > 0 ? 2 : dy < 0 ? 3 : dz > 0 ? 4 : 5; }
+static u8 sixWayOf(int dx, int dy, int dz) { return dy < 0 ? 0 : dy > 0 ? 1 : dz < 0 ? 2 : dz > 0 ? 3 : dx < 0 ? 4 : 5; }   // (0 down 1 up 2 north 3 south 4 west 5 east)
+
+// moving structures stage 6 (docs/superpowers/specs/2026-11-16-moving-structures-design.md §5): a new town's gate. A stone
+// wall's: an iron-bar portcullis hung from a Slider in the arch, raised 3 into a slot above the way (the town lowers it at
+// night, sim/villager_life.cpp); where water lies before it, a plank drawbridge on a Hinge at the threshold, lowered.
+// A palisade's: two timber leaves, each on a Hinge under the road at its outer edge, shut (the town swings them open by day).
+static void townMovingGate(SP& P, const Town& v, const VStyle& st, const GateCells& G) {
+  const bool along = G.d == 0 || G.d == 2, stone = v.wall.kind == "stone";
+  const int g = G.hw + 1, h0 = G.h0;
+  auto col = [&](int s) { return std::array<int, 2>{along ? G.cx + s : G.cx, along ? G.cz : G.cz + s}; };
+  auto putGlued = [&](int x, int y, int z, const std::string& key, u8 meta, const std::set<std::array<int, 3>>& piece, int extra, json rec = json::object()) {
+    if (!P.in(x, z)) return;
+    const int i = P.put(x, y, z, key, meta);
+    rec["glue"] = glueTo(piece, x, y, z) | extra;
+    P.setEntity(i, rec);
+  };
+  if (stone) {
+    // the slot over the way, the lintel above it, the slider in the lintel's middle facing down
+    std::set<std::array<int, 3>> bars;
+    for (int s = -g; s <= g; s++) for (int y = h0 + 4; y <= h0 + 8; y++) { const auto c = col(s); bars.insert({c[0], y, c[1]}); }
+    const auto m = col(0);
+    for (int s = -g; s <= g; s++) {
+      const auto c = col(s);
+      if (!P.in(c[0], c[1])) continue;
+      for (int y = h0 + 1; y <= h0 + 3; y++) P.put(c[0], y, c[1], "air");
+      for (int y = h0 + 4; y <= h0 + 8; y++) putGlued(c[0], y, c[1], "iron_bars", 0, bars, s == 0 && y == h0 + 8 ? 1 << 2 : 0);
+      if (s != 0) P.put(c[0], h0 + 9, c[1], PLK("stone_bricks", st.stone));
+      if ((s + g) % 2 == 0) P.put(c[0], h0 + 10, c[1], PLK("stone_bricks", st.stone));
+    }
+    if (P.in(m[0], m[1])) { const int i = P.put(m[0], h0 + 9, m[1], "slider", 0); P.setEntity(i, json{{"type", "machine_state"}, {"glue", 1 << 3}, {"distance", 3}}); }
+    // a drawbridge where the land before the gate is under water
+    bool wet = false;
+    for (int k = 2; k <= 4; k++) { const int x = G.cx - G.inX * k, z = G.cz - G.inZ * k; if (P.ground(x, z) < SEA_LEVEL) wet = true; }
+    if (wet) {
+      const int L = 5, ox = -G.inX, oz = -G.inZ;
+      std::set<std::array<int, 3>> deck;
+      for (int k = 1; k <= L; k++) for (int s = -G.hw; s <= G.hw; s++) { const auto c = col(s); deck.insert({c[0] + ox * k, h0, c[1] + oz * k}); }
+      for (auto& d : deck) {
+        if (!P.in(d[0], d[2])) continue;
+        const bool first = d[0] == m[0] + ox && d[2] == m[1] + oz;
+        putGlued(d[0], d[1], d[2], PLK("spruce_planks", st.planks), 0, deck, first ? 1 << faceOf(-ox, 0, -oz) : 0);
+        for (int y = d[1] + 1; y <= d[1] + 6; y++) P.put(d[0], y, d[2], "air");
+      }
+      if (P.in(m[0], m[1])) { const int i = P.put(m[0], h0, m[1], "hinge", sixWayOf(ox, 0, oz)); P.setEntity(i, json{{"type", "machine_state"}, {"glue", 1 << faceOf(ox, 0, oz)}, {"quarters", 1}, {"draw", true}}); }
+    }
+  } else {
+    // two leaves, shut: the west/north one from -g to 0, the other from 1 to g, each on a hinge under its outer column
+    const std::string wood = PLK("spruce_planks", st.planks);
+    for (int side : {-1, 1}) {
+      std::set<std::array<int, 3>> leaf;
+      const int s0 = side < 0 ? -g : 1, s1 = side < 0 ? 0 : g;
+      for (int s = s0; s <= s1; s++) for (int y = h0 + 1; y <= h0 + 5; y++) { const auto c = col(s); leaf.insert({c[0], y, c[1]}); }
+      const auto outer = col(side < 0 ? -g : g);
+      for (auto& c : leaf) putGlued(c[0], c[1], c[2], wood, 0, leaf, c[0] == outer[0] && c[2] == outer[1] && c[1] == h0 + 1 ? 1 << 3 : 0);
+      if (P.in(outer[0], outer[1])) { const int i = P.put(outer[0], h0, outer[1], "hinge", 1); P.setEntity(i, json{{"type", "machine_state"}, {"glue", 1 << 2}, {"quarters", 1}}); }
+    }
   }
 }
 
@@ -758,12 +838,14 @@ static void townGates(SP& P, const Town& v, const VStyle& st) {
     P.setEntity(i, json{{"type", "sign"}, {"lines", L}});
   };
   const BlockId BAR = bid("gate_barrier");
+  const bool moving = bid("slider") != NOBLOCK && bid("hinge") != NOBLOCK;   // (moving gates: townMovingGate)
   for (const GateCells& G : gatesOf(v)) {
     for (const auto& [x, y, z] : G.cells) if (P.in(x, z)) {
       const BlockId id = P.get(x, y, z);
-      if (id == AIR || !tSolid(id) || reg().tShape[id] == ShapeKind::Gate) P.putId(x, y, z, BAR);
+      if (!moving && (id == AIR || !tSolid(id) || reg().tShape[id] == ShapeKind::Gate)) P.putId(x, y, z, BAR);
       if (y == G.h0 + 1) { const BlockId below = P.get(x, y - 1, z); if (below == AIR || !tSolid(below)) P.put(x, y - 1, z, !st.path.empty() ? st.path[0] : std::string("gravel")); }
     }
+    if (moving) townMovingGate(P, v, st, G);
     const int cx = G.cx, cz = G.cz, h = G.h0; const bool along = G.d == 0 || G.d == 2;
     {
       const int s = G.hw + 1, lx = cx + (along ? s : 0) + G.inX, ly = h + 1, lz = cz + (along ? 0 : s) + G.inZ;

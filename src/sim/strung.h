@@ -13,6 +13,7 @@ std::vector<Strung> strungList(Level& lv);
 vec3 strungEnd(Level& lv, const Strung& s, bool second);   // where an end is now (on a moving piece: with it)
 vec3 strungPoint(Level& lv, const Strung& s, float t);      // along it, 0..1, sag included
 float strungSag(const Strung& s, float len);
+void strungAdd(Level& lv, int realm, ivec3 a, ivec3 b, bool chain);   // strung by the world itself (a town's drawbridge chains)
 void registerStrung();
 
 } // namespace dq

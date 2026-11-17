@@ -38,6 +38,7 @@ int machineFace(const World& w, ivec3 p) {
 
 json& machineState(World& w, ivec3 p) {
   json* e = w.blockEntity(p.x, p.y, p.z, true);
+  if (!e) { static thread_local json none; none = json::object(); return none; }   // (its land isn't loaded: nothing kept)
   if (!e->is_object()) *e = json::object();
   if (!e->contains("type")) (*e)["type"] = "machine_state";
   return *e;

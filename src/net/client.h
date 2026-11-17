@@ -24,6 +24,7 @@ struct JoinOptions {
   double quiet = 25, joinCap = 300;
   double tcpAfter = 4;       // no answer over UDP for this long: carry on over TCP instead (net/tcp_relay.h); <0 never
   bool tcpOnly = false;      // straight over TCP (tests)
+  bool testUdpLost = false;  // tests: the UDP attempt goes nowhere (a network that drops UDP from outside)
 };
 
 class NetClient : public LevelNet {
@@ -38,7 +39,7 @@ public:
   bool connect(const JoinOptions& o);
   State state() const { return st; }
   const std::string& error() const { return err; }
-  bool overTcp() const { return tcp != nullptr; }   // carried over TCP (net/tcp_relay.h)
+  bool overTcp() const { return tcp != nullptr && !host2; }   // carried over TCP (net/tcp_relay.h)
   float progress() const;
 
   // After Ready: the level to build (seed, world type, rules, time... remote = true), our saved body, and then
@@ -81,6 +82,10 @@ private:
   struct _ENetHost* host = nullptr;
   struct _ENetPeer* peer = nullptr;
   std::unique_ptr<TcpRelayClient> tcp;   // the connection carried over TCP (when UDP got no answer)
+  struct _ENetHost* host2 = nullptr;     // while both are tried: the TCP attempt's own connection (the UDP one goes on in `host`)
+  struct _ENetPeer* peer2 = nullptr;
+  bool triedTcp = false;
+  void dropTcpTry();
   State st = State::Idle;
   std::string err;
   JoinOptions opts;

@@ -9,6 +9,7 @@
 #include <atomic>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 
 namespace dq::net {
 
@@ -18,11 +19,13 @@ public:
   bool start(u16 tcpPort, u16 gamePort);   // false: the TCP port is taken (UDP joins still work)
   void stop();
   std::vector<std::string> takeLog();      // lines for the server's console (read on the server's own thread)
+  // the real address ("ip") of the player whose packets come from 127.0.0.1:loopPort (their relay socket), or ""
+  std::string realAddress(u16 loopPort);
 private:
   void run();
   std::thread th; std::atomic<bool> running{false};
   intptr_t listener = -1; u16 game = 0;
-  std::mutex mx; std::vector<std::string> log;
+  std::mutex mx; std::vector<std::string> log; std::unordered_map<u16, std::string> real;
 };
 
 class TcpRelayClient {
