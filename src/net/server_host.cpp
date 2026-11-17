@@ -5,6 +5,7 @@
 #include <mutex>
 #include <unordered_map>
 #include "net/server_host.h"
+#include "sim/world_spawn.h"
 #include "net/lan.h"
 #include "sim/creature.h"
 #include "sim/mount_gear.h"
@@ -285,20 +286,20 @@ bool ServerHost::teleport(const std::string& name, vec3 pos, int realm) {
   return true;
 }
 
+// under the sea where the land's plan has water over it (the Overworld)
+bool ServerHost::underSea(vec3 p) const {
+  if (dimOfY(ifloor(p.y)) != DIM_OVERWORLD || !level.gen) return false;
+  DimGenerator* g = level.gen->forDim(DIM_OVERWORLD);
+  if (!g) return false;
+  ColumnSample s; g->sample(ifloor(p.x), ifloor(p.z), s);
+  return s.water >= 0 && p.y < dimBase(DIM_OVERWORLD) + s.water;
+}
 vec3 ServerHost::spawnFor(const std::string& name) {
   if (!opts.dedicated)   // next to the host, like the original
     for (auto& e : level.entities()) if (!e->removed && e->isPlayer() && !e->ghost) return e->pos + vec3(1.2f, 0.2f, 0.6f);
-  vec3 sp = level.info.spawn;
-  if (sp.y < 0) {
-    DimGenerator* g = level.gen ? level.gen->forDim(DIM_OVERWORLD) : nullptr;
-    int sx = 0, sz = 0, h = g ? g->spawnHeight(0, 0) : 100;
-    for (int r = 0; r < 400 && g; r += 16) {
-      ColumnSample s; g->sample(r, r / 2, s);
-      if (s.height > 0 && s.water < 0) { sx = r; sz = r / 2; h = s.height + 1; break; }
-    }
-    sp = vec3(sx + 0.5f, dimBase(DIM_OVERWORLD) + h + 1, sz + 0.5f);
-    level.info.spawn = sp;
-  }
+  // a start an older server chose at the middle of the world, often on the sea floor (newcomers saw only black): chosen again
+  if (level.info.spawn.y >= 0 && underSea(level.info.spawn)) level.info.spawn.y = -1;
+  vec3 sp = chooseWorldSpawn(level);   // (a village's edge or dry land, as a single-player world starts: sim/world_spawn.h)
   int top = level.world().surfaceY(ifloor(sp.x), ifloor(sp.z), dimOfY((int)sp.y));
   if (top > 0) sp.y = (float)top + 1.1f;
   return sp;
@@ -348,7 +349,10 @@ void ServerHost::welcome(Peer& p, const json& m) {
   pl->name = name; pl->skin = p.skin;
   json saved = level.loadPlayer(name);
   bool known = saved.is_object();
-  if (known) { pl->load(saved); pl->name = name; pl->skin = p.skin.empty() ? pl->skin : p.skin; }
+  if (known) {
+    pl->load(saved); pl->name = name; pl->skin = p.skin.empty() ? pl->skin : p.skin;
+    if (pl->realm == REALM_MAIN && underSea(pl->pos)) { pl->pos = spawnFor(name); pl->vel = vec3(0); }   // (left on the sea floor by an older server's start)
+  }
   else { pl->mode = level.info.mode; pl->pos = spawnFor(name); }
   pl->ghost = true; pl->netPos = pl->pos; pl->netYaw = pl->yaw; pl->id = 0;
   p.pl = static_cast<Player*>(level.spawn(std::move(pl)));

@@ -24,6 +24,7 @@
 #include "client/photo_mode.h"
 #include "gen/structures_api.h"
 #include "sim/rules.h"
+#include "sim/world_spawn.h"
 #include <imgui.h>
 
 namespace dq {
@@ -126,28 +127,7 @@ void GameSession::spawnPlayer() {
     float yaw = 0;
     const char* at = std::getenv("DQ_SPAWN_AT");   // tests: "x,y,z" or a structure kind (gen/structures_api.h)
     if (at && level->gen && debugSpawnPoint(*level->gen, at, sp, yaw)) p->yaw = yaw;
-    else if (sp.y < 0 && level->gen && !rule(*level, "startInWild") && level->info.worldType != "floating" && villageStartPoint(*level->gen, sp, yaw)) { level->info.spawn = sp; p->yaw = yaw; }   // villages.js: a new world starts at a village's edge (not over the void: Floating Islands looks for an island below)
-    if (sp.y < 0 && level->gen && rule(*level, "startInWild") && wildStartPoint(*level->gen, sp)) level->info.spawn = sp;   // World setting "Start in the wild"
-    if (sp.y < 0) {
-      DimGenerator* g = level->gen->forDim(DIM_OVERWORLD);
-      int sx = 0, sz = 0, h = g ? g->spawnHeight(0, 0) : 100;
-      // look for dry land near the origin, like the original
-      for (int r = 0; r < 400 && g; r += 16) {
-        ColumnSample s; g->sample(r, r / 2, s);
-        if (s.height > 0 && s.water < 0) { sx = r; sz = r / 2; h = s.height + 1; break; }
-      }
-      if (level->info.worldType == "floating" && g) {   // the middle of an island: every way round has ground under it
-        bool found = false;
-        for (int r = 0; r < 1600 && !found; r += 24) for (int a = 0; a < 8 && !found; a++) {
-          const int x = (int)(std::cos(a * 0.785f) * r), z = (int)(std::sin(a * 0.785f) * r);
-          ColumnSample s; g->sample(x, z, s); if (s.height <= 0 || s.floatBottom < 0) continue;
-          bool ok = true; for (int d = 0; d < 4 && ok; d++) { ColumnSample q; g->sample(x + (d == 0 ? 8 : d == 1 ? -8 : 0), z + (d == 2 ? 8 : d == 3 ? -8 : 0), q); ok = q.height > 0 && q.floatBottom >= 0; }
-          if (ok) { sx = x; sz = z; h = s.height + 1; found = true; }
-        }
-      }
-      sp = vec3(sx + 0.5f, dimBase(DIM_OVERWORLD) + h + 1, sz + 0.5f);
-      level->info.spawn = sp;
-    }
+    else if (sp.y < 0) sp = chooseWorldSpawn(*level, &p->yaw);   // a village's edge, the wilds or dry land (sim/world_spawn.h; a server uses it too)
     p->pos = sp;
     freshSpawnT = 0;   // (its ground checked once it's loaded: update)
   }

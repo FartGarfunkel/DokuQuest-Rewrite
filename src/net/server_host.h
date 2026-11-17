@@ -43,6 +43,8 @@ public:
   void stop(const std::string& why = "The host closed the world.");   // saves everyone, tells them, closes the port
   bool running() const { return host != nullptr; }
   int port() const { return boundPort; }
+  bool underSea(vec3 p) const;
+  vec3 spawnFor(const std::string& name);   // where a newcomer starts (next to the host; a dedicated server: the world's start)
 
   // LevelNet
   bool isClient() const override { return false; }
@@ -136,7 +138,6 @@ private:
   void hostChat(Peer& p, const std::string& text);
   void diffMirrors();
   void toAll(Msg t, const json& m, u32 except = 0, int channel = 0);
-  vec3 spawnFor(const std::string& name);
   void loadLists();
   void saveLists();
   void ensureWatchers();

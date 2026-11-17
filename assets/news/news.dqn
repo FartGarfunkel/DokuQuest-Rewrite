@@ -1,6 +1,13 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.27 | November 2026
+**Multiplayer:**
+- **Joining a dedicated server no longer drops you on the sea floor** (a black screen on the phone): newcomers start on dry land, as a single-player world does, and a server world or player left under the sea by an older version is moved up onto land.
+**Android:**
+- **Phones that were wrongly switched from Vulkan to OpenGL ES go back to Vulkan.** Closing the game or updating it in its first minute was taken for a Vulkan crash; now a start counts once it has drawn, and the updater no longer trips it.
+- **The menus always show on OpenGL ES,** even if a world's drawing goes wrong, and anything that went wrong is written to the game's log.
+- Removed Herobrine.
 ## Alpha 1.0.0.26 | November 2026
 **Settings:**
 - **New players start with the Classic colour style and gentle Waves on the water** (Block Detail Flat, 3D plants near you).
