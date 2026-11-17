@@ -388,7 +388,8 @@ void CharacterLayer::update(GameSession& s, double dt) {
     {   // the shield raised (eased), a dodge roll begun (sim/combat_rpg.h: the guest's own, or sent: net/server_sync.cpp)
       const bool up = p->blockT > 0;
       st.block += ((up ? 1.f : 0.f) - st.block) * std::min(1.f, fdt * (up ? 16.f : 8.f));
-      if (p->dodgeT > st.lastDodge + 0.05f) { st.rollU = 0.0001f; st.rollYaw = p->dodgeYaw; st.rollBack = std::fabs(wrapAngle(p->dodgeYaw - p->yaw)) > 2.0f; }
+      if (p->dodgeT > st.lastDodge + (p->ghost ? 0.15f : 0.05f)) {   // (a replica's: only a fresh roll, not a late message's value)
+        st.rollU = 0.0001f; st.rollYaw = p->dodgeYaw; st.rollBack = std::fabs(wrapAngle(p->dodgeYaw - p->yaw)) > 2.0f; }
       st.lastDodge = p->dodgeT;
       // a blow on the shield: a parry, a hit taken on it, an arrow stopped on it — the guard is knocked in and comes back
       // (render/char_poses.cpp)

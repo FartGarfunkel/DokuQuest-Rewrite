@@ -71,11 +71,15 @@ json entitySnapshot(const Entity& e) {
     s["n"] = p->name; s["md"] = p->mode;
     { auto& A = netSkinAliases(); auto a = A.find(p->skin); s["sk"] = a != A.end() ? a->second : p->skin; }   // the host's own skins by their net names
     const ItemStack& h = p->inv[clampv(p->selected, 0, INV_MAIN - 1)];
-    if (!h.empty()) { s["hd"] = h.id; if (const std::string mk = partToolModelKey(h); !mk.empty()) s["hm"] = mk; }   // (its look's key only: a mixed blade's colours. Its whole tag had made each update too big for one packet, and the others' movement stuttered)
+    if (p->ghost && p->netHands) { if (!p->netHeld.empty()) { s["hd"] = p->netHeld; if (!p->netHeldModel.empty()) s["hm"] = p->netHeldModel; } }   // (a guest's hands as their game says, at once: their bags reach us only when saved)
+    else if (!h.empty()) { s["hd"] = h.id; if (const std::string mk = partToolModelKey(h); !mk.empty()) s["hm"] = mk; }   // (its look's key only: a mixed blade's colours. Its whole tag had made each update too big for one packet, and the others' movement stuttered)
     json ar = json::array(); bool anyAr = false;
+    if (p->ghost && p->netHands && p->netArmor.is_array()) { for (auto& a : p->netArmor) anyAr |= a.is_string(); ar = p->netArmor; }
+    else
     for (auto& a : p->armor) { ar.push_back(a.empty() ? json() : json(a.id)); anyAr |= !a.empty(); }
     if (anyAr) s["ar"] = ar;
-    if (!p->offhand.empty() && !p->offhand[0].empty()) { s["of"] = p->offhand[0].id; if (const std::string mk = partToolModelKey(p->offhand[0]); !mk.empty()) s["om"] = mk; }
+    if (p->ghost && p->netHands) { if (!p->netOff.empty()) { s["of"] = p->netOff; if (!p->netOffModel.empty()) s["om"] = p->netOffModel; } }
+    else if (!p->offhand.empty() && !p->offhand[0].empty()) { s["of"] = p->offhand[0].id; if (const std::string mk = partToolModelKey(p->offhand[0]); !mk.empty()) s["om"] = mk; }
     if (!p->shield.empty() && !p->shield[0].empty()) s["sh"] = p->shield[0].id;   // (the shield slot's: on their forearm)
     {   // the backpack and the quiver on their back (unless they hide them), so the others see them
       const json& hg = p->data.is_object() ? p->data.value("hideGear", json::array()) : json::array();

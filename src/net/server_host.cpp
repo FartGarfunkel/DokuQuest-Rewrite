@@ -510,7 +510,17 @@ void ServerHost::update(Level& lv, double dt) {
       for (auto& e : level.entities()) if (!e->removed && !e->netLocal && (all || e->isPlayer())) {
         Snap sn; sn.s = entitySnapshot(*e); sn.player = e->isPlayer();
         { json h = sn.s; h.erase("ts"); sn.hash = std::hash<std::string>()(h.dump()); }   // (its time alone isn't news)
-        sn.dataHash = e->data.is_null() || e->data.empty() ? 0 : std::hash<std::string>()(e->data.dump());
+        if (e->data.is_null() || e->data.empty()) sn.dataHash = 0;
+        else if (!sn.player) sn.dataHash = std::hash<std::string>()(e->data.dump());
+        else {   // a player's: its running clocks aren't news (the stamina's idle time alone changed it every tick, and every
+                 // update of every player went the reliable way with all its data, held up behind any packet lost)
+          json d = e->data;
+          if (d.is_object()) {
+            for (const char* k : {"stamIdle", "sleepT", "spikeT", "singeT", "dreadT", "frozenT", "rubyT", "darkT", "burnT", "lvlScan", "ubAt"}) d.erase(k);
+            if (d.contains("fx") && d["fx"].is_object()) for (auto& [k, v] : d["fx"].items()) v = true;   // (which effects, not how long)
+          }
+          sn.dataHash = std::hash<std::string>()(d.dump());
+        }
         snaps.emplace(e->id, std::move(sn));
       }
       for (auto& [id, p] : peers) if (p.ready && p.pl && p.enet && !p.lite) sendEntities(p, snaps, all);
@@ -672,6 +682,12 @@ void ServerHost::applyMe(Peer& p, const json& m) {
   // that time (server_sync.cpp entitySnapshot "ts")
   if (ct >= 0) pl.netSample(p.clock.toLocal(ct), nowSeconds(), pl.pos, pl.yaw, pl.pitch, pl.bodyYaw);
   applyPlayerPose(pl, m, true);   // their swings, digging, bow, glide, ledge, ladder, what's in their arms
+  if (m.contains("hd")) {   // what's in their hands and on them now (drawn and passed on; the rules use their saved bags)
+    pl.netHands = true;
+    pl.netHeld = m.value("hd", std::string()); pl.netHeldModel = m.value("hm", std::string());
+    pl.netOff = m.value("of", std::string()); pl.netOffModel = m.value("om", std::string());
+    pl.netArmor = m.contains("ar") && m["ar"].is_array() && m["ar"].size() <= 8 ? m["ar"] : json();
+  }
   int f = m.value("f", 0);
   pl.onGround = f & 1; pl.inWater = f & 2; pl.sneaking = f & 4; pl.sprinting = f & 8; pl.flying = f & 16; pl.swimming = f & 32; pl.crawling = f & 64;
   pl.hp = m.value("hp", pl.hp); pl.dead = dead;

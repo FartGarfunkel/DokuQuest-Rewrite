@@ -10,6 +10,7 @@
 #include "sim/player.h"
 #include <unordered_map>
 #include <unordered_set>
+#include <deque>
 
 namespace dq::net {
 
@@ -124,6 +125,10 @@ private:
   void handle(u8 ty, json& m);
   void onWelcome(json& m);
   void applyEntities(const json& m);
+  void applyState(Entity* e, const json& s);
+  void applyPendingState();
+  std::unordered_map<u32, json> lastState;   // the state each replica shows now (as it came)
+  std::unordered_map<u32, std::deque<std::pair<double, json>>> pendingState;   // replicas' state waiting for its moment (our clock)
   void applySelf(const json& m);
   void applyEnv(const json& m);
   void applyFx(const json& m);

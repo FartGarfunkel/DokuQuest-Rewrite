@@ -36,7 +36,7 @@ public:
   std::vector<NetSample> netHist;
   double netDelay = 0.12, netAgeMean = -1, netAgeDev = 0.02, netGap = 0.1, netViewAt = -1, netLastRt = -1;   // (how late they come: their mean and spread)
   vec3 netCorr{0}; float netCorrYaw = 0;
-  double netStateT = -1;   // the newest snapshot time whose state (not only place) was taken in
+  double netShownT = -1;   // the time (our clock) of the newest state put on it: older news of its state is let go
   // the drawn state (netUpdateView): on a joined world it becomes the ghost's pos itself (glide); on the host a guest's
   // body keeps its newest pos for the game's rules and is only DRAWN at the view (client/session.cpp swaps it in)
   bool hasView = false;

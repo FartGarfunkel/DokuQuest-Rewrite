@@ -267,17 +267,33 @@ void GameSession::update(double dt) {
 
 void GameSession::showReplicas(bool on) {
   if (on) {
-    shownAt.clear();
+    shownAt.clear(); shownGear.clear();
     if (level->isRemote()) return;   // (in someone else's world the replicas are already where they're drawn)
     for (auto& e : level->entities()) {
+      if (e->removed || !e->ghost) continue;
       // (riding: on the mount, which moves here, so where the mount has them)
-      if (e->removed || !e->ghost || !e->hasView || e->riding) continue;
-      shownAt.push_back({e.get(), {e->pos.x, e->pos.y, e->pos.z, e->yaw, e->pitch, e->bodyYaw}});
-      e->pos = e->viewPos; e->yaw = e->viewYaw; e->pitch = e->viewPitch; e->bodyYaw = e->viewBody;
+      if (e->hasView && !e->riding) {
+        shownAt.push_back({e.get(), {e->pos.x, e->pos.y, e->pos.z, e->yaw, e->pitch, e->bodyYaw}});
+        e->pos = e->viewPos; e->yaw = e->viewYaw; e->pitch = e->viewPitch; e->bodyYaw = e->viewBody;
+      }
+      // a guest's hands and armour as their game has them now (their bags here change only when their game saves them)
+      auto* p = e->isPlayer() ? dynamic_cast<Player*>(e.get()) : nullptr;
+      if (!p || !p->netHands || p->inv.empty()) continue;
+      Gear g; g.p = p; g.sel = clampv(p->selected, 0, (int)p->inv.size() - 1);
+      g.held = p->inv[g.sel]; g.off = p->offhand.empty() ? ItemStack() : p->offhand[0]; g.armor = p->armor;
+      if (g.held.id != p->netHeld) p->inv[g.sel] = p->netHeld.empty() ? ItemStack() : ItemStack(p->netHeld, 1);
+      if (!p->offhand.empty() && p->offhand[0].id != p->netOff) p->offhand[0] = p->netOff.empty() ? ItemStack() : ItemStack(p->netOff, 1);
+      if (p->netArmor.is_array())
+        for (size_t i = 0; i < p->armor.size() && i < p->netArmor.size(); i++) {
+          const std::string id = p->netArmor[i].is_string() ? p->netArmor[i].get<std::string>() : std::string();
+          if (p->armor[i].id != id) p->armor[i] = id.empty() ? ItemStack() : ItemStack(id, 1);
+        }
+      shownGear.push_back(std::move(g));
     }
   } else {
     for (auto& [e, a] : shownAt) { e->pos = vec3(a[0], a[1], a[2]); e->yaw = a[3]; e->pitch = a[4]; e->bodyYaw = a[5]; }
-    shownAt.clear();
+    for (auto& g : shownGear) { g.p->inv[g.sel] = g.held; if (!g.p->offhand.empty()) g.p->offhand[0] = g.off; g.p->armor = g.armor; }
+    shownAt.clear(); shownGear.clear();
   }
 }
 

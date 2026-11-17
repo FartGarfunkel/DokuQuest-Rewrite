@@ -3,6 +3,7 @@
 // made here handed to the server).
 #include <cstdio>
 #include "net/client.h"
+#include "core/tool_parts.h"
 #include "sim/weather.h"
 #include "sim/creature.h"
 #include "net/server_host.h"
@@ -340,6 +341,7 @@ void NetClient::update(Level& level, double dt) {
     }
     if (sums.size() > 20000) sums.clear();
   }
+  applyPendingState();   // (the others' state, at the moment their bodies are drawn)
   if (me) {
     // a new land: the old one's ghosts are gone (the server sends this land's)
     if (me->realm != lastRealm) {
@@ -461,6 +463,13 @@ void NetClient::sendMe() {
             {"r", r3(p.yaw)}, {"p", r3(p.pitch)}, {"b", r3(p.bodyYaw)}, {"rl", p.realm}, {"f", f}, {"hp", std::round(p.hp * 10) / 10},
             {"dead", p.dead ? 1 : 0}, {"sel", p.selected}, {"ct", nowSeconds()}};   // ct: when we were here (our clock: the host draws us by it)
   playerPoseInto(p, m);   // swings, digging, the bow, gliding, a ledge, a ladder, what's in our arms
+  {   // what's in our hands and on us, at once (the host's copy of our bags only changes when we save them)
+    const ItemStack& h = p.inv[clampv(p.selected, 0, INV_MAIN - 1)];
+    m["hd"] = h.empty() ? std::string() : h.id; if (!h.empty()) if (std::string k = partToolModelKey(h); !k.empty()) m["hm"] = k;
+    const bool off = !p.offhand.empty() && !p.offhand[0].empty();
+    m["of"] = off ? p.offhand[0].id : std::string(); if (off) if (std::string k = partToolModelKey(p.offhand[0]); !k.empty()) m["om"] = k;
+    json ar = json::array(); for (auto& a : p.armor) ar.push_back(a.empty() ? json() : json(a.id)); m["ar"] = ar;
+  }
   // the combat batch (sim/combat_rpg.h): our game rolls and raises the shield, the host's decides the hits, so it has to know
   m["st"] = std::round(p.stamina * 10) / 10;
   if (p.dodgeT > 0) { m["dg"] = r3(p.dodgeT); m["dy"] = r3(p.dodgeYaw); }
@@ -578,71 +587,106 @@ void NetClient::applyEntities(const json& m) {
     vec3 pos(s.value("x", 0.f), s.value("y", 0.f), s.value("z", 0.f));
     float yaw = s.value("r", 0.f), pitch = s.value("p", 0.f), body = s.value("b", yaw);
     std::string type = s.value("t", "");
-    if (e && e->removed) { e->removed = false; e->pos = e->netPos = e->prevPos = pos; e->netReset(); }   // gone and back (out of range and in again)
+    bool fresh = false;   // (new here, or back: its state at once)
+    if (e && e->removed) { e->removed = false; e->pos = e->netPos = e->prevPos = pos; e->netReset(); fresh = true; pendingState.erase(id); }   // gone and back (out of range and in again)
     if (!e) {
       std::unique_ptr<Entity> ne = type == "player" ? std::make_unique<Player>() : createEntity(type);
       ne->id = id; ne->type = type; ne->ghost = true; ne->realm = realm;
       ne->pos = ne->netPos = ne->prevPos = pos; ne->yaw = ne->netYaw = ne->prevYaw = yaw;
-      e = L.spawn(std::move(ne));
+      e = L.spawn(std::move(ne)); fresh = true;
     } else { e->netPos = pos; e->netYaw = yaw; }
     // when it was there: a player's own time ("ts", a guest's ME time as the host has it), else when the host sent it
     const double ts = s.value("ts", st);
     if (st >= 0 && clock.known) e->netSample(clock.toLocal(ts), now, pos, yaw, pitch, body);
-    // the rest is its state as it was then: movement overtaken on the way (that channel is unsequenced) is older than what we
-    // have and is let go; the reliable news is taken whole (its data comes no other way)
-    if (moveOnly && ts < e->netStateT) continue;
-    e->netStateT = std::max(e->netStateT, ts);
-    e->pitch = pitch; e->bodyYaw = body;
-    float hp = s.value("hp", e->hp);
-    if (hp < e->hp) e->hurtTime = 0.5f;
-    e->hp = hp; e->maxHp = s.value("mh", e->maxHp); e->w = s.value("w", e->w); e->h = s.value("h", e->h);
-    int f = s.value("f", 0);
-    e->onGround = f & 1; e->inWater = f & 2; e->inLava = f & 4; e->noGravity = f & 16;
-    if (f & 8) e->hurtTime = std::max(e->hurtTime, 0.3f);
-    e->riding = s.value("rd", 0u);
-    e->posture = s.value("po", 0.f); e->maxPosture = s.value("pm", e->maxPosture); e->staggerT = s.value("sg", 0.f); e->mobLevel = s.value("ml", 1); if (s.value("el", 0)) e->data["elite"] = true;   // (sim/combat_rpg.h)
-    if (s.contains("d")) e->data = s["d"];
-    if (auto* c = dynamic_cast<Creature*>(e)) if (s.contains("cs") && s["cs"].is_object()) {   // its look and state (Creature::snap)
-      json cs = s["cs"]; cs["x"] = c->pos.x; cs["y"] = c->pos.y; cs["z"] = c->pos.z; cs["r"] = c->yaw; cs["h"] = e->hp;   // (the glide moves it)
-      c->applySnap(cs);
-      if (c->riddenBy && c->riddenBy == myEid && me) c->riddenBy = me->id;   // ridden by us (our player's id here)
-    }
-    if (auto* p = dynamic_cast<Player*>(e)) {
-      p->name = s.value("n", p->name); p->skin = s.value("sk", p->skin); p->mode = s.value("md", p->mode);
-      p->selected = 0;
-      p->inv[0] = s.contains("hd") ? ItemStack(s["hd"].get<std::string>(), 1) : ItemStack();
-      if (s.contains("hm")) p->data["hm"] = s["hm"]; else if (p->data.is_object()) p->data.erase("hm");   // (the look of what's in their hands: render/char_layer.cpp)
-      for (int i = 0; i < INV_ARMOR; i++) p->armor[i] = s.contains("ar") && i < (int)s["ar"].size() && s["ar"][i].is_string() ? ItemStack(s["ar"][i].get<std::string>(), 1) : ItemStack();
-      p->offhand[0] = s.contains("of") ? ItemStack(s["of"].get<std::string>(), 1) : ItemStack();
-      if (s.contains("om")) p->data["om"] = s["om"]; else if (p->data.is_object()) p->data.erase("om");
-      if (p->shield.empty()) p->shield.resize(1);
-      p->shield[0] = s.contains("sh") ? ItemStack(s["sh"].get<std::string>(), 1) : ItemStack();
-      if (s.contains("bk")) p->data["back"] = s["bk"]; else p->data.erase("back");          // (render/char_layer wornItem)
-      if (s.contains("qv")) p->data["quiver"] = s["qv"]; else p->data.erase("quiver");
-      if (const int f = s.value("qf", 0)) p->data["quiverFill"] = f; else p->data.erase("quiverFill");
-      int pf = s.value("pf", 0);
-      p->sneaking = pf & 1; p->sprinting = pf & 2; p->flying = pf & 4; p->swimming = pf & 8; p->crawling = pf & 16; p->dead = pf & 32;
-      p->activity = (u8)(s.value("ac", 0) & 7); p->typeRate = clampv(s.value("tr", 0.f), 0.f, 40.f);
-      p->stationKind = (i8)s.value("wk", -1); p->workTap = (u8)s.value("wt", (int)p->workTap);
-      if (s.contains("wa") && s["wa"].is_array() && s["wa"].size() == 3) p->workAt = vec3(s["wa"][0].get<float>(), s["wa"][1].get<float>(), s["wa"][2].get<float>());
-      if (!s.contains("bv")) { if (!p->bookPic.empty()) { p->bookPic.clear(); p->bookPicV++; } }   // (their book shut)
-      else if (s.contains("bp") && s["bp"].is_string()) {
-        std::string bp = s["bp"].get<std::string>();
-        if (bp != p->bookPic) { p->bookPic = std::move(bp); p->bookPicV++; }
-        p->bookLay = s.value("bl", std::string());
+    // the rest is its state as it was then. It waits, in time order, until its body is drawn at that moment
+    // (sim/net_interp.cpp), so what they do and where they are stay together, as on a split screen. Something new here
+    // takes its state at once; news older than the state already shown (overtaken on the way: the movement channel is
+    // unsequenced, and the reliable one can lag it) is let go — only its data, which comes no other way, is taken.
+    const bool timed = st >= 0 && clock.known;
+    const double tl = timed ? clock.toLocal(ts) : now;
+    if (fresh || !timed) { applyState(e, s); e->netShownT = tl; lastState[id] = s; }
+    else if (!e->isPlayer() && tl > e->netShownT) { applyState(e, s); e->netShownT = tl; lastState[id] = s; }   // (a creature's at once: a mount's rider must be its rider here the moment the host says so)
+    else if (tl <= e->netShownT) {
+      if (s.contains("d")) {
+        e->data = s["d"];
+        if (auto ls = lastState.find(id); ls != lastState.end()) { json k = ls->second; k.erase("d"); applyState(e, k); }   // (what the state sets in its data, back)
       }
-      p->bookFlip = (u8)s.value("bf", (int)p->bookFlip); p->bookDir = (i8)(s.value("bd", 1) < 0 ? -1 : 1);
-      p->eatT = clampv(s.value("et", 0.f), 0.f, 1.f); p->eatId = p->eatT > 0 ? s.value("ei", std::string()) : std::string();
-      if (p != me) {   // their shield, roll and parry (sim/combat_rpg.h): ours are our own game's
-        p->blockT = s.value("sb", 0.f); p->parryFlash = s.value("py", 0.f); p->guardFlash = s.value("gf", 0.f);
-        p->dodgeT = s.value("dg", 0.f);   // (render/char_layer.cpp plays the roll through from its start)
-        netAttack(*p, s);
-        applyPlayerPose(*p, s, false);   // swings, digging, bow, glide, spyglass, ledge, ladder, water, carrying, asleep
-        if (p->dodgeT > 0) p->dodgeYaw = s.value("dy", p->dodgeYaw);
-      }
+    } else {
+      auto& q = pendingState[id];
+      auto at = q.end(); while (at != q.begin() && std::prev(at)->first > tl) --at;
+      q.insert(at, {tl, s});
     }
   }
-  if (m.contains("g")) for (auto& id : m["g"]) if (Entity* e = L.entity(id.get<u32>())) if (e->ghost) e->removed = true;
+  if (m.contains("g")) for (auto& id : m["g"]) if (id.is_number()) { lastState.erase(id.get<u32>()); pendingState.erase(id.get<u32>()); if (Entity* e = L.entity(id.get<u32>())) if (e->ghost) e->removed = true; }
+}
+
+// One snapshot entry's state (not its place: sim/net_interp.cpp has that) put on a replica.
+void NetClient::applyState(Entity* e, const json& s) {
+  float hp = s.value("hp", e->hp);
+  if (hp < e->hp) e->hurtTime = 0.5f;
+  e->hp = hp; e->maxHp = s.value("mh", e->maxHp); e->w = s.value("w", e->w); e->h = s.value("h", e->h);
+  int f = s.value("f", 0);
+  e->onGround = f & 1; e->inWater = f & 2; e->inLava = f & 4; e->noGravity = f & 16;
+  if (f & 8) e->hurtTime = std::max(e->hurtTime, 0.3f);
+  e->riding = s.value("rd", 0u);
+  e->posture = s.value("po", 0.f); e->maxPosture = s.value("pm", e->maxPosture); e->staggerT = s.value("sg", 0.f); e->mobLevel = s.value("ml", 1); if (s.value("el", 0)) e->data["elite"] = true;   // (sim/combat_rpg.h)
+  if (s.contains("d")) e->data = s["d"];
+  if (auto* c = dynamic_cast<Creature*>(e)) if (s.contains("cs") && s["cs"].is_object()) {   // its look and state (Creature::snap)
+    json cs = s["cs"]; cs["x"] = c->pos.x; cs["y"] = c->pos.y; cs["z"] = c->pos.z; cs["r"] = c->yaw; cs["h"] = e->hp;   // (the glide moves it)
+    c->applySnap(cs);
+    if (c->riddenBy && c->riddenBy == myEid && me) c->riddenBy = me->id;   // ridden by us (our player's id here)
+  }
+  if (auto* p = dynamic_cast<Player*>(e)) {
+    p->name = s.value("n", p->name); p->skin = s.value("sk", p->skin); p->mode = s.value("md", p->mode);
+    p->selected = 0;
+    p->inv[0] = s.contains("hd") ? ItemStack(s["hd"].get<std::string>(), 1) : ItemStack();
+    if (s.contains("hm")) p->data["hm"] = s["hm"]; else if (p->data.is_object()) p->data.erase("hm");   // (the look of what's in their hands: render/char_layer.cpp)
+    for (int i = 0; i < INV_ARMOR; i++) p->armor[i] = s.contains("ar") && i < (int)s["ar"].size() && s["ar"][i].is_string() ? ItemStack(s["ar"][i].get<std::string>(), 1) : ItemStack();
+    p->offhand[0] = s.contains("of") ? ItemStack(s["of"].get<std::string>(), 1) : ItemStack();
+    if (s.contains("om")) p->data["om"] = s["om"]; else if (p->data.is_object()) p->data.erase("om");
+    if (p->shield.empty()) p->shield.resize(1);
+    p->shield[0] = s.contains("sh") ? ItemStack(s["sh"].get<std::string>(), 1) : ItemStack();
+    if (s.contains("bk")) p->data["back"] = s["bk"]; else p->data.erase("back");          // (render/char_layer wornItem)
+    if (s.contains("qv")) p->data["quiver"] = s["qv"]; else p->data.erase("quiver");
+    if (const int f = s.value("qf", 0)) p->data["quiverFill"] = f; else p->data.erase("quiverFill");
+    int pf = s.value("pf", 0);
+    p->sneaking = pf & 1; p->sprinting = pf & 2; p->flying = pf & 4; p->swimming = pf & 8; p->crawling = pf & 16; p->dead = pf & 32;
+    p->activity = (u8)(s.value("ac", 0) & 7); p->typeRate = clampv(s.value("tr", 0.f), 0.f, 40.f);
+    p->stationKind = (i8)s.value("wk", -1); p->workTap = (u8)s.value("wt", (int)p->workTap);
+    if (s.contains("wa") && s["wa"].is_array() && s["wa"].size() == 3) p->workAt = vec3(s["wa"][0].get<float>(), s["wa"][1].get<float>(), s["wa"][2].get<float>());
+    if (!s.contains("bv")) { if (!p->bookPic.empty()) { p->bookPic.clear(); p->bookPicV++; } }   // (their book shut)
+    else if (s.contains("bp") && s["bp"].is_string()) {
+      std::string bp = s["bp"].get<std::string>();
+      if (bp != p->bookPic) { p->bookPic = std::move(bp); p->bookPicV++; }
+      p->bookLay = s.value("bl", std::string());
+    }
+    p->bookFlip = (u8)s.value("bf", (int)p->bookFlip); p->bookDir = (i8)(s.value("bd", 1) < 0 ? -1 : 1);
+    p->eatT = clampv(s.value("et", 0.f), 0.f, 1.f); p->eatId = p->eatT > 0 ? s.value("ei", std::string()) : std::string();
+    if (p != me) {   // their shield, roll and parry (sim/combat_rpg.h): ours are our own game's
+      p->blockT = s.value("sb", 0.f);
+      // a roll, a parry, a blow on the shield: each counts down here on its own (sim/combat_rpg.cpp); only a fresh one (well
+      // above what is left of ours) starts it again — taking every message's value had a late one restart the roll mid-way
+      // (a new one is their own value rising: how fast ours counts down never matters)
+      auto fresh = [](float& mine, float& heard, float theirs) { const bool rose = theirs > heard + 0.1f; heard = theirs; if (rose) mine = theirs; return rose; };
+      fresh(p->parryFlash, p->parryHeard, s.value("py", 0.f)); fresh(p->guardFlash, p->guardHeard, s.value("gf", 0.f));
+      if (fresh(p->dodgeT, p->dodgeHeard, s.value("dg", 0.f))) p->dodgeYaw = s.value("dy", p->dodgeYaw);   // (render/char_layer.cpp plays the roll through from its start)
+      netAttack(*p, s);
+      applyPlayerPose(*p, s, false);   // swings, digging, bow, glide, spyglass, ledge, ladder, water, carrying, asleep
+    }
+  }
+}
+
+// The state that waited for its moment (applyEntities): put on when the replica's body is drawn at that time.
+void NetClient::applyPendingState() {
+  const double now = nowSeconds();
+  for (auto it = pendingState.begin(); it != pendingState.end();) {
+    Entity* e = lv ? lv->entity(it->first) : nullptr;
+    if (!e || e->removed || !e->ghost) { lastState.erase(it->first); it = pendingState.erase(it); continue; }
+    auto& q = it->second;
+    const double rt = now - e->netDelay;
+    while (!q.empty() && (q.front().first <= rt || q.size() > 40)) { applyState(e, q.front().second); e->netShownT = q.front().first; lastState[it->first] = std::move(q.front().second); q.pop_front(); }
+    if (q.empty()) it = pendingState.erase(it); else ++it;
+  }
 }
 
 void NetClient::applySelf(const json& m) {

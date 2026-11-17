@@ -843,9 +843,9 @@ int main(int argc, char** argv) {
           strFormat("; %d of %d frames with nothing heard for a while: waited out", starve[viewers[i]].frames, starve[viewers[i]].total) + ")";
       const std::string arm = strFormat("her digging arm cycles smoothly as she walks, %s (restarted mid-swing %d times, idle %d of %d frames)", how[i], a.restarts, a.idle, a.frames);
       // Every game, the server and the bad links share this one process: when the computer is too busy to run it in step
-      // (a frame of this test over 0.1 s apart: other work on the machine), smoothness can't be judged — only that she
+      // (a frame of this test over 0.15 s apart: other work on the machine), smoothness can't be judged — only that she
       // never steps back, stays on her path and her arm is never cut short. Otherwise all of it.
-      if (busiest[viewers[i]] > 0.1) {
+      if (busiest[viewers[i]] > 0.15) {
         printf("     (this computer was too busy to judge smoothness: frames up to %.2f s apart) %s; %s\n", busiest[viewers[i]], what.c_str(), arm.c_str());
         check(s.back < 0.05 && s.offPath < 0.05 && a.restarts <= 1, std::string("Alice never steps back or off her path, her arm never cut short, ") + how[i] + " (busy machine)");
       } else {
@@ -885,6 +885,120 @@ int main(int argc, char** argv) {
       check(pump(6, [&] { for (Client* v : viewers) { Entity* e = v->ghost("player", "Alice"); auto* g = e ? dynamic_cast<Player*>(e) : nullptr;
                             if (!g || g->mineP > 0 || g->bowPull > 0 || g->scoping || g->gliding || g->hang || g->netCarry.is_object()) return false; } return true; }),
             "...and when she stops, it stops for everyone");
+    }
+    // ---- everything her body does, compared over time: what her own game shows against what each viewer's shows ----
+    // Alice goes through every pose and action the game draws, one after another (0.7 s each); every frame, each field
+    // of her own player and of each viewer's replica of her is read. The replica must go through exactly the same
+    // values in the same order (none missing, none flickering in between) a little later (the link, plus the drawing
+    // delay), and her drawn place must lag her by about the same (state and body together).
+    {
+      struct Field { const char* name; std::function<std::string(const Player&)> get; };
+      auto held = [](const Player& p) { return p.ghost ? p.inv[0].id : p.inv[clampv(p.selected, 0, (int)p.inv.size() - 1)].id; };
+      const std::vector<Field> fields = {
+        {"sneak", [](const Player& p) { return std::to_string(p.sneaking); }}, {"sprint", [](const Player& p) { return std::to_string(p.sprinting); }},
+        {"swim", [](const Player& p) { return std::to_string(p.swimming); }}, {"fly", [](const Player& p) { return std::to_string(p.flying); }},
+        {"crawl", [](const Player& p) { return std::to_string(p.crawling); }},
+        {"eat/drink", [](const Player& p) { return (p.ghost ? p.eatT > 0 : p.eatAnim > 0) ? p.eatId : std::string(); }},
+        {"bow draw", [](const Player& p) { return std::to_string(p.bowPull > 0); }}, {"shield up", [](const Player& p) { return std::to_string(p.blockT > 0); }},
+        {"held item", held}, {"offhand", [](const Player& p) { return p.offhand.empty() ? std::string() : p.offhand[0].id; }},
+        {"spyglass", [](const Player& p) { return std::to_string(p.scoping); }}, {"glide", [](const Player& p) { return std::to_string(p.gliding); }},
+        {"ledge hang", [](const Player& p) { return std::to_string(p.hang.has_value()) + (p.hang && p.hang->shimT > 0 ? "s" : ""); }},
+        {"ledge climb", [](const Player& p) { return std::to_string(p.climb.has_value()); }},
+        {"ladder", [](const Player& p) { return std::to_string(p.contacts.ladder); }}, {"in water", [](const Player& p) { return std::to_string(p.contacts.water); }},
+        {"carrying", [](const Player& p) { const json& c = p.carrying.is_object() ? p.carrying : p.netCarry; return c.is_object() ? c.value("key", std::string("?")) : std::string(); }},
+        {"journal/typing/doze", [](const Player& p) { return std::to_string(p.activity); }}, {"page turned", [](const Player& p) { return std::to_string(p.bookFlip); }},
+        {"station work", [](const Player& p) { return p.stationKind < 0 ? std::string("-") : std::to_string(p.stationKind) + "/" + std::to_string(p.workTap); }},
+        {"digging", [](const Player& p) { return p.mineP > 0 ? strFormat("%d,%d,%d", p.mineAt.x, p.mineAt.y, p.mineAt.z) : std::string(); }},
+        {"weapon swing", [](const Player& p) { return std::to_string(p.atkMove); }}, {"dodge roll", [](const Player& p) { return std::to_string(p.dodgeT > 0); }},
+        {"armour", [](const Player& p) { std::string s; for (auto& a : p.armor) s += a.id + ","; return s; }},
+      };
+      const ItemStack heldWas = A.me->held(), chestWas = A.me->armor[1];
+      A.me->armor[1] = ItemStack("elytra", 1);
+      const ivec3 dig = ivec3(A.me->pos) - ivec3(0, 1, 0);
+      const u8 mv = MV_SWORD2; const float mvLen = attackMove(mv).len;
+      // the steps: what she does in each (held each frame, as her own game would keep it)
+      const std::vector<std::pair<const char*, std::function<void(Player&, double)>>> steps = {
+        {"stand", [](Player&, double) {}}, {"sneak", [](Player& p, double) { p.sneaking = true; }}, {"sprint", [](Player& p, double) { p.sprinting = true; }},
+        {"swim", [](Player& p, double) { p.swimming = true; p.contacts.water = true; }}, {"fly", [](Player& p, double) { p.flying = true; }},
+        {"crawl", [](Player& p, double) { p.crawling = true; }},
+        {"eat", [](Player& p, double) { p.eatAnim = EAT_ANIM; p.eatId = "apple"; }}, {"drink", [](Player& p, double) { p.eatAnim = EAT_ANIM; p.eatId = "milk_bucket"; }},
+        {"bow", [](Player& p, double) { p.held() = ItemStack("bow", 1); p.bowPull = 0.8f; }},
+        {"shield", [](Player& p, double) { p.offhand[0] = ItemStack("shield", 1); p.blockT = 0.5f; }},
+        {"held item", [](Player& p, double) { p.held() = ItemStack("diamond_sword", 1); }},
+        {"spyglass", [](Player& p, double) { p.held() = ItemStack("spyglass", 1); p.scoping = true; }},
+        {"glide", [](Player& p, double) { p.gliding = true; }},
+        {"ledge hang", [](Player& p, double) { p.hang.emplace(); }}, {"shimmy", [](Player& p, double) { p.hang.emplace(); p.hang->shimT = 1; }},
+        {"ledge climb", [](Player& p, double t) { p.climb.emplace(); p.climb->t = (float)std::min(0.5, t); }},
+        {"ladder", [](Player& p, double) { p.contacts.ladder = true; }}, {"paddle", [](Player& p, double) { p.contacts.water = true; }},
+        {"carry", [](Player& p, double) { p.carrying = {{"kind", "block"}, {"key", "chest"}, {"meta", 0}}; }},
+        {"journal", [](Player& p, double t) { p.activity = Player::ACT_SCREEN; p.bookFlip = (u8)(t > 0.35 ? 1 : 0); }},
+        {"typing", [](Player& p, double) { p.activity = Player::ACT_TYPING; p.typeRate = 6; }},
+        {"doze", [](Player& p, double) { p.activity = Player::ACT_DOZE; }},
+        {"station", [](Player& p, double t) { p.stationKind = 1; p.workAt = p.pos + vec3(0.5f, 0.6f, -1.f); p.workTap = (u8)(t > 0.35 ? 1 : 0); }},
+        {"dig", [dig](Player& p, double) { p.mineAt = dig; p.mineP = 0.4f; }},
+        {"weapon swing", [mv, mvLen](Player& p, double t) { if (t < mvLen) { p.atkMove = mv; p.atkT = (float)t; p.atkYaw = p.yaw; } }},
+        {"roll", [](Player& p, double t) { p.dodgeT = (float)std::max(0.0, 0.4 - t); p.dodgeYaw = p.yaw; }},   // (counting down, as a roll does)
+        {"armour", [](Player& p, double) { p.armor[0] = ItemStack("iron_helmet", 1); }},
+        {"stand", [](Player&, double) {}},
+      };
+      auto neutral = [&](Player& p) {
+        p.sneaking = p.sprinting = p.swimming = p.flying = p.crawling = p.scoping = p.gliding = false;
+        p.eatAnim = 0; p.eatId.clear(); p.bowPull = 0; p.blockT = 0; p.hang.reset(); p.climb.reset();
+        p.contacts.ladder = p.contacts.water = false; p.carrying = nullptr; p.activity = 0; p.typeRate = 0; p.bookFlip = 0;
+        p.stationKind = -1; p.workTap = 0; p.mineP = 0; p.atkMove = MV_NONE; p.atkT = 0; p.dodgeT = 0;
+        p.held() = ItemStack("stone", 1); if (p.offhand.empty()) p.offhand.resize(1); p.offhand[0] = ItemStack(); p.armor[0] = ItemStack();
+      };
+      struct Trace { std::vector<std::vector<std::string>> runs; std::vector<std::vector<double>> at; };
+      auto note = [&](Trace& tr, const Player& p, double t) {
+        if (tr.runs.empty()) { tr.runs.resize(fields.size()); tr.at.resize(fields.size()); }
+        for (size_t k = 0; k < fields.size(); k++) {
+          const std::string v = fields[k].get(p);
+          if (tr.runs[k].empty() || tr.runs[k].back() != v) { tr.runs[k].push_back(v); tr.at[k].push_back(t); }
+        }
+      };
+      Trace mine; std::map<Client*, Trace> theirs; std::map<Client*, std::vector<double>> delays;
+      neutral(*A.me);
+      pump(1.5, [] { return false; });   // (everyone settled on the neutral pose)
+      for (auto& [name, set] : steps) {
+        const double t0 = nowSeconds();
+        while (nowSeconds() - t0 < 0.7) {
+          const double t = nowSeconds() - t0;
+          neutral(*A.me); set(*A.me, t);
+          note(mine, *A.me, nowSeconds());
+          for (auto* c : g_clients) {
+            c->step(1.0 / 30);
+            if (c != &A) if (Entity* g = c->ghost("player", "Alice")) if (auto* gp = dynamic_cast<Player*>(g)) {
+              note(theirs[c], *gp, c->tickAt);
+              delays[c].push_back(gp->netDelay);
+            }
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(6));
+        }
+      }
+      { const double t0 = nowSeconds(); while (nowSeconds() - t0 < 1.5) { neutral(*A.me); for (auto* c : g_clients) { c->step(1.0 / 30); if (c != &A) if (Entity* g = c->ghost("player", "Alice")) if (auto* gp = dynamic_cast<Player*>(g)) note(theirs[c], *gp, c->tickAt); } std::this_thread::sleep_for(std::chrono::milliseconds(6)); } }
+      std::string names; for (auto& f : fields) names += std::string(names.empty() ? "" : ", ") + f.name;
+      printf("     (fields compared: %s)\n", names.c_str());
+      for (Client* v : viewers) {
+        Trace& tr = theirs[v];
+        int wrong = 0; double maxLate = 0, sumLate = 0; int n = 0; std::string bad;
+        for (size_t k = 0; k < fields.size() && !tr.runs.empty(); k++) {
+          if (tr.runs[k] != mine.runs[k]) {
+            wrong++;
+            std::string a, b; for (auto& s : mine.runs[k]) a += "[" + s + "]"; for (auto& s : tr.runs[k]) b += "[" + s + "]";
+            bad += std::string(" ") + fields[k].name + ": hers " + a + " seen " + b + ";";
+            continue;
+          }
+          for (size_t j = 1; j < mine.at[k].size(); j++) { const double late = tr.at[k][j] - mine.at[k][j]; maxLate = std::max(maxLate, late); sumLate += late; n++; }
+        }
+        double dl = 0; for (double d : delays[v]) dl += d; dl /= std::max<size_t>(1, delays[v].size());
+        const char* how2 = v == &B ? "directly" : v == &C ? "over the bad UDP link" : "over TCP through the jittery link";
+        const double meanLate = n ? sumLate / n : 0;
+        check(!tr.runs.empty() && wrong == 0 && maxLate < 0.9 && std::fabs(meanLate - dl) < 0.12,   // (her doings shown with her body: as late as it)
+              strFormat("every pose and action of Alice's is seen %s, in order, none missing or flickering (%zu fields, %d transitions, late by %.0f ms on average, %.0f ms at most; her body is drawn %.0f ms behind)%s",
+                        how2, fields.size(), n, n ? sumLate / n * 1000 : 0.0, maxLate * 1000, dl * 1000, bad.c_str()));
+      }
+      neutral(*A.me); A.me->held() = heldWas; A.me->armor[1] = chestWas;
+      pumpFor(1.0);
     }
     walk(5.0, -1, false);   // (back where she was, for what follows)
     C.leave(); D.leave();

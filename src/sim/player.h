@@ -79,9 +79,14 @@ public:
   // own and plays a remote player's each time it moves on), and the block being dug and how far (its cracks drawn on
   // every screen: sim/controller.cpp damageCracks)
   u8 swingN = 0;
+  float dodgeHeard = 0, parryHeard = 0, guardHeard = 0;   // (a remote player's roll and flashes as last heard: a rise is a new one)
+  u8 atkHeardMv = 0; float atkHeardT = 0;   // (a remote player's weapon swing as last heard: net/protocol.cpp netAttack)
   u8 swingSeen = 0, swingQueue = 0; bool swingKnown = false;   // (a remote player's swings heard and still to play: remoteSwingStep)
   ivec3 mineAt{0}; float mineP = 0;
   json netCarry;                    // what a remote player carries in their arms, for drawing only (their own game has `carrying`)
+  // a guest's hands and armour as their own game has them this moment (net/: the host draws and passes on these; its copy of
+  // their bags only changes when their game saves them)
+  bool netHands = false; std::string netHeld, netHeldModel, netOff, netOffModel; json netArmor;
   bool fxSent = false;              // a remote player whose game is the host's: its sounds and dust come as the host's effects already
   // What Are They Up To: what the others see them doing (render/activity_layer.cpp sets your own, the net carries it)
   enum : u8 { ACT_TYPING = 1, ACT_SCREEN = 2, ACT_DOZE = 4 };

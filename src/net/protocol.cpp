@@ -149,12 +149,16 @@ void netAttack(dq::Player& p, const json& m) {
   const int id = m.value("am", 0);
   // no swing in this message: the one playing here plays to its end (Level::tick ends it). It is drawn later than its
   // owner made it, so their "done" comes while ours is still going: cutting it there clipped every swing's end.
-  if (id <= 0 || id >= MV_COUNT) return;
+  if (id <= 0 || id >= MV_COUNT) { p.atkHeardMv = 0; return; }
   const float t = m.value("at", 0.f);
-  // A message's time is its swing's age when sent, so here (played on since it began) ours is as far or further along.
-  // Only a different move, ours falling behind (its start was lost), or a fresh start of the same move (its time far
-  // behind ours, from the start) begin it again — a late packet no longer pulls it back and makes it stutter.
-  if (p.atkMove != id || t > p.atkT + 0.12f || (t < 0.12f && p.atkT > t + 0.3f)) { p.atkMove = (u8)id; p.atkT = t; }
+  // The same swing heard again (its time going on from the last heard): it plays here on its own clock — pulled forward
+  // only if ours fell behind (its start was lost), and not begun again once ours has finished (their later messages of
+  // it come after ours ended: that had it flick on again). A different move, or the same one from its start again (its
+  // time back below the last heard), is a new swing.
+  const bool same = id == p.atkHeardMv && t >= p.atkHeardT - 0.05f;
+  p.atkHeardMv = (u8)id; p.atkHeardT = t;
+  if (same) { if (p.atkMove == id && t > p.atkT + 0.12f) p.atkT = t; return; }
+  p.atkMove = (u8)id; p.atkT = t;
   p.atkYaw = m.value("ay", p.atkYaw);
   p.atkOff = m.value("ao", 0) != 0;
 }
