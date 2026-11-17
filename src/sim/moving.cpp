@@ -219,6 +219,11 @@ public:
     }
     sfxAt(lv, b.m.kind == 1 ? "piston_in" : "door_close", vec3(b.m.machine) + vec3(0.5f));
     announce("movingEnd", json{{"id", b.id}});
+    if (arrive && lv.events) {   // where its blocks went (strung ropes' ends follow: sim/strung.cpp)
+      json mv = json::array();
+      for (const BodyBlock& k : b.blocks) { const ivec3 f = b.m.machine + k.rel, t = movedCell(b.m, f); mv.push_back(json::array({f.x, f.y, f.z, t.x, t.y, t.z})); }
+      lv.events->emit("movingMoved", json{{"realm", b.realm}, {"moves", mv}});
+    }
     if (b.lift) { Lift l; if (liftOfSlider(w, b.m.machine, l)) liftMarkStops(w, l, machineState(w, b.m.machine).value("at", 0)); }
   }
 

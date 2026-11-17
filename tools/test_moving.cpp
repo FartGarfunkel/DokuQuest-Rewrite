@@ -16,6 +16,9 @@
 #include "sim/machines.h"
 #include "sim/vehicles.h"
 #include "sim/controller.h"
+#include "sim/strung.h"
+#include "sim/physics.h"
+#include "sim/blockinfo.h"
 #include <thread>
 #include <set>
 #include <cstdio>
@@ -483,6 +486,71 @@ int main(int argc, char** argv) {
     check(floorAt() == 0, "and the ground floor's stop brings it back down");
     for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 14; y++) w.setBlock(x, y, z, AIR);
     finishAll(*L);
+  }
+
+  printf("[chains and ropes]\n");
+  {
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 14; y++) w.setBlock(x, y, z, AIR);
+    auto tick = [&](double s) { for (double t = 0; t < s; t += 0.05) L->tick(0.05); };
+    const BlockId stoneB = reg().blockId("stone");
+    auto items = [&](const std::string& id) { int n = 0; for (auto& q : P->inv) if (q.id == id) n += q.n; return n; };
+    auto dropped = [&](const std::string& id) { int n = 0; for (auto& e : L->entities()) if (!e->removed && e->type == "item" && e->data.value("stack", json::object()).value("id", "") == id) n += e->data["stack"].value("n", 1); return n; };
+    P->mode = "survival";
+    for (auto& q : P->inv) q = ItemStack();
+    P->inv[0] = ItemStack("chain", 10); P->selected = 0;
+    const ivec3 A(2, Y + 4, 6), Bp(10, Y + 4, 6);
+    w.setBlock(A.x, A.y, A.z, stoneB); w.setBlock(Bp.x, Bp.y, Bp.z, stoneB);
+    auto sneakUse = [&](const std::string& item, ivec3 at, int face) { P->sneaking = true; bool r = bus.emit("itemUse", json::array({P->name, item, at.x, at.y, at.z, face})); P->sneaking = false; return r; };
+    check(!sneakUse("chain", A, 0), "sneak-use a chain on a block: the first end");
+    check(strungList(*L).empty(), "(nothing strung yet)");
+    check(!sneakUse("chain", Bp, 1), "and on a second block 8 away");
+    const auto S = strungList(*L);
+    check(S.size() == 1 && S[0].chain, "a chain is strung between them");
+    check(items("chain") == 6, "it took one chain per 2 blocks (" + std::to_string(10 - items("chain")) + ")");
+    const vec3 mid = strungPoint(*L, S.empty() ? Strung() : S[0], 0.5f), e0 = strungPoint(*L, S.empty() ? Strung() : S[0], 0.f);
+    check(mid.y < e0.y - 0.3f && std::fabs(mid.x - 6.5f) < 0.6f, "it sags in the middle (" + std::to_string(e0.y - mid.y) + " down)");
+    P->inv[0] = ItemStack("chain", 10);
+    w.setBlock(14, Y + 4, 6, stoneB); w.setBlock(14, Y + 4, 6 + 17, stoneB);
+    sneakUse("chain", ivec3(14, Y + 4, 6), 0); sneakUse("chain", ivec3(14, Y + 4, 6 + 17), 0);
+    check(strungList(*L).size() == 1, "17 blocks is too far: not strung");
+    w.setBlock(14, Y + 4, 6 + 17, AIR); w.setBlock(14, Y + 4, 6, AIR);
+    P->data.erase("strungFrom");
+    w.setBlock(Bp.x, Bp.y, Bp.z, AIR); tick(1.5);
+    check(strungList(*L).empty() && dropped("chain") == 4, "breaking an end drops the chain (" + std::to_string(dropped("chain")) + ")");
+    for (auto& e : L->entities()) if (e->type == "item") e->removed = true;
+    check(binfo(reg().blockId("chain")).f & BF::Climb, "a hanging chain climbs like a ladder");
+    // a rope bridge: a near-level rope, slats laid on it, stood on
+    P->inv[0] = ItemStack("rope", 10); P->inv[1] = ItemStack("planks", 10);
+    w.setBlock(Bp.x, Bp.y, Bp.z, stoneB);
+    sneakUse("rope", A, 0); sneakUse("rope", Bp, 1);
+    check(strungList(*L).size() == 1 && !strungList(*L)[0].chain, "a rope strings the same way");
+    P->pos = vec3(6.5f, Y + 5, 3.0f); P->pitch = -0.6f; P->yaw = PI;   // (looking down at it from the side: -z faces north, so yaw pi looks south)
+    P->selected = 1;
+    check(!bus.emit("itemUse", json::array({P->name, "planks", 0, 0, 0, -1})), "planks used on the rope");
+    check(!strungList(*L).empty() && strungList(*L)[0].slats && items("planks") == 6, "lay slats on it: a rope bridge (" + std::to_string(10 - items("planks")) + " planks)");
+    const vec3 bm = strungList(*L).empty() ? vec3(0) : strungPoint(*L, strungList(*L)[0], 0.5f);
+    check(collides(w, bm.x - 0.2, bm.y - 0.3, bm.z - 0.2, bm.x + 0.2, bm.y - 0.02, bm.z + 0.2), "its middle is solid to stand on");
+    // tied to a moving piece: an end on a plank on a slider goes where the plank goes
+    w.setBlock(A.x, A.y, A.z, AIR); tick(1.5);
+    for (auto& e : L->entities()) if (e->type == "item") e->removed = true;
+    const ivec3 Sl(2, Y + 4, 10); w.setBlock(Sl.x, Sl.y, Sl.z, reg().blockId("slider"), 1); w.setBlock(Sl.x, Sl.y + 1, Sl.z, planks); setGlue(w, Sl, 2, true);
+    machineState(w, Sl)["distance"] = 3;
+    P->inv[0] = ItemStack("rope", 10); P->selected = 0;
+    sneakUse("rope", Sl + ivec3(0, 1, 0), 0); sneakUse("rope", Bp, 1);
+    check(strungList(*L).size() == 1, "a rope from a block on a slider");
+    startMove(*L, REALM_MAIN, Sl, nullptr); tick(0.5);
+    check(strungList(*L).size() == 1, "while it moves the rope stays");
+    tick(2.0);
+    const auto S2 = strungList(*L);
+    check(S2.size() == 1 && (S2[0].a == Sl + ivec3(0, 4, 0) || S2[0].b == Sl + ivec3(0, 4, 0)), "and its end moved up with the plank");
+    // a steep strung rope climbs
+    w.setBlock(12, Y + 1, 12, stoneB); w.setBlock(12, Y + 9, 13, stoneB);
+    sneakUse("rope", ivec3(12, Y + 1, 12), 2); sneakUse("rope", ivec3(12, Y + 9, 13), 3);
+    Entity probe; probe.pos = vec3(12.5f, Y + 4, 12.7f); probe.w = 0.3f; probe.h = 1.8f;
+    check(sampleContacts(w, probe).ladder, "a steep strung rope climbs like a ladder");
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 14; y++) w.setBlock(x, y, z, AIR);
+    finishAll(*L); tick(1.5);
+    for (auto& e : L->entities()) if (e->type == "item") e->removed = true;
   }
 
   printf("%d passed, %d failed\n", passes, fails);

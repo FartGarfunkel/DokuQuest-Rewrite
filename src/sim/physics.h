@@ -20,7 +20,10 @@ void gatherBoxes(const World& w, double minX, double minY, double minZ, double m
 bool collides(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ);
 // things that are solid but not blocks in the world (moving pieces, sim/moving.cpp): they add their boxes over the region
 using ExtraBoxesFn = void (*)(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ, std::vector<DBox>& out);
-void setExtraBoxes(ExtraBoxesFn f);
+void setExtraBoxes(ExtraBoxesFn f);   // (adds one: moving pieces, rope bridges)
+// things you climb that aren't blocks (steep strung ropes and chains, sim/strung.cpp)
+using ExtraClimbFn = bool (*)(const World& w, const Entity& e);
+void addExtraClimb(ExtraClimbFn f);
 extern thread_local bool t_noExtraBoxes;   // set: only the world's own blocks (is there room for something a piece pushes?)
 // Collision boxes of one block (compat helper).
 void blockBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out);

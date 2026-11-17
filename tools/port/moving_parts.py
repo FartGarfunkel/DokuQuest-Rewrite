@@ -72,6 +72,8 @@ def main(d):
 
     blocks = bj['blocks']
     faces = bj['faces']
+    for bb in blocks:   # hanging chains climb like ropes and ladders (strung ones: sim/strung.cpp)
+        if bb['key'] == 'chain': bb['climb'] = True
     while len(faces) < len(blocks): faces.append(None)   # (faces are read by the block's place in the list)
     for key, name, front, side in (('hinge', 'Hinge', 'hinge_front', 'hinge_side'), ('slider', 'Slider', 'slider_front', 'slider_side')):
         if any(b['key'] == key for b in blocks): continue

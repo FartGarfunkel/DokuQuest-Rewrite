@@ -432,7 +432,7 @@ void App::frameLoop() {
     // A shared world still runs (GameSession only pauses a world that is not on the network).
     bool focused = window && (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) != 0;
     if (focused) focusAt = now;
-    else if (args.smokeFrames == 0 && settings.pauseOnLostFocus && session && !topScreen() && now > focusAt + 0.25)
+    else if (args.smokeFrames == 0 && args.smokeScript.is_null() && settings.pauseOnLostFocus && session && !topScreen() && now > focusAt + 0.25)
       pushScreen(makePauseScreen());
     if (audio) audio->setMuted(settings.muteOnLostFocus && !focused);
     ImGui::PopFont();

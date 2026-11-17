@@ -28,6 +28,7 @@ bool initCore(const CoreOptions& o) {
   registerBossBrains();   // the great foes that had no fight of their own (sim/boss_brains.cpp)
   registerVillageTheft();   // stealing in villages (sim/village_theft.cpp)
   registerTreasureMaps();   // a treasure map's X and the chest buried there (sim/treasure_maps.cpp)
+  registerStrung();         // chains and ropes strung between blocks (sim/strung.cpp)
   return true;
 }
 void shutdownCore() {}

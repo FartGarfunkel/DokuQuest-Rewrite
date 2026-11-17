@@ -344,7 +344,7 @@ bool campingUse(UseCtx& u) {
     if (held.empty() && !p.sneaking) { openContentScreen(lv, p, "campfire", {{"pos", {x, y, z}}}); return true; }
   }
   // rope: hang it down from here
-  if (!held.empty() && held.id == "rope" && u.hasHit() && hangRope(u)) return true;
+  if (!held.empty() && held.id == "rope" && !p.sneaking && u.hasHit() && hangRope(u)) return true;   // (sneak-use strings it: sim/strung.cpp)
   // the campfire kit sets down a campfire you can pack up again
   if (def && def->has("campKit") && u.hasHit() && u.face == FACE_PY && I.campfire) {
     ivec3 t = reg().tReplaceable[hitId] ? u.hit : u.placeAt();
