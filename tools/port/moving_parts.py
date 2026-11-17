@@ -61,6 +61,15 @@ def main(d):
     g.ellipse([8, 9, 23, 17], fill=(232, 166, 46, 255), outline=(150, 96, 20, 255)); g.ellipse([12, 11, 17, 14], fill=(255, 214, 120, 255))
     tile('glue', gl, item=True)
 
+    # the lift: a rail (an iron track with a toothed rack down its middle) and a stop (an iron plate with a red call button)
+    rl = Image.new('RGBA', (32, 32), DARK); g = ImageDraw.Draw(rl)
+    g.rectangle([1, 0, 30, 31], fill=PIN); g.rectangle([11, 0, 20, 31], fill=DARK)
+    for y in range(1, 32, 4): g.rectangle([13, y, 18, y + 1], fill=IRON)
+    g.line([1, 0, 1, 31], fill=IRON); g.line([30, 0, 30, 31], fill=IRON)
+    st = framed(Image.new('RGBA', (32, 32), PIN)); g = ImageDraw.Draw(st)
+    g.rectangle([9, 9, 22, 22], fill=DARK); g.ellipse([11, 11, 20, 20], fill=(196, 40, 36, 255), outline=(110, 18, 16, 255)); g.ellipse([13, 12, 16, 15], fill=(240, 120, 110, 255))
+    t['lift_rail'] = tile('lift_rail', rl); t['lift_stop'] = tile('lift_stop', st); t['lift_stop_side'] = tile('lift_stop_side', framed(Image.new('RGBA', (32, 32), PIN)))
+
     blocks = bj['blocks']
     faces = bj['faces']
     while len(faces) < len(blocks): faces.append(None)   # (faces are read by the block's place in the list)
@@ -71,15 +80,28 @@ def main(d):
                        'tex': {'front': front, 'side': side, 'top': side, 'back': 'machine_back'}, 'facing6': True,
                        'f6': {'front': t[front], 'frontV': t[front], 'back': t['machine_back'], 'backOn': t['machine_back'], 'side': t[side], 'top': t[side]}})
         faces.append([t[side], t[side], t[side], t[side], t[front], t[side]])
+    for key, name, tex in (('lift_rail', 'Lift Rail', 'lift_rail'), ('lift_stop', 'Lift Stop', 'lift_stop')):
+        if any(bb['key'] == key for bb in blocks): continue
+        side = 'lift_stop_side' if key == 'lift_stop' else tex
+        blocks.append({'id': len(blocks), 'render': 1, 'solid': True, 'opaque': True, 'replaceable': False, 'hardness': 2.5, 'tool': 'pickaxe',
+                       'tier': 0, 'drop': key, 'light': 0, 'lightAtt': 0, 'sound': 'metal', 'key': key, 'name': name, 'lift': key,
+                       'tex': {'side': tex, 'top': side, 'bottom': side} if key == 'lift_stop' else tex})
+        faces.append([t[tex], t[tex], t[side], t[side], t[tex], t[tex]] if key == 'lift_stop' else [t[tex]] * 6)
     DESC = {'hinge': 'Swings what is glued to its face. Facing up or down it turns sideways, like a gate; on a wall it swings up and down, like a drawbridge. Use it, or any block of what it carries, to open and shut it. Sneak-use: which way it turns.',
             'slider': 'Slides what is glued to its face straight out, then back. Use it, or any block of what it carries. Sneak-use: how far (1 to 16 blocks).',
+            'lift_rail': 'A lift runs on these. Stack them in a line beside a Slider, alongside the way its piece slides: the slider then carries its piece along the whole rail, stopping at each Lift Stop.',
+            'lift_stop': 'Put it beside a Lift Rail to make a stop. Use its button to call the lift there; it gives a redstone signal while the lift is at it.',
             'glue': 'Use on the face between two blocks to stick them together (again to unstick). A hinge or slider moves everything glued to it, up to 512 blocks; glued faces show while you hold it.'}
     for key, name in (('hinge', 'Hinge'), ('slider', 'Slider')):
+        items[key] = {'key': key, 'name': name, 'maxStack': 64, 'icon': 'block:' + key, 'block': key, 'desc': DESC[key]}
+    for key, name in (('lift_rail', 'Lift Rail'), ('lift_stop', 'Lift Stop')):
         items[key] = {'key': key, 'name': name, 'maxStack': 64, 'icon': 'block:' + key, 'block': key, 'desc': DESC[key]}
     items['glue'] = {'key': 'glue', 'name': 'Glue', 'maxStack': 64, 'icon': 'glue', 'desc': DESC['glue']}
     K = {'I': 'iron_ingot', 'P': 'planks', 'R': 'redstone'}
     recipe('hinge', 1, ['IPI', 'PRP', 'IPI'], K)
     recipe('slider', 1, ['PIP', 'IRI', 'PIP'], K)
+    recipe('lift_rail', 8, ['I I', 'I I', 'I I'], {'I': 'iron_ingot'})
+    recipe('lift_stop', 1, ['III', 'IBI', 'III'], {'I': 'iron_ingot', 'B': 'stone_button'})
     recipe('glue', 4, items_=['slime_ball'])
     recipe('glue', 4, items_=['honey_bottle'])
 

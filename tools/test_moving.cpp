@@ -453,6 +453,38 @@ int main(int argc, char** argv) {
     finishAll(*L);
   }
 
+  printf("[lifts]\n");
+  {
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 14; y++) w.setBlock(x, y, z, AIR);
+    PlayerController pc(*L, *P);
+    auto tick = [&](double s) { for (double t = 0; t < s; t += 0.05) { pc.update(0.05f, PlayerInput{}); L->tick(0.05); } };
+    const BlockId sliderB = reg().blockId("slider"), railB = reg().blockId("lift_rail"), stopB = reg().blockId("lift_stop");
+    check(railB && stopB && recipeFor("lift_rail", {"iron_ingot"}) && recipeFor("lift_stop", {"iron_ingot", "stone_button"}), "the Lift Rail and Lift Stop exist and can be made");
+    // a slider facing up, a 1-block floor on it; a rail beside it 8 high; stops by the rail at 1 (the ground), 4 and 7
+    const ivec3 S(4, Y + 1, 4);
+    w.setBlock(S.x, S.y, S.z, sliderB, 1); w.setBlock(S.x, S.y + 1, S.z, planks); setGlue(w, S, 2, true);
+    for (int k = 0; k < 8; k++) w.setBlock(S.x + 1, S.y + k, S.z, railB);
+    for (int k : {1, 4, 7}) w.setBlock(S.x + 2, S.y + k, S.z, stopB);
+    auto floorAt = [&] { for (int y = S.y + 1; y < S.y + 10; y++) if (w.getBlock(S.x, y, S.z) == planks) return y - S.y - 1; return -1; };
+    P->pos = vec3(S.x + 0.5f, S.y + 2, S.z + 0.5f); P->vel = vec3(0); tick(0.3);
+    check(!use("", ivec3(S.x + 2, S.y + 4, S.z), 0), "pressing the middle floor's stop calls the lift");
+    tick(3.0);
+    check(floorAt() == 3, "it rises to that floor (" + std::to_string(floorAt()) + ")");
+    check(std::fabs(P->pos.y - (S.y + 5)) < 0.2f, "carrying you with it (" + std::to_string(P->pos.y - S.y) + ")");
+    check((w.getMeta(S.x + 2, S.y + 4, S.z) & 1) && !(w.getMeta(S.x + 2, S.y + 1, S.z) & 1), "the stop it's at gives a signal, the others don't");
+    check(!use("", ivec3(S.x, S.y + 4, S.z), 1), "using the lift's floor sends it on");
+    tick(3.5);
+    check(floorAt() == 6, "to the next floor up (" + std::to_string(floorAt()) + ")");
+    use("", ivec3(S.x, S.y + 7, S.z), 1); tick(6.5);
+    check(floorAt() == 0, "from the top it goes back to the bottom (" + std::to_string(floorAt()) + ")");
+    use("", ivec3(S.x + 2, S.y + 7, S.z), 0); tick(4.5);
+    check(floorAt() == 6 && (w.getMeta(S.x + 2, S.y + 7, S.z) & 1), "a stop calls it from anywhere on the rail");
+    use("", ivec3(S.x + 2, S.y + 1, S.z), 0); tick(4.5);
+    check(floorAt() == 0, "and the ground floor's stop brings it back down");
+    for (int x = -4; x < 20; x++) for (int z = -4; z < 20; z++) for (int y = Y + 1; y < Y + 14; y++) w.setBlock(x, y, z, AIR);
+    finishAll(*L);
+  }
+
   printf("%d passed, %d failed\n", passes, fails);
   return fails;
 }

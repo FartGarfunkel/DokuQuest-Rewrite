@@ -23,7 +23,7 @@ class Player;
 namespace rs {
 // circuit roles (core/blocks.js T_RS)
 enum Role : u8 { NONE = 0, WIRE = 1, TORCH, TORCH_OFF, BLOCK, LEVER, BUTTON, PLATE, REPEATER, COMPARATOR, OBSERVER, LAMP, PISTON,
-  DISPENSER, DROPPER, HOPPER, NOTE, TNT, DOOR, TRAPDOOR, GATE, DAYLIGHT, TARGET, PRAIL, DRAIL, BELL, BULB, HOOK, CONDUIT, MATCHER, TIMER, MACHINE };
+  DISPENSER, DROPPER, HOPPER, NOTE, TNT, DOOR, TRAPDOOR, GATE, DAYLIGHT, TARGET, PRAIL, DRAIL, BELL, BULB, HOOK, CONDUIT, MATCHER, TIMER, MACHINE, LIFTSTOP };
 // matcher: bit 6 (64) is the Y axis, else bits 0-1 are a horizontal facing (1 or 3 = X, 0 or 2 = Z). Bit 3 (8) means on.
 inline int matcherAxis(int m) { if (m & 64) return 1; int f = m & 3; return (f == 1 || f == 3) ? 0 : 2; }   // 0 X, 1 Y, 2 Z
 inline bool matcherPowersSide(int m, int d) {

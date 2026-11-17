@@ -3,6 +3,7 @@
 // sneak-use on a slider cycles its distance 1..16. Using the machine, or any block of its piece, starts it (shut: opens;
 // open: shuts). Blocks with a use of their own (chests, doors, levers, stations...) keep it, and glue in hand glues.
 #include "sim/moving.h"
+#include "sim/lift.h"
 #include "sim/glue.h"
 #include "sim/player.h"
 #include "sim/redstone.h"
@@ -44,7 +45,9 @@ bool machineFor(const World& w, ivec3 at, ivec3& out) {
         if (!isMachine(id)) continue;
         if (reg().block(id).str("machine") == "slider" && machineFace(w, n) == f && machineOpen(w, n)) {
           const json* e = const_cast<World&>(w).blockEntity(n.x, n.y, n.z);
-          if (e && 1 + std::clamp(e->value("distance", 1), 1, 16) == k) { out = n; return true; }
+          Lift l;
+          const int slid = !e ? 0 : liftOfSlider(w, n, l) ? e->value("at", 0) : std::clamp(e->value("usedD", e->value("distance", 1)), 1, 16);
+          if (e && 1 + slid == k) { out = n; return true; }
         }
         break;   // (the first machine on the line decides)
       }
@@ -75,6 +78,14 @@ public:
       const BlockId id = w.getBlock(at.x, at.y, at.z);
       if (!id) return true;
       auto toHost = [&] { if (lv.net) lv.net->action(*p, "movingUse", a); return false; };   // (a guest: the host moves it)
+      if (isLiftStop(id) && !p->sneaking) {   // a stop's button: the lift comes here
+        if (lv.isRemote()) return toHost();
+        Lift l; int floor = 0;
+        if (!liftOfStop(w, at, l, &floor)) { toast(lv, *p, "This stop isn't beside a lift's rail"); return false; }
+        sfxAt(lv, "click", vec3(at) + vec3(0.5f));
+        liftCall(lv, p->realm, l.slider, floor);
+        return false;
+      }
       if (isMachine(id)) {
         if (lv.isRemote()) return toHost();
         if (p->sneaking && !item.empty()) return true;   // (sneaking with something in hand: build against it as usual)

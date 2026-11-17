@@ -14,6 +14,7 @@ struct BodyBlock { ivec3 rel; BlockId id; u8 meta; json entity; u8 carve = 0; };
 struct Body {
   u32 id = 0; int realm = 0; Motion m; float t = 0, dur = 1;
   bool spin = false;
+  bool lift = false;           // a slider on a Lift Rail (sim/lift.h): "at" in its record is where its piece has got to
   float stuck = 0;             // how long something trapped by it has held it up (§4: then it goes back)
   std::vector<std::array<float, 6>> boxes;   // its solid blocks' boxes where it is now (world units: physics stands on them)           // a turning hinge driven by an axle: each quarter turn leaves it "shut" for the next
   std::vector<BodyBlock> blocks;
@@ -26,7 +27,8 @@ bool machineOpen(const World& w, ivec3 machine);
 // stage 2 (§3): what drives it. A signal or an axle says which way it should stand; it gets there when it's free
 // (a move under way finishes first). speed: the axle's (1 = by hand).
 void machineWant(Level& lv, int realm, ivec3 machine, bool open, float speed = 1.f);
-bool machineHeld(const World& w, ivec3 machine);  // held by a redstone signal (can't be worked by hand)
+bool machineHeld(const World& w, ivec3 machine);
+void liftCall(Level& lv, int realm, ivec3 slider, int at);   // send a lift to the floor where its piece has slid `at` (sim/lift.h)  // held by a redstone signal (can't be worked by hand)
 int machineSignal(const World& w, ivec3 machine); // what a comparator reads: 0 shut, 15 open, between while moving
 void machineRedstone(Level& lv, World& w, ivec3 machine, bool powered, long long nowTicks);   // sim/redstone.cpp calls it
 bool isMachine(BlockId id);    // a hinge or a slider

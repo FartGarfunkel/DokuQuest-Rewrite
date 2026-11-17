@@ -51,6 +51,7 @@ const Tables& T() {
     else if (b.shapeKind == ShapeKind::Gate) r = GATE;
     else if (b.has("bellBlock") || b.has("cmdBlock")) r = BELL;
     else if (b.str("machine") == "hinge" || b.str("machine") == "slider") r = MACHINE;   // (sim/moving.cpp)
+    else if (b.str("lift") == "lift_stop") r = LIFTSTOP;   // (sim/lift.cpp: lit while the lift is at it)
     t.role[i] = r;
     t.cond[i] = b.solid && b.opaque && !b.shapeKind && b.render == Render::Cube && r != BLOCK && r != OBSERVER && r != PISTON ? 1 : 0;
     t.ticker[i] = r == HOPPER ? 1 : r == DAYLIGHT ? 2 : r == PLATE ? 3 : r == HOOK ? 4 : r == DRAIL ? 5 : b.has("siphon") ? 6 : r == TIMER ? 8 : b.has("mesh") ? 9 : 0;
@@ -91,7 +92,7 @@ int railShape(BlockId id, int m) { return T().rail[id] == RAIL_NORMAL ? (m & 15)
 static bool rsAttracts(BlockId id, int m, int h) {
   switch (T().role[id]) {
     case WIRE: case TORCH: case TORCH_OFF: case BLOCK: case LEVER: case BUTTON: case PLATE:
-    case COMPARATOR: case DAYLIGHT: case TARGET: case DRAIL: case HOOK: case MATCHER: case TIMER: case CONDUIT: return true;
+    case COMPARATOR: case DAYLIGHT: case TARGET: case DRAIL: case HOOK: case MATCHER: case TIMER: case CONDUIT: case LIFTSTOP: return true;
     case REPEATER: return ((m & 3) & 1) == (h & 1);
     case OBSERVER: return (m & 7) == H2D6[h];
   }
@@ -261,6 +262,7 @@ int Redstone::emit(int x, int y, int z, BlockId id, int m, int d) {
   switch (T().role[id]) {
     case BLOCK: return 15;
     case LEVER: case BUTTON: return m & 8 ? 15 : 0;
+    case LIFTSTOP: return m & 1 ? 15 : 0;
     case PLATE: case DAYLIGHT: case TARGET: return m & 15;
     case TORCH: return d == TORCH_SUP[(m & 7) % 5] ? 0 : 15;
     case REPEATER: return (m & 16) && d == H2D6[m & 3] ? 15 : 0;

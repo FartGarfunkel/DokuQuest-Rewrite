@@ -6,6 +6,7 @@
 #include "sim/worldsys.h"
 #include "sim/machines.h"
 #include "sim/physics.h"
+#include "sim/lift.h"
 #include "sim/entity.h"
 #include "common/common.h"
 #include <set>
@@ -88,7 +89,16 @@ public:
     int q = spin ? 1 : st.value("quarters", 1); if (q == 0) q = 1;   // (turning for good: an axle turns it a quarter at a time; by hand a quarter)
     int d = std::clamp(st.value("distance", 1), 1, 16);
     if (open) { q = st.value("usedQ", q); d = std::clamp(st.value("usedD", d), 1, 16); }   // (shut the way it opened, whatever it's set to now)
-    if (m.kind == 0) m.quarters = open ? -q : q;
+    Lift lift; const bool isLift = m.kind == 1 && !spin && liftOfSlider(w, machine, lift);
+    int liftAt = 0, liftTo = 0;
+    if (isLift) {   // along the rail to the floor asked for ("goto": a stop's button), or else the next one on
+      liftAt = std::clamp(st.value("at", 0), 0, lift.maxAt());
+      liftTo = st.contains("goto") && st["goto"].is_number() ? std::clamp(st["goto"].get<int>(), 0, lift.maxAt()) : liftNext(lift, liftAt);
+      st.erase("goto");
+      if (liftTo == liftAt) { if (why) *why = ""; return false; }   // (already there)
+      m.distance = liftTo - liftAt; m.reach = 1 + liftAt;
+    }
+    else if (m.kind == 0) m.quarters = open ? -q : q;
     else { m.distance = open ? -d : d; m.reach = open ? 1 + d : 1; }
     Piece p;
     if (!gatherPiece(w, m, p, why)) return false;
@@ -107,7 +117,7 @@ public:
       return false;
     }
     for (const ivec3& b : breakable) w.setBlock(b.x, b.y, b.z, AIR);
-    Body body; body.id = nextId++; body.realm = realm; body.m = m; body.spin = spin;
+    Body body; body.id = nextId++; body.realm = realm; body.m = m; body.spin = spin; body.lift = isLift;
     body.dur = (m.kind == 1 ? std::abs(m.distance) / 2.f : std::abs(m.quarters) * 1.f) / std::clamp(speed, 0.25f, 2.f);
     for (const ivec3& c : p.cells) {
       const json* e = w.blockEntity(c.x, c.y, c.z);
@@ -115,8 +125,11 @@ public:
     }
     { QuietEdits quiet;   // (lifted whole: a door or torch on a lifted plank must not drop as it goes, nor sand fall)
       for (const ivec3& c : p.cells) { w.setBlockEntity(c.x, c.y, c.z, nullptr); w.setBlock(c.x, c.y, c.z, AIR); } }
-    if (!spin) st["open"] = !open;
-    if (!open && !spin) { st["usedQ"] = q; st["usedD"] = d; }   // (cleared when it's really shut again: finish())
+    if (isLift) { st["from"] = liftAt; st["at"] = liftTo; st["open"] = liftTo > 0; liftMarkStops(w, lift, -1); }
+    else {
+      if (!spin) st["open"] = !open;
+      if (!open && !spin) { st["usedQ"] = q; st["usedD"] = d; }
+    }   // (cleared when it's really shut again: finish())
     w.blockEntityChanged(machine.x, machine.y, machine.z);
     sfxAt(lv, m.kind == 1 ? "piston_out" : "door_open", vec3(machine) + vec3(0.5f));
     body.boxes = boxesAt(body, worldXf(body, body.t));
@@ -134,7 +147,12 @@ public:
     bool arrive = true;
     if (forceBack) arrive = false;
     else for (const BodyBlock& k : b.blocks) if (!freeCell(movedCell(b.m, b.m.machine + k.rel))) { arrive = false; break; }
-    if (!arrive && !b.spin) {
+    if (!arrive && b.lift) {   // (back where it set off from)
+      json& st = machineState(w, b.m.machine);
+      st["at"] = st.value("from", 0); st["open"] = st.value("from", 0) > 0;
+      w.blockEntityChanged(b.m.machine.x, b.m.machine.y, b.m.machine.z);
+    }
+    else if (!arrive && !b.spin) {
       json& st = machineState(w, b.m.machine);
       st["open"] = !st.value("open", false);   // (it never got there: as it was)
       w.blockEntityChanged(b.m.machine.x, b.m.machine.y, b.m.machine.z);
@@ -163,6 +181,7 @@ public:
       if (!e.is_null()) w.setBlockEntity(place.x, place.y, place.z, e);
     }
     sfxAt(lv, b.m.kind == 1 ? "piston_in" : "door_close", vec3(b.m.machine) + vec3(0.5f));
+    if (b.lift) { Lift l; if (liftOfSlider(w, b.m.machine, l)) liftMarkStops(w, l, machineState(w, b.m.machine).value("at", 0)); }
   }
 
   void finishAllNow() { auto bs = std::move(bodies); bodies.clear(); for (Body& b : bs) finish(b); }
@@ -250,6 +269,7 @@ public:
       if (moving(realm, p)) { ++it; continue; }
       json& st = machineState(*w, p);
       const float speed = st.value("speed", 1.f);
+      if (st.contains("goto")) { start(realm, p, nullptr, speed); st.erase("goto"); ++it; continue; }   // (a lift called while it was moving)
       if (st.value("spin", false)) { std::string why; if (!start(realm, p, &why, speed, true)) { DQ_LOG("moving: spin %s", why.c_str()); st["spin"] = false; } ++it; continue; }
       if (!st.contains("want") || st["want"].get<bool>() == st.value("open", false)) { it = driven.erase(it); continue; }
       if (!start(realm, p, nullptr, speed)) st.erase("want");   // (blocked: it gives up until told again)
@@ -330,7 +350,16 @@ void machineWant(Level& lv, int realm, ivec3 p, bool open, float speed) {
   json& st = machineState(*w, p); st["want"] = open; st["speed"] = speed;
   m->driven.insert({realm, {p.x, p.y, p.z}});
 }
+void liftCall(Level& lv, int realm, ivec3 slider, int at) {
+  auto* m = bodiesOf(lv); if (!m) return;
+  m->attachHooks();
+  World* w = lv.worldIfOpen(realm); if (!w) return;
+  machineState(*w, slider)["goto"] = at;
+  if (!m->moving(realm, slider)) { m->start(realm, slider, nullptr); machineState(*w, slider).erase("goto"); }
+  else m->driven.insert({realm, {slider.x, slider.y, slider.z}});
+}
 bool machineHeld(const World& w, ivec3 p) {
+  if (Lift l; liftOfSlider(w, p, l)) return false;   // (a lift goes on by hand whatever the wires say)
   const json* e = const_cast<World&>(w).blockEntity(p.x, p.y, p.z);
   return e && e->is_object() && e->value("rsOn", false) && !e->value("latched", false);
 }
@@ -347,6 +376,11 @@ void machineRedstone(Level& lv, World& w, ivec3 p, bool on, long long now) {
   json& st = machineState(w, p);
   if (on == st.value("rsOn", false)) return;
   st["rsOn"] = on;
+  if (Lift l; liftOfSlider(w, p, l)) {   // a lift: each signal sends it on to the next floor
+    if (on) liftCall(lv, w.realm, p, liftNext(l, std::clamp(st.value("at", 0), 0, l.maxAt())));
+    w.blockEntityChanged(p.x, p.y, p.z);
+    return;
+  }
   if (on) {
     st["rsT"] = now;
     if (st.value("latched", false)) { st["latched"] = false; machineWant(lv, w.realm, p, false); }
