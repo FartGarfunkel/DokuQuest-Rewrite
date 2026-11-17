@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(DokuQuest VERSION 1.0.0 LANGUAGES C CXX)
 # DokuQuest C++ — game client, launcher (with dedicated server + Mod Studio) and headless server.
-set(DQ_VERSION "1.0.0-alpha.32" CACHE STRING "Full game version shown in game and launcher")
+set(DQ_VERSION "1.0.0-alpha.33" CACHE STRING "Full game version shown in game and launcher")
 # the launcher's own version: always the game's. The launcher holds the dedicated server (all the game's world and network
 # code), so every release changes it; an update installs the whole package and the new launcher takes over at its next
 # start (launcher/updater.cpp, launcher_main.cpp handOff). (It was set apart once and never raised: updates fetched only
@@ -203,6 +203,11 @@ add_executable(test_progression tools/test_progression.cpp)
 target_link_libraries(test_progression PRIVATE dqcore)
 add_test(NAME progression COMMAND test_progression)
 set_tests_properties(progression PROPERTIES RUN_SERIAL TRUE)   # (heavy: run on its own, so it doesn't slow the timing-sensitive tests beside it)
+# RPG balance (headless): stats, talents and their caps, creature levels and loot, and a time-to-kill / time-to-die table
+# for gear tier x skill level vs creature level x elite (sim/balance.h). Run: build/test_balance
+add_executable(test_balance tools/test_balance.cpp)
+target_link_libraries(test_balance PRIVATE dqcore)
+add_test(NAME balance COMMAND test_balance)
 # The End, dragons, the Deep Dark's guardian, the watcher and the story (headless). Run: build/test_endstory
 add_executable(test_endstory tools/test_endstory.cpp)
 target_link_libraries(test_endstory PRIVATE dqcore)
@@ -212,13 +217,22 @@ add_test(NAME endstory COMMAND test_endstory)
 add_executable(test_villagers tools/test_villagers.cpp)
 target_link_libraries(test_villagers PRIVATE dqcore)
 add_test(NAME villagers COMMAND test_villagers)
+# Townsfolk way-finding audit (headless): errands about generated towns, arrival rate and time. Run: build/test_npc_paths
+add_executable(test_npc_paths tools/test_npc_paths.cpp)
+target_link_libraries(test_npc_paths PRIVATE dqcore)
+add_test(NAME npc_paths COMMAND test_npc_paths)
 # Redstone, rails/carts, boats/ships and machines test (headless). Run: build/test_redstone
 add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
 
 # every program finds data/ and assets/ next to it
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_weather)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_weather test_balance test_npc_paths)
   if(TARGET ${t})
     add_dependencies(${t} dq_runtime_data)
   endif()
 endforeach()
+# Dying (headless: the player's body keeps every slot and gives it back, the death compass with two bodies, saving,
+# lava and the void, a creature going limp). Run: build/test_death
+add_executable(test_death tools/test_death.cpp)
+target_link_libraries(test_death PRIVATE dqcore)
+add_test(NAME death COMMAND test_death)

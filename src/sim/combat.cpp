@@ -3,12 +3,15 @@
 #include "core/tool_parts.h"
 #include "sim/rpg.h"
 #include "sim/skilltree.h"
+#include "sim/balance.h"
+#include "sim/skills.h"
 #include "sim/combat.h"
 #include "sim/combat_rpg.h"
 #include "sim/attack_moves.h"
 #include "sim/magic.h"
 #include "sim/gameplay.h"
 #include "sim/rules.h"
+#include "sim/corpse.h"
 #include "sim/physics.h"
 #include "gen/generator.h"
 #include <algorithm>
@@ -36,6 +39,7 @@ static const json& mobType(const std::string& type) { static const json none = j
 void knockback(Entity& e, vec3 from, float k, float up) {
   float kx = e.pos.x - from.x, kz = e.pos.z - from.z, l = std::hypot(kx, kz);
   if (l == 0) l = 1;
+  if (e.isPlayer()) k *= 1 - knockResist(static_cast<const Player&>(e));   // (knockback-resistance talents)
   e.vel.x += kx / l * k; e.vel.z += kz / l * k;
   if (up > 0) e.vel.y = std::max(e.vel.y, up);
 }
@@ -85,7 +89,7 @@ static float playerHurtRaw(Player& p, float amount, const DamageSource& src) {
   if (p.dead || amount <= 0) return 0;
   if (p.invuln > 0 && !src.bypass) return 0;
   float dmg = amount;
-  if (!src.bypassArmor) dmg *= 1 - std::min(0.8f, (armorPoints(p) + treeAttr(p, "armor")) * (1 + treeAttrPct(p, "armor")) * 0.032f);
+  if (!src.bypassArmor) dmg *= 1 - std::min(0.8f, (armorPoints(p) + treeAttr(p, "armor")) * (1 + treeAttrPct(p, "armor")) * (1 - src.pierce) * 0.032f);   // (an attacker's armour piercing)
   if (src.type == "magic") dmg *= 1 - std::min(0.6f, treeAttrPct(p, "spell_resist") + treeAttr(p, "spell_resist"));
   if (src.raw > 0 && !src.bypassArmor) dmg = std::max(dmg, src.raw * 0.2f);
   if (src.element == "fire" || src.type == "lava" || src.type == "burn") dmg *= 1 - fireResist(p);
@@ -108,8 +112,16 @@ float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
   amount = combatRpgIncoming(lv, p, amount, src);
   p.lastHurtT = gameClock(lv);
   if (p.sleeping) p.sleeping = false;
+  // the ward, stoneskin, potions, Protection/Feather Falling/Fire Protection, the Defence skill and worn-in armour
+  // (sim/magic.cpp): every harm goes through them, not only a spell's
+  json mj = {{"type", src.type}, {"element", src.element}, {"bypass", src.bypass}, {"bypassArmor", src.bypassArmor}, {"knock", src.knock < 0 ? 5.f : src.knock}};
+  if (src.attacker) mj["attacker"] = src.attacker;
+  if (amount > 0) amount = magicIncomingDamage(lv, p, amount, mj);
+  if (amount <= 0) return 0;
+  if (mj.contains("knock") && mj["knock"].is_number()) src.knock = mj["knock"].get<float>();
   float dealt = playerHurtRaw(p, amount, src);
   if (!dealt) return 0;
+  afterPlayerHurt(lv, p, dealt, mj);
   if (dealt >= 5) DQ_LOG("%s took %.1f (%s)", p.name.c_str(), dealt, src.type.c_str());   // big hits, for playtests and the bridge's log
   sfxUi(lv, p, "hurt");
   if (lv.events) lv.events->emit("rumble", json::array({p.name, std::min(1.f, 0.25f + dealt * 0.08f), 140}));
@@ -123,11 +135,14 @@ float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
 void mobDeath(Level& lv, Entity& m, const DamageSource& src) {
   const json& T = mobType(m.type);
   bool baby = m.data.value("baby", false);
-  for (int roll = 0, rolls = mobIsElite(m.data) ? 2 : 1; roll < rolls; roll++)   // (an elite: its drops twice over)
+  Entity* by = src.attacker ? lv.entity(src.attacker) : nullptr;
+  const MobLoot L = mobLoot(m.mobLevel, mobIsElite(m.data), by && by->isPlayer() ? static_cast<Player*>(by) : nullptr);   // (its level, an elite, your luck: sim/balance.h)
+  for (int roll = 0; roll < L.rolls; roll++)
   if (!baby && T.contains("drops") && T["drops"].is_array()) for (auto& d : T["drops"]) {
     if (!d.is_array() || d.size() < 4) continue;
-    if (rnd() < d[3].get<double>()) { int a = d[1], b = d[2]; int n = a + (int)(rnd() * (b - a + 1)); if (n > 0) dropItem(lv, m.realm, ItemStack(d[0], n), m.pos + vec3(0, 0.5f, 0), true); }
+    if (rnd() < d[3].get<double>() * L.chanceMul) { int a = d[1], b = d[2]; int n = a + (int)(rnd() * (b - a + 1)) + (rnd() < L.extra ? 1 : 0); if (n > 0) dropItem(lv, m.realm, ItemStack(d[0], n), m.pos + vec3(0, 0.5f, 0), true); }
   }
+  if (!baby && L.gearChance > 0 && rnd() < L.gearChance) if (ItemStack g = mobGearRoll(L, rnd(), rnd(), rnd()); !g.empty()) dropItem(lv, m.realm, g, m.pos + vec3(0, 0.5f, 0), true);
   if (T.value("woolly", false) && !m.data.value("sheared", false) && !baby) {
     std::string col = m.data.value("color", std::string("white"));
     dropItem(lv, m.realm, ItemStack(col == "white" ? "wool" : col + "_wool", 1), m.pos + vec3(0, 0.5f, 0), true);
@@ -176,10 +191,11 @@ static float mobHurtDefault(Level& lv, Entity& e, float amount, const DamageSour
 float damageEntity(Level& lv, Entity& e, float amount, const DamageSource& src) {
   if (e.isPlayer()) return damagePlayer(lv, static_cast<Player&>(e), amount, src);
   amount = combatRpgBossCap(lv, e, amount);
+  if (e.type == "corpse") return 0;   // a player's body (sim/corpse.h) is never hurt or destroyed
   float dealt = 0;
   if (creatureTakesHit(lv, e, amount, src, dealt)) return dealt;
   if (auto* h = handlerFor(e.type)) return (*h)(lv, e, amount, src);
-  if (e.type == "item" || e.type == "falling_block" || e.type == "falling_tree" || e.type == "seat" || e.type == "tnt") return 0;
+  if (e.type == "item" || e.type == "falling_block" || e.type == "falling_tree" || e.type == "seat" || e.type == "tnt" || e.type == "corpse") return 0;
   return mobHurtDefault(lv, e, amount, src);
 }
 
@@ -198,11 +214,13 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
   // a sneak attack: a creature that hasn't caught on to you (its back to you, after nobody), struck before it turns
   const bool sneakHit = creatureUnaware(e, p);
   if (sneakHit) dmg = std::ceil(dmg * 1.75f);
-  DamageSource src; src.attacker = p.id; src.element = heldToolElement(p); src.knock = 5 * knockMul;
+  DamageSource src; src.attacker = p.id; src.element = heldToolElement(p); src.knock = 5 * knockMul * knockbackFactor(p); src.pierce = armorPierce(p);
   if (tool) src.tool = tool->type;
   if (!p.inv[p.selected].empty()) src.weapon = p.inv[p.selected].id;
   dmg = spellbladeHit(lv, p, e, dmg, src.element);   // a spell carried on the blade (sim/magic_hands.cpp)
   dmg *= pathMeleeFactor(p);                          // the Knight's Heavy Blows (sim/villager_quests.cpp)
+  dmg *= skillHitFactor(p, "melee", p.inv[p.selected]);   // the Melee skill and a well-used weapon (sim/skills.h)
+  const float hpBefore = e.hp;
   bool finishing = false;
   dmg = combatRpgOutgoing(lv, p, e, dmg, finishing);
   // silver (items.json "holy"): bites the undead and the cursed half as hard again
@@ -218,7 +236,8 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
                                      {"ro", {src.rayO.x, src.rayO.y, src.rayO.z}}, {"rd", {src.rayD.x, src.rayD.y, src.rayD.z}}});   // (the part it struck: the host severs that limb)
     dealt = dmg;
   } else dealt = damageEntity(lv, e, dmg, src);
-  if (setCd) p.attackCd = tool && tool->type == "sword" ? 0.45f : 0.6f;
+  if (setCd) p.attackCd = (tool && tool->type == "sword" ? 0.45f : 0.6f) / attackSpeedFactor(p);   // (Agility, attack-speed talents)
+  if (dealt > 0 && !e.isPlayer() && !e.ghost) onPlayerHitMob(lv, p, e, "melee", dealt, hpBefore);   // (Melee grows with the blows that land)
   if (dealt > 0) {
     sfxUi(lv, p, crit ? "crit" : "hit");
     if (crit) lv.fx->particles("crit", e.pos + vec3(0, e.h * 0.6f, 0), 10);   // a burst of stars on a critical blow
@@ -377,16 +396,23 @@ void playerDie(Level& lv, Player& p, const DamageSource& src) {
   } else if (a && a->isPlayer()) cause = "You were slain by " + static_cast<Player*>(a)->name;
   else if (src.type == "arrow") cause = "You were shot";
   else if (src.type == "explosion") cause = "You were blown up";
+  // the body stays where it fell (sim/corpse.h): with the "graves" rule it keeps everything they carried, each thing
+  // remembered in its slot, and the death compass points to it (to the oldest body, while there are several)
   if (!rule(lv, "keepInventory")) {
-    std::vector<ItemStack> all;
-    for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm, &p.shield}) for (auto& s : *v) if (!s.empty() && s.id != "death_compass") all.push_back(s);
-    json grave = rule(lv, "graves") ? makeGrave(lv, p, all) : json();
-    if (!grave.is_null()) p.grave = grave;
-    else for (auto& s : all) dropItem(lv, p.realm, s, p.pos + vec3(0, 1, 0), true, 6);
-    for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm, &p.shield}) for (auto& s : *v) s.clear();
-    if (!grave.is_null() && reg().item("death_compass")) p.inv[0] = ItemStack("death_compass", 1);
+    if (rule(lv, "graves")) {
+      spawnCorpse(lv, p, src, true);
+      for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm, &p.cape, &p.quiver, &p.shield}) for (auto& s : *v) s.clear();   // (the old compass too)
+      if (!deathBodies(p).empty() && reg().item("death_compass")) p.inv[0] = ItemStack("death_compass", 1);
+    } else {
+      std::vector<ItemStack> all;
+      for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm, &p.shield}) for (auto& s : *v) if (!s.empty() && s.id != "death_compass") all.push_back(s);
+      for (auto& s : all) dropItem(lv, p.realm, s, p.pos + vec3(0, 1, 0), true, 6);
+      for (auto* v : {&p.inv, &p.armor, &p.back, &p.offhand, &p.hook, &p.charm, &p.shield}) for (auto& s : *v) s.clear();
+      if (!deathBodies(p).empty() && reg().item("death_compass")) p.inv[0] = ItemStack("death_compass", 1);   // (bodies from before)
+      spawnCorpse(lv, p, src, false);
+    }
     p.xp = 0;
-  }
+  } else spawnCorpse(lv, p, src, false);
   if (!p.carrying.is_null()) dropCarried(lv, p);
   p.hang.reset(); p.climb.reset(); p.vel = vec3(0);
   if (!p.data.is_object()) p.data = json::object();

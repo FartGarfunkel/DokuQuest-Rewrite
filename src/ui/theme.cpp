@@ -211,15 +211,21 @@ void feedNav(App& a) {
   Input& in = a.input;
   if (in.padCount() == 0 || in.setupActive) { if (in.padCount() == 0) io.BackendFlags &= ~ImGuiBackendFlags_HasGamepad; return; }
   io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
-  auto key = [&](ImGuiKey k, int b) { io.AddKeyEvent(k, in.padButtonDown(b)); };
-  key(ImGuiKey_GamepadFaceDown, 0); key(ImGuiKey_GamepadFaceRight, 1);
-  key(ImGuiKey_GamepadDpadUp, 12); key(ImGuiKey_GamepadDpadDown, 13); key(ImGuiKey_GamepadDpadLeft, 14); key(ImGuiKey_GamepadDpadRight, 15);
+  // The ONLY place pads reach ImGui (every button in the standard layout, the Nintendo swap already applied, and the
+  // left stick). There used to be a second feeder (ui_main.cpp) with a different stick threshold: with the stick resting
+  // between the two, each frame queued a press and a release of the same key, ImGui trickles such pairs over frames, and
+  // its input queue grew a step per frame. Every later press then arrived later and later: the controller "stopped
+  // working" in the menus, the pause screen most of all (tools/playtests/pause_pad.json).
+  static const ImGuiKey MAP[16] = {ImGuiKey_GamepadFaceDown, ImGuiKey_GamepadFaceRight, ImGuiKey_GamepadFaceLeft, ImGuiKey_GamepadFaceUp,
+    ImGuiKey_GamepadL1, ImGuiKey_GamepadR1, ImGuiKey_GamepadL2, ImGuiKey_GamepadR2, ImGuiKey_GamepadBack, ImGuiKey_GamepadStart,
+    ImGuiKey_GamepadL3, ImGuiKey_GamepadR3, ImGuiKey_GamepadDpadUp, ImGuiKey_GamepadDpadDown, ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadDpadRight};
+  for (int k = 0; k < 16; k++) io.AddKeyEvent(MAP[k], in.padButtonDown(k));
   vec2 l(0);
   for (auto& p : in.pads()) {
     if (in.selected() >= 0) { auto& ids = in.sourceList()[in.selected()].pads; if (std::find(ids.begin(), ids.end(), p.id) == ids.end()) continue; }
     if (glm::length(p.lstick) > glm::length(l)) l = p.lstick;
   }
-  auto ana = [&](ImGuiKey k, float v) { io.AddKeyAnalogEvent(k, v > 0.3f, std::max(0.f, v)); };
+  auto ana = [&](ImGuiKey k, float v) { io.AddKeyAnalogEvent(k, v > 0.35f, std::max(0.f, v)); };
   ana(ImGuiKey_GamepadLStickLeft, -l.x); ana(ImGuiKey_GamepadLStickRight, l.x); ana(ImGuiKey_GamepadLStickUp, -l.y); ana(ImGuiKey_GamepadLStickDown, l.y);
 }
 

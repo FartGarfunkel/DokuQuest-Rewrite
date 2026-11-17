@@ -81,7 +81,10 @@ ivec3 movedCell(const Motion& m, ivec3 cell, float fraction) {
 
 bool pathClear(const World& w, const Motion& m, const Piece& p, std::vector<ivec3>* breakable, ivec3* blockedAt) {
   std::unordered_set<ivec3, CellHash> in(p.cells.begin(), p.cells.end()), checked;
-  const int steps = m.kind == 1 ? std::max(1, std::abs(m.distance)) : std::max(1, std::abs(m.quarters) * 6);   // (a hinge: every 15 degrees)
+  // (a hinge: often enough that the far end moves at most half a block between checks; every 15 degrees at the least)
+  float reach = 1; for (const ivec3& c : p.cells) reach = std::max(reach, glm::length(vec3(c - m.machine)));
+  const int perQuarter = std::max(6, (int)std::ceil(reach * (float)M_PI * 0.5f * 2.f));
+  const int steps = m.kind == 1 ? std::max(1, std::abs(m.distance)) : std::max(1, std::abs(m.quarters) * perQuarter);
   for (const ivec3& c : p.cells)
     for (int i = 1; i <= steps; i++) {
       const ivec3 t = movedCell(m, c, (float)i / steps);

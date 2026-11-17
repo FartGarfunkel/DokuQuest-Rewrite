@@ -1,0 +1,26 @@
+{
+"note": "The on-screen keyboard from a menu: Players & skins, in the journal the name box has the first focus, A starts editing it (ImGui alone needs Y) and the keyboard comes up. B erases a letter (and doesn't close the menu), Back cancels (the name comes back), A on the keyboard types q, Start is Enter (and doesn't pause), then B closes the menu.",
+"steps": [
+{"wait": 200, "do": "pad", "button": "lb", "hold": 3},
+{"wait": 10, "do": "screen", "name": "players"},
+{"wait": 30, "do": "expect", "typing": null},
+{"do": "pad", "button": "a", "hold": 3},
+{"wait": 8, "do": "expect", "typing": "Wanderer"},
+{"do": "pad", "button": "b", "hold": 3},
+{"wait": 8, "do": "expect", "typing": "Wandere"},
+{"do": "expect", "screen": "players"},
+{"do": "pad", "button": "back", "hold": 3},
+{"wait": 30, "do": "expect", "typing": null},
+{"do": "expect", "screen": "players"},
+{"do": "pad", "button": "a", "hold": 3},
+{"wait": 8, "do": "expect", "typing": "Wanderer"},
+{"do": "pad", "button": "a", "hold": 3},
+{"wait": 8, "do": "expect", "typing": "Wandererq"},
+{"do": "pad", "button": "start", "hold": 3},
+{"wait": 30, "do": "expect", "typing": null},
+{"wait": 8, "do": "expect", "screen": "players"},
+{"do": "pad", "button": "b", "hold": 3},
+{"wait": 10, "do": "expect", "screen": null},
+{"do": "report"}
+]
+}

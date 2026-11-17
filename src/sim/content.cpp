@@ -10,6 +10,7 @@
 #include "sim/firepit.h"
 #include "sim/content.h"
 #include "sim/maps.h"
+#include "sim/skills.h"
 #include <random>
 
 namespace dq {
@@ -140,6 +141,21 @@ public:
       int x = a[1], y = a[2], z = a[3];
       return campingBreak(lv, *p, x, y, z, w.getBlock(x, y, z), w.getMeta(x, y, z));
     });
+    // skillGain [player, skill, xp] — systems without the skills at hand (watering, machines) award experience this way;
+    // only to a player whose own state is here (a guest's copy on the host is not theirs to grow)
+    hSkill = lv.events->on("skillGain", [this](const json& a) {
+      if (!a.is_array() || a.size() < 3 || !a[1].is_string() || !a[2].is_number()) return true;
+      Player* p = findPlayer(lv, a[0].is_string() ? a[0].get<std::string>() : "");
+      if (p && !p->ghost && !p->dead) skillGain(lv, *p, a[1].get<std::string>(), a[2].get<double>());
+      return true;
+    });
+    // blockPlace [player, x, y, z, key]: a block put down by hand teaches nothing when broken again (sim/skills.h)
+    hPlace = lv.events->on("blockPlace", [this](const json& a) {
+      if (!a.is_array() || a.size() < 4 || !a[1].is_number_integer() || !a[2].is_number_integer() || !a[3].is_number_integer()) return true;
+      Player* p = findPlayer(lv, a[0].is_string() ? a[0].get<std::string>() : "");
+      if (p) skillNotePlaced(lv, p->realm, a[1].get<int>(), a[2].get<int>(), a[3].get<int>());
+      return true;
+    }, -1000);
     // netAction [player, name, args] — the host does what a client asked
     hAct = lv.events->on("netAction", [this](const json& a) {
       if (!a.is_array() || a.size() < 3 || a[1] != "content") return true;
@@ -157,7 +173,7 @@ public:
       return false;
     });
   }
-  ~ContentSystem() override { if (lv.events) { lv.events->off(hUse); lv.events->off(hBreak); lv.events->off(hAct); } }
+  ~ContentSystem() override { if (lv.events) { lv.events->off(hUse); lv.events->off(hBreak); lv.events->off(hAct); lv.events->off(hSkill); lv.events->off(hPlace); } }
   const char* name() const override { return "content"; }
   void tick(Level& l, double dt) override {
     if (!l.isRemote()) l.info.data["playTime"] = playTime(l) + dt;
@@ -180,7 +196,7 @@ public:
   void save(Level& l) override { mapsSave(l); }
 private:
   Level& lv;
-  int hUse = 0, hBreak = 0, hAct = 0;
+  int hUse = 0, hBreak = 0, hAct = 0, hSkill = 0, hPlace = 0;
 };
 }
 

@@ -11,6 +11,7 @@
 #include "sim/mount_gear.h"
 #include "sim/endstory.h"
 #include "sim/creature_rig.h"
+#include "sim/ragdoll.h"
 #include "sim/vehicles.h"
 #include "common/holiday.h"
 #include "sim/hallow.h"
@@ -18,6 +19,8 @@
 #include "sim/physics.h"
 #include "sim/player.h"
 #include "sim/skills.h"
+#include "sim/balance.h"
+#include "sim/combat_rpg.h"
 #include "core/registry.h"
 #include "gen/structures.h"
 #include "gen/structures_api.h"
@@ -494,7 +497,7 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   if (src.element == "frost" && type == "cinder_golem") dmg *= 2;
   if (src.type == "lava" && T->fireImmune) dmg = 0;
   if (dmg <= 0) { if (a && a->isPlayer()) floatText(lv, a->id, pos + vec3(0, h + 0.3f, 0), "Immune", "#ffb070"); return 0; }
-  if (!src.bypassArmor) if (float ap = armourPoints(); ap > 0) { dmg *= 1 - std::min(20.f, ap) * 0.04f; wolfArmourWear(*this, lv); horseArmourWear(*this, lv); }   // as a player's armour: 4% a point (wolf and horse armour wear down)
+  if (!src.bypassArmor) if (float ap = armourPoints() * (1 - std::clamp(src.pierce, 0.f, 1.f)); ap > 0) { dmg *= 1 - std::min(20.f, ap) * 0.04f; wolfArmourWear(*this, lv); horseArmourWear(*this, lv); }   // as a player's armour: 4% a point (wolf and horse armour wear down)
   // the ender dragon: the head takes the blow, every other part takes a quarter plus at most 1
   if (type == "ender_dragon" && src.hasRay && dmg > 0) {
     const RigModel* RM = rigModel(modelKey());
@@ -570,6 +573,13 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   // pets.js: the rider gets off first
   if (riddenBy) if (auto* r = dynamic_cast<Player*>(ent(lv, riddenBy))) dismount(lv, *this, *r);
   deathTime = 0.0001f;
+  {   // the killing blow's push, for the limp body (sim/ragdoll.h; sent to guests with the data so their copy falls the same way)
+    vec3 k(vel.x, 0, vel.z);
+    const float f = (src.knock < 0 ? 5.f : src.knock) * 0.55f;
+    if (Entity* a = src.attacker ? ent(lv, src.attacker) : nullptr) { vec3 d(pos.x - a->pos.x, 0, pos.z - a->pos.z); if (glm::length(d) > 1e-3f) k += glm::normalize(d) * f; }
+    else if (src.hasRay) { vec3 d(src.rayD.x, 0, src.rayD.z); if (glm::length(d) > 1e-3f) k += glm::normalize(d) * f; }
+    data["rk"] = json::array({std::round(k.x * 100) / 100, 1.2, std::round(k.z * 100) / 100});
+  }
   if (globalCreatureHooks().died) globalCreatureHooks().died(lv, *this, src);
   // the hydrogen jellyfish: it bursts when it dies (blocks only where mobs may grief)
   if (const float blast = T->j.value("deathBlast", 0.f); blast > 0 && !lv.isRemote()) explode(lv, realm, pos + vec3(0, h * 0.5f, 0), blast, !rule(lv, "mobGriefing"));
@@ -577,7 +587,14 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   vec3 at = pos + vec3(0, 0.5f, 0);
   bool noDrops = data.contains("noDrops") && data["noDrops"] == true;   // summons, a called-back dragon (its own table)
   const bool imm = rule(lv, "immersive");
-  if (!baby && !noDrops) for (auto& d : T->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, proceduralOf(hideFor(d.id, imm), n), at, true); }   // (metal gear procedural; immersive: raw hide for leather, sim/barrel.h)
+  // its level, an elite, the killer's luck (sim/balance.h): more rolls, better odds, now and then a piece of gear
+  Entity* killer = ent(lv, src.attacker);
+  const MobLoot L = mobLoot(mobLevel, mobIsElite(data), killer && killer->isPlayer() ? static_cast<Player*>(killer) : nullptr);
+  if (!baby && !noDrops) for (int r = 0; r < L.rolls; r++) for (auto& d : T->drops) if (frand() < d.chance * L.chanceMul) {
+    int n = roll(d.lo, d.hi) + (frand() < L.extra ? 1 : 0);
+    if (n > 0) dropItem(lv, realm, proceduralOf(hideFor(d.id, imm), n), at, true);   // (metal gear procedural; immersive: raw hide for leather, sim/barrel.h)
+  }
+  if (!baby && !noDrops && L.gearChance > 0 && frand() < L.gearChance) if (ItemStack g = mobGearRoll(L, frand(), frand(), frand()); !g.empty()) dropItem(lv, realm, g, at, true);   // (metal gear procedural; immersive: raw hide for leather, sim/barrel.h)
   if (!baby && !noDrops && !variant.empty()) if (const auto* vd = T->vdef(variant))   // what its story left on it
     for (auto& d : vd->drops) if (frand() < d.chance) { int n = roll(d.lo, d.hi); if (n > 0) dropItem(lv, realm, proceduralOf(d.id, n), at, true); }
   // mob heads, only to a player's blow: a wither skeleton's skull 2.5 % of the time, any other head 1 %
@@ -598,7 +615,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   }
   Entity* a = ent(lv, src.attacker);
   if (a && a->isPlayer()) {
-    grantXP(lv, *a, T->xp, pos + vec3(0, h, 0));
+    grantXP(lv, *a, (int)std::lround(T->xp * mobXpScale(*this)), pos + vec3(0, h, 0));   // (its level, an elite: sim/combat_rpg.h)
     auto* p = static_cast<Player*>(a);
     if (src.type == "magic") skillGain(lv, *p, "magic", 6.0 + T->xp * 3.0);   // brought down by a spell: Magic grows too
     p->stats["mobsKilled"] = p->stats.value("mobsKilled", 0) + 1;
@@ -748,8 +765,12 @@ void Creature::update(Level& lv, float dt) {
     // left after 0.95 s — a little longer here so the fall can be seen)
     if (deathTime > DEATH_LINGER) {
       removed = true;
-      mobBurst(lv, pos + vec3(0, h / 2, 0), "white", 14, 0.6f);
-      lv.fx->particles("poof", pos, 18, json{{"w", std::max(w, h * 0.5f)}, {"h", std::min(h, 0.8f)}});   // lying on its side by now
+      // the body is the players' own now: their games let it fall limp, lie there a while and fade (sim/ragdoll.h,
+      // render/ragdoll_layer.cpp). Only the ones that don't go limp (bosses, villagers, skin-dressed mobs) still go in a puff.
+      if (!creatureRagdolls(*this)) {
+        mobBurst(lv, pos + vec3(0, h / 2, 0), "white", 14, 0.6f);
+        lv.fx->particles("poof", pos, 18, json{{"w", std::max(w, h * 0.5f)}, {"h", std::min(h, 0.8f)}});   // lying on its side by now
+      }
       return;
     }
     // still falls and slides to a stop (a body killed in mid-air doesn't hang there)

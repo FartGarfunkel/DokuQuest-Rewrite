@@ -70,6 +70,7 @@ struct DamageSrc {
   bool weapon = false, noEffect = false, bypassArmor = false;
   bool hasRay = false; vec3 rayO{0}, rayD{0};   // where the blow came from (dismemberment)
   int ench = 0;          // an arrow: its bow's enchantment levels (sim/wither_storm.cpp)
+  float pierce = 0;      // the share of its armour the attacker ignores (sim/balance.h)
 };
 
 struct Move { float want = 0, dir = 0; };

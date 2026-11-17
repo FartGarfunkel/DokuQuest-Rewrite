@@ -8,6 +8,7 @@
 #include "sim/controller.h"
 #include "sim/gamecommands.h"
 #include "sim/rules.h"
+#include "sim/corpse.h"
 #include "sim/worldsys.h"
 #include "sim/blockfx.h"
 #include "sim/creature.h"
@@ -393,6 +394,7 @@ int main(int argc, char** argv) {
   {
     BlockId farmland = r.B("farmland"), wheat = r.B("wheat_crop");
     r.put(0.5f, Y, 4.5f); r.step(0.2);
+    if (r.p->dead || r.p->hp < r.p->maxHp) { printf("  (the player: dead %d, hp %.1f; last hurt by %s; near:", (int)r.p->dead, r.p->hp, r.p->stats.value("lastHurtBy", std::string("?")).c_str()); for (auto& e : r.lv->entities()) if (!e->removed && !e->isPlayer() && glm::distance(e->pos, r.p->pos) < 24) printf(" %s", e->type.c_str()); printf(")\n"); }
     r.set(0, Y - 1, 6, dirt);
     r.hold(0, "wood_hoe");
     r.lookAt(vec3(0.5f, Y, 6.5f)); r.c->updateTarget();
@@ -450,13 +452,21 @@ int main(int argc, char** argv) {
     r.p->inv[3] = ItemStack("dirt", 10);
     std::string reply; ((reply = runCommand(*r.lv, r.p, "/kill")), true);
     CHECK(r.p->dead, "/kill kills (%s)", reply.c_str());
-    CHECK(r.p->grave.is_object() && r.get(r.p->grave["x"], r.p->grave["y"], r.p->grave["z"]) == KBk.grave, "the things go into a grave");
+    Entity* body = nullptr;
+    for (auto& e : r.lv->entities()) if (!e->removed && e->type == "corpse") body = e.get();
+    CHECK(body && r.p->grave.is_object() && r.p->grave.value("cid", std::string()) == body->data.value("cid", std::string()), "the things stay with the body (sim/corpse.h)");
     CHECK(r.p->inv[0].id == "death_compass", "with a compass that points to it");
     r.c->respawn();
     CHECK(!r.p->dead && r.p->hp == r.p->maxHp, "respawns with full health");
-    json g = r.p->grave;
-    openGrave(*r.lv, *r.p, g["x"], g["y"], g["z"]);
-    CHECK(playerCount(*r.p, "dirt") == 10 && playerCount(*r.p, "death_compass") == 0, "opening the grave gives everything back");
+    if (body) retrieveCorpse(*r.lv, *r.p, *body);
+    CHECK(r.p->inv[3].id == "dirt" && r.p->inv[3].n == 10 && playerCount(*r.p, "death_compass") == 0, "using the body gives everything back, to its slot");
+    {   // an old world's grave block still opens
+      const int sticks0 = playerCount(*r.p, "stick");
+      json g = makeGrave(*r.lv, *r.p, {ItemStack("stick", 4)});
+      CHECK(g.is_object() && r.get(g["x"], g["y"], g["z"]) == KBk.grave, "an old grave block");
+      openGrave(*r.lv, *r.p, g["x"], g["y"], g["z"]);
+      CHECK(playerCount(*r.p, "stick") == sticks0 + 4 && r.get(g["x"], g["y"], g["z"]) != KBk.grave, "  ...still opens and gives its things back (%d sticks, had %d)", playerCount(*r.p, "stick"), sticks0);
+    }
     // lava hurts and sets you on fire; regen heals 1 HP / 4 s after 8 s unhurt
     r.p->hp = 10; r.p->invuln = 0; r.p->lastHurtT = gameClock(*r.lv);
     r.step(8.5);

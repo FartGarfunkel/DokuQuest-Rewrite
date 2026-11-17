@@ -25,11 +25,12 @@ public:
   void tick(Level& lv, double dt) override;
   float surface(Level& lv) const;   // y of the water's surface here (NaN = none)
   void comeUp(Level& lv, float top);
+  float ownerLuck(Level& lv) const;   // the angler's fishing luck (sim/balance.h)
   void letGo(Level& lv, bool scared);
 };
 
 struct FishCatch { std::string id, kind; int cm = 0; };   // kind: fish | junk | treasure
-FishCatch fishingCatch(Level& lv, int realm, vec3 at);
+FishCatch fishingCatch(Level& lv, int realm, vec3 at, float luck = 0);   // luck: fishing luck, 0..0.5
 Bobber* fishingOf(Level& lv, const Player& p);            // the player's float, if out
 float castWindOf(const Player& p);                        // 0..1 while winding back to cast (pose.castWind)
 void endFishing(Level& lv, Player& p, bool reel);

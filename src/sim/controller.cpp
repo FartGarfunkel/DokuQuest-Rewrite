@@ -4,6 +4,8 @@
 #include "sim/dyntree.h"
 #include "sim/weather.h"
 #include "sim/controller.h"
+#include "sim/balance.h"
+#include "sim/skills.h"
 #include "sim/station_work.h"
 #include "sim/hands.h"
 #include "sim/ench_work.h"
@@ -388,7 +390,7 @@ void PlayerController::updateTarget() {
   for (auto& e : lv.entities()) {
     if (e->removed || e->realm != p.realm || e.get() == &p || e->id == p.riding) continue;
     bool vehicle = startsWith(e->type, "boat") || startsWith(e->type, "minecart") || e->data.value("vehicle", false);
-    if (!vehicle && !(isMob(*e) && e->hp > 0)) continue;
+    if (!vehicle && !(isMob(*e) && e->hp > 0) && e->type != "corpse") continue;   // (a player's body: use it to take your things back)
     double tt = -1;
     bool rigged = false;
     if (!vehicle) if (auto* c = dynamic_cast<Creature*>(e.get())) {
@@ -632,6 +634,7 @@ float PlayerController::breakTime(BlockId id, const RayHit* hit) {
     if (ok) t2 *= std::min(3.f, 1 + 0.1f * (logs.size() - 1));
   }
   if (p.contacts.eyeWater) t2 *= 3;
+  t2 /= skillBreakDivisor(p, b, p.inv[p.selected]);   // Mining/Woodcutting/Excavation, a well-used tool, the perks (sim/skills.h)
   for (auto& h : hooks().breakTime) t2 = h(*this, id, t2);
   return std::max(0.05f, t2);
 }
@@ -663,6 +666,7 @@ void PlayerController::breakBlock(int x, int y, int z) {
   }
   bool harvest = canHarvest(id);
   u8 meta = w.getMeta(x, y, z);
+  const bool placed = skillTakePlaced(lv, p.realm, x, y, z);   // (put there by a player: no skill for breaking it)
   if (json* ent = w.blockEntity(x, y, z)) { json copy = *ent; spillEntity(lv, w, copy, x, y, z); }
   w.setBlock(x, y, z, AIR, 0, SetFlags::Urgent);
   afterBreak(x, y, z, id, meta);
@@ -677,6 +681,7 @@ void PlayerController::breakBlock(int x, int y, int z) {
   if (!p.creative() && immersive(lv) && isRock(id)) caveIn(lv, w, x, y, z, (float)rnd());   // sim/cavein.h: now and then a little rubble from an unsupported roof
   if (!p.creative() && bhas(id, BF::IsLeaves) && immersive(lv) && rnd() < LEAF_STICK_CHANCE) dropItem(lv, p.realm, ItemStack("stick", 1), c, true, (const vec3*)nullptr);   // immersive: sticks from leaves
   if (harvest && b.num("xp") > 0) { vec3 at(x + 0.5f, y + 0.8f, z + 0.5f); grantXP(lv, p, (int)b.num("xp"), &at); }
+  if (!p.creative()) onBlockBroken(lv, p, x, y, z, b, meta, harvest, placed);   // the gathering skills, their luck and perks (sim/skills.h)
   wearHeld(lv, p, b.hardness > 0 ? 1 : 0);
   p.stats["blocksMined"] = p.stats.value("blocksMined", 0) + 1;
 }
@@ -748,6 +753,11 @@ void PlayerController::fellTree(int x, int y, int z, const std::vector<std::arra
     if (const std::string fr = R.block((BlockId)l[3]).str("fruit"); !fr.empty() && rnd() < 0.12) extras[fr]++;   // flowering cherry leaves: cherries
     { static const BlockId palmLeaves = R.blockId("palm_leaves"); if (palmLeaves && l[3] == palmLeaves && rnd() < 0.06) extras["coconut"]++; }   // a felled palm drops its coconuts
     if (rnd() < 0.015) extras["stick"]++;
+  }
+  if (!p.creative()) {   // Woodcutting: each log of the felled tree (none for logs a player put there)
+    double xp = 0; BlockSkill sk;
+    for (auto& l : logs) if (blockSkill(R.block((BlockId)l[3]), sk) && !skillTakePlaced(lv, p.realm, l[0], l[1], l[2])) xp += sk.xp;
+    if (xp > 0) { skillGain(lv, p, "woodcutting", xp); gearGain(lv, p, p.inv[p.selected], (double)logs.size()); }
   }
   for (auto& l : logs) w.setBlock(l[0], l[1], l[2], AIR, 0, SetFlags::Urgent);
   for (auto& l : leaves) w.setBlock(l[0], l[1], l[2], AIR, 0, SetFlags::Urgent);
@@ -1166,7 +1176,7 @@ bool PlayerController::eatFood(ItemStack& held, const ItemDef& def, bool repeat)
     return true;
   }
   if (p.foodCd > 0) { if (!repeat && !chewTip) { chewTip = true; toastMsg("Still chewing \xE2\x80\x94 food heals over a few seconds"); } return true; }
-  float heal = food.value("heal", 0.0f), now = heal > 1 ? heal / 2 : heal;
+  float heal = food.value("heal", 0.0f) * cookingHealFactor(p), now = heal > 1 ? heal / 2 : heal;   // (Cooking: food heals more)
   if (heal > 1) p.foodPool += heal - now;
   float healed = p.heal(now);
   std::string icon = def.icon;
@@ -1265,10 +1275,13 @@ public:
         if (n.x > e->pos.x - e->w - 0.1f && n.x < e->pos.x + e->w + 0.1f && n.z > e->pos.z - e->w - 0.1f && n.z < e->pos.z + e->w + 0.1f && n.y > e->pos.y && n.y < e->pos.y + e->h) {
           float speed = glm::length(vel);
           DamageSource src; src.attacker = owner; src.knock = 3 * (1 + 1.2f * data.value("punch", 0)); src.tool = "arrow"; src.type = "arrow";   // Punch (enchanting.js)
+          src.knock *= data.value("knockMul", 1.f); src.pierce = data.value("pierce", 0.f);   // (the archer's talents)
           src.ench = data.value("ench", 0);
           Entity* o = owner ? lv.entity(owner) : nullptr;
           // the Ranger's path (Eagle Eye, Deadeye at range, Poisoned Tips: sim/villager_quests.cpp)
           float pk = o && o->isPlayer() ? pathArrowFactor(*static_cast<Player*>(o), glm::distance(o->pos, e->pos)) : 1.f;
+          if (o && o->isPlayer()) pk *= skillHitFactor(*static_cast<Player*>(o), "archery", ItemStack());   // the Archery skill (sim/skills.h)
+          const float hp0 = e->hp;
           float dealt = damageEntity(lv, *e, std::max(1.f, std::round(data.value("damage", 3.0f) * pk * speed / 30)), src);
           if (dealt <= 0 && (e->type == "wither" || e->type == "wither_storm") && e->hp > 0) {
             // below half its strength the Wither's bones harden: the arrow glances off (it doesn't vanish into it)
@@ -1282,6 +1295,7 @@ public:
             }
             return;
           }
+          if (dealt > 0 && o && o->isPlayer() && !e->isPlayer() && !e->ghost) onPlayerHitMob(lv, *static_cast<Player*>(o), *e, "archery", dealt, hp0);   // (Archery grows with the arrows that land)
           if (dealt > 0 && o && o->isPlayer() && !e->isPlayer() && pathArrowPoisons(*static_cast<Player*>(o))) poisonCreature(*e, 4);
           if ((data.value("flame", false) || data.value("fire", false)) && !e->isPlayer()) igniteEntity(*e, data.value("fire", false) ? 8 : 5);
           if (dealt > 0 && o && o->isPlayer()) { char buf[16]; snprintf(buf, sizeof buf, "%g", std::round(dealt * 10) / 10); floatText(lv, *static_cast<Player*>(o), e->pos + vec3(0, e->h + 0.2f, 0), buf, "#ffffff"); }
@@ -1333,7 +1347,7 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
     bool hasArrow = isArrow(p.offhand[0]) || bagArrow() || quiverArrows(p) > 0 || golden;
     if (in.use) {
       if (!hasArrow && !p.creative()) { if (in.usePressed) toastMsg("You need arrows"); bowPull = 0; }
-      else { if (bowPull <= 0) sfxUi(lv, p, "bow_draw"); bowPull = std::min(1.25f, bowPull + dt); }   // a creak as you draw (bows.js)
+      else { if (bowPull <= 0) sfxUi(lv, p, "bow_draw"); bowPull = std::min(1.25f, bowPull + dt * drawSpeedFactor(p)); }   // (Agility, draw-speed talents)   // a creak as you draw (bows.js)
     } else if (bowPull > 0) {
       if (bowPull > 0.12f) {
         float power = std::min(1.f, bowPull);
@@ -1345,15 +1359,17 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
         else goldShot = golden && !p.creative();
         const ItemDef* ad = reg().item(kind);
         const json arrowProps = ad && ad->props.contains("arrow") && ad->props["arrow"].is_object() ? ad->props["arrow"] : json::object();
-        vec3 L = lookVector(p.yaw, p.pitch); float sp = (8 + power * 30) * arrowProps.value("speed", 1.0f);
+        vec3 L = lookVector(p.yaw, p.pitch); float sp = (8 + power * 30) * arrowProps.value("speed", 1.0f) * arrowSpeedFactor(p);
         auto a = std::make_unique<ArrowEntity>();
         a->realm = p.realm; a->pos = p.pos + vec3(L.x * 0.4f, p.eye - 0.1f + L.y * 0.4f, L.z * 0.4f); a->vel = L * sp;
-        a->data = {{"owner", p.id}, {"damage", (3 + power * 6) * enchArrowDamageFactor(held) * (goldShot ? 0.8f : 1.f) * arrowProps.value("damage", 4.0f) / 4.f},
+        a->data = {{"owner", p.id}, {"damage", (3 + power * 6) * enchArrowDamageFactor(held) * (goldShot ? 0.8f : 1.f) * arrowProps.value("damage", 4.0f) / 4.f * arrowDamageFactor(p)},
                    {"pickup", !p.creative() && !enchInfinity(held) && !goldShot && !arrowProps.value("breaks", false)}, {"item", kind}};
         if (arrowProps.value("gravity", 1.0f) != 1.0f) a->data["grav"] = arrowProps.value("gravity", 1.0f);
         if (arrowProps.value("fire", false)) a->data["fire"] = true;
         if (arrowProps.value("breaks", false)) a->data["breaks"] = true;
         if (goldShot) a->data["golden"] = true;
+        if (const float pc = armorPierce(p); pc > 0) a->data["pierce"] = pc;          // (talents: sim/balance.h)
+        if (const float kb = knockbackFactor(p); kb != 1) a->data["knockMul"] = kb;
         if (int pu = enchArrowPunch(held)) a->data["punch"] = pu;
         if (enchArrowFlame(held)) a->data["flame"] = true;
         {   // the bow's enchantment levels, all told (a Wither Storm feels only an enchanted bow's arrows)

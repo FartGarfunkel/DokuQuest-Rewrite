@@ -5,6 +5,42 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.33 (November 2026)
+
+**Your body instead of a grave:**
+- **When you fall, your body stays where you fell,** limp on the ground in your skin and armour, holding everything you carried. The death compass leads you back to it.
+- **Take your things back** by using the body (the use button on a controller) or walking into it: every item goes back into the very slot it was in, hotbar, bag, armour, off hand, shield, backpack, belt hook, charm, cape and quiver. If a slot is taken now, it goes into a free one, and if there's no room it drops at your feet. Nothing is lost.
+- **Die again before you reach it** and you keep a compass that still points at your first body; once you take that one back it points at the next. The map marks every body you have out there.
+- Bodies never despawn, are saved with the world, can't be hurt, and are moved to safety if they fall into lava or out of the world. Only their owner can take them back. Old worlds' grave blocks still open as before.
+
+**Creatures go limp:** a creature killed falls as a ragdoll, its body and limbs tumbling with the blow that felled it and coming to rest on the ground, then fading after a while. (Bosses and townsfolk keep their own deaths.)
+
+**Every stat and talent now does what it says:**
+- **Skills grow from what you do:** mining, woodcutting, digging, farming, melee, archery, fishing, breeding, cooking and smithing all gain experience as you play (most didn't before), so talent and stat points really come in. Blocks you placed yourself don't count.
+- **Agility** makes you a little quicker, rolls cheaper and longer, swings and bow draws faster. **Intelligence** strengthens spells and grows your mana and its return. **Constitution** gives health and toughness as well as stamina. Every stat's tooltip shows what a point gives and your total.
+- **No wasted points:** each stat now goes up to 50, enough for every point you can earn.
+- **Talents that did nothing now work:** dodge, attack speed, draw speed, arrow damage and speed, armour piercing, knockback, knockback resistance, stun armour, cooldown and cast time, overheal, summon damage, luck, fishing, stamina return, speed, step and weight. Each has a cap, so nothing makes you untouchable.
+- **Tougher creatures pay off:** higher-level creatures drop more and more often, elites drop twice and often wear gear a tier above their level, and luck helps with all of it. Very high levels no longer outgrow every armour.
+- **Armour, potions, Protection and the ward now soften every kind of harm,** not only spells.
+- **Two different level-ups:** "Experience level N!" (for enchanting and the anvil) and "Mining skill level N!" are now told apart.
+- **Bosses:** a boss's big move (the Night Lord's great lightning, its scream and its beam) no longer leaves it standing idle for up to a minute afterwards; it fights on with its other moves.
+
+**Townsfolk find their way:**
+- **A new way-finder** that knows the real shape of every block: they step onto slabs, paths, carpets, beds and lift platforms at their true height, climb ladders, vines, ropes and chains, go through doors and gates, wade shallow fords, and don't cut corners through posts and signs. In our test towns they now reach 87% of their errands, up from 45%, and are almost never moved by the stuck-rescue.
+- **No more wandering off:** a villager with no way to where it wants to go no longer walks out of town in a straight line.
+- **The guard keeps a lookout:** in a walled stone town, the first guard now and then rides a corner tower's lift up to the wall walk, keeps watch over the land, and rides back down. Corner towers have a proper way in, and their top rooms open onto the wall walks.
+- **The miller rides the windmill's lift** up to the millstone in the loft with the wheat, and back down.
+
+**Controllers:**
+- **The pause screen answers the controller again:** a resting stick could slowly clog the menus' input; the pause screen that opens when the window loses focus ignored the controller; and in first person the pause menu in the journal didn't take the controller at all.
+- **An on-screen keyboard:** whenever you edit text with a controller (chat, signs, world and player names, server addresses, books, search boxes), a keyboard comes up: letters, symbols and accents, shift and caps, space, erase, cursor, done. In the game and the launcher.
+
+**Moving builds:**
+- **Hanging chains and ropes in 3D:** a chain is interlocking iron links, each a quarter turn from the last; a rope is three twisted strands, near and far.
+- A long piece swinging on a hinge can no longer pass through a block in its way; a door or bed set down where there's no room drops one item, not two; glue works on a campfire; the autosave waits for a moving piece instead of snapping it into place.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.32 (November 2026)
 
 **Multiplayer (the fix for joining from outside):**

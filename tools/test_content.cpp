@@ -3,8 +3,10 @@
 // and mounts, elytra, the stable, finding places, the watering can and rice.
 //   test_content [--userdir DIR]       exit code 0 = everything passed
 #include "core/init.h"
+#include "sim/combat_rpg.h"
 #include "sim/maps.h"
 #include "sim/fishing.h"
+#include "sim/skills.h"
 #include "sim/camping.h"
 #include "sim/travel.h"
 #include "sim/elytra.h"
@@ -154,6 +156,7 @@ int main(int argc, char** argv) {
       use("fishing_rod");
       check(!fishingOf(*L, *P) && countEntities("item") == before + 1, "reel in quick: the catch flies out to you");
       check(fx.heard("You caught") || fx.heard("Treasure!") || fx.heard("Reeled in"), "  ...and you're told what it was");
+      check(skillXp(*P, "fishing") > 0, "  ...and Fishing grows (" + std::to_string((int)skillXp(*P, "fishing")) + " xp)");
       check(P->held().d == 1, "the rod wears a little");
     }
   }
@@ -468,6 +471,7 @@ int main(int argc, char** argv) {
     Creature* c = creatureType(who) ? spawnCreature(*L, P->realm, who, vec3(8.5f, Y + 1, -2.5f)) : nullptr;
     if (!c) continue;
     c->invulnT = 0; c->calm = true; c->data["spawnT"] = 99.f;
+    mobLevelUpdate(*L, *c);   // (it takes its level from the players near when first met: its health is final after that)
     const float hp0 = c->hp;
     const vec3 eye = P->pos + vec3(0, 1.62f, 0), from = eye + vec3(0, 0, -2.5f);
     const bool shulker = std::string(who) == "shulker";
@@ -663,7 +667,8 @@ int main(int argc, char** argv) {
       Entity* nl = spawnCreature(*L, REALM_MAIN, "night_lord", vec3(11.5f, BY + 1, 8.5f));
       if (nl) { nl->hp = nl->maxHp * 0.4f; nl->data["phase"] = 2; }
       int hits = 0; float last = P->hp;
-      for (int k = 0; k < 1200 && nl && !nl->removed; k++) { P->pos.x = 8.5f; P->pos.z = 8.5f; P->vel.x = P->vel.z = 0; P->invuln = std::max(0.f, P->invuln - (float)TICK_DT); L->tick(TICK_DT); if (P->hp < last) hits++; last = P->hp; }
+      for (int k = 0; k < 1200 && nl && !nl->removed; k++) { P->pos.x = 8.5f; P->pos.z = 8.5f; P->vel.x = P->vel.z = 0; P->invuln = std::max(0.f, P->invuln - (float)TICK_DT); L->tick(TICK_DT); if (P->hp < last) hits++; else if (std::getenv("DQ_NL_DEBUG") && P->hurtTime > 0) printf("nl: hurt but no loss k=%d\n", k); last = P->hp; }
+      if (std::getenv("DQ_NL_DEBUG")) printf("nl: level %d, player def %s\n", nl ? nl->mobLevel : -1, P->stats.dump().substr(0, 300).c_str());
       check(nl && hits >= 6, "the Night Lord's second phase lands its blows (" + std::to_string(hits) + " in 60 s)");
     }
     // a dragon placed in a hall (no lair): it keeps to where it was put (it flew off up through the roof)

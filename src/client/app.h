@@ -31,6 +31,7 @@ struct LaunchArgs {
   std::string smokeShot;     // smoke test: screenshot path
   int smokeFrames = 0;       // smoke test: frames to run before exiting
   json smokeScript;          // smoke test: scripted actions
+  bool scriptFocusPause = false;   // a playtest took the focus away on purpose (test op "unfocus"): losing it pauses as for a player
   bool fromLauncher = false;
   std::string screen;        // --screen <name>: open that menu at start (tests, screenshots)
   int bridge = 0;            // --bridge [port]: the engine bridge on (client/engine_bridge.cpp)
@@ -91,6 +92,7 @@ private:
   void frameLoop();
   void parseArgs(int argc, char** argv);
   bool screenshotPending = false; fs::path screenshotPath;
+  bool bgPadAwake = false;      // a controller was pressed on the pause menu while the window was in the background (frameLoop)
 };
 
 App& app();

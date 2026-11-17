@@ -66,6 +66,12 @@ struct PadState {
   bool used = false;                   // did something besides Start: it already plays for the first player
   ivec2 navOut{0}; float scrollOut = 0;
   bool pCrawl = false, pView = false, pShoulder = false, viewOn = false;
+  // muted (the on-screen keyboard has it, or the window is in the background): b, the sticks and triggers read as
+  // let go for everything else; rb / rprevB / rl are what the controller really does (the keyboard reads those)
+  std::array<bool, 17> rb{}, rprevB{}; vec2 rl{0};
+  bool oskMute = false;                // set each frame by the on-screen keyboard while it is up (ui/osk.cpp)
+  std::array<bool, 17> hush{};         // held when the mute ended: stays let go until released (no press on the way out)
+  bool rawEdge(int k) const { return rb[k] && !rprevB[k]; }
 };
 
 // Who drives one local player in split screen: the keyboard + mouse and/or some controllers (by joystick instance id).
@@ -131,6 +137,11 @@ public:
   bool setupActive = false;          // controller setup wizard running: pads drive nothing
   bool rawSnapshot(int padIndex, RawPad& out) const;
   bool textActive = false;           // a text box has focus: keys don't trigger actions
+  // The window is not in front (App sets these before endFrame). SDL is told to keep reading controllers then
+  // (by default it drops their presses, which left the pause screen that losing the focus opens deaf to the pad), and
+  // the game decides here: pads read as let go in the background unless backgroundPads (the pause menu is up).
+  bool background = false, backgroundPads = false;
+  bool backgroundPress = false;      // a button went down on some pad this frame while in the background
   void releaseAll();                 // every key, button and latch let go (window lost focus, a menu took over)
   TouchControls touch;               // the phone's on-screen controls (input/touch.h): the first player's, like the keyboard
   // a mouse event SDL made from a finger while the touch controls play: neither the game nor the menus take it

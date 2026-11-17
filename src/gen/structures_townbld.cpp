@@ -748,6 +748,16 @@ static void bWindmill(VS& S) {
     S.fill(2, 8, 1, 4, 8, 4, st.planks);
     S.set(3, 9, 2, "millstone");
     for (int ly = 6; ly <= 8; ly++) S.set(3, ly, 5, "ladder", S.d(2));
+    // a lift up to the loft beside the ladder (sim/lift.h; the miller rides it up to the stones with the wheat and down
+    // again: sim/villager_chores.cpp): a Slider in the floor under a slab, a Lift Rail up the west wall, a Lift Stop at
+    // the bottom and at the loft, the shaft open through the floor between
+    if (hasBlock("slider") && hasBlock("lift_rail") && hasBlock("lift_stop")) {
+      const int i = S.set(2, 0, 3, "slider", 1); if (i >= 0) S.P.setEntity(i, json{{"type", "machine_state"}, {"glue", 1 << 2}});
+      const int j = S.set(2, 1, 3, VS::VB("spruce_slab", st.slab), 0); if (j >= 0) S.P.setEntity(j, json{{"glue", 1 << 3}});   // (glued down to the slider)
+      S.set(2, 5, 3, "air"); S.set(2, 8, 3, "air");
+      for (int ly = 0; ly <= 8; ly++) S.set(1, ly, 3, "lift_rail");
+      S.set(0, 1, 3, "lift_stop"); S.set(0, 8, 3, "lift_stop");
+    }
   } else {   // (no machines: the old cloth sails)
     S.log(3, 9, -1, st.log, 2);
     for (int k = 1; k <= 3; k++) { S.set(3, 9 + k, -1, st.fence); S.set(3, 9 - k, -1, st.fence); S.set(3 + k, 9, -1, st.fence); S.set(3 - k, 9, -1, st.fence); }

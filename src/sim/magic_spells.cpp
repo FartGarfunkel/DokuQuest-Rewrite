@@ -6,6 +6,7 @@
 #include "sim/magic.h"
 #include "sim/blockfx.h"
 #include "sim/skilltree.h"
+#include "sim/balance.h"
 #include "sim/magic_fx.h"
 #include "sim/magic_entities.h"
 #include "sim/effects.h"
@@ -109,8 +110,9 @@ bool castSpellKey(Level& lv, Player& p, const std::string& k) {
   // a long cast (the cast types): from one hand's plain cast it winds up first; the magic system's tick casts it when
   // the time is up (sim/magic.cpp tickPlayer), with what it was begun with (staff or bare hands)
   if (S->castTime > 0 && HM.windup && !m.windGo) {
-    m.windK = k; m.windT = m.windTot = S->castTime; m.windFx = 0; m.windBare = m.bare; m.windNoStaff = HM.noStaff;
-    m.castCd = S->castTime + 0.1f;
+    const float wind = S->castTime * castTimeFactor(p);   // (cast-time talents)
+    m.windK = k; m.windT = m.windTot = wind; m.windFx = 0; m.windBare = m.bare; m.windNoStaff = HM.noStaff;
+    m.castCd = wind + 0.1f;
     lv.fx->soundUi(p.id, "charge");
     HM.ok = true;
     return true;
@@ -123,6 +125,8 @@ bool castSpellKey(Level& lv, Player& p, const std::string& k) {
   int slv = schoolLv(p, sc), lvl = skillLv(p, "magic");
   float skill = 1 + (lvl - 1) / 98.f * 0.6f, school = 1 + (slv - 1) * 0.005f, robe = robeBoost(p, k);
   school *= 1 + treeAttrPct(p, "spell_power") + treeAttrPct(p, "spell_power." + sc) + treeAttr(p, "spell_power") + treeAttr(p, "spell_power." + sc);   // (the skill tree)
+  school *= spellPowerFactor(p);   // Intelligence (sim/balance.h)
+  const float cdK = cooldownFactor(p);   // (cooldown talents)
   CastCtx c;
   c.look = lookVec(p); c.eye = p.pos + vec3(0, 1.55f, 0);
   float m0 = m.mana, cd0 = m.castCd;
@@ -135,8 +139,8 @@ bool castSpellKey(Level& lv, Player& p, const std::string& k) {
       thriftAndArchmage(lv, p, m, cost);
       if (slv >= 50) m.mana = std::min(manaMax(p), m.mana + cost / 6.f);
     }
-    if (S->cd > 0) cds[k] = now + (i64)(S->cd * 1000);
-    m.castCd = c.cd;
+    if (S->cd > 0) cds[k] = now + (i64)(S->cd * cdK * 1000);
+    m.castCd = c.cd * cdK;
     if (!m.bare) wearHeld(lv, p, 1);
     double xp = std::max(S->mana, 2) * 6;
     skillGain(lv, p, "magic", xp);
@@ -154,7 +158,7 @@ bool castSpellKey(Level& lv, Player& p, const std::string& k) {
   (void)ok;
   if (!c.ok) { m.castCd = 0.3f; return true; }
   if (!cr) m.mana -= cost;
-  m.castCd = ARCANA.count(k) ? c.cd : k == "lightning" ? 2.2f : 0.45f;
+  m.castCd = (ARCANA.count(k) ? c.cd : k == "lightning" ? 2.2f : 0.45f) * cdK;
   if (staff) wearHeld(lv, p, 1);   // (only a staff wears: bare-handed, what's in the hand isn't the focus)
   skillGain(lv, p, "magic", S->mana * 6.0);
   if (staff && !held.empty()) gearGain(lv, p, held, 2);

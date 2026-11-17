@@ -80,7 +80,7 @@ public:
     if (book) {   // (onto the left page)
       ImGui::End();
       ImGui::SetNextWindowPos(bL, ImGuiCond_Always);
-      ImGui::Begin("##pauseL", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings);
+      ImGui::Begin("##pauseL", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing);   // (appearing after the buttons it took the focus: the pad had nothing to move on)
       dl = ImGui::GetWindowDrawList();
       ImGui::Dummy(ImVec2(bw, 40 * z));
     }

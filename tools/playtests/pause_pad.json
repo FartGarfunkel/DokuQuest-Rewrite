@@ -1,0 +1,17 @@
+{
+"note": "The controller keeps working on the pause screen with a stick resting a little off centre (here up, at about a third). The menus used to be fed twice a frame from two places that disagreed in that band, so ImGui's input queue grew by a step every frame and every later press arrived later and later.",
+"steps": [
+{"wait": 200, "do": "pad", "button": "x", "hold": 3},
+{"wait": 10, "do": "pad", "button": "start", "hold": 3},
+{"wait": 10, "do": "expect", "screen": "pause"},
+{"do": "padaxis", "axis": "lefty", "value": -0.44, "hold": 150},
+{"wait": 160, "do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "a", "hold": 3},
+{"wait": 15, "do": "expect", "screen": "settings"},
+{"do": "pad", "button": "b", "hold": 3},
+{"wait": 10, "do": "expect", "screen": "pause"},
+{"do": "pad", "button": "b", "hold": 3},
+{"wait": 10, "do": "expect", "screen": null},
+{"do": "report"}
+]
+}

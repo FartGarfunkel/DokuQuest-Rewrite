@@ -19,7 +19,7 @@ const std::vector<std::array<std::string, 3>>& ruleToggles() {
   static const std::vector<std::array<std::string, 3>> t = {
     {"daylightCycle", "Day and night cycle", "Turn off to keep the sun where it is"},
     {"keepInventory", "Keep inventory on death", "You respawn with everything you had"},
-    {"graves", "Graves", "What you drop on death is kept safe in a grave, with a compass that points to it"},
+    {"graves", "Graves", "Your body stays where you fell, holding everything you carried, with a compass that points to it"},
     {"mobSpawning", "Creatures spawn", "Animals and monsters appear on their own"},
     {"mobGriefing", "Creatures break blocks", "Explosions from creatures and boss attacks damage the land"},
     {"tntExplodes", "TNT explodes", "Turn off and TNT just fizzles"},

@@ -12,6 +12,7 @@
 #include "render/sky.h"
 #include "ui/theme.h"
 #include "ui/ui.h"
+#include "ui/osk.h"
 #include "ui/profiles.h"
 #include <imgui.h>
 #include <algorithm>
@@ -280,6 +281,7 @@ void GameSession::splitUi() {
     drawNameTags();
     for (size_t j = 0; j < app.screens.size(); j++) if (j + 1 == app.screens.size() || app.screens[j + 1]->showsWorld()) app.screens[j]->draw(app);
     uiAfterScreens(app);
+    ui::oskGame(app);   // this person's on-screen keyboard (their controller, their viewport)
     ImGui::GetForegroundDrawList()->AddRect(ImVec2(0.5f, 0.5f), ImVec2(v.w - 0.5f, v.h - 0.5f), IM_COL32(0, 0, 0, 200));
     wantText = wantText || io.WantTextInput;
     ImGui::PopFont();

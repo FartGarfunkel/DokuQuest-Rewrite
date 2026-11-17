@@ -136,7 +136,7 @@ void Input::beginFrame() {
   for (auto& x : fr) { x.prev = x.cur; x.kprev = x.kcur; x.pulse.fill(false); }
   mouseDelta = vec2(0); wheelY = 0; typed.clear(); lastCode.clear(); lastPadButton = -1; dropAllFlag = false;
   std::memcpy(prevKeys, keys, sizeof keys); std::memset(keyHit, 0, sizeof keyHit); std::memset(mouseHit, 0, sizeof mouseHit);
-  for (auto& p : padList) p.prevB = p.b;
+  for (auto& p : padList) { p.prevB = p.b; p.rprevB = p.rb; }
   touch.beginFrame();
 }
 
@@ -298,10 +298,21 @@ bool Input::codeDown(const std::string& c) const {
 
 void Input::endFrame() {
   // 1) each controller on its own: read it, its menu navigation (stick repeat), its latches (sprint, crawl, view)
+  backgroundPress = false;
   for (auto& p : padList) {
     readPad(p);
-    for (int k = 0; k < 17; k++) if (p.edge(k)) { lastWasPad = true; if (lastPadButton < 0 && k < 16) lastPadButton = k; }
+    p.rb = p.b; p.rl = p.lstick;
+    for (int k = 0; k < 17; k++) if (p.rawEdge(k)) { lastWasPad = true; if (lastPadButton < 0 && k < 16) lastPadButton = k; if (background) backgroundPress = true; }
     if (glm::length(p.lstick) > 0.3f || glm::length(p.rstick) > 0.3f) lastWasPad = true;
+    // muted: the on-screen keyboard has this pad, or the window is in the background (see `background` in input.h).
+    // A button still held when the mute ends stays let go until it is released, so the press that closed the keyboard
+    // (or woke the window) doesn't also act on whatever is underneath.
+    const bool mute = p.oskMute || (background && !backgroundPads);
+    for (int k = 0; k < 17; k++) {
+      if (mute) p.hush[k] = p.b[k];
+      else if (p.hush[k]) { if (p.b[k]) p.b[k] = false; else p.hush[k] = false; }
+    }
+    if (mute) { p.b.fill(false); p.lstick = p.rstick = vec2(0); p.ax = {}; p.lt = p.rt = 0; }
     p.navOut = ivec2(0); p.scrollOut = 0; p.pCrawl = p.pView = p.pShoulder = p.viewOn = false;
     if (setupActive) continue;
     for (int k = 0; k < 17; k++) if (k != 9 && p.edge(k)) p.used = true;

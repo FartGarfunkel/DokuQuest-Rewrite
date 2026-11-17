@@ -19,6 +19,7 @@ namespace dq { bool interactable(BlockId id); }   // (sim/controller.cpp)
 #include "sim/controller.h"
 #include "sim/blockfx.h"
 #include "sim/combat_rpg.h"
+#include "sim/balance.h"
 #include "world/world.h"
 #include <cstdio>
 #include <thread>
@@ -506,7 +507,7 @@ int main(int argc, char** argv) {
       mobLevelUpdate(*lv, *z);
       const bool el = z->data.value("elite", false);
       if (el) elites++;
-      else { plain++; lo = std::min(lo, z->mobLevel); hi = std::max(hi, z->mobLevel); if (near(z->maxHp, base * (1 + 0.08f * (z->mobLevel - 1)), 0.01)) plainOk++; }
+      else { plain++; lo = std::min(lo, z->mobLevel); hi = std::max(hi, z->mobLevel); if (near(z->maxHp, base * mobLevelHp(z->mobLevel), 0.01)) plainOk++; }
       z->removed = true;
     }
     lv->tick(TICK_DT);
@@ -518,7 +519,7 @@ int main(int argc, char** argv) {
     const int zl = z->mobLevel; const float hp1 = z->maxHp;
     mobLevelUpdate(*lv, *z);
     check(z->mobLevel == zl && near(z->maxHp, hp1, 0.01), "its level is set once (not again each time it's looked at)");
-    check(near(combatRpgMobScale(*z, 10), 10 * (1 + 0.05f * (zl - 1)) * (z->data.value("elite", false) ? 1.25f : 1.f), 0.01), "its blows +5% a level");
+    check(near(combatRpgMobScale(*z, 10), 10 * mobLevelDmg(zl) * (z->data.value("elite", false) ? bal::ELITE_DMG : 1.f), 0.01), "its blows +5% a level (softer past level 20: sim/balance.h)");
     check(mobXpScale(*z) > 1.5f, "killing it is worth more experience (x" + std::to_string(mobXpScale(*z)) + ")");
     auto friendP = std::make_unique<Player>(); friendP->name = "Friend"; friendP->mode = "survival"; friendP->pos = p.pos + vec3(6, 0, 0); friendP->noGravity = true;
     Player& f2 = *static_cast<Player*>(lv->spawn(std::move(friendP)));

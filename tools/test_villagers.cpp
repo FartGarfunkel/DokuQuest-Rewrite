@@ -683,6 +683,36 @@ int main(int argc, char** argv) {
           for (int k = 0; k < 120; k++) L->tick(0.05);
           check(machineState(w, sl).value("at", 0) == lf.stops.back().second, "called, it rises to the wall walk");
           liftCall(*L, REALM_MAIN, sl, 0); for (int k = 0; k < 120; k++) L->tick(0.05);
+          // the town's first guard takes a turn on lookout: onto the lift, up to the wall walk, a watch, and back down
+          P->pos = vec3(v->x + 0.5f, v->y + 1, v->z + 0.5f);
+          for (double t0 = nowSeconds(); nowSeconds() - t0 < 60;) { w.stream({{P->pos, 4, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); L->tick(0.05); }
+          Creature* guard = nullptr;
+          for (auto& up : L->entities()) if (auto* c = dynamic_cast<Creature*>(up.get())) if (const json* N = npcOf(*c))
+            if (c->type == "village_guard" && !c->removed && N->value("v", "") == v->id && N->value("i", 0) == 100) guard = c;
+          check(guard != nullptr, "the town's first guard is about");
+          if (guard) {
+            L->info.time = 3600;   // (morning)
+            // (near the tower, so the test doesn't wait on a long walk; the land there loaded first)
+            for (double t0 = nowSeconds(); nowSeconds() - t0 < 60;) { w.stream({{vec3(sl) + vec3(6, 1, 6), 3, false}}, 20); bool all = true; for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (!w.isLoaded(sl.x + dx * 16, sl.y, sl.z + dz * 16)) all = false; if (all) break; std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+            // (in the town, before the tower's way in: a corner tower's door is on its town-side corner)
+            const int ix = sl.x <= v->x ? 1 : -1, iz = sl.z <= v->z ? 1 : -1;
+            float gy = NAN; for (int y = sl.y + 6; y >= sl.y - 4 && std::isnan(gy); y--) gy = npcStandAt(w, sl.x + 4 * ix, y, sl.z + 4 * iz);
+            guard->pos = vec3(sl.x + 4 * ix + 0.5f, std::isnan(gy) ? sl.y + 1.f : gy, sl.z + 4 * iz + 0.5f);
+            const float topY = sl.y + 1 + lf.stops.back().second + 0.5f;
+            bool wentUp = false, cameDown = false, onWalk = false;
+            for (int k = 0; k < 20 * 400 && !cameDown; k++) {
+              L->tick(0.05);
+              P->pos = guard->pos + vec3(6, 0, 6);   // (the player near, so the village stays awake)
+              if (k % 20 == 0) w.stream({{P->pos, 3, false}}, 20);
+              const float dsh = std::hypot(guard->pos.x - sl.x - 0.5f, guard->pos.z - sl.z - 0.5f);
+              if (guard->pos.y > topY - 0.3f && guard->pos.y < topY + 1.2f && dsh < 1) wentUp = true;
+              if (wentUp && guard->pos.y > topY - 1.6f && dsh > 2.6f && dsh < 8) onWalk = true;
+              if (wentUp && onWalk && guard->pos.y < sl.y + 2.6f && std::hypot(guard->pos.x - sl.x - 0.5f, guard->pos.z - sl.z - 0.5f) < 1) cameDown = true;
+            }
+            check(wentUp, "the guard rides the lift up to the wall walk on lookout");
+            check(onWalk, "and steps out onto the wall walk to keep watch");
+            check(cameDown, "and comes back down after the watch");
+          }
         }
       }
     }

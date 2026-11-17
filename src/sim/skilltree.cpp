@@ -87,6 +87,9 @@ void treeReset(Player& p) { p.stats["tree"] = json{{"nodes", json::array()}}; p.
 
 static float sumAttr(const Player& p, const std::string& attr, bool pct) {
   float s = gemAttr(p, attr, pct);   // (gems set in the gear worn and held: sim/spell_items.h)
+  // bonuses granted outside the trees (mods, commands, the balance test): stats "attrBonus" {attr: [flat, pct]}
+  if (auto it = p.stats.find("attrBonus"); it != p.stats.end() && it->is_object())
+    if (auto a = it->find(attr); a != it->end() && a->is_array() && a->size() == 2 && (*a)[pct ? 1 : 0].is_number()) s += (*a)[pct ? 1 : 0].get<float>();
   if (skillTrees().empty() || learnt(p).empty()) return s;
   for (const SkillTree& t : skillTrees()) for (const TreeNode& n : t.nodes) {
     bool any = false; for (auto& b : n.bonus) if (b.attr == attr && b.pct == pct) any = true;

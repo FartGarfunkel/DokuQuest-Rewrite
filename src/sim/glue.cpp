@@ -1,5 +1,6 @@
 // sim/glue.cpp — see glue.h.
 #include "sim/glue.h"
+#include "sim/blockinfo.h"
 #include "sim/player.h"
 #include "sim/redstone.h"
 #include "sim/gameplay.h"
@@ -16,7 +17,7 @@ ivec3 faceDir(int face) {
 bool glueable(BlockId id) {
   if (!id) return false;
   const Registry& R = reg(); const BlockDef& b = R.block(id);
-  return !R.tLiquid[id] && b.hardness >= 0 && b.key.find("fire") == std::string::npos;
+  return !R.tLiquid[id] && b.hardness >= 0 && !bhas(id, BF::Fire);   // (fire itself; a campfire or fire coral glues like anything else)
 }
 
 u8 glueMask(const World& w, ivec3 p) {

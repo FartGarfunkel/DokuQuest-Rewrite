@@ -1,4 +1,5 @@
 #include "sim/level.h"
+#include "sim/moving.h"
 #include "sim/attack_moves.h"
 #include "sim/player.h"
 #include "common/noise.h"
@@ -174,7 +175,8 @@ void Level::tick(double dt) {
   if (autosaveEvery <= 0) autosaveTimer = 0;
   else {
     autosaveTimer += dt;
-    if (autosaveTimer >= autosaveEvery) { autosaveTimer = 0; save(false); }
+    // (a save sets every moving piece down at once: while one moves, the autosave waits for it, 15 s at most)
+    if (autosaveTimer >= autosaveEvery && (movingBodiesList(*this).empty() || autosaveTimer >= autosaveEvery + 15)) { autosaveTimer = 0; save(false); }
   }
 }
 

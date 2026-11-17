@@ -12,6 +12,7 @@
 #include "render/gl.h"
 #include "render/gpu_select.h"
 #include "assets/tileset.h"
+#include "ui/osk.h"
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_internal.h>
@@ -345,6 +346,7 @@ int main(int argc, char** argv) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
       ImGui_ImplSDL2_ProcessEvent(&e);
+      ui::oskLauncherEvent(e);   // a controller or the keyboard / mouse used last (the on-screen keyboard)
       if (e.type == SDL_QUIT) L.quit = true;
       if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) SDL_GetWindowSize(L.window, &L.width, &L.height);
       if (e.type == SDL_WINDOWEVENT && (e.window.event == SDL_WINDOWEVENT_MOVED || e.window.event == SDL_WINDOWEVENT_DISPLAY_CHANGED) && uiScaleIsAuto(L.settings.guiScale)) {
@@ -366,9 +368,10 @@ int main(int argc, char** argv) {
       ImGui::GetIO().MousePos.x *= L.uiZoom; ImGui::GetIO().MousePos.y *= L.uiZoom;
     }
     if (fontChoiceKey(L.settings.extra) != L.fontKey) loadLauncherFonts(L);   // (a font or text size picked in Options)
-    ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplSDL2_NewFrame(); applyLauncherZoom(L); ImGui::NewFrame(); snapLauncherFont();
+    ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplSDL2_NewFrame(); applyLauncherZoom(L); ui::oskLauncherBeforeNewFrame(); ImGui::NewFrame(); snapLauncherFont();
     ImGui::PushFont(L.fUi);
     drawFrame(L);
+    ui::oskLauncherFrame(L.fUi);   // the on-screen keyboard while a controller edits a text box (ui/osk.cpp)
     ImGui::PopFont();
     ImGui::Render();
     int dw, dh; SDL_GL_GetDrawableSize(L.window, &dw, &dh);
