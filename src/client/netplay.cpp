@@ -74,7 +74,7 @@ bool openToLan(App& app, const LanOpenOptions& o, std::string* err) {
   if (lv.net) { if (hostOf(app)) return true; if (err) *err = "This is someone else's world"; return false; }
   net::HostOptions h;
   h.name = lv.info.name; h.hostName = app.settings.playerName; h.port = o.port; h.maxPlayers = o.maxPlayers; h.motd = o.motd;
-  h.password = o.password; h.lan = o.announce; h.pvp = o.pvp; h.viewDistance = o.viewDistance; h.dedicated = false;
+  h.password = o.password; h.lan = o.announce; h.pvp = o.pvp; h.viewDistance = o.viewDistance; h.dedicated = false; h.upnp = o.internet;
   skinHook();
   for (auto& e : lv.entities()) if (!e->removed && e->isPlayer() && !e->ghost) {   // our own players' skins, for the guests
     const std::string& ref = static_cast<Player*>(e.get())->skin;

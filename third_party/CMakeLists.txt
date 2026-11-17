@@ -44,7 +44,7 @@ file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/miniupnpc_gen/miniupnpcstrings.h "#ifndef
 target_include_directories(miniupnpc PUBLIC miniupnpc/include PRIVATE miniupnpc/src ${CMAKE_CURRENT_BINARY_DIR}/miniupnpc_gen)
 target_compile_definitions(miniupnpc PUBLIC MINIUPNP_STATICLIB)
 if(WIN32)
-  target_compile_definitions(miniupnpc PRIVATE _WIN32_WINNT=0x0601 _CRT_SECURE_NO_WARNINGS _WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_definitions(miniupnpc PRIVATE _WIN32_WINNT=0x0601 MINIUPNPC_SET_SOCKET_TIMEOUT _CRT_SECURE_NO_WARNINGS _WINSOCK_DEPRECATED_NO_WARNINGS)   # (a router that never answers: 3 s, not 21)
   target_link_libraries(miniupnpc PUBLIC ws2_32 iphlpapi)
 else()
   target_compile_definitions(miniupnpc PRIVATE MINIUPNPC_SET_SOCKET_TIMEOUT MINIUPNPC_GET_SRC_ADDR _BSD_SOURCE _DEFAULT_SOURCE)

@@ -395,7 +395,11 @@ public:
         ImGui::SetNextItemWidth(160 * z);
         if (ImGui::InputInt("##lanport", &port, 1, 10)) { port = clampv(port, 1024, 65535); a.settings.extra["lanPort"] = port; a.settings.save(); }
       }
-      if (button("Open to LAN##start", BTN_PRIMARY)) { LanOpenOptions o; o.port = a.settings.extra.value("lanPort", 25580); std::string e; msg = openToLan(a, o, &e) ? "" : e; }
+      {   // over the internet too: the router is asked to let friends in (anyone with the address can then join)
+        bool inet = a.settings.extra.value("lanInternet", true);
+        if (ImGui::Checkbox("Let friends join from the internet (asks your router to open the port)##lanInet", &inet)) { a.settings.extra["lanInternet"] = inet; a.settings.save(); }
+      }
+      if (button("Open to LAN##start", BTN_PRIMARY)) { LanOpenOptions o; o.port = a.settings.extra.value("lanPort", 25580); o.internet = a.settings.extra.value("lanInternet", true); std::string e; msg = openToLan(a, o, &e) ? "" : e; }
       if (!msg.empty()) label(F_MID, col::muted, msg.c_str(), w);
     } else {
       label(F_BODY, col::text, (world + " is open to your home network.").c_str(), w);
