@@ -2,6 +2,9 @@
 // evening bell, opened for you at night by the watch, levers), raids and named foes (livingworld.js), the missing
 // villager and a Hero's house (hearth.js), the welcome, the rift's word as you walk in (riftlore.js), and the
 // moment a path opens to you (paths.js).
+#include "sim/strung.h"
+#include "sim/glue.h"
+#include "sim/moving.h"
 #include "sim/combat_rpg.h"
 #include "sim/villagers_internal.h"
 #include "sim/places.h"
@@ -25,8 +28,63 @@ constexpr int GATE_H = 5;
 // ------------------------------------------------------------------ the gates
 const std::vector<VGate>& gatesOf(Level&, const Village& v) { return v.gates; }
 static bool gateNight(Level& lv) { double ph = npcPhase(lv); return ph >= VD().value("gateShut", 0.535) && ph < VD().value("gateOpen", 0.985); }
+// moving structures §5: a new town's gate is worked by its machines (sim/moving.h), found in the world where the town put
+// them (gen/structures_villages.cpp townMovingGate); an older town's gate is its barrier blocks, as before
+struct GateParts { int kind = 0; std::vector<ivec3> mach; bool hasDraw = false; ivec3 draw{0}; };   // kind: 0 barriers, 1 portcullis, 2 leaves
+static GateParts gateParts(Level& lv, const VGate& G) {
+  GateParts r;
+  if (G.cells.empty()) return r;
+  World& w = lv.world(REALM_MAIN);
+  const ivec3 first = G.cells.front(), last = G.cells.back(), mid = G.cells[std::min(G.cells.size() - 1, (G.cells.size() / GATE_H / 2) * GATE_H)];
+  auto mach = [&](ivec3 p) { return w.isLoaded(p.x, p.y, p.z) && isMachine(w.getBlock(p.x, p.y, p.z)); };
+  const ivec3 sl(mid.x, G.h0 + 9, mid.z);
+  if (mach(sl)) {
+    r.kind = 1; r.mach = {sl};
+    const ivec3 d(first.x - G.inX, G.h0, first.z - G.inZ);   // (the drawbridge's hinge: beside the deck's first row, outside the way's first column)
+    if (mach(d)) { r.hasDraw = true; r.draw = d; }
+    return r;
+  }
+  const ivec3 a(first.x, G.h0, first.z), b(last.x, G.h0, last.z);
+  if (mach(a) && mach(b)) { r.kind = 2; r.mach = {a, b}; }
+  return r;
+}
+// which way each hinge turns, once: the leaves swing in to the town, the drawbridge up
+static void gateTurns(Level& lv, const VGate& G, const GateParts& P) {
+  World& w = lv.world(REALM_MAIN);
+  auto setQ = [&](ivec3 h, ivec3 probe, auto good) {
+    json& st = machineState(w, h);
+    if (st.value("qSet", false)) return;
+    Motion m; m.kind = 0; m.machine = h; m.face = machineFace(w, h); m.quarters = 1;
+    st["quarters"] = good(movedCell(m, probe)) ? 1 : -1; st["qSet"] = true;
+  };
+  const vec3 in(G.inX, 0, G.inZ);
+  if (P.kind == 2) for (const ivec3& h : P.mach) {
+    const ivec3 mid = G.cells[std::min(G.cells.size() - 1, (G.cells.size() / GATE_H / 2) * GATE_H)];
+    const ivec3 probe(mid.x, G.h0 + 1, mid.z);
+    setQ(h, probe, [&](ivec3 c) { return glm::dot(vec3(c - h), in) > 0; });
+  }
+  if (P.hasDraw) setQ(P.draw, P.draw + faceDir(machineFace(w, P.draw)) + ivec3(-G.inX, 0, -G.inZ) * 2, [&](ivec3 c) { return c.y > P.draw.y; });
+}
+// the drawbridge hangs from the gatehouse on two chains (sim/strung.h), once
+static void gateChains(Level& lv, const VGate& G, const GateParts& P) {
+  if (!P.hasDraw) return;
+  json& done = lv.info.data["gateChains"]; if (!done.is_object()) done = json::object();
+  if (done.contains(G.key)) return;
+  World& w = lv.world(REALM_MAIN);
+  const ivec3 out(-G.inX, 0, -G.inZ), along = faceDir(machineFace(w, P.draw)), first = P.draw + along;
+  int L = 0; while (L < 8 && w.getBlock(first.x + out.x * (L + 1), first.y, first.z + out.z * (L + 1)) != AIR && glueMask(w, first + out * (L + 1))) L++;
+  if (L < 1) return;
+  const ivec3 farA = first + out * L, farB = farA + along * (2 * G.hw);
+  const ivec3 topA(G.cells.front().x, G.h0 + 9, G.cells.front().z), topB(G.cells.back().x, G.h0 + 9, G.cells.back().z);
+  strungAdd(lv, REALM_MAIN, farA, topA, true);
+  strungAdd(lv, REALM_MAIN, farB, topB, true);
+  done[G.key] = true;
+}
+
 bool gateShutAt(Level& lv, const VGate& G) {
   if (G.cells.empty()) return false;
+  if (const GateParts P = gateParts(lv, G); P.kind == 1) return machineOpen(lv.world(REALM_MAIN), P.mach[0]);   // (the portcullis let down)
+  else if (P.kind == 2) return !machineOpen(lv.world(REALM_MAIN), P.mach[0]);                                 // (the leaves not swung open)
   const ivec3 c = G.cells[std::min(G.cells.size() - 1, (G.cells.size() / GATE_H / 2) * GATE_H)];
   static const BlockId bar = B("gate_barrier");
   return bar && lv.world(REALM_MAIN).getBlock(c.x, c.y, c.z) == bar;
@@ -44,8 +102,17 @@ static bool gateBlocked(Level& lv, const VGate& G) {
   }
   return false;
 }
-static bool gateSet(Level& lv, const VGate& G, bool open, bool sound) {
+bool gateSet(Level& lv, const VGate& G, bool open, bool sound) {
   World& w = lv.world(REALM_MAIN);
+  if (const GateParts P = gateParts(lv, G); P.kind) {
+    gateTurns(lv, G, P); gateChains(lv, G, P);
+    if (!open && gateBlocked(lv, G)) return false;
+    if (gateShutAt(lv, G) == !open) return false;
+    if (P.kind == 1) { machineWant(lv, REALM_MAIN, P.mach[0], !open); if (P.hasDraw) machineWant(lv, REALM_MAIN, P.draw, !open); }
+    else for (const ivec3& h : P.mach) machineWant(lv, REALM_MAIN, h, open);
+    if (sound) lv.fx->sound(G.stone ? "door_iron" : open ? "door_open" : "door_close", G.center + vec3(0, 2, 0), 32);
+    return true;
+  }
   static const BlockId bar = B("gate_barrier");
   if (!bar) return false;
   if (!open && gateBlocked(lv, G)) return false;

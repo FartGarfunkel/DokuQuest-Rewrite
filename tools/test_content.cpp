@@ -15,6 +15,8 @@
 #include "sim/stations.h"
 #include "core/tool_parts.h"
 #include "sim/creature.h"
+#include "sim/treasure_maps.h"
+#include "sim/inv_ops.h"
 #include "sim/creature_entities.h"
 #include "sim/creature_rig.h"
 #include "sim/trough.h"
@@ -635,7 +637,7 @@ int main(int argc, char** argv) {
     const std::string saveMode = P->mode;
     P->mode = "survival";
     // each one, given 20 seconds beside you, hurts you: standing on the floor, and up on a pillar out of reach
-    for (const char* b : {"hollow_archmage", "lich_king", "hex_matron", "grave_warden", "minotaur", "valkyrie_queen", "pirate_captain", "rot_king", "slider", "broodmother", "ember_lord", "sun_spirit"}) {
+    for (const char* b : {"night_lord", "graveyard_lich", "dead_king", "hollow_archmage", "lich_king", "hex_matron", "grave_warden", "minotaur", "valkyrie_queen", "pirate_captain", "rot_king", "slider", "broodmother", "ember_lord", "sun_spirit"}) {
       for (int pillar = 0; pillar < 2; pillar++) {
         clearMobs();
         for (int y = BY + 1; y < BY + 8; y++) for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) wb.setBlock(x, y, z, AIR);
@@ -653,6 +655,28 @@ int main(int argc, char** argv) {
         check(lost > 4 && !boss->removed, std::string(b) + (pillar ? " reaches you up a pillar" : " fights you") + " (" + std::to_string((int)lost) + " damage in 20 s)");
       }
     }
+    // the Night Lord in its second phase: its moves with no hit windows of their own strike too
+    {
+      clearMobs();
+      for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) { wb.setBlock(x, BY, z, B("stone")); for (int y = BY + 1; y < BY + 8; y++) wb.setBlock(x, y, z, AIR); }
+      P->pos = vec3(8.5f, BY + 1, 8.5f); P->maxHp = 100000; P->hp = 100000; P->dead = false;
+      Entity* nl = spawnCreature(*L, REALM_MAIN, "night_lord", vec3(11.5f, BY + 1, 8.5f));
+      if (nl) { nl->hp = nl->maxHp * 0.4f; nl->data["phase"] = 2; }
+      int hits = 0; float last = P->hp;
+      for (int k = 0; k < 1200 && nl && !nl->removed; k++) { P->pos.x = 8.5f; P->pos.z = 8.5f; P->vel.x = P->vel.z = 0; P->invuln = std::max(0.f, P->invuln - (float)TICK_DT); L->tick(TICK_DT); if (P->hp < last) hits++; last = P->hp; }
+      check(nl && hits >= 6, "the Night Lord's second phase lands its blows (" + std::to_string(hits) + " in 60 s)");
+    }
+    // a dragon placed in a hall (no lair): it keeps to where it was put (it flew off up through the roof)
+    {
+      clearMobs();
+      for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) { wb.setBlock(x, BY, z, B("stone")); for (int y = BY + 1; y < BY + 8; y++) wb.setBlock(x, y, z, AIR); }
+      P->pos = vec3(8.5f, BY + 1, 8.5f); P->maxHp = 100000; P->hp = 100000;
+      Entity* dg = spawnCreature(*L, REALM_MAIN, "sand_dragon", vec3(14.5f, BY + 2, 8.5f));
+      const vec3 at0 = dg ? dg->pos : vec3(0);
+      float far = 0, up = 0;
+      for (int k = 0; k < 600 && dg && !dg->removed; k++) { P->pos.x = 8.5f; P->pos.z = 8.5f; P->invuln = 0; L->tick(TICK_DT); far = std::max(far, std::hypot(dg->pos.x - at0.x, dg->pos.z - at0.z)); up = std::max(up, dg->pos.y - at0.y); }
+      check(dg && up < 26 && far < 50, "a dragon set down in a hall keeps near where it was put (" + std::to_string((int)up) + " up, " + std::to_string((int)far) + " out)");
+    }
     // a summoner keeps its servants few
     clearMobs();
     for (int y = BY + 1; y < BY + 8; y++) for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) wb.setBlock(x, y, z, AIR);
@@ -667,6 +691,58 @@ int main(int argc, char** argv) {
     P->mode = saveMode; P->maxHp = 20; P->hp = 20;
     for (int y = BY + 1; y < BY + 8; y++) for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) wb.setBlock(x, y, z, AIR);
     P->pos = vec3(8.5f, BY + 1, 8.5f);
+  }
+
+  printf("[treasure maps]\n");
+  {
+    World& wt = L->world();
+    for (auto& q : P->inv) q = ItemStack();
+    P->inv[0] = ItemStack("treasure_map", 1); P->selected = 0;
+    const bool used = !use("treasure_map");
+    const ItemStack& tm = P->inv[0];
+    const bool hasX = tm.tag.is_object() && tm.tag.contains("tx") && tm.tag.contains("tz");
+    const int tx = hasX ? tm.tag["tx"].get<int>() : 0, tz = hasX ? tm.tag["tz"].get<int>() : 0;
+    const float dist = std::hypot(tx - P->pos.x, tz - P->pos.z);
+    check(used && hasX && dist > 150 && dist < 1000, "using a treasure map marks its X some way off (" + std::to_string((int)dist) + " blocks)");
+    ColumnSample cs; if (DimGenerator* g = L->gen->forDim(DIM_OVERWORLD)) g->sample(tx, tz, cs);
+    check(cs.water < 0 && cs.height > 0, "the X is on dry land");
+    check(fx.heard("blocks"), "and says which way and how far");
+    // the land at the X loaded: a chest is buried there, with loot
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 60 && !wt.isLoaded(tx, dimBase(DIM_OVERWORLD) + 100, tz);) { wt.stream({{vec3(tx, dimBase(DIM_OVERWORLD) + 100, tz), 1, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+    tick(3);
+    int chestY = -1, loot = 0;
+    for (int y = dimBase(DIM_OVERWORLD) + 255; y > dimBase(DIM_OVERWORLD); y--) if (reg().block(wt.getBlock(tx, y, tz)).key == "chest") {
+      chestY = y; if (const json* e = wt.blockEntity(tx, y, tz); e && e->contains("items")) for (auto& it : (*e)["items"]) if (!it.is_null()) loot++;
+      break;
+    }
+    const int top = wt.surfaceY(tx, tz, DIM_OVERWORLD);
+    check(chestY > 0 && loot >= 3 && top > chestY, "a chest of loot lies buried under the X (" + std::to_string(loot) + " stacks, " + std::to_string(top - chestY) + " down)");
+    const bool again = !use("treasure_map");
+    check(again && P->inv[0].tag.value("tx", 0) == tx, "using it again shows the same X");
+    for (auto& q : P->inv) q = ItemStack();
+  }
+
+  printf("[crafting from the chests beside the table]\n");
+  {
+    World& wc = L->world();
+    const int BY2 = dimBase(DIM_OVERWORLD) + 200;
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 30 && !wc.isLoaded(4, BY2 + 1, 4);) { wc.stream({{vec3(4, BY2 + 1, 4), 1, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+    const ivec3 tb(4, BY2 + 1, 4), ch = tb + ivec3(1, 0, 0);
+    wc.setBlock(tb.x, tb.y, tb.z, B("crafting_table")); wc.setBlock(ch.x, ch.y, ch.z, B("chest"));
+    json items = json::array(); for (int i = 0; i < 27; i++) items.push_back(nullptr); items[5] = ItemStack("planks", 10).toJson();
+    wc.setBlockEntity(ch.x, ch.y, ch.z, json{{"type", "chest"}, {"items", items}});
+    for (auto& q : P->inv) q = ItemStack();
+    InvOpen o; o.mode = "table"; o.hasPos = true; o.pos = tb;
+    InvSession S(*P, &wc, o, false);
+    int ri = -1; for (int i = 0; i < (int)reg().recipes.size(); i++) { const Recipe& r = reg().recipes[i]; if (r.out == "crafting_table" && !r.shaped() == false) { ri = i; break; } }
+    if (ri < 0) for (int i = 0; i < (int)reg().recipes.size(); i++) if (reg().recipes[i].out == "crafting_table") { ri = i; break; }
+    check(ri >= 0 && canCraft(S.bags(), reg().recipes[ri]), "the recipe book counts the planks in the chest beside the table");
+    S.bookPick(ri, false, true);
+    int onGrid = 0; for (auto& g : S.grid) if (g.id == "planks") onGrid += g.n;
+    int left = 0; for (auto& it : (*wc.blockEntity(ch.x, ch.y, ch.z))["items"]) if (!it.is_null()) left += ItemStack::fromJson(it).n;
+    check(onGrid == 4 && left == 6, "picking it lays 4 planks out of the chest on the grid (" + std::to_string(onGrid) + " laid, " + std::to_string(left) + " left)");
+    for (auto& g : S.grid) g.clear();
+    wc.setBlock(ch.x, ch.y, ch.z, AIR); wc.setBlock(tb.x, tb.y, tb.z, AIR);
   }
 
   printf("[stacking]\n");

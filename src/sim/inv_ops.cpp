@@ -256,7 +256,34 @@ bool InvSession::accepts(Grp g, int i, const ItemStack& s) const {
   }
 }
 
-Bags InvSession::bags() { Bags b; b.main = &p.inv; b.bp = bp.empty() ? nullptr : &bp; return b; }
+Bags InvSession::bags() {
+  Bags b; b.main = &p.inv; b.bp = bp.empty() ? nullptr : &bp;
+  if (o.mode == "table") { loadNearStores(); for (auto& [at, v] : nearStores) b.more.push_back(&v); }
+  return b;
+}
+void InvSession::loadNearStores() {
+  nearStores.clear();
+  if (!o.hasPos || !w) return;
+  static const ivec3 D[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+  for (const ivec3& d : D) {
+    const ivec3 at = o.pos + d;
+    const BlockDef& b = reg().block(w->getBlock(at.x, at.y, at.z));
+    if (!b.has("container") || b.has("enderChest")) continue;   // (an ender chest is yours alone, wherever it is)
+    const json* e = w->blockEntity(at.x, at.y, at.z);
+    if (!e || !e->contains("items") || !(*e)["items"].is_array()) continue;
+    std::vector<ItemStack> v; for (auto& it : (*e)["items"]) v.push_back(ItemStack::fromJson(it));
+    nearStores.push_back({at, std::move(v)});
+  }
+}
+void InvSession::storeNearStores() {
+  if (!w) return;
+  for (auto& [at, v] : nearStores) {
+    json* e = w->blockEntity(at.x, at.y, at.z);
+    if (!e || !e->contains("items")) continue;
+    (*e)["items"] = saveArr(v);
+    w->markModified(at.x, at.y, at.z); w->blockEntityChanged(at.x, at.y, at.z);
+  }
+}
 int InvSession::bagAdd(ItemStack& s) {
   int left = addToSlots(p.inv, s);
   if (left > 0 && !bp.empty()) { left = addToSlots(bp, s); store(Grp::Bp); }
@@ -541,7 +568,7 @@ std::string InvSession::takeOne(const std::string& key) {
   Bags b = bags();
   std::vector<std::string> ids;
   if (!key.empty() && key[0] == '#') { auto it = reg().tags.find(key); if (it != reg().tags.end()) ids = it->second; } else ids = {key};
-  for (auto& id : ids) if (b.count(id) > 0) { b.remove(id, 1); return id; }
+  for (auto& id : ids) if (b.count(id) > 0) { b.remove(id, 1); if (o.mode == "table") storeNearStores(); return id; }
   return "";
 }
 
@@ -577,6 +604,7 @@ void InvSession::bookPick(int idx, bool all, bool instant) {
   }
   ghost.clear();
   store(Grp::Bp);
+  if (o.mode == "table") storeNearStores();   // (what came out of the chests beside the table)
   sound("click");
   changed(Grp::Grid);
 }

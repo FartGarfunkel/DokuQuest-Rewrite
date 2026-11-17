@@ -135,6 +135,7 @@ bool riftAskAvailable(Level& lv);
 
 // villager_life.cpp
 void gatesTick(Level& lv, VillagerSystem& S, double dt);
+bool gateSet(Level& lv, const VGate& G, bool open, bool sound);   // open or shut a gate (barriers, or a new town's moving gate)
 void raidTick(Level& lv, VillagerSystem& S, double dt);
 void eliteTick(Level& lv, VillagerSystem& S, double dt);
 void lostTick(Level& lv, VillagerSystem& S, double dt);

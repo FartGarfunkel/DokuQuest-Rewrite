@@ -9,7 +9,7 @@
 namespace dq {
 
 class GameSession;
-constexpr int MAP_CELLS = 16;   // marker cells in the strip (see MapMarker::cell)
+constexpr int MAP_CELLS = 17;   // marker cells in the strip (see MapMarker::cell)
 
 const std::vector<u8>& mapPicture(const PaperMap& m, bool force = false);   // RGBA 128 x 128
 GLuint mapTexture(const PaperMap& m, bool force = false);

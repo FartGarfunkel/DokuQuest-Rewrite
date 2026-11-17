@@ -19,6 +19,8 @@ layout(location = 6) in vec3 aOrigin;   // per draw (multi-draw-indirect instanc
 uniform vec3 uOrigin;                   // section origin relative to the camera's integer block
 #endif
 uniform mat4 uViewProj;
+uniform mat4 uModel;                    // uUseModel 1: a moving piece's mesh (render/moving_layer.cpp), its section corner to the
+uniform int uUseModel;                  // camera block turned and slid (the origin is inside the matrix)
 uniform vec3 uWorldOrigin;              // camera's integer block, wrapped (for wind/wave phase)
 uniform vec2 uGrassFade;                // 3D grass: fully grown nearer than x, sunk into the ground past y
 
@@ -39,7 +41,7 @@ void main() {
   vec3 origin = uOrigin;
 #endif
   vec3 p = vec3(float(aV.x & 16383u), float((aV.x >> 14u) & 16383u), float(aV.y & 16383u)) / 256.0 - 16.0;
-  vec3 rel = origin + p;
+  vec3 rel = uUseModel != 0 ? (uModel * vec4(p, 1.0)).xyz : origin + p;
   vec3 world = rel + uWorldOrigin;
   float sw = float((aV.w >> 24u) & 127u);
   // the tint: the climate where the vertex stands (filtered: a corner takes the four columns round it), then its colour

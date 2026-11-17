@@ -43,6 +43,7 @@ u32 bookCoverOf(const std::string& id) {
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
 void registerPaintingLayer();
 void registerSwingLayer();
+void registerMovingLayer();   // render/moving_layer.cpp
 void registerSignLayer();
 void registerStandLayer();
 void registerHeldLightFx();
@@ -69,6 +70,7 @@ void registerItemLayers() {
   registerPlacePopLayer();   // a placed block pops (render/place_pop.cpp)
   registerPaintingLayer();   // render/painting_layer.cpp
   registerSwingLayer();
+  registerMovingLayer();
   registerSignLayer();           // render/sign_layer.cpp
   registerStandLayer();         // render/stand_layer.cpp         // render/swing_layer.cpp
   registerHeldLightFx();       // render/held_light_fx.cpp
@@ -84,6 +86,7 @@ void registerItemLayers() {
   registerWeaponTrailLayer();   // a swing's trail while it is live (render/weapon_trail_layer.cpp)
   registerFurnaceLayer();   // fuel and fire inside furnaces (render/furnace_layer.cpp)
   registerFallenLayer();    // the fallen adventurers as real skeletons (render/fallen_layer.cpp)
+  registerStrungLayer();    // chains and ropes strung between blocks (render/strung_layer.cpp)
   registerSpawnerLayer();   // the spinning monster inside a monster cage (render/spawner_layer.cpp)
   registerStationWorkLayer();
   registerStationCards(); registerCinematicHands(); // your arms at the crafting table scene (render/cinematic_hands.cpp)

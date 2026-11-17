@@ -5,6 +5,7 @@
 // with them, and passes on what its world does to you (damage, knockback, teleports, items given...).
 #pragma once
 #include "net/protocol.h"
+#include "net/tcp_relay.h"
 #include "sim/level.h"
 #include "sim/player.h"
 #include <unordered_map>
@@ -21,6 +22,9 @@ struct JoinOptions {
                              // coming (silence for `quiet` seconds gives up): over a home internet upload the first
                              // download of a well-played world takes far longer than on a home network
   double quiet = 25, joinCap = 300;
+  double tcpAfter = 6;       // no answer over UDP for this long: try TCP alongside (net/tcp_relay.h); <0 never
+  bool tcpOnly = false;      // straight over TCP (tests)
+  bool testUdpLost = false;  // tests: the UDP attempt goes nowhere (a network that drops UDP from outside)
 };
 
 class NetClient : public LevelNet {
@@ -35,6 +39,7 @@ public:
   bool connect(const JoinOptions& o);
   State state() const { return st; }
   const std::string& error() const { return err; }
+  bool overTcp() const { return tcp != nullptr && !host2; }   // carried over TCP (net/tcp_relay.h)
   float progress() const;
 
   // After Ready: the level to build (seed, world type, rules, time... remote = true), our saved body, and then
@@ -76,6 +81,11 @@ private:
   friend class ClientWatch;
   struct _ENetHost* host = nullptr;
   struct _ENetPeer* peer = nullptr;
+  std::unique_ptr<TcpRelayClient> tcp;   // the connection carried over TCP (when UDP got no answer)
+  struct _ENetHost* host2 = nullptr;     // while both are tried: the TCP attempt's own connection (the UDP one goes on in `host`)
+  struct _ENetPeer* peer2 = nullptr;
+  bool triedTcp = false;
+  void dropTcpTry();
   State st = State::Idle;
   std::string err;
   JoinOptions opts;

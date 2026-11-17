@@ -482,8 +482,7 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
 // ---------------------------------------------------------------- drawing
 struct DrawCmd { u32 count, instanceCount, firstIndex; i32 baseVertex; u32 baseInstance; };
 
-void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
-  if (!w || pages.empty()) return;
+void WorldRenderer::bindPass(const FrameCtx& f, int pass) {
   shader.use();
   f.apply(shader);
   shader.set("uViewProj", f.cam.viewProj);
@@ -506,6 +505,11 @@ void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
   glActiveTexture(GL_TEXTURE0);
   shader.set("uClimate", 13); shader.set("uTintLut", 14);
   worldFxBind(shader, f, pass);   // sun shadows, water you see into (render/world_fx.cpp)
+}
+
+void WorldRenderer::drawPass(const FrameCtx& f, int pass) {
+  if (!w || pages.empty()) return;
+  bindPass(f, pass);
   if (pass == 0) {
     visible.clear(); totalSections = (int)meshes.size();
     bool clip = clipPlane.x != 0 || clipPlane.y != 0 || clipPlane.z != 0 || clipPlane.w != 0;
@@ -681,6 +685,54 @@ std::vector<ivec3> WorldRenderer::waterfallBases(const vec3& near, float radius)
     for (auto& p : m->fx.waterfalls) { vec3 d = vec3(p) - near; if (glm::dot(d, d) <= r2 && dimOfY(p.y) == dimOfY((int)std::floor(near.y))) out.push_back(p); }   // (spray only in your own land)
   }
   return out;
+}
+
+// ---- loose meshes: a moving piece (render/moving_layer.cpp)
+u32 WorldRenderer::looseBuild(const MeshInput& in) {
+  MeshOutput out;
+  buildSectionMesh(in, out, mopt);
+  const u32 nq[3] = {(u32)out.opaque.size() / 4, (u32)out.cutout.size() / 4, (u32)out.trans.size() / 4};
+  if (!nq[0] && !nq[1] && !nq[2]) return 0;
+  Loose L; for (int i = 0; i < 3; i++) L.nq[i] = nq[i];
+  glGenVertexArrays(1, &L.vao); glGenBuffers(1, &L.vbo);
+  glBindVertexArray(L.vao);
+  glBindBuffer(GL_ARRAY_BUFFER, L.vbo);
+  const size_t nv = (size_t)(nq[0] + nq[1] + nq[2]) * 4;
+  glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(nv * sizeof(ChunkVertex)), nullptr, GL_STATIC_DRAW);
+  size_t off = 0;
+  for (auto* p : {&out.opaque, &out.cutout, &out.trans}) { if (!p->empty()) glBufferSubData(GL_ARRAY_BUFFER, (GLintptr)off, (GLsizeiptr)(p->size() * sizeof(ChunkVertex)), p->data()); off += p->size() * sizeof(ChunkVertex); }
+  for (auto& a : CHUNK_ATTRS) {
+    glEnableVertexAttribArray(a.index);
+    if (a.integer) glVertexAttribIPointer(a.index, a.size, a.type, sizeof(ChunkVertex), (void*)(uintptr_t)a.offset);
+    else glVertexAttribPointer(a.index, a.size, a.type, a.normalized, sizeof(ChunkVertex), (void*)(uintptr_t)a.offset);
+  }
+  const u32 most = std::max({nq[0], nq[1], nq[2]});
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, quadIndexBuffer(std::max<u32>(most, 16384)));
+  glBindVertexArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  const u32 id = looseNext++;
+  loose[id] = L;
+  return id;
+}
+
+void WorldRenderer::looseFree(u32 id) {
+  auto it = loose.find(id);
+  if (it == loose.end()) return;
+  glDeleteVertexArrays(1, &it->second.vao); glDeleteBuffers(1, &it->second.vbo);
+  loose.erase(it);
+}
+
+void WorldRenderer::drawLoose(const FrameCtx& f, int pass, u32 id, const mat4& model) {
+  auto it = loose.find(id);
+  if (it == loose.end() || !it->second.nq[pass] || !w) return;
+  bindPass(f, pass);
+  if (pass == 2) shader.set("uTransPart", 0);
+  shader.set("uUseModel", 1); shader.set("uModel", model);
+  u32 first = 0; for (int i = 0; i < pass; i++) first += it->second.nq[i] * 4;
+  glBindVertexArray(it->second.vao);
+  glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)(it->second.nq[pass] * 6), GL_UNSIGNED_INT, nullptr, (GLint)first);
+  glBindVertexArray(0);
+  shader.set("uUseModel", 0);
 }
 
 } // namespace dq

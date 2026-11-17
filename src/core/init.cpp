@@ -19,12 +19,16 @@ bool initCore(const CoreOptions& o) {
   registerPortals();
   registerMagic();
   registerContent();
+  registerGlue();   // moving structures: glue between faces (sim/glue.h)
+  registerMovingBodies();   // moving structures: hinges and sliders move their pieces (sim/moving.h)
   registerEndStory();
   registerVillagers();
   registerRedstone();
   registerBossKits();   // imported bosses fight by their own attack tables (sim/boss_kit.cpp)
   registerBossBrains();   // the great foes that had no fight of their own (sim/boss_brains.cpp)
   registerVillageTheft();   // stealing in villages (sim/village_theft.cpp)
+  registerTreasureMaps();   // a treasure map's X and the chest buried there (sim/treasure_maps.cpp)
+  registerStrung();         // chains and ropes strung between blocks (sim/strung.cpp)
   return true;
 }
 void shutdownCore() {}

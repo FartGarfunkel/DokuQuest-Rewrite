@@ -39,6 +39,7 @@ int ENET_CALLBACK knockIntercept(ENetHost* h, ENetEvent*) {
     if (pe.state != ENET_PEER_STATE_DISCONNECTED && pe.address.host == h->receivedAddress.host && pe.address.port == h->receivedAddress.port) return 0;
   }
   char ip[64] = "?"; enet_address_get_host_ip(&h->receivedAddress, ip, sizeof ip);
+  if (std::string(ip) == "127.0.0.1" && !sh->tcpRealAddress(h->receivedAddress.port).empty()) return 0;   // (a TCP player's relay: it said so itself)
   const std::string who = std::string(ip) + ":" + std::to_string(h->receivedAddress.port);
   const double now = nowSeconds();
   bool say = false;
@@ -105,6 +106,10 @@ bool ServerHost::start(std::string* err) {
   host->mtu = 1200;   // as the client asks (net/client.cpp)
   if (boundPort != opts.port) serverLog(strFormat("Port %d was taken: listening on %d (friends must use :%d, and the router must forward %d)", opts.port, boundPort, boundPort, boundPort), "warn");
   else serverLog(strFormat("Listening on UDP port %d", boundPort), "");
+  // and TCP on the same number: a friend whose game hears nothing over UDP carries on over TCP (some home connections
+  // let TCP in from outside but drop UDP). The router must forward this port as TCP too.
+  if (tcpRelay.start((u16)boundPort, (u16)boundPort)) serverLog(strFormat("Listening on TCP port %d too (for networks that block UDP)", boundPort), "");
+  else serverLog(strFormat("TCP port %d is taken: friends can join over UDP only", boundPort), "warn");
   if (std::string v = vpnAdvice(boundPort); !v.empty()) serverLog(v, "warn");
   // sounds, puffs and messages of this world reach the players they're near
   innerFx = level.fx;
@@ -131,6 +136,12 @@ bool ServerHost::start(std::string* err) {
       return false;
     }, 50));
   }
+  // something the host's world sends every guest (netBroadcast [event, args]): their game hears the same event (moving pieces)
+  if (level.events) uiHandles.push_back(level.events->on("netBroadcast", [this](const json& a) {
+    if (!a.is_array() || a.size() < 2 || !a[0].is_string()) return true;
+    toAll(UIEV, {{"e", a[0]}, {"a", a[1]}});
+    return false;
+  }, 50));
   if (opts.lan) lanAnn.start();
   serverLog(strFormat("\"%s\" is open on port %d (%s)", opts.name.c_str(), boundPort, level.info.name.c_str()), "good");
   return true;
@@ -138,6 +149,7 @@ bool ServerHost::start(std::string* err) {
 
 void ServerHost::stop(const std::string& why) {
   if (!host) return;
+  tcpRelay.stop();
   if (level.events) for (int h : uiHandles) level.events->off(h);
   uiHandles.clear();
   flushSaves();
@@ -415,6 +427,7 @@ void ServerHost::saveAll() { for (auto& [id, p] : peers) if (p.pl && !p.left) le
 void ServerHost::update(Level& lv, double dt) {
   if (!host) return;
   t += dt;
+  for (auto& l : tcpRelay.takeLog()) serverLog(l, "");
   ensureWatchers();
   diffMirrors();   // first: what the server did to anyone since last time, before their own news overwrites it
   ENetEvent ev;
@@ -422,7 +435,8 @@ void ServerHost::update(Level& lv, double dt) {
   while (host && guard++ < 4096 && enet_host_service(host, &ev, 0) > 0) {
     switch (ev.type) {
       case ENET_EVENT_TYPE_CONNECT: {
-        Peer p; p.id = nextPeerId++; p.enet = ev.peer; p.addr = peerAddress(ev.peer);
+        Peer p; p.id = nextPeerId++; p.enet = ev.peer; p.addr = peerAddress(ev.peer); p.joinedAt = nowSeconds();
+        if (p.addr == "127.0.0.1") if (std::string r = tcpRelay.realAddress(ev.peer->address.port); !r.empty()) p.addr = r;   // (over TCP: who it really is)
         ev.peer->data = (void*)(uintptr_t)p.id;
         enet_peer_timeout(ev.peer, 0, 10000, 30000);   // half a minute without a word: they've gone (NET_SILENT)
         peers[p.id] = p;
@@ -438,7 +452,11 @@ void ServerHost::update(Level& lv, double dt) {
         break;
       }
       case ENET_EVENT_TYPE_DISCONNECT: {
-        if (Peer* p = peerOf(ev.peer)) { p->enet = nullptr; peerLeft(*p); }
+        if (Peer* p = peerOf(ev.peer)) {   // (why, for the log: a connection that stopped answering, or one their game shut)
+          if (!p->left) serverLog(strFormat("%s's connection ended without a goodbye (%s, %.0f s after connecting; code %u)", p->name.empty() ? p->addr.c_str() : p->name.c_str(),
+                              ev.data == 0 ? "their game stopped answering or the line dropped" : "their game shut it", nowSeconds() - p->joinedAt, ev.data), "");
+          p->enet = nullptr; peerLeft(*p);
+        }
         ev.peer->data = nullptr;
         break;
       }
@@ -597,6 +615,7 @@ void ServerHost::receive(Peer& p, u8 ty, json& m) {
       break;
     }
     case BYE:
+      serverLog(p.name + " is leaving: their game said goodbye (" + m.value("why", std::string("they left the world")) + ")", "");
       if (m.contains("pl")) applySave(p, {{"pl", m["pl"]}, {"base", p.invSeq}});
       if (p.enet) enet_peer_disconnect_later(p.enet, BYE_NORMAL);
       peerLeft(p);

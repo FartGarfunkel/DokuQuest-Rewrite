@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(DokuQuest VERSION 1.0.0 LANGUAGES C CXX)
 # DokuQuest C++ — game client, launcher (with dedicated server + Mod Studio) and headless server.
-set(DQ_VERSION "1.0.0-alpha.27" CACHE STRING "Full game version shown in game and launcher")
+set(DQ_VERSION "1.0.0-alpha.28" CACHE STRING "Full game version shown in game and launcher")
 # the launcher's own version: raised only when the launcher itself changes. Updates install just the game (the "-game"
 # packages); the whole package, launcher and all, only when this is newer than the running launcher's (launcher/updater.cpp)
 set(DQ_LAUNCHER_VERSION "1.0.0-alpha.21")
@@ -167,6 +167,9 @@ target_link_libraries(test_content PRIVATE dqcore)
 # Ingot and log piles (headless, sim/piles.h). Run: build/test_piles
 add_executable(test_piles tools/test_piles.cpp)
 target_link_libraries(test_piles PRIVATE dqcore)
+# Moving structures: glue, hinges, sliders, moving bodies (headless, sim/moving.h). Run: build/test_moving
+add_executable(test_moving tools/test_moving.cpp)
+target_link_libraries(test_moving PRIVATE dqcore)
 add_test(NAME piles COMMAND test_piles)
 # The immersive progression (headless: the rule, trees, leaves, ground items, knapping, recipes). Run: build/test_immersive
 add_executable(test_immersive tools/test_immersive.cpp)

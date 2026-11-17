@@ -95,7 +95,7 @@ bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   if (isSlabOrStairs(id)) { CarveForm f = carveFormOf(id, meta); if (f.base) { id = f.base; meta = f.meta; setCarveTo = f.carve; } }   // placed or built: its chiseled form
   u8 oldCarve = c->getCarve(lx, ly, lz);
   u8 oldCoat = c->getCoat(lx, ly, lz);
-  if (old == id && oldMeta == meta && !oldCarve && !oldCoat) return false;   // set() clears carve and coat, so a carved block must fall through
+  if (old == id && oldMeta == meta && !oldCarve && !setCarveTo && !oldCoat) return false;   // set() clears carve and coat, so a carved block must fall through (and stairs over their own planks must carve)
   // carve-bit trace is now off: the layout moved to a full carve byte (meta&0x7F) on plain blocks,
   // which share bits with facing states on shape blocks, so an unconditional gate would be noisy.
   c->set(lx, ly, lz, id, meta);

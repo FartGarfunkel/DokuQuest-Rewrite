@@ -51,6 +51,11 @@ static bool takeSpike(const World& w, int x, int y, int z, BlockId id, double mi
   if (out && !(d.x1 <= minX || d.x0 >= maxX || d.y1 <= minY || d.y0 >= maxY || d.z1 <= minZ || d.z0 >= maxZ)) out->push_back(d);
   return true;
 }
+static std::vector<ExtraBoxesFn> g_extraBoxes;
+static std::vector<ExtraClimbFn> g_extraClimb;
+thread_local bool t_noExtraBoxes = false;
+void setExtraBoxes(ExtraBoxesFn f) { if (std::find(g_extraBoxes.begin(), g_extraBoxes.end(), f) == g_extraBoxes.end()) g_extraBoxes.push_back(f); }
+void addExtraClimb(ExtraClimbFn f) { if (std::find(g_extraClimb.begin(), g_extraClimb.end(), f) == g_extraClimb.end()) g_extraClimb.push_back(f); }
 void gatherBoxes(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ,
                  std::vector<DBox>& out, double feet, bool sneak) {
   out.clear();
@@ -73,6 +78,7 @@ void gatherBoxes(const World& w, double minX, double minY, double minZ, double m
       out.push_back(d);
     }
   }
+  if (!t_noExtraBoxes) for (ExtraBoxesFn f : g_extraBoxes) f(w, minX, minY - 1, minZ, maxX, maxY, maxZ, out);
 }
 
 bool collides(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
@@ -257,6 +263,7 @@ Contacts sampleContacts(const World& w, const Entity& e, float eye) {
     if (bi.f & BF::IsLeaves) r.leaves = true;
     if (bi.f & BF::Fire) r.fire = true;
   }
+  if (!r.ladder) for (ExtraClimbFn f : g_extraClimb) if (f(w, e)) { r.ladder = true; break; }
   BlockId under = w.getBlock(ifloor(e.pos.x), ifloor(e.pos.y - 0.05f), ifloor(e.pos.z));
   if (bhas(under, BF::Hot)) r.hot = true;
   // cactus (and thorn leaves) are touched from the sides

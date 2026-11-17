@@ -24,9 +24,9 @@ namespace dq {
 using namespace ui;
 std::string agoText(i64 ms);   // worlds.cpp
 
-// the game talks over UDP (ENet): the game's ports 25580-25589 and the home-network announcements on 25581. (It used to say
-// TCP here, which let nobody in: the firewall still dropped the game's UDP.)
-static const char* FIREWALL_CMD = "sudo firewall-cmd --permanent --add-port=25580-25589/udp && sudo firewall-cmd --reload";
+// the game talks over UDP (ENet): the game's ports 25580-25589 and the home-network announcements on 25581; TCP on the same
+// ports carries it for friends whose networks drop UDP from outside (net/tcp_relay.h)
+static const char* FIREWALL_CMD = "sudo firewall-cmd --permanent --add-port=25580-25589/udp --add-port=25580-25589/tcp && sudo firewall-cmd --reload";
 
 // ---- Joining… -------------------------------------------------------------------------------------------
 class JoiningScreen : public Screen {

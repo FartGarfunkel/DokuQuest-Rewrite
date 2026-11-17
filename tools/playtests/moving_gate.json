@@ -1,0 +1,264 @@
+{
+ "steps": [
+  {
+   "wait": 200,
+   "do": "anchor"
+  },
+  {
+   "do": "cmd",
+   "text": "/time set noon"
+  },
+  {
+   "do": "cmd",
+   "text": "/gamemode creative"
+  },
+  {
+   "do": "fill",
+   "rel": true,
+   "from": [
+    -6,
+    0,
+    -9
+   ],
+   "to": [
+    6,
+    6,
+    3
+   ],
+   "key": "air"
+  },
+  {
+   "do": "fill",
+   "rel": true,
+   "from": [
+    -6,
+    -1,
+    -9
+   ],
+   "to": [
+    6,
+    -1,
+    3
+   ],
+   "key": "stone"
+  },
+  {
+   "do": "fill",
+   "rel": true,
+   "from": [
+    0,
+    0,
+    -5
+   ],
+   "to": [
+    0,
+    0,
+    -5
+   ],
+   "key": "hinge",
+   "meta": 1
+  },
+  {
+   "do": "fill",
+   "rel": true,
+   "from": [
+    0,
+    1,
+    -5
+   ],
+   "to": [
+    2,
+    2,
+    -5
+   ],
+   "key": "planks"
+  },
+  {
+   "do": "fill",
+   "rel": true,
+   "from": [
+    2,
+    3,
+    -5
+   ],
+   "to": [
+    2,
+    3,
+    -5
+   ],
+   "key": "oak_stairs",
+   "meta": 1
+  },
+  {
+   "do": "be",
+   "rel": true,
+   "x": 0,
+   "y": 0,
+   "z": -5,
+   "data": {
+    "type": "machine_state",
+    "glue": 4
+   }
+  },
+  {
+   "do": "be",
+   "rel": true,
+   "x": 0,
+   "y": 1,
+   "z": -5,
+   "data": {
+    "glue": 13
+   }
+  },
+  {
+   "do": "be",
+   "rel": true,
+   "x": 1,
+   "y": 1,
+   "z": -5,
+   "data": {
+    "glue": 7
+   }
+  },
+  {
+   "do": "be",
+   "rel": true,
+   "x": 2,
+   "y": 1,
+   "z": -5,
+   "data": {
+    "glue": 6
+   }
+  },
+  {
+   "do": "be",
+   "rel": true,
+   "x": 0,
+   "y": 2,
+   "z": -5,
+   "data": {
+    "glue": 9
+   }
+  },
+  {
+   "do": "be",
+   "rel": true,
+   "x": 1,
+   "y": 2,
+   "z": -5,
+   "data": {
+    "glue": 11
+   }
+  },
+  {
+   "do": "be",
+   "rel": true,
+   "x": 2,
+   "y": 2,
+   "z": -5,
+   "data": {
+    "glue": 14
+   }
+  },
+  {
+   "do": "be",
+   "rel": true,
+   "x": 2,
+   "y": 3,
+   "z": -5,
+   "data": {
+    "glue": 8
+   }
+  },
+  {
+   "wait": 10,
+   "do": "tp",
+   "rel": true,
+   "x": 3,
+   "y": 0,
+   "z": -2
+  },
+  {
+   "do": "look",
+   "yaw": 20,
+   "pitch": -12
+  },
+  {
+   "wait": 5,
+   "do": "shot",
+   "path": "/tmp/claude-1000/-home-matt/c786ef44-e82e-4539-8ae1-69e6ae3d189a/scratchpad/gate_0.png"
+  },
+  {
+   "do": "lookAt",
+   "rel": true,
+   "x": 1,
+   "y": 2,
+   "z": -5
+  },
+  {
+   "wait": 2,
+   "do": "mouse",
+   "button": "right"
+  },
+  {
+   "wait": 1,
+   "do": "look",
+   "yaw": 20,
+   "pitch": -12
+  },
+  {
+   "wait": 20,
+   "do": "shot",
+   "path": "/tmp/claude-1000/-home-matt/c786ef44-e82e-4539-8ae1-69e6ae3d189a/scratchpad/gate_mid.png"
+  },
+  {
+   "wait": 400,
+   "do": "shot",
+   "path": "/tmp/claude-1000/-home-matt/c786ef44-e82e-4539-8ae1-69e6ae3d189a/scratchpad/gate_end.png"
+  },
+  {
+   "do": "expect",
+   "rel": true,
+   "block": [
+    0,
+    1,
+    -4
+   ],
+   "is": "planks"
+  },
+  {
+   "do": "expect",
+   "rel": true,
+   "block": [
+    0,
+    2,
+    -3
+   ],
+   "is": "planks"
+  },
+  {
+   "do": "expect",
+   "rel": true,
+   "block": [
+    2,
+    1,
+    -5
+   ],
+   "is": "air"
+  },
+  {
+   "do": "expect",
+   "rel": true,
+   "block": [
+    0,
+    3,
+    -3
+   ],
+   "is": "planks"
+  },
+  {
+   "wait": 2,
+   "do": "quit"
+  }
+ ]
+}

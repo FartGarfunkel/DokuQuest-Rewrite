@@ -273,6 +273,24 @@ int main(int argc, char** argv) {
     check(watchers <= 1, "at most one figure at a time");
     check(runCommand(*L, P, "/herobrine trace") == "Removed Herobrine.", "a trace on demand");
   }
+  // ------------------------------------------------------------ every boss: one Realm Fragment, the first time only
+  {
+    for (auto& e : L->entities()) if (e->type == "item") e->removed = true;
+    tick(0.05);
+    const int f0 = countItems("realm_fragment");
+    Entity n1; n1.type = "night_lord"; n1.pos = vec3(1000.5f, Y + 1, 4.5f); n1.realm = REALM_MAIN;
+    onGreatFoeDied(*L, n1); tick(0.05);
+    const int f1 = countItems("realm_fragment");
+    check(f1 == f0 + 1, "a boss not on the old list (the Night Lord) drops a Realm Fragment");
+    onGreatFoeDied(*L, n1); tick(0.05);
+    check(countItems("realm_fragment") == f1, "beaten again, it drops none (no farming)");
+    Entity g; g.type = "ghoul"; g.pos = n1.pos; g.realm = REALM_MAIN;
+    onGreatFoeDied(*L, g); tick(0.05);
+    check(countItems("realm_fragment") == f1, "a plain creature drops none");
+    for (auto& e : L->entities()) if (e->type == "item") e->removed = true;
+    L->info.data["flags"]["fragFoes"].erase("night_lord");
+    tick(0.05);
+  }
   // ------------------------------------------------------------ the story
   {
     check(riftTier(*L) <= 0 && riftStability(*L) == 100, strFormat("before the rift: all quiet (tier %d, stability %d, stage %d)", riftTier(*L), riftStability(*L), L->info.data.value("rift", json::object()).value("stage", 0)));
