@@ -588,6 +588,10 @@ void NetClient::applyEntities(const json& m) {
     // when it was there: a player's own time ("ts", a guest's ME time as the host has it), else when the host sent it
     const double ts = s.value("ts", st);
     if (st >= 0 && clock.known) e->netSample(clock.toLocal(ts), now, pos, yaw, pitch, body);
+    // the rest is its state as it was then: movement overtaken on the way (that channel is unsequenced) is older than what we
+    // have and is let go; the reliable news is taken whole (its data comes no other way)
+    if (moveOnly && ts < e->netStateT) continue;
+    e->netStateT = std::max(e->netStateT, ts);
     e->pitch = pitch; e->bodyYaw = body;
     float hp = s.value("hp", e->hp);
     if (hp < e->hp) e->hurtTime = 0.5f;

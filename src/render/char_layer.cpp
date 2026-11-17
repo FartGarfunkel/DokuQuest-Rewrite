@@ -457,9 +457,7 @@ void CharacterLayer::update(GameSession& s, double dt) {
     st.runAmt += ((p->sprinting ? 1.f : 0.f) - st.runAmt) * std::min(1.f, fdt / 0.15f);
     st.sneakAmt += ((p->sneaking && !p->swimming ? 1.f : 0.f) - st.sneakAmt) * std::min(1.f, fdt / 0.12f);
     if (p->ghost) {   // another player's arm: each swing their game began (its count, sent) played here at the same pace
-      if (!st.swingKnown) { st.swingKnown = true; st.swingSeen = p->swingN; }
-      else if (p->swingN != st.swingSeen) { st.swingSeen = p->swingN; p->swingT = 0.0001f; }
-      else if (p->swingT > 0 && (p->swingT += fdt * fpSwingRate(p->held().id, p->mineP > 0)) >= 1) p->swingT = 0;
+      remoteSwingStep(*p, fdt, fpSwingRate(p->held().id, p->mineP > 0));   // (sim/net_interp.cpp: each swing played through, digging cycling on)
       // their digging: the dust knocked off and its sound, as their own game makes them (the host's own come as its effects)
       if (p->mineP > 0 && !p->fxSent && !p->dead && s.fx) {
         if ((st.digT -= fdt) <= 0) {

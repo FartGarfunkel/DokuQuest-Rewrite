@@ -79,6 +79,7 @@ public:
   // own and plays a remote player's each time it moves on), and the block being dug and how far (its cracks drawn on
   // every screen: sim/controller.cpp damageCracks)
   u8 swingN = 0;
+  u8 swingSeen = 0, swingQueue = 0; bool swingKnown = false;   // (a remote player's swings heard and still to play: remoteSwingStep)
   ivec3 mineAt{0}; float mineP = 0;
   json netCarry;                    // what a remote player carries in their arms, for drawing only (their own game has `carrying`)
   bool fxSent = false;              // a remote player whose game is the host's: its sounds and dust come as the host's effects already
@@ -142,5 +143,10 @@ private:
 // ledges by the blocks' real heights (player.js 0.9.0.41)
 bool ledgeSurface(const World& w, int x, int cy, int z, float& surf);
 bool ledgeRoom(const World& w, int bx, int bz, float s, float halfW);
+
+// A remote player's arm (sim/net_interp.cpp), every frame: the swings their game began (swingN, sent) played through at
+// `rate` cycles a second, one after another — never cut short or restarted by a packet; while they dig, it keeps
+// cycling on its own (the packets' timing never shows in it).
+void remoteSwingStep(Player& p, float dt, float rate);
 
 } // namespace dq

@@ -147,9 +147,14 @@ bool replaceChunk(World& w, Chunk& c, const std::vector<u8>& record) {
 
 void netAttack(dq::Player& p, const json& m) {
   const int id = m.value("am", 0);
-  if (id <= 0 || id >= MV_COUNT) { if (m.contains("am") || p.atkMove) { p.atkMove = MV_NONE; p.atkT = 0; } return; }
+  // no swing in this message: the one playing here plays to its end (Level::tick ends it). It is drawn later than its
+  // owner made it, so their "done" comes while ours is still going: cutting it there clipped every swing's end.
+  if (id <= 0 || id >= MV_COUNT) return;
   const float t = m.value("at", 0.f);
-  if (p.atkMove != id || std::fabs(p.atkT - t) > 0.12f) { p.atkMove = (u8)id; p.atkT = t; }
+  // A message's time is its swing's age when sent, so here (played on since it began) ours is as far or further along.
+  // Only a different move, ours falling behind (its start was lost), or a fresh start of the same move (its time far
+  // behind ours, from the start) begin it again — a late packet no longer pulls it back and makes it stutter.
+  if (p.atkMove != id || t > p.atkT + 0.12f || (t < 0.12f && p.atkT > t + 0.3f)) { p.atkMove = (u8)id; p.atkT = t; }
   p.atkYaw = m.value("ay", p.atkYaw);
   p.atkOff = m.value("ao", 0) != 0;
 }

@@ -4,6 +4,7 @@
 // once or not at all don't turn into speeding up, stopping and lurching. How far in the past follows how late they
 // have been coming (a calm link: ~70 ms; a jittery one: longer), changed slowly so the motion never jumps.
 #include "sim/entity.h"
+#include "sim/player.h"
 #include <algorithm>
 #include <cmath>
 
@@ -117,6 +118,23 @@ void Entity::netUpdateView(double now) {
   viewPos = p + netCorr; viewYaw = std::remainder(y + netCorrYaw, 2 * PI); viewPitch = pi; viewBody = std::remainder(b + netCorrYaw, 2 * PI);
   hasView = true;
   netLastRt = rt;
+}
+
+void remoteSwingStep(Player& p, float dt, float rate) {
+  if (!p.swingKnown) { p.swingKnown = true; p.swingSeen = p.swingN; }
+  u8 fresh = (u8)(p.swingN - p.swingSeen);
+  if (fresh >= 128) fresh = 0;       // (an older count: news overtaken)
+  else { p.swingSeen = p.swingN; if (fresh > 4) fresh = 1; }   // (a long gap: not a backlog of swings to play)
+  p.swingQueue = (u8)std::min(2, p.swingQueue + fresh);
+  const bool digging = p.mineP > 0 && !p.dead;
+  if (p.swingT > 0) {
+    p.swingT += dt * rate;
+    if (p.swingT >= 1) {
+      if (digging) { p.swingT = std::max(0.0001f, p.swingT - std::floor(p.swingT)); p.swingQueue = 0; }   // (digging: the cycle goes on, its phase kept)
+      else if (p.swingQueue) { p.swingT = std::max(0.0001f, p.swingT - std::floor(p.swingT)); p.swingQueue--; }   // (the next one, straight after)
+      else p.swingT = 0;
+    }
+  } else if (p.swingQueue || digging) { p.swingT = 0.0001f; if (p.swingQueue) p.swingQueue--; }
 }
 
 void Entity::glide(double dt) {
