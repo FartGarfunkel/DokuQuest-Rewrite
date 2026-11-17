@@ -389,7 +389,13 @@ public:
     if (!st.open) {
       label(F_BODY, col::text, ("Let others on your home network play in " + world + " with you. Your computer runs the world: creatures, time and saving. Everyone keeps their own things, and your world remembers them for next time.").c_str(), w);
       label(F_BODY, col::text, "They can join from DokuQuest on another computer (Multiplayer on the title screen).", w);
-      if (button("Open to LAN##start", BTN_PRIMARY)) { std::string e; msg = openToLan(a, LanOpenOptions(), &e) ? "" : e; }
+      {   // the port (the one your router forwards; 25580 unless you chose another)
+        int port = a.settings.extra.value("lanPort", 25580);
+        ImGui::AlignTextToFramePadding(); label(F_BODY, col::text, "Port"); ImGui::SameLine();
+        ImGui::SetNextItemWidth(160 * z);
+        if (ImGui::InputInt("##lanport", &port, 1, 10)) { port = clampv(port, 1024, 65535); a.settings.extra["lanPort"] = port; a.settings.save(); }
+      }
+      if (button("Open to LAN##start", BTN_PRIMARY)) { LanOpenOptions o; o.port = a.settings.extra.value("lanPort", 25580); std::string e; msg = openToLan(a, o, &e) ? "" : e; }
       if (!msg.empty()) label(F_MID, col::muted, msg.c_str(), w);
     } else {
       label(F_BODY, col::text, (world + " is open to your home network.").c_str(), w);
@@ -413,7 +419,7 @@ public:
         label(F_MID, col::text, "openSUSE's firewall blocks people joining until you allow it once (on the internet as well as at home). Open a terminal and run:", w);
         label(F_MONO, col::text, FIREWALL_CMD, w);
         if (button("Copy", BTN_NORMAL, true)) { SDL_SetClipboardText(FIREWALL_CMD); msg = "Copied"; }
-        label(F_MID, col::muted, "It asks for your password. Then try joining again. Other Linux systems, and Windows: allow UDP ports 25580\xE2\x80\x93" "25589. (UDP, not TCP: the game doesn't use TCP at all.)", w);
+        label(F_MID, col::muted, "It asks for your password. Then try joining again. Other Linux systems, and Windows: allow TCP and UDP ports 25580\xE2\x80\x93" "25589.", w);
       }
       ImGui::PushStyleColor(ImGuiCol_Text, col::gold); ImGui::PushStyleColor(ImGuiCol_Header, 0);
       ImGui::SetNextItemOpen(netOpen); netOpen = ImGui::CollapsingHeader("Playing over the internet");
@@ -421,7 +427,7 @@ public:
       if (netOpen) {
         const std::string port = std::to_string(st.port);
         if (std::string v = net::vpnAdvice(st.port); !v.empty()) label(F_MID, col::ember, v.c_str(), w);
-        label(F_MID, col::text, ("1. On your router, forward UDP port " + port + " (UDP, not TCP) to this computer" + (st.address.empty() ? std::string() : " (" + st.address + ")") + ".").c_str(), w);
+        label(F_MID, col::text, ("1. On your router, forward port " + port + " to this computer" + (st.address.empty() ? std::string() : " (" + st.address + ")") + " as TCP (the easy one: it's all the game needs) or both TCP and UDP.").c_str(), w);
         label(F_MID, col::text, "2. Let it through this computer's firewall too (above): a port open on the router isn't enough.", w);
         label(F_MID, col::text, "3. They type your internet address, not the home one above:", w);
         std::string addr; bool busy, done;

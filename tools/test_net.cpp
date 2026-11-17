@@ -335,7 +335,7 @@ int main(int argc, char** argv) {
     net::NetClient U; net::JoinOptions u; u.address = addr; u.name = "Uma"; u.testUdpLost = true;
     const double t0 = nowSeconds();
     const bool ok2 = U.connect(u);
-    check(ok2 && U.overTcp(), strFormat("UDP lost on the way: the join goes through over TCP (%.1f s)", nowSeconds() - t0));
+    check(ok2 && U.overTcp(), strFormat("UDP lost on the way: the join goes through over TCP at once (%.1f s)", nowSeconds() - t0));
     if (ok2) check(pump(4, [&] { return B.ghost("player", "Uma") != nullptr; }), "and she plays like anyone else");
     U.close();
     // a host that stalls for 8 s while someone joins: UDP and TCP both answer when it wakes; UDP is kept
