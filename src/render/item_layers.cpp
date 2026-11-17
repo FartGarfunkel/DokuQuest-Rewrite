@@ -43,6 +43,7 @@ u32 bookCoverOf(const std::string& id) {
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
 void registerPaintingLayer();
 void registerSwingLayer();
+void registerMovingLayer();   // render/moving_layer.cpp
 void registerSignLayer();
 void registerStandLayer();
 void registerHeldLightFx();
@@ -69,6 +70,7 @@ void registerItemLayers() {
   registerPlacePopLayer();   // a placed block pops (render/place_pop.cpp)
   registerPaintingLayer();   // render/painting_layer.cpp
   registerSwingLayer();
+  registerMovingLayer();
   registerSignLayer();           // render/sign_layer.cpp
   registerStandLayer();         // render/stand_layer.cpp         // render/swing_layer.cpp
   registerHeldLightFx();       // render/held_light_fx.cpp

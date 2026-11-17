@@ -25,6 +25,11 @@ public:
   void drawOpaque(const FrameCtx& f);
   void drawCutout(const FrameCtx& f);
   void drawTranslucent(const FrameCtx& f);
+  // loose meshes (render/moving_layer.cpp: a moving piece): meshed once like a section, drawn with a model matrix that
+  // takes its section-local vertices to camera-relative space; 0 = none
+  u32 looseBuild(const MeshInput& in);
+  void looseFree(u32 id);
+  void drawLoose(const FrameCtx& f, int pass, u32 id, const mat4& model);
   void reloadShaders();
   void remeshAll();
   void setTiles(const TileSet& ts);          // the plant builder's copy of the tiles (+ remesh)
@@ -72,6 +77,9 @@ public:
   static constexpr float PLANT_DETAIL_R = 36;   // (was 44: 3D plants are most of the terrain memory where they grow thick)
 
 private:
+  struct Loose { GLuint vao = 0, vbo = 0; u32 nq[3] = {0, 0, 0}; };
+  std::map<u32, Loose> loose; u32 looseNext = 1;
+  void bindPass(const FrameCtx& f, int pass);
   struct SecMesh { u32 base = 0, cap = 0; u32 nq[3] = {0, 0, 0}; vec3 origin{0}; MeshFx fx; bool detail = true; };
   struct Result { SectionKey k; MeshOutput out; u32 gen = 0; };
   u32 generation = 0;   // bumped by setWorld: results from the world before are dropped

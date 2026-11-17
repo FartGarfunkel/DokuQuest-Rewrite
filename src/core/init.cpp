@@ -19,6 +19,8 @@ bool initCore(const CoreOptions& o) {
   registerPortals();
   registerMagic();
   registerContent();
+  registerGlue();   // moving structures: glue between faces (sim/glue.h)
+  registerMovingBodies();   // moving structures: hinges and sliders move their pieces (sim/moving.h)
   registerEndStory();
   registerVillagers();
   registerRedstone();

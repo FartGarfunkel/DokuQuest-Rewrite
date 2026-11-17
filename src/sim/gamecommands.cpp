@@ -2,6 +2,7 @@
 // (game/weather.js), registered into the chat command registry (sim/commands.h).
 #include "sim/physics.h"
 #include "sim/gamecommands.h"
+#include "sim/rotate.h"
 #include "sim/gameplay.h"
 #include "sim/combat.h"
 #include "sim/rules.h"
@@ -509,19 +510,8 @@ static ivec3 weDir(Player& p, const std::string& word) {
   if (std::fabs(L.y) > 0.7f) return {0, sgn(L.y), 0};
   return std::fabs(L.x) > std::fabs(L.z) ? ivec3(sgn(L.x), 0, 0) : ivec3(0, 0, sgn(L.z));
 }
-// Turning a block a quarter turn clockwise (seen from above): facing bits for the common kinds.
-static u8 rotMeta(BlockId id, u8 m, int q) {
-  const Registry& R = reg(); const BlockDef& b = R.block(id); int k = R.tShape[id];
-  static const int H2D6[4] = {2, 5, 3, 4}; static const int D62H[6] = {-1, -1, 0, 2, 3, 1};
-  for (int i = 0; i < q; i++) {
-    if (k == ShapeKind::Stairs || k == ShapeKind::Gate || k == ShapeKind::Door || k == ShapeKind::Trapdoor || k == ShapeKind::Ladder || k == ShapeKind::Bed || k == ShapeKind::Frame || b.has("facingModel") || (bhas(id, BF::FacingFront) && !b.has("f6"))) m = (u8)((m & ~3) | ((m + 1) & 3));
-    else if (k == ShapeKind::Slab && (m & 7) >= 2 && (m & 7) <= 5) m = (u8)((m & ~7) | (2 + (((m & 7) - 2 + 1) & 3)));
-    else if (b.has("axisBlock") || k == ShapeKind::Rod) { int a = m & 3; if (a == 1) m = (u8)((m & ~3) | 2); else if (a == 2) m = (u8)((m & ~3) | 1); }
-    else if (b.render == Render::Torch && (m & 7)) { static const int t[5] = {0, 3, 4, 2, 1}; m = (u8)((m & ~7) | t[m & 7]); }
-    else if (b.has("f6")) { int d = m & 7; if (d >= 2) m = (u8)((m & ~7) | H2D6[(D62H[d] + 1) & 3]); }
-  }
-  return m;
-}
+// Turning a block a quarter turn clockwise (seen from above): sim/rotate.h
+static u8 rotMeta(BlockId id, u8 m, int q) { return rotateMetaY(id, m, q); }
 static WeEdit weReplay(Level& lv, Player& p, const WeEdit& e) {
   World& w = lv.world(p.realm);
   QuietEdits quiet;
