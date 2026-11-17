@@ -133,6 +133,7 @@ Entity* spawnCorpse(Level& lv, Player& p, const DamageSource& src, bool withItem
   e->data = {{"of", p.name}, {"skin", p.skin}, {"cid", cid}, {"items", items}, {"empty", items.empty()}, {"wear", wear},
              {"at", unixMillis()}, {"safe", {safe.x, safe.y, safe.z}}, {"rk", {std::round(kick.x * 100) / 100, 1.0, std::round(kick.z * 100) / 100}}};
   if (!p.cape.empty() && !p.cape[0].empty()) e->data["cape"] = p.cape[0].id;
+  for (const char* k : {"customCape", "hideGear"}) if (p.data.is_object() && p.data.contains(k)) e->data[k] = p.data[k];   // (drawn as they wore it)
   Entity* ent = lv.spawn(std::move(e));
   if (!items.empty()) { json b = placeOf(p.realm, at); b["cid"] = cid; deathBodies(p).push_back(b); }
   pointCompass(p);

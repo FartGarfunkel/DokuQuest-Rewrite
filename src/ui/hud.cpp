@@ -109,7 +109,10 @@ void hudSaving(bool on) { H().saving = on; if (!on) H().savingOff = now() + 0.6;
 
 void hudInitEvents(App& a) {
   auto str = [](const json& j, size_t i) { return i < j.size() && j[i].is_string() ? j[i].get<std::string>() : std::string(); };
-  a.events.on("toast", [str](const json& j) { hudToast(str(j, 0), str(j, 1)); return true; }, -100);
+  // [text, kind] from the app and mods. The game's own toasts also go out on this bus as [player, text, kind] (sim/gameplay.cpp
+  // toast(), for mods to hear) and already reached the HUD through Level::fx: shown here too, the player's name popped up
+  // as a toast of its own (a "Wanderer" under every "You died")
+  a.events.on("toast", [str](const json& j) { if (j.size() >= 3) return true; hudToast(str(j, 0), str(j, 1)); return true; }, -100);
   a.events.on("pickup", [str](const json& j) { if (j.size() > 1 && j[1].is_number()) hudPickup(str(j, 0), j[1].get<int>()); return true; }, -100);
   a.events.on("chatLine", [str](const json& j) { chatLine(str(j, 0), str(j, 1)); return true; }, -100);
   a.events.on("dimName", [str](const json& j) { hudDimName(str(j, 0)); return true; }, -100);

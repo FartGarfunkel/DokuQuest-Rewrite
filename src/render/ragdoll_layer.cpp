@@ -10,6 +10,7 @@
 #include "assets/char_creator.h"
 #include "sim/creature.h"
 #include "sim/creature_rig.h"
+#include "sim/player.h"
 
 namespace dq {
 
@@ -19,7 +20,26 @@ namespace {
 
 // a player's body: the voxel character's ten parts, the torso first (parents before children)
 constexpr int ORDER[CP_COUNT] = {CP_BODY, CP_HEAD, CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D, CP_LEGR_U, CP_LEGR_D, CP_LEGL_U, CP_LEGL_D};
-struct BodyDoll { Ragdoll rd; CharRig rig; vec3 at{0}; bool seen = false; };
+struct BodyDoll { Ragdoll rd; CharRig rig; vec3 at{0}; bool seen = false; CharWear wear; std::string skin; };
+
+// what the body wears, as a living player would show it (render/char_layer charWearOf): its armour, the backpack, the cape
+// (an item's, the cape editor's, or the skin's own), the quiver, the shield strapped on. Nothing in its hands.
+CharWear bodyWear(const Entity& c, const CharacterSpec& spec) {
+  Player p;
+  const json items = c.data.value("items", json::array());
+  for (auto& it : items) {
+    if (!it.is_object()) continue;
+    const std::string g = it.value("g", std::string()); const int i = it.value("i", -1);
+    std::vector<ItemStack>* v = g == "armor" ? &p.armor : g == "back" ? &p.back : g == "hook" ? &p.hook : g == "cape" ? &p.cape : g == "quiver" ? &p.quiver : g == "shield" ? &p.shield : nullptr;
+    if (v && i >= 0 && i < (int)v->size()) (*v)[i] = ItemStack::fromJson(it.value("s", json()));
+  }
+  if (items.empty()) if (const json& wr = c.data.value("wear", json()); wr.is_array() && !c.data.value("empty", false))
+    for (size_t i = 0; i < 4 && i < wr.size(); i++) if (wr[i].is_string()) p.armor[i] = ItemStack(wr[i].get<std::string>(), 1);
+  for (const char* k : {"customCape", "hideGear"}) if (c.data.contains(k)) p.data[k] = c.data[k];
+  CharWear w = charWearOf(p, spec, false);
+  w.held.clear(); w.off.clear(); w.heldModel.clear(); w.offModel.clear(); w.rodOwner = 0; w.heldGlint = w.offGlint = false;
+  return w;
+}
 
 void buildBody(BodyDoll& d, const CharModel& M, const Entity& c, World& w) {
   CharPose ps; ps.yaw = c.yaw;
@@ -76,13 +96,18 @@ public:
       if (e->removed || e->type != "corpse" || e->realm != s.player->realm || glm::distance(e->pos, s.player->pos) > 96) continue;
       const std::string cid = e->data.value("cid", std::to_string(e->id));
       auto it = bodies.find(cid);
-      if (it == bodies.end() || glm::distance(it->second.at, e->pos) > 1.5f) {   // new, or moved (out of the lava, back from the void)
+      const std::string skinNow = e->data.value("skin", std::string());
+      // new, moved (out of the lava, back from the void), or its owner's skin only just arrived (a guest's, by its net name:
+      // another shape of body, so it's built again; it was lying still, so it lies still again at once)
+      if (it == bodies.end() || glm::distance(it->second.at, e->pos) > 1.5f || (it->second.skin != "\x01" && it->second.skin != skinNow)) {
         auto spec = resolveCharacter(e->data.value("skin", std::string()));
-        BodyDoll d; buildBody(d, charModel(*spec), *e, w);
+        BodyDoll d; buildBody(d, charModel(*spec), *e, w); d.skin = "\x01";   // (its wear is worked out below)
         it = bodies.insert_or_assign(cid, std::move(d)).first;
       }
-      it->second.seen = true;
-      it->second.rd.step(w, (float)dt);
+      BodyDoll& d = it->second;
+      d.seen = true;
+      if (d.skin != skinNow) { d.skin = skinNow; d.wear = bodyWear(*e, *resolveCharacter(skinNow)); }
+      d.rd.step(w, (float)dt);
     }
     for (auto it = bodies.begin(); it != bodies.end();) it = it->second.seen ? std::next(it) : bodies.erase(it);
   }
@@ -115,10 +140,8 @@ public:
       Rr.gear["armR"] = Rr.part[CP_ARMR_U]; Rr.gear["foreR"] = Rr.part[CP_ARMR_D]; Rr.gear["armL"] = Rr.part[CP_ARML_U]; Rr.gear["foreL"] = Rr.part[CP_ARML_D];
       Rr.gear["legR"] = Rr.part[CP_LEGR_U]; Rr.gear["shinR"] = Rr.part[CP_LEGR_D]; Rr.gear["legL"] = Rr.part[CP_LEGL_U]; Rr.gear["shinL"] = Rr.part[CP_LEGL_D];
       Rr.fpTorso = false;
-      CharPose ps; ps.sleep = true; ps.time = (float)e->age;   // (eyes shut)
-      CharWear wear;
-      if (!e->data.value("empty", false)) if (const json& wr = e->data.value("wear", json()); wr.is_array())
-        for (size_t i = 0; i < 4 && i < wr.size(); i++) if (wr[i].is_string()) wear.armor[i] = wr[i].get<std::string>();
+      CharPose ps; ps.deathT = 1; ps.time = (float)e->age;   // (dead: no blinking or talking face; nothing carried; the cape still hangs)
+      const CharWear& wear = d.wear;
       CharDrawOpts o; o.light = lightAt(w, d.rd.origin + d.rd.centre() + vec3(0, 0.3f, 0)); o.rig = &Rr; o.time = e->age;
       if (!begun) { voxelRenderer().begin(f, f.cam.viewProj); begun = true; }
       drawCharacter(*resolveCharacter(e->data.value("skin", std::string())), ps, wear, glm::translate(mat4(1), rel), o);
