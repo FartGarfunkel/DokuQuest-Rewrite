@@ -6,6 +6,18 @@
 #include <upnperrors.h>
 #include <chrono>
 #include <cstring>
+#include <fstream>
+#include <sstream>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#endif
 #include <atomic>
 #include <mutex>
 #include <thread>
@@ -30,17 +42,80 @@ std::vector<std::string> PortMapper::takeLog() {
   std::lock_guard<std::mutex> lk(st->mx); auto v = std::move(st->log); st->log.clear(); return v;
 }
 
+// the default gateway (the home router), IPv4 as text ("" if unknown)
+static std::string gatewayIPv4() {
+#ifdef _WIN32
+  MIB_IPFORWARDROW r{}; DWORD dst = 0; inet_pton(AF_INET, "8.8.8.8", &dst);
+  if (GetBestRoute(dst, 0, &r) == NO_ERROR && r.dwForwardNextHop) { char b[32]; in_addr a{}; a.s_addr = r.dwForwardNextHop; inet_ntop(AF_INET, &a, b, sizeof b); return b; }
+#else
+  std::ifstream f("/proc/net/route");   // (Linux; Android may hide it: then the guess below)
+  std::string line; std::getline(f, line);
+  while (std::getline(f, line)) {
+    std::istringstream is(line); std::string ifc, dest, gw; is >> ifc >> dest >> gw;
+    if (dest == "00000000" && gw.size() == 8) { unsigned v = (unsigned)std::stoul(gw, nullptr, 16); in_addr a{}; a.s_addr = v; char b[32]; inet_ntop(AF_INET, &a, b, sizeof b); return b; }
+  }
+#endif
+  const std::string me = localAddress();   // (most home networks: the router is .1)
+  const size_t k = me.rfind('.');
+  return k == std::string::npos ? std::string() : me.substr(0, k) + ".1";
+}
+
+// asked straight at the router: some Wi-Fi networks never deliver the search everyone hears (the router stays silent to
+// that computer), but it answers one sent to it. Returns its description's address ("" if no answer).
+static std::string askGatewayDirect(const std::string& gw) {
+  if (gw.empty()) return "";
+#ifdef _WIN32
+  SOCKET s = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); if (s == INVALID_SOCKET) return "";
+  DWORD tv = 2500; setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+#else
+  int s = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); if (s < 0) return "";
+  timeval tv{2, 500000}; setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+#endif
+  sockaddr_in to{}; to.sin_family = AF_INET; to.sin_port = htons(1900); inet_pton(AF_INET, gw.c_str(), &to.sin_addr);
+  std::string out;
+  for (const char* st : {"urn:schemas-upnp-org:device:InternetGatewayDevice:1", "urn:schemas-upnp-org:device:InternetGatewayDevice:2"}) {
+    const std::string msg = std::string("M-SEARCH * HTTP/1.1\r\nHOST: ") + gw + ":1900\r\nST: " + st + "\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\n\r\n";
+    ::sendto(s, msg.data(), (int)msg.size(), 0, (sockaddr*)&to, sizeof to);
+    char buf[2048]; const int n = (int)::recvfrom(s, buf, sizeof buf - 1, 0, nullptr, nullptr);
+    if (n <= 0) continue;
+    buf[n] = 0;
+    std::string r = buf, low = r; for (auto& c : low) c = (char)std::tolower((unsigned char)c);
+    const size_t at = low.find("\nlocation:");
+    if (at == std::string::npos) continue;
+    size_t b = at + 10; while (b < r.size() && (r[b] == ' ' || r[b] == ':')) b++;
+    size_t e = r.find_first_of("\r\n", b);
+    out = r.substr(b, e == std::string::npos ? std::string::npos : e - b);
+    if (!out.empty()) break;
+  }
+#ifdef _WIN32
+  closesocket(s);
+#else
+  ::close(s);
+#endif
+  return out;
+}
+
 static void portMapRun(std::shared_ptr<PortMapper::State> S, u16 port) {
   auto say = [&](const std::string& l) { std::lock_guard<std::mutex> lk(S->mx); S->log.push_back(l); };
   auto on = [&] { return S->running.load(); };
   int err = 0;
-  UPNPDev* devs = upnpDiscover(2000, nullptr, nullptr, UPNP_LOCAL_PORT_ANY, 0, 2, &err);
-  if (!devs) { say("The router didn't answer an automatic port request (UPnP is off or not there): friends from outside need the port forwarded by hand, or the IPv6 address"); return; }
   UPNPUrls urls{}; IGDdatas data{};
   char lan[64] = "", wan[64] = "";
-  const int igd = UPNP_GetValidIGD(devs, &urls, &data, lan, sizeof lan, wan, sizeof wan);
-  freeUPNPDevlist(devs);
-  if (igd == UPNP_NO_IGD || igd == UPNP_UNKNOWN_DEVICE) { if (igd) FreeUPNPUrls(&urls); say("No router that takes automatic port requests was found: forward the port by hand"); return; }
+  int igd = UPNP_NO_IGD;
+  if (UPNPDev* devs = upnpDiscover(2000, nullptr, nullptr, UPNP_LOCAL_PORT_ANY, 0, 2, &err)) {
+    igd = UPNP_GetValidIGD(devs, &urls, &data, lan, sizeof lan, wan, sizeof wan);
+    freeUPNPDevlist(devs);
+    if (igd == UPNP_UNKNOWN_DEVICE) { FreeUPNPUrls(&urls); igd = UPNP_NO_IGD; }   // (another computer's UPnP, not a router)
+  }
+  if (igd == UPNP_NO_IGD && on()) {   // nobody answered the search everyone hears: ask the router itself
+    const std::string gw = gatewayIPv4(), url = askGatewayDirect(gw);
+    if (!url.empty() && UPNP_GetIGDFromUrl(url.c_str(), &urls, &data, lan, sizeof lan) > 0) {
+      igd = UPNP_CONNECTED_IGD;
+      UPNP_GetExternalIPAddress(urls.controlURL, data.first.servicetype, wan);
+      say("Found the router by asking it directly (" + gw + "): it didn't answer the usual search from this computer");
+    }
+  }
+  if (igd == UPNP_NO_IGD) { say("No router that takes automatic port requests was found (UPnP is off or not there): friends from outside need the port forwarded by hand, or the IPv6 address"); return; }
   if (!on()) { FreeUPNPUrls(&urls); return; }
   if (igd == UPNP_PRIVATEIP_IGD)
     say(std::string("The router's own internet address is ") + wan + ", a private one: either it sits behind another router (forward the port on that one too) or your provider shares one address among many homes (CGNAT: then use the IPv6 address, or ask them for a public IPv4 address)");
