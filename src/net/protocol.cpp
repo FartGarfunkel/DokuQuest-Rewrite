@@ -65,7 +65,16 @@ bool parsePacket(const ENetPacket* p, u8& t, json& body) {
 void send(ENetPeer* peer, Msg t, const json& body, int channel, bool reliable) {
   if (!peer) return;
   ENetPacket* p = makePacket(t, body, reliable);
+  if (!reliable && channel == CH_MOVE) p->flags |= ENET_PACKET_FLAG_UNSEQUENCED;   // (movement: an overtaken one still comes, its time says where it goes)
   if (enet_peer_send(peer, (enet_uint8)channel, p) != 0) enet_packet_destroy(p);
+}
+void steadyPeer(ENetPeer* peer) {
+  // ENet's own throttle drops unreliable packets at the sender whenever the round trip comes out longer than usual — on a
+  // jittery internet link that is most of the time, and the movement (all unreliable) was mostly thrown away before it
+  // left. Never throttled down: the game paces what it sends itself (net/server_sync.cpp flushChunks).
+  if (!peer) return;
+  peer->packetThrottleDeceleration = 0;
+  peer->packetThrottle = peer->packetThrottleLimit;
 }
 std::string peerAddress(const ENetPeer* peer) {
   char buf[64] = "?";
@@ -143,6 +152,43 @@ void netAttack(dq::Player& p, const json& m) {
   if (p.atkMove != id || std::fabs(p.atkT - t) > 0.12f) { p.atkMove = (u8)id; p.atkT = t; }
   p.atkYaw = m.value("ay", p.atkYaw);
   p.atkOff = m.value("ao", 0) != 0;
+}
+
+// what a player's body is doing, beyond walking (the guest's ME and the host's snapshots carry the same keys):
+// sn arm swings begun (a count), mn [x,y,z,percent] the block being dug, bw the bow's draw, lc a ledge climb's progress,
+// cy what's carried in the arms, xf flags (below)
+enum : int { XF_SLEEP = 1, XF_GLIDE = 2, XF_SCOPE = 4, XF_HANG = 8, XF_SHIMMY = 16, XF_LADDER = 32, XF_WATER = 64, XF_EYEWATER = 128, XF_HOSTS = 256 };   // (HOSTS: played on the host itself, so its effects come as the host's)
+void playerPoseInto(const dq::Player& p, json& s) {
+  if (p.swingN) s["sn"] = p.swingN;
+  if (p.mineP > 0) s["mn"] = json::array({p.mineAt.x, p.mineAt.y, p.mineAt.z, (int)std::lround(p.mineP * 100)});
+  if (p.bowPull > 0) s["bw"] = r3(p.bowPull);
+  const bool asleep = p.sleeping || (p.data.is_object() && p.data.value("sleeping", false));
+  const int xf = (asleep ? XF_SLEEP : 0) | (p.gliding ? XF_GLIDE : 0) | (p.scoping ? XF_SCOPE : 0) | (p.hang ? XF_HANG : 0) |
+                 (p.hang && p.hang->shimT > 0 ? XF_SHIMMY : 0) | (p.contacts.ladder && !p.onGround ? XF_LADDER : 0) |
+                 (p.contacts.water ? XF_WATER : 0) | (p.contacts.eyeWater ? XF_EYEWATER : 0) | (!p.ghost ? XF_HOSTS : 0);
+  if (xf) s["xf"] = xf;
+  if (p.climb) s["lc"] = r3(std::min(1.f, p.climb->t / 0.55f));
+  const json& c = p.carrying.is_object() ? p.carrying : p.netCarry;
+  if (c.is_object()) {
+    if (c.dump().size() < 600) s["cy"] = c;
+    else { json k = json::object(); for (const char* f : {"kind", "key", "type", "meta", "id"}) if (c.contains(f)) k[f] = c[f]; s["cy"] = k; }   // (what it looks like, not all of it)
+  }
+}
+void applyPlayerPose(dq::Player& p, const json& m, bool fromOwner) {
+  p.swingN = (u8)m.value("sn", 0);
+  if (m.contains("mn") && m["mn"].is_array() && m["mn"].size() >= 4) {
+    const json& a = m["mn"];
+    p.mineAt = ivec3(a[0].get<int>(), a[1].get<int>(), a[2].get<int>()); p.mineP = clampv(a[3].get<float>() / 100.f, 0.f, 1.f);
+  } else p.mineP = 0;
+  p.bowPull = clampv(m.value("bw", 0.f), 0.f, 1.f);
+  const int xf = m.value("xf", 0);
+  if (!fromOwner) { p.sleeping = xf & XF_SLEEP; p.fxSent = xf & XF_HOSTS; }   // (a guest's sleeping is the host's to say: it put their body in the bed)
+  p.gliding = xf & XF_GLIDE; p.scoping = xf & XF_SCOPE;
+  if (xf & XF_HANG) { if (!p.hang) p.hang.emplace(); p.hang->shimT = (xf & XF_SHIMMY) ? 1.f : 0.f; } else p.hang.reset();
+  p.contacts.ladder = xf & XF_LADDER; p.contacts.water = xf & XF_WATER; p.contacts.eyeWater = xf & XF_EYEWATER;
+  const float lc = m.value("lc", 0.f);
+  if (lc > 0) { if (!p.climb) p.climb.emplace(); p.climb->t = lc * 0.55f; } else p.climb.reset();
+  p.netCarry = m.contains("cy") && m["cy"].is_object() ? m["cy"] : json();
 }
 
 } // namespace dq::net

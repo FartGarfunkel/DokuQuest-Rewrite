@@ -88,6 +88,10 @@ json entitySnapshot(const Entity& e) {
     }
     int pf = (p->sneaking ? 1 : 0) | (p->sprinting ? 2 : 0) | (p->flying ? 4 : 0) | (p->swimming ? 8 : 0) | (p->crawling ? 16 : 0) | (p->dead ? 32 : 0);
     if (pf) s["pf"] = pf;
+    // when this place was true (our clock): a guest's body is where their game said, when it said (their ME's time put on
+    // our clock), not when we pass it on — so their friends see the steps evenly
+    s["ts"] = p->ghost && !p->riding && !p->netHist.empty() ? p->netHist.back().t : nowSeconds();   // (riding: where the mount took them, now)
+    playerPoseInto(*p, s);
     if ((p->activity & Player::ACT_SCREEN) && !p->bookPic.empty()) {   // their open book's pages: when they change (and now and again for anyone who came in since)
       const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
       s["bv"] = (int)(p->bookPicV & 0xffff);
@@ -228,9 +232,11 @@ void ServerHost::flushChunks(Peer& p, int maxRecords) {
 }
 
 // ---- entities ----
-void ServerHost::sendEntities(Peer& p, const std::unordered_map<u32, Snap>& snaps) {
+void ServerHost::sendEntities(Peer& p, const std::unordered_map<u32, Snap>& snaps, bool all) {
   Player& pl = *p.pl;
-  json list = json::array(), gone = json::array();
+  const double now = nowSeconds();   // (st: our clock, the one the places' times are on: their game draws by it)
+  json news = json::array(), gone = json::array();
+  std::vector<std::pair<json, size_t>> moves;   // (entry, its size)
   std::unordered_set<u32> seen;
   for (auto& [id, sn] : snaps) {
     if (id == p.eid) continue;
@@ -240,17 +246,32 @@ void ServerHost::sendEntities(Peer& p, const std::unordered_map<u32, Snap>& snap
     if (std::abs(d.x) > ENT_RANGE || std::abs(d.z) > ENT_RANGE || std::abs(d.y) > 128) continue;
     seen.insert(id);
     SentEnt& was = p.sent[id];
-    bool fresh = was.at == 0;
-    if (!fresh && was.hash == sn.hash && was.dataHash == sn.dataHash && t - was.at < 2) continue;
+    const bool fresh = was.at == 0, dataNew = was.dataHash != sn.dataHash, changed = fresh || dataNew || was.hash != sn.hash;
+    // unchanged: sent once more (so its stop is seen as a stop: two places the same), then only now and again
+    if (!changed && was.again && t - was.at < 2) continue;
+    was.again = !changed;
     json s = sn.s;
-    if (fresh || was.dataHash != sn.dataHash) s["d"] = e->data;
+    if (fresh || dataNew) s["d"] = e->data;
     was.hash = sn.hash; was.dataHash = sn.dataHash; was.at = t;
-    list.push_back(std::move(s));
+    // something new to them, or its data, comes reliably; places and poses come on the movement channel (one lost is
+    // made good by the next), unless it's too big for one datagram (a book's pages)
+    if (fresh || dataNew) { news.push_back(std::move(s)); continue; }
+    const size_t sz = json::to_msgpack(s).size();
+    if (sz > MOVE_PACKET_MAX - 64) news.push_back(std::move(s));
+    else moves.push_back({std::move(s), sz});
   }
-  for (auto it = p.sent.begin(); it != p.sent.end();) {
+  if (all) for (auto it = p.sent.begin(); it != p.sent.end();) {
     if (!seen.count(it->first)) { gone.push_back(it->first); it = p.sent.erase(it); } else ++it;
   }
-  if (!list.empty() || !gone.empty()) send(p.enet, ES, {{"rl", pl.realm}, {"l", list}, {"g", gone}, {"st", t}}, 1);   // (st: the host's clock, for smooth replicas)
+  if (!news.empty() || !gone.empty()) send(p.enet, ES, {{"rl", pl.realm}, {"l", news}, {"g", gone}, {"st", now}}, 1);
+  // the movement, in packets of one datagram each (a bigger unreliable one would go as reliable pieces, holding the rest up)
+  json l = json::array(); size_t bytes = 0;
+  auto flush = [&] { if (!l.empty()) send(p.enet, ES, {{"rl", pl.realm}, {"l", l}, {"st", now}, {"u", 1}}, CH_MOVE, false); l = json::array(); bytes = 0; };
+  for (auto& [s, sz] : moves) {
+    if (bytes + sz > MOVE_PACKET_MAX - 48) flush();
+    l.push_back(std::move(s)); bytes += sz;
+  }
+  flush();
 }
 
 // ---- time & weather ----

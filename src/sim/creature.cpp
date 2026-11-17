@@ -1066,9 +1066,12 @@ json Creature::snap() const {
 void Creature::glide(double dt) {
   const vec3 o = pos;
   Entity::glide(dt);
-  const float fdt = std::max((float)dt, 1e-3f), hs = (climbing || surf) ? glm::length(pos - o) / fdt : std::hypot(pos.x - o.x, pos.z - o.z) / fdt;   // (climbing: vertical counts too)
+  const float fdt = std::max((float)dt, 1e-3f);
+  // its speed: the replica's own (timed samples: the path it is on), else how far it slid this step (climbing: vertical counts too)
+  const float hs = !netHist.empty() ? ((climbing || surf) ? glm::length(viewVel) : std::hypot(viewVel.x, viewVel.z))
+                                    : (climbing || surf) ? glm::length(pos - o) / fdt : std::hypot(pos.x - o.x, pos.z - o.z) / fdt;
   walkAmt += (std::min(1.f, hs / 2) - walkAmt) * std::min(1.f, fdt * 6);
-  walk += hs * fdt * 3.2f;
+  walk += ((climbing || surf) ? glm::length(pos - o) : std::hypot(pos.x - o.x, pos.z - o.z)) * 3.2f;   // (the legs keep pace with the ground covered)
   speedNow = hs;
   if (hurtTime > 0) hurtTime -= fdt;
   if (deathTime > 0) deathTime += fdt;

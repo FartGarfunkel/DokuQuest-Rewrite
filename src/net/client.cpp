@@ -152,7 +152,7 @@ NetClient::State NetClient::poll() {
       host = host2; peer = peer2; host2 = nullptr; peer2 = nullptr;
       DQ_LOG("net: the host answered over TCP: going on that way");
       heardAt = nowSeconds();
-      st = State::Joining;
+      st = State::Joining; steadyPeer(peer);
       send(peer, HELLO, {{"proto", PROTO}, {"version", DQ_VERSION}, {"name", opts.name}, {"skin", opts.skin}, {"skinData", opts.skinData}, {"password", opts.password}, {"R", opts.viewDistance}, {"sub", subMode}});
     } else if (won) dropTcpTry();
     else if (tcp && tcp->failed() && host2) { DQ_LOG("net: TCP got no answer either"); dropTcpTry(); }
@@ -161,7 +161,7 @@ NetClient::State NetClient::poll() {
     heardAt = nowSeconds();   // anything at all from the host: it's there, and the world is still coming
     if (ev.type == ENET_EVENT_TYPE_CONNECT) {
       if (host2) { DQ_LOG("net: the host answered over UDP after all"); dropTcpTry(); }
-      st = State::Joining;
+      st = State::Joining; steadyPeer(peer);
       send(peer, HELLO, {{"proto", PROTO}, {"version", DQ_VERSION}, {"name", opts.name}, {"skin", opts.skin}, {"skinData", opts.skinData}, {"password", opts.password}, {"R", opts.viewDistance}, {"sub", subMode}});
     } else if (ev.type == ENET_EVENT_TYPE_RECEIVE) {
       u8 ty; json m;
@@ -299,8 +299,6 @@ void NetClient::findMe() {
 }
 
 void NetClient::update(Level& level, double dt) {
-  // replicas are drawn 0.15 s behind the host's clock: between two of its 10-a-second positions, never waiting on the next
-  { dq::g_netViewTime = clockKnown ? nowSeconds() + clockOff - 0.15 : -1; }
   if (subMode) { updateSub(level, dt); return; }
   if (!lv) attach(level);
   if (!host || st != State::Ready) return;
@@ -355,7 +353,7 @@ void NetClient::update(Level& level, double dt) {
       sendTo(SPAWN, {{"e", s}});
       e->removed = true;
     }
-    if ((tMe += dt) >= SEND_ME) { tMe = 0; sendMe(); }
+    if ((tMe += dt) >= SEND_ME) { tMe = std::min(tMe - SEND_ME, SEND_ME); sendMe(); }
     if ((tInv += dt) >= 0.5) {
       tInv = 0;
       std::string sig = playerInvSig(*me);
@@ -416,7 +414,9 @@ void NetClient::updateSub(Level& level, double dt) {
     json rec = playerRecord();
     if (rec.is_object()) {
       Player tmp; tmp.load(rec);
-      me->inv = tmp.inv; me->armor = tmp.armor; me->offhand = tmp.offhand; me->selected = tmp.selected;
+      // all of their gear (the backpack, quiver, charm, cape, hook and shield slots too: with only the bags, armour and off hand
+      // copied, the next save sent those slots empty and the host emptied its copy of them)
+      applyPlayerInv(*me, playerInvJson(tmp));
       me->xp = tmp.xp; me->level = tmp.level; me->mode = tmp.mode;
     }
     invSig = playerInvSig(*me);
@@ -442,7 +442,7 @@ void NetClient::updateSub(Level& level, double dt) {
     } else if (ev.type == ENET_EVENT_TYPE_DISCONNECT) { disconnected(ev.data); return; }
   }
   if (me) {
-    if ((tMe += dt) >= SEND_ME) { tMe = 0; sendMe(); }
+    if ((tMe += dt) >= SEND_ME) { tMe = std::min(tMe - SEND_ME, SEND_ME); sendMe(); }
     if ((tInv += dt) >= 0.5) {
       tInv = 0;
       std::string sig = playerInvSig(*me);
@@ -459,7 +459,8 @@ void NetClient::sendMe() {
   int f = (p.onGround ? 1 : 0) | (p.inWater ? 2 : 0) | (p.sneaking ? 4 : 0) | (p.sprinting ? 8 : 0) | (p.flying ? 16 : 0) | (p.swimming ? 32 : 0) | (p.crawling ? 64 : 0);
   json m = {{"x", r3(p.pos.x)}, {"y", r3(p.pos.y)}, {"z", r3(p.pos.z)}, {"vx", r3(p.vel.x)}, {"vy", r3(p.vel.y)}, {"vz", r3(p.vel.z)},
             {"r", r3(p.yaw)}, {"p", r3(p.pitch)}, {"b", r3(p.bodyYaw)}, {"rl", p.realm}, {"f", f}, {"hp", std::round(p.hp * 10) / 10},
-            {"dead", p.dead ? 1 : 0}, {"sel", p.selected}};
+            {"dead", p.dead ? 1 : 0}, {"sel", p.selected}, {"ct", nowSeconds()}};   // ct: when we were here (our clock: the host draws us by it)
+  playerPoseInto(p, m);   // swings, digging, the bow, gliding, a ledge, a ladder, what's in our arms
   // the combat batch (sim/combat_rpg.h): our game rolls and raises the shield, the host's decides the hits, so it has to know
   m["st"] = std::round(p.stamina * 10) / 10;
   if (p.dodgeT > 0) { m["dg"] = r3(p.dodgeT); m["dy"] = r3(p.dodgeYaw); }
@@ -474,7 +475,10 @@ void NetClient::sendMe() {
   if (p.activity) { m["ac"] = p.activity; if (p.typeRate > 0) m["tr"] = r3(p.typeRate); m["bf"] = p.bookFlip; m["bd"] = p.bookDir; }
   if (p.stationKind >= 0) { m["wk"] = p.stationKind; m["wa"] = json::array({r3(p.workAt.x), r3(p.workAt.y), r3(p.workAt.z)}); m["wt"] = p.workTap; }   // at a station
   if (p.bookPicV != sentBookV || (!p.bookPic.empty() && t - sentBookAt > 2.0)) { sentBookV = p.bookPicV; sentBookAt = t; m["bp"] = p.bookPic; m["bl"] = p.bookLay; }   // (their open book's pages, when they change)   // typing, in a menu, dozing (render/activity_layer.cpp)
-  sendTo(ME, m, 1, false);
+  // on the movement channel, unreliable (one lost is made good by the next); with a book's pages it's too big for one
+  // datagram, so that one goes the reliable way (the host takes only its pages if a newer place came first)
+  if (m.contains("bp")) sendTo(ME, m, 1, true);
+  else sendTo(ME, m, CH_MOVE, false);
 }
 
 void NetClient::sendSave() {
@@ -555,30 +559,36 @@ void NetClient::applyEntities(const json& m) {
   Level& L = *lv;
   int realm = m.value("rl", 0);
   if (me && realm != me->realm) return;   // on the way through a portal: that land's news isn't for here
-  // the host's clock against ours (the fastest packets say it best: a late one only nudges it)
-  const double st = m.value("st", -1.0);
-  if (st >= 0) {
-    const double off = st - nowSeconds();
-    if (!clockKnown || off > clockOff + 1 || off < clockOff - 1) { clockOff = off; clockKnown = true; }
-    else clockOff = off > clockOff ? off : clockOff + (off - clockOff) * 0.02;
-  }
+  // the host's clock against ours (net/protocol.h NetClock): what it sends is put on ours by it
+  const double st = m.value("st", -1.0), now = nowSeconds();
+  if (st >= 0) clock.heard(st, now);
+  const bool moveOnly = m.value("u", 0) != 0;   // the movement channel's: news only of things we already have
+  if (moveOnly) stats.movesIn++;
+  if (m.contains("g")) for (auto& id : m["g"]) if (id.is_number()) goneAt[id.get<u32>()] = st;
+  if (goneAt.size() > 4096) goneAt.clear();
   for (auto& s : m["l"]) {
     u32 id = s.value("i", 0u);
     if (!id || id >= LOCAL_ID_BASE || hideEids.count(id)) continue;
     Entity* e = L.entity(id);
     if (e && !e->ghost) continue;
+    if (moveOnly) {   // a thing we don't have (yet, or any more): its arrival comes the reliable way, with its data
+      if (!e || e->removed) continue;
+      if (auto g = goneAt.find(id); g != goneAt.end() && st <= g->second) continue;   // (sent before it went)
+    } else goneAt.erase(id);
     vec3 pos(s.value("x", 0.f), s.value("y", 0.f), s.value("z", 0.f));
-    float yaw = s.value("r", 0.f);
+    float yaw = s.value("r", 0.f), pitch = s.value("p", 0.f), body = s.value("b", yaw);
     std::string type = s.value("t", "");
-    if (e && e->removed) { e->removed = false; e->pos = e->netPos = pos; }   // gone and back (out of range and in again)
+    if (e && e->removed) { e->removed = false; e->pos = e->netPos = e->prevPos = pos; e->netReset(); }   // gone and back (out of range and in again)
     if (!e) {
       std::unique_ptr<Entity> ne = type == "player" ? std::make_unique<Player>() : createEntity(type);
       ne->id = id; ne->type = type; ne->ghost = true; ne->realm = realm;
       ne->pos = ne->netPos = ne->prevPos = pos; ne->yaw = ne->netYaw = ne->prevYaw = yaw;
       e = L.spawn(std::move(ne));
     } else { e->netPos = pos; e->netYaw = yaw; }
-    if (st >= 0) e->netSample(st, pos, yaw);
-    e->pitch = s.value("p", e->pitch); e->bodyYaw = s.value("b", e->bodyYaw);
+    // when it was there: a player's own time ("ts", a guest's ME time as the host has it), else when the host sent it
+    const double ts = s.value("ts", st);
+    if (st >= 0 && clock.known) e->netSample(clock.toLocal(ts), now, pos, yaw, pitch, body);
+    e->pitch = pitch; e->bodyYaw = body;
     float hp = s.value("hp", e->hp);
     if (hp < e->hp) e->hurtTime = 0.5f;
     e->hp = hp; e->maxHp = s.value("mh", e->maxHp); e->w = s.value("w", e->w); e->h = s.value("h", e->h);
@@ -623,6 +633,7 @@ void NetClient::applyEntities(const json& m) {
         p->blockT = s.value("sb", 0.f); p->parryFlash = s.value("py", 0.f); p->guardFlash = s.value("gf", 0.f);
         p->dodgeT = s.value("dg", 0.f);   // (render/char_layer.cpp plays the roll through from its start)
         netAttack(*p, s);
+        applyPlayerPose(*p, s, false);   // swings, digging, bow, glide, spyglass, ledge, ladder, water, carrying, asleep
         if (p->dodgeT > 0) p->dodgeYaw = s.value("dy", p->dodgeYaw);
       }
     }

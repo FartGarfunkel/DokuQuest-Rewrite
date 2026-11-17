@@ -75,6 +75,13 @@ public:
   float invuln = 0, hurtFlash = 0, hurtTilt = 0, burn = 0, slow = 0;
   float foodCd = 0, foodPool = 0, eatAnim = 0, attackCd = 0;
   float swingT = 0, eatT = 0, bowPull = 0;
+  // what the others see of the hands (net/ sends them): a count of arm swings begun (render/char_layer.cpp counts your
+  // own and plays a remote player's each time it moves on), and the block being dug and how far (its cracks drawn on
+  // every screen: sim/controller.cpp damageCracks)
+  u8 swingN = 0;
+  ivec3 mineAt{0}; float mineP = 0;
+  json netCarry;                    // what a remote player carries in their arms, for drawing only (their own game has `carrying`)
+  bool fxSent = false;              // a remote player whose game is the host's: its sounds and dust come as the host's effects already
   // What Are They Up To: what the others see them doing (render/activity_layer.cpp sets your own, the net carries it)
   enum : u8 { ACT_TYPING = 1, ACT_SCREEN = 2, ACT_DOZE = 4 };
   u8 activity = 0;

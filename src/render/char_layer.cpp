@@ -366,7 +366,13 @@ void CharacterLayer::update(GameSession& s, double dt) {
   float fdt = (float)std::min(dt, 0.1);
   if (fdt <= 0) return;
   // the local player's arm timers (the hand view keeps them)
-  if (Player* lp = s.player) if (HeldItemLayer* h = s.layer<HeldItemLayer>()) { lp->swingT = h->swing; }
+  if (Player* lp = s.player) if (HeldItemLayer* h = s.layer<HeldItemLayer>()) {
+    lp->swingT = h->swing;
+    // each swing begun is counted: the count goes to the others (net/protocol.cpp "sn"), whose games play it
+    Anim& a = anims[lp->id];
+    if (h->swing > 0 && (a.lastOwnSwing <= 0 || h->swing < a.lastOwnSwing - 0.05f)) lp->swingN++;
+    a.lastOwnSwing = h->swing;
+  }
   for (auto& up : s.level->entities()) {
     Entity* e = up.get();
     if (!e || e->removed || e->type != "player") continue;
@@ -450,6 +456,25 @@ void CharacterLayer::update(GameSession& s, double dt) {
     // sprinting and sneaking come and go over a moment, the legs never stopping (render/char_anim.cpp)
     st.runAmt += ((p->sprinting ? 1.f : 0.f) - st.runAmt) * std::min(1.f, fdt / 0.15f);
     st.sneakAmt += ((p->sneaking && !p->swimming ? 1.f : 0.f) - st.sneakAmt) * std::min(1.f, fdt / 0.12f);
+    if (p->ghost) {   // another player's arm: each swing their game began (its count, sent) played here at the same pace
+      if (!st.swingKnown) { st.swingKnown = true; st.swingSeen = p->swingN; }
+      else if (p->swingN != st.swingSeen) { st.swingSeen = p->swingN; p->swingT = 0.0001f; }
+      else if (p->swingT > 0 && (p->swingT += fdt * fpSwingRate(p->held().id, p->mineP > 0)) >= 1) p->swingT = 0;
+      // their digging: the dust knocked off and its sound, as their own game makes them (the host's own come as its effects)
+      if (p->mineP > 0 && !p->fxSent && !p->dead && s.fx) {
+        if ((st.digT -= fdt) <= 0) {
+          st.digT = 0.22f;
+          World& w = s.level->world(p->realm);
+          const BlockId b = w.getBlock(p->mineAt.x, p->mineAt.y, p->mineAt.z);
+          if (b != AIR && glm::distance(vec3(p->mineAt), p->pos) < 8) {
+            const BlockDef& d = reg().block(b);
+            const vec3 c = vec3(p->mineAt) + vec3(0.5f);
+            s.fx->material(d.sound, "dig", c);
+            s.fx->particles("burst", c + glm::normalize(p->pos + vec3(0, 1.5f, 0) - c) * 0.55f, 2, {{"tile", d.key}, {"speed", 0.6f}});
+          }
+        }
+      } else st.digT = 0;
+    }
     // weapon combos: a swing begun within 0.8 s of the last is the next of the chain (the combo window)
     if (p->swingT > 0 && (st.lastSwing <= 0 || p->swingT < st.lastSwing - 0.05f)) {
       st.swingN = time - st.swingAt < 0.8 ? (u8)((st.swingN + 1) % 3) : 0; st.swingAt = time; st.swingU = 0.0001f;
@@ -866,7 +891,8 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.wingOpen = st.wing;
   if ((p.gliding || (devPose == "glide" && &p == s.player)) && wear.cape == "elytra") { ps.swim = true; ps.glide = true; ps.swimPitch = p.pitch; ps.air = false; ps.capeA = 0.05f; wear.back.clear(); }
   // Carry On: both arms out around it, nothing else in the hands
-  const bool carrying = p.carrying.is_object();
+  const json& carried = p.carrying.is_object() ? p.carrying : p.netCarry;   // (a remote player's: what their game says is in their arms)
+  const bool carrying = carried.is_object();
   if (carrying) { ps.carry = true; ps.held = ps.off = false; wear.held.clear(); wear.off.clear(); wear.carried.clear(); ps.fpLeftArm = false; }
   if (p.data.value("invisible", false)) return;
   vec3 rel = f.cam.rel(glm::dvec3(p.pos));
@@ -948,7 +974,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   if (carrying && !fp && !ps.sleep && ps.deathT <= 0) {   // skins.js: it sits against the chest, in front of the arms
     mat4 m = glm::rotate(base, ps.hasBodyYaw && !ps.swim && !ps.crawl ? ps.bodyYaw : ps.yaw, vec3(0, 1, 0));
     m = glm::translate(m, vec3(0, 15 * CHAR_PX - (ps.sneak ? 0.12f : 0.f), -9 * CHAR_PX));
-    drawCarriedThing(p.carrying, m, false, o.light, o.tint);
+    drawCarriedThing(carried, m, false, o.light, o.tint);
   }
 }
 

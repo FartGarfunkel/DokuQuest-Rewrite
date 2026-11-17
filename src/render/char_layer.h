@@ -41,6 +41,8 @@ public:
     float pitch = 0, hurtT = 0, lastHurt = 0; bool airLeft = false, wasAir = false, backward = false;   // the look eased, seconds since a hit, the jump's lead leg
     float block = 0, rollU = 0, rollYaw = 0, lastDodge = 0; bool rollBack = false;
     float guardHit = 0, lastParry = 0, lastGuard = 0;   // a blow taken on the shield (1 -> 0), the shield's raise (eased), a dodge roll's progress (sim/combat_rpg.h)
+    u8 swingSeen = 0; bool swingKnown = false; float lastOwnSwing = 0;   // the arm swings counted (yours, sent) and played (theirs, heard: net/protocol.cpp sn)
+    float digT = 0;   // their digging: a knock of dust and its sound every so often (their game makes yours for you)
     float runAmt = 0, sneakAmt = 0;                    // sprinting / sneaking eased in and out (both cycles keep running while they blend)
     vec2 hurtDir{0};                                   // where the last blow came from: x their right, y their front (-1..1)
     float lastSwing = 0, swingU = 0; double swingAt = -10; u8 swingN = 0;

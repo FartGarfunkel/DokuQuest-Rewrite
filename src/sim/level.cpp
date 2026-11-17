@@ -10,7 +10,7 @@
 namespace dq {
 
 // the host's clock a little behind, for net replicas to be drawn at (net/client.cpp sets it; < 0: none)
-double g_netViewTime = -1;
+
 
 
 // ---- entities ----
@@ -150,7 +150,7 @@ void Level::tick(double dt) {
     e->prevPos = e->pos; e->prevYaw = e->yaw;
     e->age += (float)dt;
     if (e->ghost) {   // net replica: simulated elsewhere
-      if (info.remote) e->glide(dt);
+      if (info.remote && !frameGlide) e->glide(dt);   // (a game drawing it glides it every frame instead: client/session.cpp)
       // a swing in progress plays on between the snapshots (its owner's game runs it; net/ sends move, time and facing)
       if (e->isPlayer()) if (auto* pl = static_cast<Player*>(e); pl->atkMove) {
         pl->atkT += (float)dt;
