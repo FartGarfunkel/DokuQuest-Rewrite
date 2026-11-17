@@ -1113,7 +1113,7 @@ void PlayerController::placeCarried() {
   if (!target.hit) { toastMsg("Look at the ground to set it down"); return; }
   if (lv.isRemote() && c.value("kind", "") == "mob") { useOnHost(*this, "block", &target); return; }   // (the host sets it down: sim/basket.cpp)
   ivec3 t = placeTarget(target);
-  if (!inWorldY(t.y) || !R.tReplaceable[w.getBlock(t.x, t.y, t.z)]) return;
+  if (!inWorldY(t.y) || !R.tReplaceable[w.getBlock(t.x, t.y, t.z)]) { toastMsg("No room to set it down there"); return; }
   if (c.value("kind", "") == "block") {
     if (blockedByBody(t.x, t.y, t.z)) return;
     BlockId bid = R.blockId(c.value("key", std::string()));

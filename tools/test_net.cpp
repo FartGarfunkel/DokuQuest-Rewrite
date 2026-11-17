@@ -1199,6 +1199,11 @@ int main(int argc, char** argv) {
         if (gd) C.lv->net->action(*C.me, "useEnt", json{{"id", gd->id}, {"sel", C.me->selected}, {"sn", 1}});
         check(both(5, [&] { return dog && dog->removed && C.me->carrying.is_object() && C.me->carrying.value("type", "") == "wolf"; }), "a friend picks up their dog (asked of the host; it's in their arms in their game)");
         const int bx = ifloor(C.me->pos.x) - 2, by = ifloor(C.me->pos.y) - 1, bz = ifloor(C.me->pos.z);
+        {   // two clear spots of ground to set things down on (the land here may have a tree on it: leaves over leaves)
+          const BlockId stone = reg().blockId("stone");
+          for (int dz : {0, 2}) { lv->world().setBlock(bx, by, bz + dz, stone); for (int y = 1; y <= 2; y++) lv->world().setBlock(bx, by + y, bz + dz, AIR); }
+          both(3, [&] { return C.lv->world().getBlock(bx, by, bz) == stone && C.lv->world().getBlock(bx, by + 1, bz + 2) == AIR; });
+        }
         {
           PlayerController gpc(*C.lv, *C.me);
           gpc.target = RayHit{}; gpc.target.hit = true; gpc.target.block = ivec3(bx, by, bz); gpc.target.normal = ivec3(0, 1, 0);
