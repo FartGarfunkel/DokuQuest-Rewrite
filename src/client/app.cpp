@@ -413,9 +413,16 @@ int App::run(int argc, char** argv) {
   if (settings.preset == "auto") { settings.applyPreset("low"); settings.autoJump = true; settings.save(); }   // (and auto-jump: walking up steps with the on-screen stick)
   if (settings.renderer == RendererKind::Modern) settings.renderer = RendererKind::Vulkan;
   { std::error_code ec;
+    // given up on Vulkan in an older version: tried again once with this one (a start cut short was taken for a crash, and a
+    // phone with good Vulkan drew with OpenGL ES ever after)
+    if (settings.renderer == RendererKind::Legacy && !args.rendererSet && settings.extra.contains("vkFellBack") && settings.extra.value("vkFellBack", std::string()) != DQ_VERSION) {
+      DQ_LOG("android: trying Vulkan again with this version (an older one had given up on it)");
+      settings.renderer = RendererKind::Vulkan; settings.extra.erase("vkFellBack"); settings.save();
+      fs::remove(vulkanMark(), ec);
+    }
     if (settings.renderer == RendererKind::Vulkan && !args.rendererSet && fs::exists(vulkanMark(), ec)) {
       DQ_WARN("android: the last start on Vulkan didn't get through; drawing with OpenGL ES from now on");
-      settings.renderer = RendererKind::Legacy; settings.save(); g_vulkanFellBack = true;
+      settings.renderer = RendererKind::Legacy; settings.extra["vkFellBack"] = DQ_VERSION; settings.save(); g_vulkanFellBack = true;
     }
     clearVulkanMark(); }
 #endif
@@ -596,7 +603,9 @@ void App::frameLoop() {
     frame++;
     if (frame == 1) DQ_LOG("first frame drawn, %.1f s after the game started", nowSeconds() - g_runStart);
 #ifdef __ANDROID__
-    if (frame == 1800) clearVulkanMark();   // (half a minute of drawing: this Vulkan start got through)
+    if (frame == 90) clearVulkanMark();   // (Vulkan has drawn: this start got through. It was 1800 frames, over a minute on a phone
+                                          //  after its long load, and closing the game or updating it in that time left the mark:
+                                          //  the next start wrongly gave up on Vulkan for good)
 #endif
     // DQ_FRAME_STATS=1: average and worst frame time every 120 frames, to compare renderers
     static const bool frameStats = std::getenv("DQ_FRAME_STATS") != nullptr;

@@ -3,6 +3,8 @@
 #ifdef __ANDROID__
 #include <SDL.h>
 #include <jni.h>
+#include <filesystem>
+#include "common/fs.h"
 #endif
 
 namespace dq {
@@ -32,7 +34,10 @@ std::string callActivity(const char* name, bool returnsString) {
 bool androidUpdateSupported() { return true; }
 void androidUpdateCheck() { callActivity("updateCheck", false); }
 std::string androidUpdateState() { return callActivity("updateStateNow", true); }
-void androidUpdateStart() { callActivity("updateStart", false); }
+void androidUpdateStart() {   // (the game closes to be updated: not a Vulkan start that failed, so its mark goes first)
+  std::error_code ec; std::filesystem::remove(userDir() / "vulkan_starting", ec);
+  callActivity("updateStart", false);
+}
 #else
 bool androidUpdateSupported() { return false; }
 void androidUpdateCheck() {}
