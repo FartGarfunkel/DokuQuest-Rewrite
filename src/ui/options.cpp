@@ -193,6 +193,8 @@ private:
           };
           pickRow("Text Font", "fontUi", DEFAULT_UI_FONT, "The font of menus, buttons and writing. More fonts: put .ttf or .otf files in the fonts folder in your DokuQuest folder.");
           pickRow("Heading Font", "fontTitle", DEFAULT_TITLE_FONT, "The font of titles and big headings.");
+          float ts = textScale(s.extra) * 100;
+          if (kit.range("Text Size", &ts, 75, 150, 5, std::to_string((int)std::lround(ts)) + "%", 100, "How big all writing is, on top of the GUI scale.", &rel)) { s.extra["textSize"] = (int)std::lround(ts); s.save(); }
         }
         { bool dk = s.extra.value("bookDark", true);
           if (kit.toggle("Dark Book Pages", &dk, true, "The Help, Journal, Skills, Spellbook, Stable and the book inventory on dark pages with light writing, easier on the eyes. The moon on any open book switches it too.")) { s.extra["bookDark"] = dk; s.save(); } }

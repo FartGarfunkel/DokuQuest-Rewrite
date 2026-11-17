@@ -11,6 +11,10 @@ mention Herobrine and every entry ends with "Removed Herobrine."
 - **The router is found even when it doesn't answer the usual search:** some Wi-Fi networks never deliver the search to some computers, so the router stayed silent and nothing was forwarded. Now the game asks the router directly too, and the forward is made to the computer that's hosting.
 - **The launcher updates itself:** it had stayed at an old version (and so had the dedicated server inside it) while only the game updated. From now on an update brings the new launcher too, and it takes over the next time you start it.
 
+**Fonts:**
+- **Text Size:** a new setting (75% to 150%) beside the fonts, in the game's Options and the launcher's.
+- **The launcher's Options has the font choice too:** Text Font, Heading Font and Text Size are one setting for both, and the launcher changes over at once.
+
 - Removed Herobrine.
 
 ## 1.0.0-alpha.31 (November 2026)

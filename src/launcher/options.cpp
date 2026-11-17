@@ -3,6 +3,7 @@
 // GPU (GL_RENDERER of the launcher's own GL context), view distances, micro-voxel detail, resource/shader packs,
 // frame rate, launcher behaviour and updates. These are the game's own settings (common/settings.h,
 // userDir()/settings.json), so the game starts with what is chosen here.
+#include "assets/font_files.h"
 #include "launcher/launcher.h"
 #include "common/ui_scale.h"
 #include "assets/tileset.h"
@@ -345,6 +346,20 @@ void drawOptions(Launcher& L) {
       }
       if (k.category("User Interface")) {
         if (k.toggle("FPS in Overlay", &s.showFps, D.showFps, "The frame rate in the corner.")) changed = true;
+        {   // the fonts and text size, the same as the game's Options (assets/font_files.h)
+          const auto files = fontFiles();
+          std::vector<std::string> names; for (auto& f : files) names.push_back(fontLabel(f));
+          auto pickRow = [&](const char* label, const char* key, const char* def, const char* tip) {
+            const std::string cur = s.extra.value(key, std::string(def));
+            int at = 0, defAt = 0;
+            for (int i = 0; i < (int)files.size(); i++) { if (files[i] == cur) at = i; if (files[i] == def) defAt = i; }
+            if (!files.empty() && k.cycle(label, &at, names, defAt, tip, 160)) { s.extra[key] = files[at]; changed = true; }
+          };
+          pickRow("Text Font", "fontUi", DEFAULT_UI_FONT, "The font of menus, buttons and writing, here and in the game. More fonts: put .ttf or .otf files in the fonts folder in your DokuQuest folder.");
+          pickRow("Heading Font", "fontTitle", DEFAULT_TITLE_FONT, "The font of titles and big headings.");
+          float ts = textScale(s.extra) * 100;
+          if (k.range("Text Size", &ts, 75, 150, 5, std::to_string((int)std::lround(ts)) + "%", 100, "How big all writing is, here and in the game.")) { s.extra["textSize"] = (int)std::lround(ts); changed = true; }
+        }
       }
       if (k.category("Miscellaneous")) {
         float f = (float)(clampv(s.autosaveSec, 0, 115) / 5); int st = (int)f;

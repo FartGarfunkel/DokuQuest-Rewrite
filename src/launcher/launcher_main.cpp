@@ -128,6 +128,37 @@ bool initWindow(Launcher& L) {
   return true;
 }
 
+// the fonts chosen in Options (the game's and the launcher's share them: assets/font_files.h), each sized to match the
+// defaults' em, times the player's text size; built again whenever the choice changes (main loop)
+void loadLauncherFonts(Launcher& L) {
+  ImGuiIO& io = ImGui::GetIO();
+  const bool had = io.Fonts->IsBuilt() || L.fUi;
+  if (had) ImGui_ImplOpenGL3_DestroyFontsTexture();
+  io.Fonts->Clear();
+  float dpi = 1; int dw, dh; SDL_GL_GetDrawableSize(L.window, &dw, &dh); if (L.width > 0) dpi = (float)dw / L.width;
+  ImFontConfig cfg; cfg.OversampleH = 1; cfg.OversampleV = 1; cfg.PixelSnapH = true;
+  const std::string ui = fontPath(L.settings.extra.value("fontUi", std::string(DEFAULT_UI_FONT)), DEFAULT_UI_FONT).string(), title = fontPath(L.settings.extra.value("fontTitle", std::string(DEFAULT_TITLE_FONT)), DEFAULT_TITLE_FONT).string();
+  const float k = textScale(L.settings.extra);
+  static const ImWchar ranges[] = {0x0020, 0x00FF, 0x2010, 0x2027, 0x2190, 0x21FF, 0x2600, 0x26FF, 0};
+  auto load = [&](const std::string& f, float px, bool isTitle) {
+    if (!fs::exists(f)) return io.Fonts->AddFontDefault();
+    ImFont* r = io.Fonts->AddFontFromFileTTF(f.c_str(), px * dpi * k * fontEmRatio(f) / (isTitle ? 1.f : 1.2f), &cfg, ranges);
+    const std::string own = (assetsDir() / "fonts" / (isTitle ? DEFAULT_TITLE_FONT : DEFAULT_UI_FONT)).string();
+    if (r && fs::path(f) != fs::path(own) && fs::exists(own)) {   // (characters the chosen font lacks: the game's own)
+      ImFontConfig m = cfg; m.MergeMode = true;
+      io.Fonts->AddFontFromFileTTF(own.c_str(), px * dpi * k * fontEmRatio(own) / (isTitle ? 1.f : 1.2f), &m, ranges);
+    }
+    return r;
+  };
+  L.fUi = load(ui, 16, false); L.fSmall = load(ui, 13, false); L.fMid = load(ui, 20, false); L.fBig = load(ui, 26, false); L.fTitle = load(title, 34, true);
+  ImFontConfig mono; mono.SizePixels = 13 * dpi;
+  L.fMono = io.Fonts->AddFontDefault(&mono);
+  io.Fonts->Build();
+  io.FontGlobalScale = 1.f / dpi;
+  if (had) ImGui_ImplOpenGL3_CreateFontsTexture();
+  L.fontKey = fontChoiceKey(L.settings.extra);
+}
+
 void initImGui(Launcher& L) {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
@@ -136,16 +167,7 @@ void initImGui(Launcher& L) {
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_NavEnableGamepad;
   ImGui_ImplSDL2_InitForOpenGL(L.window, L.gl);
   ImGui_ImplOpenGL3_Init("#version 330 core");
-  float dpi = 1; int dw, dh; SDL_GL_GetDrawableSize(L.window, &dw, &dh); if (L.width > 0) dpi = (float)dw / L.width;
-  ImFontConfig cfg; cfg.OversampleH = 1; cfg.OversampleV = 1; cfg.PixelSnapH = true;
-  // the fonts chosen in the game's Options (assets/font_files.h), each sized to match the defaults' em
-  std::string ui = fontPath(L.settings.extra.value("fontUi", std::string(DEFAULT_UI_FONT)), DEFAULT_UI_FONT).string(), title = fontPath(L.settings.extra.value("fontTitle", std::string(DEFAULT_TITLE_FONT)), DEFAULT_TITLE_FONT).string();
-  static const ImWchar ranges[] = {0x0020, 0x00FF, 0x2010, 0x2027, 0x2190, 0x21FF, 0x2600, 0x26FF, 0};
-  auto load = [&](const std::string& f, float px) { return fs::exists(f) ? io.Fonts->AddFontFromFileTTF(f.c_str(), px * dpi * fontEmRatio(f) / (f == title ? 1.f : 1.2f), &cfg, ranges) : io.Fonts->AddFontDefault(); };
-  L.fUi = load(ui, 16); L.fSmall = load(ui, 13); L.fMid = load(ui, 20); L.fBig = load(ui, 26); L.fTitle = load(title, 34);
-  ImFontConfig mono; mono.SizePixels = 13 * dpi;
-  L.fMono = io.Fonts->AddFontDefault(&mono);
-  io.FontGlobalScale = 1.f / dpi;
+  loadLauncherFonts(L);
   applyLauncherStyle();
 }
 
@@ -343,6 +365,7 @@ int main(int argc, char** argv) {
     if (L.uiZoom > 0.5f && L.uiZoom != 1.f && ImGui::GetIO().WantSetMousePos && ImGui::GetIO().MousePos.x > -1.0e30f) {
       ImGui::GetIO().MousePos.x *= L.uiZoom; ImGui::GetIO().MousePos.y *= L.uiZoom;
     }
+    if (fontChoiceKey(L.settings.extra) != L.fontKey) loadLauncherFonts(L);   // (a font or text size picked in Options)
     ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplSDL2_NewFrame(); applyLauncherZoom(L); ImGui::NewFrame(); snapLauncherFont();
     ImGui::PushFont(L.fUi);
     drawFrame(L);

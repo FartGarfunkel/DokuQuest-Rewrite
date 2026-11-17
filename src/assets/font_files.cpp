@@ -1,6 +1,7 @@
 // assets/font_files.cpp — see font_files.h.
 #include "assets/font_files.h"
 #include <algorithm>
+#include <cmath>
 #include <cctype>
 #include <map>
 #include <mutex>
@@ -72,6 +73,15 @@ float fontEmRatio(const fs::path& file) {
   }
   cache[key] = r;
   return r;
+}
+
+float textScale(const json& x) {
+  const int pc = x.is_object() && x.contains("textSize") && x["textSize"].is_number() ? x["textSize"].get<int>() : 100;
+  return std::clamp(pc, 75, 150) / 100.f;
+}
+std::string fontChoiceKey(const json& x) {
+  auto str = [&](const char* k, const char* d) { return x.is_object() && x.contains(k) && x[k].is_string() ? x[k].get<std::string>() : std::string(d); };
+  return str("fontUi", DEFAULT_UI_FONT) + "|" + str("fontTitle", DEFAULT_TITLE_FONT) + "|" + std::to_string((int)std::lround(textScale(x) * 100));
 }
 
 } // namespace dq

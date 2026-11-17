@@ -23,7 +23,7 @@ namespace dq {
 namespace ui {
 
 namespace {
-struct FontSet { ImFont* f[F_COUNT]{}; float zoom = 0, dpi = 1; std::string uiFile, titleFile; };
+struct FontSet { ImFont* f[F_COUNT]{}; float zoom = 0, dpi = 1; std::string uiFile, titleFile; float textK = 1; };
 FontSet g_fonts;
 const float FONT_PX[F_COUNT] = {12.5f, 15, 13, 17, 20, 24, 32, 64, 84, 12};
 unsigned g_spriteTex = 0;
@@ -53,7 +53,8 @@ void buildFonts(App& a, float zoom) {
   // the chosen fonts (Options → User Interface: assets/font_files.h), each sized by its own em so text keeps its size
   const std::string uiF = fontPath(a.settings.extra.value("fontUi", std::string(DEFAULT_UI_FONT)), DEFAULT_UI_FONT).string();
   const std::string tF = fontPath(a.settings.extra.value("fontTitle", std::string(DEFAULT_TITLE_FONT)), DEFAULT_TITLE_FONT).string();
-  if (g_fonts.zoom == zoom && g_fonts.dpi == dpi && g_fonts.f[0] && g_fonts.uiFile == uiF && g_fonts.titleFile == tF) return;
+  const float textK = textScale(a.settings.extra);   // (Options → Text Size)
+  if (g_fonts.zoom == zoom && g_fonts.dpi == dpi && g_fonts.f[0] && g_fonts.uiFile == uiF && g_fonts.titleFile == tF && g_fonts.textK == textK) return;
   bool had = g_fonts.f[0] != nullptr || io.Fonts->IsBuilt();
   if (had) ImGui_ImplOpenGL3_DestroyFontsTexture();
   io.Fonts->Clear();
@@ -66,7 +67,7 @@ void buildFonts(App& a, float zoom) {
     bool display = i == F_H3 || i == F_DISP || i == F_TITLE || i == F_HUGE;
     // ImGui sizes a font by its ascent+descent, CSS by its em: Pixelify Sans is 1.2 em tall, Jersey 15 1.0 em (each
     // chosen font measured the same way)
-    float size = std::round(FONT_PX[i] * zoom * dpi * (display ? emT : emUi));
+    float size = std::round(FONT_PX[i] * zoom * dpi * textK * (display ? emT : emUi));
     if (i == F_MONO) { ImFontConfig c2; c2.SizePixels = std::max(13.f, std::round(13 * zoom * dpi)); g_fonts.f[i] = io.Fonts->AddFontDefault(&c2); continue; }
     const std::string& file = display ? tF : uiF;
     bool have = display ? haveT : haveUi;
@@ -75,7 +76,7 @@ void buildFonts(App& a, float zoom) {
     const std::string own = (assetsDir() / "fonts" / (display ? DEFAULT_TITLE_FONT : DEFAULT_UI_FONT)).string();
     if (have && fs::path(file) != fs::path(own) && fs::exists(own)) {
       ImFontConfig m = cfg; m.MergeMode = true;
-      const float ownSize = std::round(FONT_PX[i] * zoom * dpi * fontEmRatio(own));
+      const float ownSize = std::round(FONT_PX[i] * zoom * dpi * textK * fontEmRatio(own));
       io.Fonts->AddFontFromFileTTF(own.c_str(), ownSize, &m, display ? ascii : ranges);
     }
   }
@@ -101,7 +102,7 @@ void buildFonts(App& a, float zoom) {
   for (int i = 0; i < F_COUNT; i++) {
     bool display = i == F_H3 || i == F_DISP || i == F_TITLE || i == F_HUGE;
     if (display || i == F_MONO || !haveUi) continue;
-    float size = std::round(FONT_PX[i] * zoom * dpi * emUi);
+    float size = std::round(FONT_PX[i] * zoom * dpi * textK * emUi);
     int px = std::max(5, (int)std::round(size * 0.52f));
     for (auto& sy : SYMS) pend.push_back({io.Fonts->AddCustomRectFontGlyph(g_fonts.f[i], sy.cp, px, px, px + std::round(size * 0.1f), ImVec2(std::round(size * 0.05f), std::round(size * 0.77f) - px)), &sy, px});
   }
@@ -121,7 +122,7 @@ void buildFonts(App& a, float zoom) {
   }
   io.FontGlobalScale = 1.f / dpi;
   if (had) ImGui_ImplOpenGL3_CreateFontsTexture();
-  g_fonts.zoom = zoom; g_fonts.dpi = dpi; g_fonts.uiFile = uiF; g_fonts.titleFile = tF;
+  g_fonts.zoom = zoom; g_fonts.dpi = dpi; g_fonts.uiFile = uiF; g_fonts.titleFile = tF; g_fonts.textK = textK;
   // the App's font slots point at these from now on
   a.fontUi = g_fonts.f[F_BODY]; a.fontSmall = g_fonts.f[F_MID]; a.fontUiBig = g_fonts.f[F_BIG]; a.fontTitle = g_fonts.f[F_TITLE];
   a.uiScale = zoom;
