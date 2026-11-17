@@ -105,6 +105,10 @@ bool ServerHost::start(std::string* err) {
   host->mtu = 1200;   // as the client asks (net/client.cpp)
   if (boundPort != opts.port) serverLog(strFormat("Port %d was taken: listening on %d (friends must use :%d, and the router must forward %d)", opts.port, boundPort, boundPort, boundPort), "warn");
   else serverLog(strFormat("Listening on UDP port %d", boundPort), "");
+  // and TCP on the same number: a friend whose game hears nothing over UDP carries on over TCP (some home connections
+  // let TCP in from outside but drop UDP). The router must forward this port as TCP too.
+  if (tcpRelay.start((u16)boundPort, (u16)boundPort)) serverLog(strFormat("Listening on TCP port %d too (for networks that block UDP)", boundPort), "");
+  else serverLog(strFormat("TCP port %d is taken: friends can join over UDP only", boundPort), "warn");
   if (std::string v = vpnAdvice(boundPort); !v.empty()) serverLog(v, "warn");
   // sounds, puffs and messages of this world reach the players they're near
   innerFx = level.fx;
@@ -144,6 +148,7 @@ bool ServerHost::start(std::string* err) {
 
 void ServerHost::stop(const std::string& why) {
   if (!host) return;
+  tcpRelay.stop();
   if (level.events) for (int h : uiHandles) level.events->off(h);
   uiHandles.clear();
   flushSaves();
@@ -421,6 +426,7 @@ void ServerHost::saveAll() { for (auto& [id, p] : peers) if (p.pl && !p.left) le
 void ServerHost::update(Level& lv, double dt) {
   if (!host) return;
   t += dt;
+  for (auto& l : tcpRelay.takeLog()) serverLog(l, "");
   ensureWatchers();
   diffMirrors();   // first: what the server did to anyone since last time, before their own news overwrites it
   ENetEvent ev;

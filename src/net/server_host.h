@@ -7,6 +7,7 @@
 #pragma once
 #include "net/protocol.h"
 #include "net/lan.h"
+#include "net/tcp_relay.h"
 #include "sim/level.h"
 #include "sim/player.h"
 #include <unordered_map>
@@ -108,6 +109,7 @@ private:
   std::shared_ptr<class NetWatch> watch;
   std::set<int> watched;
   LanAnnouncer lanAnn;
+  TcpRelayServer tcpRelay;   // joins carried over TCP on the same port number (net/tcp_relay.h)
   double t = 0, tEnts = 0, tEnv = 0, tChunks = 0, tSave = 0;
   std::string storySig; double storyAt = -1e9;   // (sendEnv: the story's state, sent when it changes)
   bool logging = false;

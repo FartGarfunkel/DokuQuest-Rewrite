@@ -319,6 +319,18 @@ int main(int argc, char** argv) {
     check(pump(4, [&] { return movingBodiesList(*B.lv).empty() && B.lv->world().getBlock(g_mv.x + 5, g_mv.y, g_mv.z) == reg().blockId("planks"); }), "when it's set down the guest has the block where it ended");
   }
 
+  // ---- joining over TCP (a network that drops UDP from outside): the same game, carried over a TCP connection ----
+  {
+    net::NetClient T; net::JoinOptions o; o.address = addr; o.name = "Tess"; o.tcpOnly = true;
+    const bool ok = T.connect(o);
+    check(ok && T.overTcp(), "a player whose UDP gets no answer joins over TCP (" + T.error() + ")");
+    if (ok) {
+      json have = json::object();
+      check(pump(4, [&] { return B.ghost("player", "Tess") != nullptr; }), "and the others see them, as any player");
+    }
+    T.close();
+  }
+
   // ---- chat & commands ----
   submitChat(*A.lv, A.me, "hello there");
   check(pump(3, [&] { return B.heard("<Alice> hello there"); }), "chat reaches the other player");

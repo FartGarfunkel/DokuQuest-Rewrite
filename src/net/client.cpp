@@ -1,6 +1,7 @@
 // net/client.cpp — the guest side of net.js: join (hello / welcome / ckdone), guestMsg, guestTick, applyEntities,
 // chunkLoaded (checksums and stale chunks), plus what netsync.js does on a guest (block changes reported, things
 // made here handed to the server).
+#include <cstdio>
 #include "net/client.h"
 #include "sim/weather.h"
 #include "sim/creature.h"
@@ -110,7 +111,7 @@ bool NetClient::begin(const JoinOptions& o) {
   if (!peer) { err = "Could not connect to that address"; st = State::Failed; return false; }
   enet_peer_timeout(peer, 0, 10000, 30000);
   st = State::Connecting; startedAt = nowSeconds();
-  DQ_LOG("net: connecting to %s:%d", h.c_str(), port);
+  DQ_LOG("net: connecting to %s:%d (the address typed or picked: %s)", h.c_str(), port, o.address.c_str());
   return true;
 }
 
@@ -151,8 +152,32 @@ NetClient::State NetClient::poll() {
     }
   }
   const double now = nowSeconds();
+  // no answer over UDP: some home connections let TCP in but drop UDP from outside, so carry on over TCP
+  if (st == State::Connecting && !tcp && opts.tcpAfter >= 0 && (opts.tcpOnly || now - startedAt > opts.tcpAfter)) {
+    std::string h; int pt = 0;
+    if (parseAddress(opts.address, h, pt)) {
+      auto r = std::make_unique<TcpRelayClient>();
+      if (r->start(h, (u16)pt)) {
+        ENetAddress a; enet_address_set_host_ip(&a, "127.0.0.1"); a.port = r->localPort();
+        if (peer) enet_peer_reset(peer);
+        peer = enet_host_connect(host, &a, CHANNELS, 0);
+        // (from here every answer comes through the TCP connection: a late UDP answer must not move us back to UDP)
+        if (peer) { host->intercept = nullptr; enet_peer_timeout(peer, 0, 10000, 30000); tcp = std::move(r); startedAt = now; DQ_LOG("net: no answer over UDP: trying %s:%d over TCP", h.c_str(), pt); }
+      }
+    }
+  }
+  if (tcp && tcp->failed() && st == State::Connecting) { err = "No answer from that address over UDP or TCP. The host's router must forward that port (UDP and TCP) to the host's computer"; st = State::Failed; }
   if (st == State::Connecting && now - startedAt > opts.timeout) {
-    err = "No answer from that address. On the internet: the host's router must forward that port as UDP (not TCP) to the host's computer, and its firewall must let UDP in";
+    std::string h; int pt = 0; parseAddress(opts.address, h, pt);
+    // a home-network address (192.168.x.x, 10.x.x.x, 172.16-31.x.x) only reaches a computer in that same home: from
+    // anywhere else (mobile data, another house) the packets go nowhere
+    auto privateAddr = [](const std::string& a) {
+      int b0 = 0, b1 = 0; if (std::sscanf(a.c_str(), "%d.%d", &b0, &b1) < 2) return false;
+      return b0 == 10 || (b0 == 192 && b1 == 168) || (b0 == 172 && b1 >= 16 && b1 <= 31);
+    };
+    err = privateAddr(h)
+      ? "No answer from " + h + ". That's an address inside the host's home: it only works on the host's own Wi-Fi. From mobile data or another house, join by the host's internet address (the host can find it by searching \"what is my IP\")"
+      : "No answer from that address. On the internet: the host's router must forward that port as UDP (not TCP) to the host's computer, and its firewall must let UDP in";
     st = State::Failed;
   } else if (st == State::Joining && (now - heardAt > opts.quiet || now - startedAt > opts.joinCap)) {
     err = "The host stopped answering while sending the world";
@@ -670,6 +695,7 @@ void NetClient::close(const std::string& why) {
     if (peer) enet_peer_reset(peer);
     enet_host_destroy(host);
     host = nullptr; peer = nullptr;
+    tcp.reset();   // (the TCP connection, if it went that way)
     enetDone();
   }
   if (lv && watch) for (auto& [r, w] : lv->allRealms()) {
