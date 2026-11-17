@@ -216,9 +216,9 @@ void drawServerDashboard(Launcher& L, DedicatedServer& srv, const ServerStatus& 
   std::string addr = (st.address.empty() ? std::string("127.0.0.1") : st.address) + ":" + std::to_string(st.port ? st.port : c.port);
   ImGui::AlignTextToFramePadding(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "Join at"); ImGui::SameLine();
   ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_FROST), "%s", addr.c_str()); ImGui::SameLine();
-  ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "%s", c.lan ? "· on this network it shows up in Multiplayer by itself · from the internet the router must let UDP in on that port"
-                                                                         : "· from the internet the router must let UDP in on that port");
-  {   // over the internet: the internet address to give out, and the firewall line (UDP: the game never uses TCP)
+  ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "%s", c.lan ? "· on this network it shows up in Multiplayer by itself · from the internet the router must forward that port (TCP; UDP too if you like)"
+                                                                         : "· from the internet the router must forward that port (TCP; UDP too if you like)");
+  {   // over the internet: the internet address to give out, and the firewall line (TCP and UDP)
     static std::mutex mx; static std::string inet; static bool busy = false, tried = false;
     std::string have; bool b;
     { std::lock_guard<std::mutex> lk(mx); have = inet; b = busy; }
@@ -239,7 +239,7 @@ void drawServerDashboard(Launcher& L, DedicatedServer& srv, const ServerStatus& 
     }
     if (std::string v = net::vpnAdvice(port); !v.empty()) { ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + right - 24); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_EMBER), "%s", v.c_str()); ImGui::PopTextWrapPos(); }
     const std::string fw = "sudo firewall-cmd --permanent --add-port=" + std::to_string(port) + "/udp --add-port=" + std::to_string(port) + "/tcp && sudo firewall-cmd --reload";
-    ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "Router: forward UDP %d (not TCP) to this computer. openSUSE firewall: %s", port, fw.c_str()); ImGui::SameLine();
+    ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(C_DIM), "Router: forward %d to this computer (TCP; UDP too if you like). openSUSE firewall: %s", port, fw.c_str()); ImGui::SameLine();
     if (ImGui::SmallButton("Copy##fw")) ImGui::SetClipboardText(fw.c_str());
   }
   ImGui::PopFont();

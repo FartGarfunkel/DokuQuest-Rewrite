@@ -192,7 +192,7 @@ std::string vpnAdvice(int port) {
   std::string p = std::to_string(port);
   return "A VPN is on (" + v + "): friends on the internet can't reach this computer through it, and the internet address it shows is the VPN's, "
          "not your home's. Turn it off while you play together, or let the game's port skip it" +
-         (v == "NordVPN" ? std::string(" (NordVPN on Linux: nordvpn allowlist add port ") + p + " protocol UDP; on Windows: Split tunneling, turn the VPN off for DokuQuest)" : std::string(" (split tunnelling, or allow incoming on UDP port ") + p + ")") + ".";
+         (v == "NordVPN" ? std::string(" (NordVPN on Linux: nordvpn allowlist add port ") + p + " protocol UDP and nordvpn allowlist add port " + p + " protocol TCP; on Windows: Split tunneling, turn the VPN off for DokuQuest)" : std::string(" (split tunnelling, or allow incoming on UDP port ") + p + ")") + ".";
 }
 
 bool firewallAllowSelf(std::string* err) {

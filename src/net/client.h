@@ -22,7 +22,8 @@ struct JoinOptions {
                              // coming (silence for `quiet` seconds gives up): over a home internet upload the first
                              // download of a well-played world takes far longer than on a home network
   double quiet = 25, joinCap = 300;
-  double tcpAfter = 6;       // no answer over UDP for this long: try TCP alongside (net/tcp_relay.h); <0 never
+  double tcpAfter = 0;       // TCP is tried alongside UDP after this long (0: from the start, the first to answer is kept,
+                             // UDP when both do: net/tcp_relay.h); <0 never
   bool tcpOnly = false;      // straight over TCP (tests)
   bool testUdpLost = false;  // tests: the UDP attempt goes nowhere (a network that drops UDP from outside)
 };

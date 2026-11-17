@@ -108,7 +108,7 @@ bool ServerHost::start(std::string* err) {
   else serverLog(strFormat("Listening on UDP port %d", boundPort), "");
   // and TCP on the same number: a friend whose game hears nothing over UDP carries on over TCP (some home connections
   // let TCP in from outside but drop UDP). The router must forward this port as TCP too.
-  if (tcpRelay.start((u16)boundPort, (u16)boundPort)) serverLog(strFormat("Listening on TCP port %d too (for networks that block UDP)", boundPort), "");
+  if (tcpRelay.start((u16)boundPort, (u16)boundPort)) serverLog(strFormat("Listening on TCP port %d too (friends can join with only TCP forwarded)", boundPort), "");
   else serverLog(strFormat("TCP port %d is taken: friends can join over UDP only", boundPort), "warn");
   if (std::string v = vpnAdvice(boundPort); !v.empty()) serverLog(v, "warn");
   // sounds, puffs and messages of this world reach the players they're near

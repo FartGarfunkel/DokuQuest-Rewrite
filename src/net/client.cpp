@@ -110,7 +110,7 @@ bool NetClient::begin(const JoinOptions& o) {
   ENetAddress a;
   if (enet_address_set_host(&a, h.c_str()) != 0) { err = "Could not find " + h; st = State::Failed; return false; }
   a.port = (enet_uint16)port;
-  if (o.testUdpLost || o.tcpOnly) { enet_address_set_host_ip(&a, "127.0.0.1"); a.port = 9; }   // (UDP goes nowhere: the discard port)   // (the discard port: nothing ever answers)
+  if (o.testUdpLost || o.tcpOnly) { enet_address_set_host_ip(&a, "127.0.0.1"); a.port = 9; }   // (UDP goes nowhere: the discard port)
   peer = enet_host_connect(host, &a, CHANNELS, 0);
   if (!peer) { err = "Could not connect to that address"; st = State::Failed; return false; }
   enet_peer_timeout(peer, 0, 10000, 30000);
@@ -212,8 +212,8 @@ NetClient::State NetClient::poll() {
     };
     err = privateAddr(h)
       ? "No answer from " + h + ". That's an address inside the host's home: it only works on the host's own Wi-Fi. From mobile data or another house, join by the host's internet address (the host can find it by searching \"what is my IP\")"
-      : triedTcp ? "No answer from that address over UDP or TCP. On the internet: the host's router must forward that port (UDP, and TCP too) to the host's computer, and its firewall must let them in"
-                 : "No answer from that address. On the internet: the host's router must forward that port as UDP to the host's computer, and its firewall must let UDP in";
+      : triedTcp ? "No answer from that address over TCP or UDP. On the internet: the host's router must forward that port (TCP, or TCP and UDP) to the host's computer, and its firewall must let it in"
+                 : "No answer from that address. On the internet: the host's router must forward that port (TCP, or TCP and UDP) to the host's computer, and its firewall must let it in";
     st = State::Failed;
   } else if (st == State::Joining && (now - heardAt > opts.quiet || now - startedAt > opts.joinCap)) {
     err = "The host stopped answering while sending the world";

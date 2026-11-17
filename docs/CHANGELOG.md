@@ -5,6 +5,15 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.29 (November 2026)
+
+**Multiplayer:**
+- **TCP first:** a joining game now tries TCP and UDP together from the start, and keeps UDP when both get through. Forwarding the port as TCP alone is enough to play over the internet: no more waiting 6 seconds for UDP first.
+- **Every screen now says so:** the launcher's server page and the game's Open to LAN help say to forward the port as TCP (or TCP and UDP); they used to say UDP only. The openSUSE firewall line opens both.
+- **Open to LAN can use any port:** choose it before opening (it remembers), to match the port your router forwards.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.28 — Things That Move (November 2026)
 
 **Multiplayer:**

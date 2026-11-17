@@ -1,6 +1,12 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.29 | November 2026
+**Multiplayer:**
+- **TCP first:** a joining game now tries TCP and UDP together from the start, and keeps UDP when both get through. Forwarding the port as TCP alone is enough to play over the internet: no more waiting 6 seconds for UDP first.
+- **Every screen now says so:** the launcher's server page and the game's Open to LAN help say to forward the port as TCP (or TCP and UDP); they used to say UDP only. The openSUSE firewall line opens both.
+- **Open to LAN can use any port:** choose it before opening (it remembers), to match the port your router forwards.
+- Removed Herobrine.
 ## Alpha 1.0.0.28 — Things That Move | November 2026
 **Multiplayer:**
 - **Joining over the internet works on networks that block UDP.** A server now also listens for TCP on its port, and a joining game that gets no answer over UDP within 6 seconds tries TCP alongside and keeps whichever answers first. No settings to change: the same address and port. The router should forward the port for TCP as well as UDP (most routers have a "both" option).
