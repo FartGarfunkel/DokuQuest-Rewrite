@@ -2,6 +2,7 @@
 // skin references.
 #include "assets/char_creator.h"
 #include "common/noise.h"
+#include "assets/pack_fs.h"
 #include <mutex>
 #include <map>
 
@@ -247,41 +248,56 @@ std::mutex g_mu;
 std::map<std::string, std::shared_ptr<const CharacterSpec>>& cache() { static auto* m = new std::map<std::string, std::shared_ptr<const CharacterSpec>>(); return *m; }
 }
 
-// the player's own skin for him, wherever under userDir()/skins they put it: skins/herobrine.png first, then any .png
-// named for him in skins/ or a folder of its own (skins/herobrine/...), then the resource packs' entity texture. Empty:
-// none (the game's own). Looked for again every 10 s, so a skin dropped in while playing is picked up.
-fs::path userHerobrineSkin() {
-  static fs::path found; static double at = -1e9;
+// The skin he wears in place of the game's own (data/textures/entity/herobrine/herobrine.png, named by mobs.json), as a
+// resolveCharacter reference; "" = none, the game's. In order: the player's own skin for him wherever under
+// userDir()/skins they put it (skins/herobrine.png first, then any .png named for him there or in a folder of his), the
+// Texture Studio's own picture of him (userDir()/textures/entity/herobrine/herobrine.png), then the resource pack the
+// player chose — never the game's own DokuQuest Base, which must not cover the game's data/textures art. Looked for
+// again every 10 s, so a skin dropped in while playing is picked up.
+std::string herobrineSkinRef() {
+  static std::mutex mu; std::lock_guard<std::mutex> lk(mu);
+  static std::string found; static double at = -1e9;
   const double now = nowSeconds();
   if (now - at < 10) return found;
-  at = now; found.clear();
+  at = now;
+  const std::string was = found;
+  found.clear();
   auto lower = [](std::string s) { for (auto& c : s) c = (char)std::tolower((unsigned char)c); return s; };
   std::error_code ec;
   const fs::path sd = skinsDir();
-  if (fs::exists(sd / "herobrine.png", ec)) return found = sd / "herobrine.png";
-  if (fs::is_directory(sd, ec)) for (auto it = fs::recursive_directory_iterator(sd, ec); it != fs::recursive_directory_iterator(); it.increment(ec)) {
+  if (fs::exists(sd / "herobrine.png", ec)) found = "user:" + (sd / "herobrine.png").string();
+  else if (fs::is_directory(sd, ec)) for (auto it = fs::recursive_directory_iterator(sd, ec); it != fs::recursive_directory_iterator(); it.increment(ec)) {
     if (ec) break;
     const fs::path& p = it->path();
     if (lower(p.extension().string()) != ".png") continue;
-    if (lower(p.string()).find("herobrine") != std::string::npos) { found = p; break; }
+    if (lower(fs::relative(p, sd, ec).string()).find("herobrine") != std::string::npos) { found = "user:" + p.string(); break; }
   }
   if (found.empty()) {
-    const fs::path rp = userDir() / "resourcepacks";
-    if (fs::is_directory(rp, ec)) for (auto& pk : fs::directory_iterator(rp, ec)) {
-      if (pk.path().filename() == "DokuQuest Base") continue;   // (an old copy of the game's own pack: his skin is the game's, updated with it)
-      const fs::path f = pk.path() / "assets" / "minecraft" / "textures" / "entity" / "herobrine" / "herobrine.png";
-      if (fs::exists(f, ec)) { found = f; break; }
+    const fs::path mine = userDir() / "textures" / "entity" / "herobrine" / "herobrine.png";
+    if (fs::exists(mine, ec)) found = "user:" + mine.string();
+  }
+  if (found.empty()) if (PackFS* P = activePack(); P && P->hasTextures()) {
+    // (the game's own pack is opened from dataDir(); a player's pack from userDir()/resourcepacks)
+    const std::string pp = P->path().lexically_normal().string(), dd = dataDir().lexically_normal().string();
+    if (pp.rfind(dd, 0) != 0) {
+      const std::string ref = "pack:" + P->name() + ":herobrine";
+      if (registeredSkin(ref)) found = ref;
+      else if (auto b = P->read(P->texRoot + "entity/herobrine/herobrine.png")) {
+        SkinImage s; std::string err;
+        if (loadSkinPngData(b->data(), b->size(), s, &err)) { registerSkin(ref, s); found = ref; }
+        else DQ_WARN("his skin in resource pack '%s': %s", P->name().c_str(), err.c_str());
+      }
     }
   }
-  if (!found.empty()) DQ_LOG("his skin: %s", found.string().c_str());
+  if (found != was) DQ_LOG("his skin: %s", found.empty() ? "the game's own (data/textures/entity/herobrine/herobrine.png)" : found.c_str());
   return found;
 }
 
 std::shared_ptr<const CharacterSpec> resolveCharacter(const std::string& ref) {
   // his: the player's own skin for him wins over the game's (the cache is keyed by the file it came from)
-  if (ref.find("herobrine") != std::string::npos && ref.rfind("user:", 0) != 0) {
-    const fs::path u = userHerobrineSkin();
-    if (!u.empty()) return resolveCharacter("user:" + u.string());
+  if (ref.find("herobrine") != std::string::npos && ref.rfind("user:", 0) != 0 && ref.rfind("pack:", 0) != 0) {
+    const std::string u = herobrineSkinRef();
+    if (!u.empty()) return resolveCharacter(u);
   }
   {
     std::lock_guard<std::mutex> l(g_mu);

@@ -206,7 +206,7 @@ public:
       }
       if (type == "brew") {   // the brewing stand: bottles on its three feet, the ingredient in the bowl, the powder at its foot
         begin();
-        // (Cinematic Interactions' BrewingStation FEET {12, 8} {4, 4} {4, 12} px, the bottles' feet on the stone 2 px up)
+        // (the brewing scene's FEET {12, 8} {4, 4} {4, 12} px, the bottles' feet on the stone 2 px up)
         static const vec3 SPOT[5] = {{12.5f / 16, 2 / 16.f, 8 / 16.f}, {3.5f / 16, 2 / 16.f, 4 / 16.f}, {3.5f / 16, 2 / 16.f, 12 / 16.f}, {0.5f, 14.5f / 16.f, 0.5f}, {11 / 16.f, 1 / 16.f, 13 / 16.f}};
         const json& items = e.contains("items") && e["items"].is_array() ? e["items"] : json::array();
         for (int k = 0; k < 5 && k < (int)items.size(); k++) {
@@ -245,7 +245,7 @@ public:
         const std::vector<ItemStack> v = enchWorkItems(w, ivec3(x, y, z));
         const float t = (float)f.time;
         if (!v[0].empty()) if (const VoxelModel& im = itemModel(stackModelKey(v[0])); im.ready()) {
-          mat4 m = glm::translate(base, vec3(0.5f, 0.75f + 0.42f + 0.03f * std::sin(t * 1.6f), 0.5f));   // (EnchantStation ITEM_SIZE 0.34)
+          mat4 m = glm::translate(base, vec3(0.5f, 0.75f + 0.42f + 0.03f * std::sin(t * 1.6f), 0.5f));   // (enchant scene ITEM_SIZE 0.34)
           m = glm::rotate(m, t * 0.8f, vec3(0, 1, 0));
           m = glm::scale(m, vec3(im.kind == VoxelModel::Block ? 0.24f : 0.34f));
           VR.draw(im.gl, m * im.matrix(), VoxelLight{L.sky, std::max(L.block, 0.7f)}, vec4(0), 1.f);   // (glinting, lit by the table)
@@ -284,7 +284,7 @@ public:
           if (v[k].empty()) continue;
           const VoxelModel& im = itemModel(stackModelKey(v[k]));
           if (!im.ready()) continue;
-          // (Cinematic Interactions' AnvilStation: MAIN_SIZE 0.4 turned 45 degrees along the anvil; ADDITION_SIZE 0.3, to the right)
+          // (the anvil scene's: MAIN_SIZE 0.4 turned 45 degrees along the anvil; ADDITION_SIZE 0.3, to the right)
           mat4 m = glm::translate(base, vec3(0.5f + (k ? 0.2f : -0.02f), 1.005f, 0.5f + (k ? 0.12f : 0.f)));
           m = glm::rotate(m, k ? 0.45f : PI / 4, vec3(0, 1, 0));
           if (im.kind == VoxelModel::Block) m = glm::scale(glm::translate(m, vec3(0, 0.07f, 0)), vec3(k ? 0.14f : 0.18f));

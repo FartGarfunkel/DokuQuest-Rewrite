@@ -603,6 +603,8 @@ void ServerHost::receive(Peer& p, u8 ty, json& m) {
       auto ent = createEntity(type);
       ent->load(e); ent->id = 0; ent->realm = p.pl->realm;
       if (glm::distance(ent->pos, p.pl->pos) > 24) break;
+      // a guest's body (sim/corpse.h): theirs, in their skin as everyone knows it (its net name; "me.png" means nothing here)
+      if (type == "corpse") { ent->data["of"] = p.name; if (!p.skin.empty()) ent->data["skin"] = p.skin; }
       level.spawn(std::move(ent));
       break;
     }

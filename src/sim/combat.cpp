@@ -6,6 +6,7 @@
 #include "sim/balance.h"
 #include "sim/skills.h"
 #include "sim/combat.h"
+#include "sim/mob_carry.h"
 #include "sim/combat_rpg.h"
 #include "sim/attack_moves.h"
 #include "sim/magic.h"
@@ -367,10 +368,7 @@ void dropCarried(Level& lv, Player& p) {
     if (!key.empty()) dropItem(lv, p.realm, ItemStack(key, 1), p.pos + vec3(0, 1, 0), true);
     if (c.contains("ent") && c["ent"].is_object()) spillEntity(lv, w, c["ent"], ifloor(p.pos.x), ifloor(p.pos.y), ifloor(p.pos.z));
   } else {
-    auto m = createEntity(c.value("type", std::string("boar")));
-    m->realm = p.realm; m->pos = p.pos;
-    if (c.contains("hp") && c["hp"].is_number()) m->hp = c["hp"];
-    lv.spawn(std::move(m));
+    setDownCarriedCreature(lv, p, p.pos, p.yaw);   // (sim/mob_carry.h: the same animal, its owner and name kept; it had come back a stranger)
   }
   p.carrying = nullptr;
 }

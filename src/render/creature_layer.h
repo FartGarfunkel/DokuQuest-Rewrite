@@ -8,6 +8,7 @@
 // floor (like the original's tools/probes/zoo08.js): calm (no AI), noon, spawning off. Pages hold 16 types.
 #pragma once
 #include "client/session.h"
+#include "assets/voxel.h"
 
 namespace dq {
 
@@ -31,9 +32,14 @@ private:
 
 void registerCreatureLayers();   // idempotent
 // a creature dressed in a player skin (its mobs.json "skin") drawn at pos facing yaw: the watcher wears his this way
-// when the player has a skin of their own for him (assets/char_creator.cpp userHerobrineSkin)
+// (assets/char_creator.cpp resolveCharacter: the player's own skin for him first, else the game's herobrine.png);
+// jitter nudges the whole figure, headTurn turns the head alone (his glitching as the boundary thins)
 class Creature;
-void drawSkinFigure(const Creature& m, vec3 pos, float yaw, World& w, const FrameCtx& f);
+void drawSkinFigure(const Creature& m, vec3 pos, float yaw, World& w, const FrameCtx& f, vec3 jitter = vec3(0), float headTurn = 0);
+// the same body with the voxelRenderer already begun: base = its feet in render space (the bestiary's picture)
+void drawSkinMobBody(const Creature& m, float yaw, const mat4& base, VoxelLight L, vec4 tint, float headTurn = 0);
+// is this creature drawn from a player skin (mobs.json "skin") rather than a voxel model
+bool drawnFromSkin(const Creature& m);
 // the voxel model key a creature is drawn with right now (a "#state" face, a climate's coat), and its wool's dye tint
 const std::string& creatureDrawKey(const Creature& m);
 vec4 creatureWoolTint(const Creature& m);

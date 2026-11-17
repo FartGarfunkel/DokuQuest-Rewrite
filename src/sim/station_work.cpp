@@ -451,9 +451,9 @@ void stationWorkFrame(World& w, ivec3 at, vec3& out, vec3& right) {
   out = vec3(-DIRX[m], 0, -DIRZ[m]); right = vec3(out.z, 0, -out.x);
 }
 // where each lies (right, out) on top: the grindstone's wheel 0.1 either side of its middle; the smithing table's gear in
-// the middle and the material to the right (SmithingStation LAYOUT); the loom's cloth on its bed, the dye at its corner;
+// the middle and the material to the right (smithing scene LAYOUT); the loom's cloth on its bed, the dye at its corner;
 // the fletching table's flint and feather side by side; the cartography table's map and the paper beside it
-// (CartographyStation LAYOUT)
+// (cartography scene LAYOUT)
 vec3 pairLiePos(World& w, ivec3 at, int slot) {
   vec3 out, right; stationWorkFrame(w, at, out, right);
   const std::string st = pairStationAt(w, at);

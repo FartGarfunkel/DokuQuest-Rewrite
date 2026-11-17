@@ -99,7 +99,7 @@ public:
   vec3 spawnPoint{0, -1, 0};        // bed/respawn anchor (y < 0 = world spawn)
   int spawnRealm = 0;
   json grave;                       // {realm,x,y,z} of the last grave, or null
-  json carrying;                    // Carry On: {kind:'block'|'mob', ...} or null
+  json carrying;                    // carried in the arms: {kind:'block'|'mob', ...} or null
   json pocketReturn;
   json stats = json::object();      // blocksMined, mobsKilled, bossesKilled, deaths (+ rpg/skills keys owned by their systems)
   std::string brokeSomething;

@@ -16,7 +16,7 @@
 //   void hurtVehicle(Level&, Entity&, Player* attacker, bool blast)      a hit (combat): carts/boats break
 //       after a few hits, the ship only when the attacker sneaks. Vehicles also notice a plain hp drop.
 //   bool loadVehicle(Level&, Vehicle&, const json& carried) / json unloadVehicle(Level&, Vehicle&)
-//       Carry On (trains.js/ships.js placeCarried): carried = {kind:"block", key, meta, ent} or
+//       carried things (trains.js/ships.js placeCarried): carried = {kind:"block", key, meta, ent} or
 //       {kind:"mob", id}; unload returns the same shape (null if empty).
 #pragma once
 #include "sim/level.h"

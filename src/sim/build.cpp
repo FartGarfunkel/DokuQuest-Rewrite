@@ -2,7 +2,7 @@
 #include "sim/fallen.h"
 #include "world/rug.h"
 // sim/build.cpp — building rules (port of game/build.js, the player side of game/blocks2.js,
-// blockfx.js flint and steel, furniture.js sitting and shelves, local.js Carry On / ground storage).
+// blockfx.js flint and steel, furniture.js sitting and shelves, local.js carrying things / ground storage).
 #include "sim/controller.h"
 #include "sim/vehicles.h"
 #include "sim/rules.h"
@@ -13,6 +13,7 @@
 #include "sim/station_work.h"
 #include "sim/brewing.h"
 #include "sim/hands.h"
+#include "sim/mob_carry.h"
 #include <random>
 
 namespace dq {
@@ -1090,7 +1091,7 @@ void PlayerController::usePile(const RayHit& hit, ItemStack* held) {
   swingArm();
 }
 
-// ---- Carry On ----
+// ---- carrying things in your arms ----
 void PlayerController::pickUpBlock(int x, int y, int z) {
   World& w = world();
   const Registry& R = reg();
@@ -1120,14 +1121,7 @@ void PlayerController::placeCarried() {
     if (c.contains("ent") && c["ent"].is_object()) w.setBlockEntity(t.x, t.y, t.z, c["ent"]);
     sfxMaterial(lv, R.block(bid).sound, "place", vec3(t));
   } else {
-    auto m = createEntity(c.value("type", std::string("boar")));
-    m->realm = p.realm; m->pos = vec3(t.x + 0.5f, t.y, t.z + 0.5f); m->yaw = p.yaw;
-    if (c.contains("save") && c["save"].is_object()) m->load(c["save"]);   // (its coat, colour, age, name... as it was)
-    m->realm = p.realm; m->pos = vec3(t.x + 0.5f, t.y, t.z + 0.5f); m->vel = vec3(0); m->yaw = p.yaw;
-    if (c.contains("hp") && c["hp"].is_number()) m->hp = c["hp"];
-    if (c.contains("data") && c["data"].is_object()) m->data = c["data"];
-    if (R.mobs.contains(m->type) && R.mobs[m->type].value("farm", false)) m->data["kept"] = true;
-    lv.spawn(std::move(m));
+    setDownCarriedCreature(lv, p, vec3(t.x + 0.5f, t.y, t.z + 0.5f), p.yaw);   // (sim/mob_carry.h: as it was, its owner and all)
     sfxUi(lv, p, "pop");
   }
   p.carrying = nullptr;

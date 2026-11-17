@@ -20,6 +20,7 @@
 #include "sim/forge.h"
 #include "sim/moving.h"
 #include "sim/glue.h"
+#include "sim/combat.h"
 #include <thread>
 #include <cstdio>
 
@@ -263,6 +264,15 @@ int main(int argc, char** argv) {
     Player* ga = B.ghost("player", "Alice") ? dynamic_cast<Player*>(B.ghost("player", "Alice")) : nullptr;
     const std::string want = net::netSkinRef(json{{"png", "c2tpbg=="}, {"slim", true}});
     check(ga && ga->skin == want && g_skinsSeen.count(want), "a player's skin travels with them: the others get it by its net name (" + (ga ? ga->skin : std::string("-")) + ")");
+    // a guest's body (sim/corpse.h) is made on the host and wears her skin by its net name for everyone
+    A.me->inv[5] = ItemStack("dirt", 3);
+    { DamageSource ds; ds.type = "attack"; A.me->hp = 0; playerDie(*A.lv, *A.me, ds); }
+    auto bodyOf = [&](Client& c) -> Entity* { if (!c.lv) return nullptr; for (auto& e : c.lv->entities()) if (!e->removed && e->ghost && e->type == "corpse" && e->data.value("of", std::string()) == "Alice") return e.get(); return nullptr; };
+    const bool seen = pump(6, [&] { Entity* b = bodyOf(B); return b && b->data.value("skin", std::string()) == want; });
+    check(seen, "a guest's body reaches the others in her own skin (" + (bodyOf(B) ? bodyOf(B)->data.value("skin", std::string()) : std::string("-")) + ")");
+    check(pump(4, [&] { Entity* b = bodyOf(A); return b && b->data.value("skin", std::string()) == want; }), "  ...and her own game sees it the same way");
+    respawnPlayer(*A.lv, *A.me);
+    for (auto& s : A.me->inv) if (s.id == "death_compass") s.clear();
   }
   check(A.me && A.me->id >= net::LOCAL_ID_BASE, "the local player has a client-side id");
   {   // a bite of food: the others see it in her hand, bitten down (render/char_layer wornItem: eatModelKey)

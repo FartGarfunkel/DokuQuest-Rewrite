@@ -389,13 +389,21 @@ int main(int argc, char** argv) {
       const ivec3 at(8 + m * 2, im.Y + 1, 4);
       w.setBlock(at.x, at.y, at.z, reg().blockId("oak_cabinet"), (u8)m);
       setChestLidOpen(w, at, true);
-      // stand where its doors face (its model's front: north, east, south, west for meta 0..3)
-      static const vec3 OUT[4] = {{0, 0, -1}, {1, 0, 0}, {0, 0, 1}, {-1, 0, 0}};
+      // stand where its doors face: meta is the way its placer looked (0 north, 1 east...), so its doors face back at them
+      // (south, west, north, east for meta 0..3: the model as the mesher turns it, world/shapes.cpp rotBox)
+      static const vec3 OUT[4] = {{0, 0, 1}, {-1, 0, 0}, {0, 0, -1}, {1, 0, 0}};
       for (float hy : {0.75f, 0.45f, 0.18f}) {
         const vec3 eye = vec3(at) + vec3(0.5f, hy, 0.5f) + OUT[m] * 1.6f;
         const int s = chestSlotAtRay(w, at, eye, -OUT[m]);
         check(s >= 0, "meta " + std::to_string(m) + ", looked at from its doors' side at " + std::to_string(hy) + ": a shelf spot (" + std::to_string(s) + ")");
+        const vec3 back = vec3(at) + vec3(0.5f, hy, 0.5f) - OUT[m] * 1.6f;
+        check(chestSlotAtRay(w, at, back, OUT[m]) < 0, "meta " + std::to_string(m) + ": not through its back at " + std::to_string(hy));
       }
+      // the shelves sit inside its doors' side, the door hangs out in front of it
+      const vec3 sc = chestSlotCenter(w, at, 4) - (vec3(at) + vec3(0.5f, 0, 0.5f));
+      check(glm::dot(sc, OUT[m]) > -0.05f, "meta " + std::to_string(m) + ": its shelves face its doors");
+      const vec3 dp = handsCabinetDoorPoint(w, at, vec3(8, 8, 15.2f)) - vec3(0.5f, 0, 0.5f);
+      check(glm::dot(dp, OUT[m]) > 0.2f, "meta " + std::to_string(m) + ": its door swings out on its front, not its back");
     }
   }
 

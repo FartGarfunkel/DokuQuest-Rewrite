@@ -1,4 +1,4 @@
-// ui/cinematic_table.cpp — see cinematic.h. After Cinematic Interactions (MIT, Southware / XiaoCraft): its CameraRig's
+// ui/cinematic_table.cpp — see cinematic.h. Our own scene design: its camera rig's
 // three phases (the approach gliding from the eyes to the station's lean, the work with the camera breathing, the leave
 // gliding back to the eyes), its crafting table worked on the table's own top. Ours sets the pieces on the in-world grid
 // of sim/worktable.h (one at a time, read from where you stand, synced like any block entity).
@@ -60,40 +60,40 @@ void leanPose(Scene& S, vec3 eye) {
   };
   S.fov = 66; S.roll = 0;
   const vec3 base = vec3(S.at) + vec3(0.5f, 0, 0.5f);
-  // the leans and the hands at rest, each from Cinematic Interactions' station (lean(), rest(), leanFov())
-  if (S.kind == 1) {          // AnvilStation: the eye 0.66 back and 0.7 up, looking just short of the middle, 0.12 above it
+  // the leans and the hands at rest, each from the station scenes' station (lean(), rest(), leanFov())
+  if (S.kind == 1) {          // anvil scene: the eye 0.66 back and 0.7 up, looking just short of the middle, 0.12 above it
     aimAt(c + d * 0.66f + vec3(0, 0.7f, 0), c - d * 0.06f + vec3(0, 0.12f, 0));
     for (int k = 0; k < 2; k++) S.rest[k] = c + d * 0.24f + right * (k ? -0.3f : 0.3f) + vec3(0, 0.062f, 0);
-  } else if (S.kind == 2) {   // EnchantStation: 1.15 back and 1 up, looking at the air half a block over the table; fov 68
+  } else if (S.kind == 2) {   // enchant scene: 1.15 back and 1 up, looking at the air half a block over the table; fov 68
     const vec3 top = base + vec3(0, 0.75f, 0);
     aimAt(top + d * 1.15f + vec3(0, 1.f, 0), top + vec3(0, 0.5f, 0));
     for (int k = 0; k < 2; k++) S.rest[k] = top + d * 0.36f + right * (k ? -0.24f : 0.24f) + vec3(0, 0.062f, 0);
     S.fov = 68;
-  } else if (S.kind == 3) {   // BrewingStation: 1.2 back and 0.88 up, looking at its middle (0.46 up), rolled 2 degrees
+  } else if (S.kind == 3) {   // brewing scene: 1.2 back and 0.88 up, looking at its middle (0.46 up), rolled 2 degrees
     aimAt(base + d * 1.2f + vec3(0, 0.88f, 0), base + vec3(0, 0.46f, 0));
     for (int k = 0; k < 2; k++) S.rest[k] = base + d * 0.55f + right * (k ? -0.3f : 0.3f) + vec3(0, 0.2f, 0);
     S.roll = -2.f * PI / 180;
-  } else if (S.kind == 4) {   // FurnaceStation: crouched before its front, looking into the mouth; the hands low before it
+  } else if (S.kind == 4) {   // furnace scene: crouched before its front, looking into the mouth; the hands low before it
     const vec3 face = base + vec3(0, 0.5f, 0) + d * 0.5f;
     aimAt(face + d * 1.25f + vec3(0, 0.42f, 0), face + vec3(0, 0.02f, 0));   // (back enough to see its top too)
     for (int k = 0; k < 2; k++) S.rest[k] = face + d * 0.3f + right * (k ? -0.26f : 0.26f) + vec3(0, -0.3f, 0);
-  } else if (S.kind == 6) {   // GrindstoneStation: 0.95 back from the wheel and 1 up, looking 0.32 over its middle; fov 64, rolled 1.5
+  } else if (S.kind == 6) {   // grindstone scene: 0.95 back from the wheel and 1 up, looking 0.32 over its middle; fov 64, rolled 1.5
     const vec3 wheel = base + vec3(0, 0.625f, 0);
     aimAt(wheel + d * 0.95f + vec3(0, 1.f, 0), wheel + vec3(0, 0.32f, 0));
     for (int k = 0; k < 2; k++) S.rest[k] = wheel + right * (k ? -0.31f : 0.31f) + d * 0.1f + vec3(0, 0.2495f, 0);
     S.fov = 64; S.roll = 1.5f * PI / 180;
-  } else if (S.kind == 13) {  // CampfireStation: sat 1.1 back (SEAT, leant in), the eye 0.8 up, looking at the fire 0.18 over it; fov 68
+  } else if (S.kind == 13) {  // campfire scene: sat 1.1 back (SEAT, leant in), the eye 0.8 up, looking at the fire 0.18 over it; fov 68
     const vec3 fire = base + vec3(0, 0.18f, 0);
     aimAt(base + d * 1.1f + vec3(0, 0.8f, 0), fire);
     for (int k = 0; k < 2; k++) S.rest[k] = base + d * 0.62f + right * (k ? -0.24f : 0.24f) + vec3(0, 0.3f, 0);
     S.fov = 68;
-  } else if (S.kind == 7) {   // StonecutterStation: 1 back from the table and 0.95 up, looking 0.25 over it just past the saw
+  } else if (S.kind == 7) {   // stonecutter scene: 1 back from the table and 0.95 up, looking 0.25 over it just past the saw
     const vec3 top = base + vec3(0, 0.5625f, 0);
     aimAt(top + d * 1.f + vec3(0, 0.95f, 0), top - d * 0.05f + vec3(0, 0.25f, 0));
     for (int k = 0; k < 2; k++) S.rest[k] = top + d * 0.36f + right * (k ? -0.38f : 0.26f) + vec3(0, 0.062f, 0);
     S.roll = -1.5f * PI / 180;
-  } else {                    // TableStation: LEAN_BACK 0.86, LEAN_UP 0.72, the pitch atan2(LEAN_UP, LEAN_BACK - LOOK_BACK);
-    // the smithing table (SmithingStation) 0.7 and 0.62, the cartography table (CartographyStation) 0.7 and 0.64
+  } else {                    // table scene: LEAN_BACK 0.86, LEAN_UP 0.72, the pitch atan2(LEAN_UP, LEAN_BACK - LOOK_BACK);
+    // the smithing table (smithing scene) 0.7 and 0.62, the cartography table (cartography scene) 0.7 and 0.64
     const float LEAN_BACK = S.kind == 8 || S.kind == 15 || S.kind == 11 ? 0.7f : 0.86f, LEAN_UP = S.kind == 8 || S.kind == 15 ? 0.62f : S.kind == 11 ? 0.64f : 0.72f, LOOK_BACK = -0.04f;
     S.viewPos = glm::dvec3(c + d * LEAN_BACK + vec3(0, LEAN_UP, 0));
     S.viewYaw = std::atan2(d.x, d.z);   // facing the table (lookVector: yaw 0 looks toward -z)
@@ -225,7 +225,7 @@ public:
       if (ImGui::IsMouseClicked(0)) act(a, hover, handFree(p));
       else if (ImGui::IsMouseClicked(1)) act(a, hover, true);
     }
-    // your bag beside the table (Cinematic Interactions keeps the inventory to hand): click a stack to work with it
+    // your bag beside the table (the scene keeps the inventory to hand): click a stack to work with it
     if (showBag || bag.on) drawBag(a, p, bag.on ? bag.cur : -1);
     // the panel: what's in hand, what it makes, the ways out
     ImGui::SetNextWindowPos(ImVec2(W * 0.5f, 14 * z), ImGuiCond_Always, ImVec2(0.5f, 0));   // (over the scene, not over the table)
@@ -382,7 +382,7 @@ std::string nameOf(const ItemStack& s) { return s.empty() ? std::string("nothing
 }  // namespace cine
 namespace {
 
-// the anvil as a scene (Cinematic Interactions' AnvilStation): the work on its face, what goes into it to the right, and
+// the anvil as a scene (the anvil scene's): the work on its face, what goes into it to the right, and
 // the hammer: three blows (0.7, 1.02, 1.3 s), the forging on the first
 class CinematicAnvilScreen : public Screen {
 public:
@@ -454,7 +454,7 @@ public:
       if (project(spot, sp)) dl->AddCircle(sp, 34 * z, IM_COL32(255, 236, 160, 220), 28, 2 * z);
     }
     if (hover >= 0 && !overUi && !pad && scene().phase == 2) {
-      // (AnvilStation: a left click on the work with a result ready forges it; with something in hand, it's set down)
+      // (anvil scene: a left click on the work with a result ready forges it; with something in hand, it's set down)
       if (ImGui::IsMouseClicked(0)) { if (handFree(p) && hover == 0 && anvilWorkResult(w, at).ok) forge(a); else if (handFree(p) && hover == 0 && !anvilWorkItems(w, at)[1].empty()) denyAt = scene().clock; else if (handFree(p)) take(a, hover); else put(a, hover); }
       else if (ImGui::IsMouseClicked(1)) take(a, hover);
     }
@@ -485,7 +485,7 @@ public:
   }
 private:
   ivec3 at; int zone = 0; bool pad = false, showBag = true, forged = false; int blows = 0; double denyAt = -1;
-  static constexpr double BLOWS[3] = {0.7, 1.02, 1.3};   // (AnvilStation's blows)
+  static constexpr double BLOWS[3] = {0.7, 1.02, 1.3};   // (anvil scene's blows)
   BagPad bag;
   void put(App& a, int slot) { GameSession* s = a.session.get(); if (!s || g_forgeAt >= 0 || scene().phase != 2) return; cinematicTap(); anvilWorkPut(*s->level, *s->player, s->world(), at, slot, s->player->held()); }
   void take(App& a, int slot) { GameSession* s = a.session.get(); if (!s || g_forgeAt >= 0 || scene().phase != 2) return; cinematicTap(); anvilWorkTake(*s->level, *s->player, s->world(), at, slot); }
@@ -501,7 +501,7 @@ private:
 
 namespace {
 double g_ritualAt = -1;   // the enchanting rite (the scene's clock), -1: none
-// the enchanting table as a scene (Cinematic Interactions' EnchantStation): the item over the table, the three offers in a
+// the enchanting table as a scene (the enchant scene's): the item over the table, the three offers in a
 // crown over it (the middle highest: OFFER_HIGH 0.92, the others OFFER_LOW 0.74 and OFFER_SPREAD 0.4 out), the rite
 // (RITUAL_LENGTH 1.5 s, the enchantment at RITUAL_PEAK 0.5)
 class CinematicEnchantScreen : public Screen {
@@ -566,7 +566,7 @@ public:
       const float r = std::max(18.f, std::hypot(se.x - sp.x, se.y - sp.y));
       if (!pad && !overUi && std::fabs(mp.x - sp.x) < r && std::fabs(mp.y - sp.y) < r * 0.8f) hover = k;
     }
-    if (hover >= 0 && has) {   // what it is, when you look at it (EnchantStation's clue: the first enchantment, the rest a mystery)
+    if (hover >= 0 && has) {   // what it is, when you look at it (enchant scene's clue: the first enchantment, the rest a mystery)
       const EnchOffer& o = offers[hover];
       const bool can = p.creative() || (p.level >= o.level && v[1].id == "lapis_lazuli" && v[1].n >= o.cost);
       ImGui::BeginTooltip();
@@ -576,7 +576,7 @@ public:
     }
     g_ev.at = at; g_ev.viewYaw = scene().viewYaw; g_ev.hover = has ? hover : -1; g_ev.ritualT = g_ritualAt < 0 ? -1 : scene().clock - g_ritualAt; g_ev.pick = pick; g_evOn = true;
     if (hover >= 0) offer = hover;
-    // a finger to the rune looked at (EnchantStation: you touch the glyph to enchant): the working hand reaches up to it,
+    // a finger to the rune looked at (enchant scene: you touch the glyph to enchant): the working hand reaches up to it,
     // pressing in as it's chosen
     if (has && hover >= 0 && scene().phase == 2 && g_ritualAt < 0) cinematicSetAimPoint(true, cinematicOfferPos(at, scene().viewYaw, hover, scene().clock) + vec3(std::sin(scene().viewYaw), 0, std::cos(scene().viewYaw)) * 0.03f);
     else cinematicSetAimPoint(false);
@@ -593,7 +593,7 @@ public:
         else if (onTable) { cinematicTap(); enchWorkTake(*s->level, p, w, at, 0); }
       } else if (ImGui::IsMouseClicked(1) && hover < 0) enchWorkTake(*s->level, p, w, at, 0);
     }
-    if (g_ritualAt >= 0) {   // the burst: a white-violet flash at the peak (EnchantStation's flash)
+    if (g_ritualAt >= 0) {   // the burst: a white-violet flash at the peak (enchant scene's flash)
       const double t = scene().clock - g_ritualAt;
       const float fl = (float)std::exp(-std::pow((t - 0.5) / 0.12, 2));
       if (fl > 0.01f) ImGui::GetForegroundDrawList()->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(235, 215, 255, (int)(150 * fl)));
@@ -643,7 +643,7 @@ private:
 }  // namespace
 
 namespace {
-// the brewing stand as a scene (Cinematic Interactions' BrewingStation): the three bottles on its feet, the ingredient in
+// the brewing stand as a scene (the brewing scene's): the three bottles on its feet, the ingredient in
 // the bowl, the powder at its foot, each a spot to set down or take back; the brew bubbling on as ever
 class CinematicBrewScreen : public Screen {
 public:
@@ -737,7 +737,7 @@ private:
 std::unique_ptr<Screen> makeCinematicBrewScreen(ivec3 at) { return std::make_unique<CinematicBrewScreen>(at); }
 
 namespace {
-// a furnace as a scene (Cinematic Interactions' FurnaceStation): crouched before it, what smelts into its mouth, fuel
+// a furnace as a scene (the furnace scene's): crouched before it, what smelts into its mouth, fuel
 // into the grate under it, the smelted taken off its top; the two gauges (cooking, fuel) on its front
 class CinematicFurnaceScreen : public Screen {
 public:
@@ -1036,7 +1036,7 @@ private:
 std::unique_ptr<Screen> makeCinematicChestScreen(ivec3 at) { return std::make_unique<CinematicChestScreen>(at); }
 
 double cinematicClock() { return scene().clock; }
-vec3 cinematicOfferPos(ivec3 at, float viewYaw, int k, double clock) {   // EnchantStation: OFFER_HIGH 0.92 the middle, OFFER_LOW 0.74 and OFFER_SPREAD 0.4 the sides
+vec3 cinematicOfferPos(ivec3 at, float viewYaw, int k, double clock) {   // enchant scene: OFFER_HIGH 0.92 the middle, OFFER_LOW 0.74 and OFFER_SPREAD 0.4 the sides
   const vec3 top = vec3(at) + vec3(0.5f, 0.75f, 0.5f);
   const vec3 side(std::sin(viewYaw), 0, std::cos(viewYaw)), right(std::cos(viewYaw), 0, -std::sin(viewYaw));
   const vec3 c = k == 1 ? top + vec3(0, 0.92f, 0) - side * 0.12f : top + vec3(0, 0.74f, 0) + right * (k == 0 ? -0.4f : 0.4f) + side * 0.02f;
@@ -1060,7 +1060,7 @@ void cinematicCamera(GameSession& s, Camera& cam, double dt) {
   Scene& S = scene();
   if (S.phase == 0) return;
   S.t += dt; S.clock += dt;
-  // leaning in over the work with the scene's arms (Cinematic Interactions' way) only when the option asks; every station
+  // leaning in over the work with the scene's arms (the scenes' way) only when the option asks; every station
   // (the anvil, the enchanting table and the grindstone too) is worked as the benches are: your own view, your own body's
   // arms, the journal open at your bag in your off hand
   S.lean = s.app.settings.extra.value("cinematicLean", false);
@@ -1092,7 +1092,7 @@ void cinematicCamera(GameSession& s, Camera& cam, double dt) {
     if (u >= 1) { S.phase = 2; S.t = 0; }
   } else if (S.phase == 2) {
     pos = S.viewPos + glm::dvec3(0, br, 0); yaw = S.viewYaw + by; pitch = S.viewPitch + bp;
-    if (S.kind == 1 && g_forgeAtShared() >= 0) {   // a blow lands: the tremor dies down with it (CameraRig.kick)
+    if (S.kind == 1 && g_forgeAtShared() >= 0) {   // a blow lands: the tremor dies down with it (camera rig.kick)
       const double t = S.clock - g_forgeAtShared(); double kick = 0;
       for (double b : {0.7, 1.02, 1.3}) if (t >= b) kick += std::exp(-(t - b) * 14) * (b == 0.7 ? 1.0 : 0.6);
       const double c = S.clock;

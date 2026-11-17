@@ -495,7 +495,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     VR.end();
     return;
   }
-  if (p->carrying.is_object()) {   // Carry On (local.js handState): whatever you hold sits in both arms in front of you
+  if (p->carrying.is_object()) {   // carried in the arms (local.js handState): whatever you hold sits in both arms in front of you
     drew = 3;
     drawCarriedThing(p->carrying, glm::translate(mat4(1), vec3(bx, -0.62f + by - eq * 0.5f, -0.95f)), true, L, vec4(0));
     for (float side : {-1.f, 1.f}) {

@@ -1,6 +1,7 @@
 // render/creature_portrait.cpp — see creature_portrait.h
 #include "render/creature_portrait.h"
 #include "render/creature_models.h"
+#include "render/creature_layer.h"
 #include "sim/creature.h"
 #include "sim/creature_rig.h"
 #include "assets/voxel.h"
@@ -23,9 +24,11 @@ GLuint CreaturePortrait::render(const std::string& type, int w, int h, float yaw
   auto& cp = models[type];
   if (!cp) cp = std::make_unique<Creature>(type);
   Creature& m = *cp;
-  const RigModel* RM = rigModel(m.modelKey());
-  const CreatureModelGL* CM = creatureModel(m.modelKey());
-  if (!RM || !CM) return 0;
+  // a creature dressed in a player skin (herobrine.png...) is pictured in that skin, as it is drawn in the world
+  const bool skin = drawnFromSkin(m);
+  const RigModel* RM = skin ? nullptr : rigModel(m.modelKey());
+  const CreatureModelGL* CM = skin ? nullptr : creatureModel(m.modelKey());
+  if (!skin && (!RM || !CM)) return 0;
   w = std::max(16, w); h = std::max(16, h);
   if (w != tw || h != th || !fbo) {
     if (!fbo) glGenFramebuffers(1, &fbo);
@@ -52,10 +55,11 @@ GLuint CreaturePortrait::render(const std::string& type, int w, int h, float yaw
   glEnable(GL_CULL_FACE); glCullFace(GL_BACK); glFrontFace(GL_CCW); glDisable(GL_BLEND);
   // posed standing, its idle going on (age), facing the camera turned by yaw
   m.pos = vec3(0); m.yaw = yaw; m.age = time; m.onGround = true; m.walkAmt = 0;
-  rigPose(m, *RM, creatureBase(m, true));
+  if (RM) rigPose(m, *RM, creatureBase(m, true));
   // the whole of it in view: its parts' boxes once posed
   vec3 lo(1e9f), hi(-1e9f);
-  for (size_t i = 0; i < RM->parts.size() && i < m.mats.size(); i++) {
+  if (skin) { lo = vec3(-0.5f, 0, -0.3f); hi = vec3(0.5f, std::max(1.f, m.h), 0.3f); }
+  else for (size_t i = 0; i < RM->parts.size() && i < m.mats.size(); i++) {
     if (m.mats[i][3][3] == 0 || CM->parts[i]->hidden) continue;
     const RigPart& p = RM->parts[i];
     for (int c = 0; c < 8; c++) {
@@ -75,7 +79,8 @@ GLuint CreaturePortrait::render(const std::string& type, int w, int h, float yaw
   VoxelRenderer& VR = voxelRenderer();
   VR.beginNeutral(P * V, vec3(0.35f, 0.9f, 0.75f));
   const vec4 tint = silhouette ? vec4(0.05f, 0.04f, 0.04f, 0.97f) : vec4(0);
-  for (size_t i = 0; i < RM->parts.size(); i++) {
+  if (skin) drawSkinMobBody(m, yaw, mat4(1), VoxelLight{1, 0}, tint);
+  else for (size_t i = 0; i < RM->parts.size(); i++) {
     const RigPart& p = RM->parts[i];
     const CreaturePartMesh& pm = *CM->parts[i];
     if (pm.hidden || !rigPartPosed(m, (int)i) || !rigPartShown(m, p) || p.alpha < 1) continue;

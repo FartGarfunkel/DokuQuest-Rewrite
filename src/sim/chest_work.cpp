@@ -8,6 +8,11 @@
 namespace dq {
 namespace {
 const vec3 FRONT[4] = {{0, 0, 1}, {1, 0, 0}, {0, 0, -1}, {-1, 0, 0}};   // meta & 3 -> its front (render/chest_layer.cpp)
+// a cabinet's front: it's a model turned by its meta (world/shapes.cpp rotBox: meta is the way its placer looked, so its
+// door faces back at them), which runs the other way round from a chest's for east and west; using the chest's table,
+// an east- or west-facing cabinet opened (and took its shelves' clicks) on its back
+const vec3 CABINET_FRONT[4] = {{0, 0, 1}, {-1, 0, 0}, {0, 0, -1}, {1, 0, 0}};
+vec3 storeFront(World& w, ivec3 at) { const u8 m = w.getMeta(at.x, at.y, at.z) & 3; return isCabinet(w, at) ? CABINET_FRONT[m] : FRONT[m]; }
 enum Kind { K_NONE, K_BLOCK, K_ENDER, K_PARTY };
 
 bool endsWith(const std::string& k, const char* e) { const size_t n = std::strlen(e); return k.size() >= n && k.compare(k.size() - n, n, e) == 0; }
@@ -103,7 +108,7 @@ std::vector<ItemStack> chestHalfItems(Level& lv, const Player* viewer, World& w,
 vec3 chestSlotCenter(World& w, ivec3 at, int slot) {
   ivec3 half; int i;
   if (!locate(w, at, slot, half, i)) return vec3(at) + vec3(0.5f);
-  const vec3 d = FRONT[w.getMeta(half.x, half.y, half.z) & 3], right(d.z, 0, -d.x);   // (the right of someone facing its front)
+  const vec3 d = storeFront(w, half), right(d.z, 0, -d.x);   // (the right of someone facing its front)
   if (isCabinet(w, half)) {   // three shelves of three, top shelf first, left to right as you face it
     const int r = i / CABINET_COLS, c = i % CABINET_COLS;
     return vec3(half) + vec3(0.5f, CABINET_SHELF[std::min(r, 2)] / 16.f, 0.5f) + right * ((c - 1) * CABINET_COL_W) + d * 0.02f;
@@ -118,8 +123,9 @@ bool isCabinet(World& w, ivec3 at) { return reg().block(w.getBlock(at.x, at.y, a
 
 int chestSlotAtRay(World& w, ivec3 at, vec3 o, vec3 dir) {
   if (isCabinet(w, at)) {   // onto its open front: which shelf (by height) and which third across
-    const vec3 d = FRONT[w.getMeta(at.x, at.y, at.z) & 3], right(d.z, 0, -d.x);
+    const vec3 d = storeFront(w, at), right(d.z, 0, -d.x);
     const vec3 c = vec3(at) + vec3(0.5f, 0, 0.5f) + d * 0.4f;
+    if (glm::dot(o - c, d) <= 0) return -1;   // (reached into from its doors' side only, not through its back)
     const float den = glm::dot(dir, d);
     if (std::fabs(den) < 1e-5f) return -1;
     const float t = glm::dot(c - o, d) / den;
@@ -146,7 +152,7 @@ int chestSlotAt(World& w, ivec3 at, vec3 p) {
     const ivec3 half = hs[h];
     const float mg = margin(w, half);
     if (p.x < half.x + mg || p.x > half.x + 1 - mg || p.z < half.z + mg || p.z > half.z + 1 - mg) continue;
-    const vec3 d = FRONT[w.getMeta(half.x, half.y, half.z) & 3], right(d.z, 0, -d.x);
+    const vec3 d = storeFront(w, half), right(d.z, 0, -d.x);
     const vec3 rel = p - (vec3(half) + vec3(0.5f, 0, 0.5f));
     const float span = 1 - 2 * mg, u = glm::dot(rel, right) / span + 0.5f, v = glm::dot(rel, d) / span + 0.5f;
     const int rows = std::max(1, (per + 8) / 9);
@@ -248,7 +254,7 @@ void setChestLidOpen(World& w, ivec3 at, bool open) {
   }
 }
 bool chestLidClicked(World& w, ivec3 at, ivec3 normal, vec3 point) {
-  const vec3 d = FRONT[w.getMeta(at.x, at.y, at.z) & 3];
+  const vec3 d = storeFront(w, at);
   if (vec3(normal) == -d) return true;   // its back, where the lid stands
   if (normal.y != 1) return false;
   return glm::dot(point - (vec3(at) + vec3(0.5f)), d) < -0.22f;   // the back of its top, under the raised lid

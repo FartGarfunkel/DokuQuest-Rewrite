@@ -1,6 +1,6 @@
 // ui/cinematic_work.cpp — the stations worked with things lying on them, as scenes (ui/cinematic.h): the grindstone,
 // smithing table, loom, fletching and cartography tables (sim/station_work.h pairWork*) and the stonecutter. After
-// Cinematic Interactions' GrindstoneStation, SmithingStation, LoomStation, CartographyStation and StonecutterStation
+// the grindstone scene's, smithing scene, loom scene, cartography scene and stonecutter scene
 // (MIT): the leans, the layouts and the beats; ours lays the pieces on the block itself (synced like any block entity).
 #include "ui/cinematic.h"
 #include "ui/cinematic_internal.h"
@@ -38,7 +38,7 @@ bool toScreen(App& a, vec3 wp, ImVec2& out) {
   out = ImVec2((q.x / q.w * 0.5f + 0.5f) * a.width, (1 - (q.y / q.w * 0.5f + 0.5f)) * a.height);
   return true;
 }
-// GrindstoneStation.under: the mouse within a world radius of a point, as it shows on screen (at least 9 px)
+// grindstone scene.under: the mouse within a world radius of a point, as it shows on screen (at least 9 px)
 bool under(App& a, vec3 c, float r) {
   ImVec2 p, e;
   if (!toScreen(a, c, p) || !toScreen(a, c + vec3(0, r, 0), e)) return false;
@@ -77,7 +77,7 @@ vec3 pairHeldPos(const PairView& v, int k, const vec3 lying[2]) {
   const vec3 top = vec3(v.at) + vec3(0.5f, 1.f, 0.5f);
   auto mixv = [](vec3 a, vec3 b, double u) { return a + (b - a) * (float)u; };
   switch (v.kind) {
-    case 6: {   // GrindstoneStation.heldPos: lifted to the wheel by 0.6, stroked to and fro (STROKE 0.433 s each way) till 1.9
+    case 6: {   // grindstone scene.heldPos: lifted to the wheel by 0.6, stroked to and fro (STROKE 0.433 s each way) till 1.9
       const PairBeats B = pairBeats(6);
       const double s = win(t, B.contact, B.letGo), fade = smoother(s * 8) * smoother((1 - s) * 8);
       const double stroke = 0.075 * std::sin(PI * (t - B.contact) / 0.433) * fade;
@@ -88,14 +88,14 @@ vec3 pairHeldPos(const PairView& v, int k, const vec3 lying[2]) {
       p.y -= 0.008f * std::fabs(std::sin(PI * (t - B.contact) / 0.433)) * (float)win(t, B.contact, 0.7);
       return p;
     }
-    case 8: case 15: {   // SmithingStation: the material up (MATERIAL_UP 0.5), over the gear and down onto it (MATERIAL_DOWN 0.76, ON_GEAR)
+    case 8: case 15: {   // smithing scene: the material up (MATERIAL_UP 0.5), over the gear and down onto it (MATERIAL_DOWN 0.76, ON_GEAR)
       if (k == 0) return lying[0];
       const vec3 up = lying[1] + vec3(0, 0.12f, 0), onGear = lying[0] + vec3(0, 0.025f, 0), over = onGear + vec3(0, 0.12f, 0);
       if (t < 0.5) return mixv(lying[1], up, smoother(win(t, 0.1, 0.5)));
       if (t < 0.66) return mixv(up, over, smoother(win(t, 0.5, 0.66)));
       return mixv(over, onGear, smoother(win(t, 0.66, 0.76)));
     }
-    case 9: {   // LoomStation: the dye taken up as the shuttle, PASSES across the cloth between WEAVE_FROM and WEAVE_TO
+    case 9: {   // loom scene: the dye taken up as the shuttle, PASSES across the cloth between WEAVE_FROM and WEAVE_TO
       if (k == 0) return lying[0];
       const vec3 lane = lying[0] + vec3(0, 0.07f, 0) + d * 0.02f;
       if (t < LOOM_FROM) return mixv(lying[1], lane - right * 0.3f, smoother(win(t, 0, LOOM_FROM)));
@@ -109,7 +109,7 @@ vec3 pairHeldPos(const PairView& v, int k, const vec3 lying[2]) {
       const double u = smoother(win(t, 0.15, 0.6));
       return mixv(lying[k], mid, u) + vec3(0, 0.07f * (float)std::sin(u * PI), 0);
     }
-    case 11: {   // CartographyStation: the paper (or the empty maps) laid on the map by 0.6
+    case 11: {   // cartography scene: the paper (or the empty maps) laid on the map by 0.6
       if (k == 0) return lying[0];
       const double u = smoother(win(t, 0.15, 0.6));
       return mixv(lying[1], lying[0] + vec3(0, 0.006f, 0), u) + vec3(0, 0.06f * (float)std::sin(u * PI), 0);
@@ -143,7 +143,7 @@ vec3 jukeDialPoint(ivec3 at, float viewYaw, int k, int count, float scroll, doub
 vec3 jukeDiscPos(const JukeView& v, vec3 from) {
   const vec3 top = vec3(v.at) + vec3(0.5f, 1.f, 0.5f), playing = top + vec3(0, 0.06f, 0), over = top + vec3(0, 0.46f, 0);
   auto mixv = [](vec3 a, vec3 b, double u) { return a + (b - a) * (float)u; };
-  if (!v.eject) {   // over the slot by 0.5, then down into it (JukeboxStation INSERT)
+  if (!v.eject) {   // over the slot by 0.5, then down into it (jukebox scene INSERT)
     if (v.t < 0.5) return mixv(from, over, smoother(win(v.t, 0, 0.5)));
     return mixv(over, playing, smoother(win(v.t, 0.5, JUKE_INSERT - 0.15)));
   }
@@ -158,7 +158,7 @@ namespace {
 // With something in hand, a click on the station sets it down where it belongs (all of a stack that goes in; one piece of
 // gear); an empty hand on a piece does the work when there's something to make (else takes the piece back); right click
 // takes back. The work (pairBeats): the pieces taken up, the thing made at contact and handed to you
-// the Tool Forge's dial of heads: a half ring over the forge (StonecutterStation's dial, smaller), head k of n
+// the Tool Forge's dial of heads: a half ring over the forge (stonecutter scene's dial, smaller), head k of n
 vec3 headDialPointAt(ivec3 at, float viewYaw, int k, int n, double clock) {
   const float a = dialAngle(k, n, 0) * PI / 180.f;
   const float bob = 0.008f * std::sin((float)clock * 1.7f + k * 1.3f);
@@ -484,7 +484,7 @@ private:
   }
 };
 
-// the jukebox as a scene (JukeboxStation): your records float on a dial over it; click one (A on a pad) and it goes over
+// the jukebox as a scene (jukebox scene): your records float on a dial over it; click one (A on a pad) and it goes over
 // the slot and down in, playing; click the jukebox (X) and the one playing rises out and comes back to your bag
 class CinematicJukeboxScreen : public Screen {
 public:
@@ -612,7 +612,7 @@ private:
   }
 };
 
-// the campfire as a scene (CampfireStation): sat down by it; raw food in hand goes on the spot you click (the first free one
+// the campfire as a scene (campfire scene): sat down by it; raw food in hand goes on the spot you click (the first free one
 // with A), an empty hand on food takes it back; the rings show how done each is (it pops off when it's cooked)
 class CinematicCampfireScreen : public Screen {
 public:

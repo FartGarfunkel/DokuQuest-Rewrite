@@ -658,24 +658,37 @@ void riftTick(Level& lv, EndStory& S, double dt) {
   S.riftT = 1;
   if (!lv.isRemote()) corruptTick(lv);
   auto all = livePlayers(lv);
-  // ---- the catalyst: a while after the first village is found, the rift opens in its square ----
-  if (!jint(R, "stage") && playTime(lv) > 900) {
-    // (0.9.0.24) the story begins even with the haunting off, with any village found by anyone here; failing that,
-    // after a while, the village nearest anyone playing
-    std::string vid;
-    for (Player* l : all) { const json& vs = l->stats.contains("vseen") ? l->stats["vseen"] : json(); if (vs.is_object() && !vs.empty()) { vid = vs.begin().key(); break; } }
-    if (vid.empty()) vid = lv.info.data.value("vfound", std::string());
-    Vil v;
-    vec3 near = all.empty() ? vec3(lv.info.spawn) : all[0]->pos;
-    if (!vid.empty()) v = villageById(lv, vid, near);
-    if (!v.ok) for (Player* l : all) if (inOverworld(*l)) { Vil a = villageAtPos(lv, l->pos, 8); if (a.ok) { v = a; lv.info.data["vfound"] = a.id; break; } }
-    if (!v.ok && playTime(lv) > 1500) for (Player* l : all) if (inOverworld(*l)) { Vil a = villageAtPos(lv, l->pos, 600); if (a.ok) { v = a; break; } }
-    if (v.ok) {
-      bool close = false; for (Player* l : all) if (l->realm == REALM_MAIN && std::hypot(l->pos.x - v.c.x, l->pos.z - v.c.z) < 90) close = true;
-      DQ_LOG("rift: the catalyst opens it in %s (%s; play time %.0f)", v.name.c_str(), vid.empty() ? "near a player" : vid.c_str(), playTime(lv));
-      riftOpenAt(lv, v.id, v.name, v.c + vec3(0.5f, 1, 5.5f), 0);
-      if (close) { lv.fx->sound("rift_open", v.c + vec3(0, 2, 0), 80); riftSay(lv, "Something tears open in the square of " + v.name + "\xE2\x80\xA6", "warn"); }
-      else riftSay(lv, "Far away, in " + v.name + ", the air tears with a sound like cloth. The elder will know more.", "warn");
+  // ---- the catalyst: a while after the first village is found, the rift opens in ITS square ----
+  // The first village anyone here walks into is remembered (with when), the moment it's found: a player's list of the
+  // villages they've found is kept in name order, not the order found, so its first entry was any village at all.
+  // Nothing found, nothing opens: the story never starts by itself in a village nobody has been to.
+  if (!jint(R, "stage")) {
+    json& D = lv.info.data;
+    if (!D.contains("vknown") || !D["vknown"].is_object()) D["vknown"] = json::object();
+    std::vector<std::pair<std::string, Player*>> fresh;   // found since the last look (a second ago)
+    for (Player* l : all) {
+      const json& vs = l->stats.contains("vseen") ? l->stats["vseen"] : json();
+      if (vs.is_object()) for (auto& [id, _] : vs.items()) if (!D["vknown"].contains(id)) { D["vknown"][id] = 1; fresh.push_back({id, l}); }
+    }
+    if (D.value("vfirst", std::string()).empty() && !D.value("vfound", std::string()).empty()) { D["vfirst"] = D["vfound"]; D["vfirstAt"] = playTime(lv); }   // (an older world's)
+    if (D.value("vfirst", std::string()).empty() && !fresh.empty()) {
+      // one found just now; or, the first look at an older world's players, several at once: the one nearest whoever found it
+      std::string pick; float best = 1e30f;
+      for (auto& [id, l] : fresh) { Vil c = villageById(lv, id, l->pos); const float d = c.ok ? std::hypot(l->pos.x - c.c.x, l->pos.z - c.c.z) : 1e29f; if (d < best) { best = d; pick = id; } }
+      D["vfirst"] = pick; D["vfirstAt"] = playTime(lv);
+      DQ_LOG("rift: the first village found is %s", pick.c_str());
+    }
+    const std::string vid = D.value("vfirst", std::string());
+    if (!vid.empty() && playTime(lv) > 900 && playTime(lv) - D.value("vfirstAt", 0.0) >= 240) {
+      vec3 near = all.empty() ? vec3(lv.info.spawn) : all[0]->pos;
+      Vil v = villageById(lv, vid, near);
+      if (v.ok) {
+        bool close = false; for (Player* l : all) if (l->realm == REALM_MAIN && std::hypot(l->pos.x - v.c.x, l->pos.z - v.c.z) < 90) close = true;
+        DQ_LOG("rift: the catalyst opens it in %s, the first village found (play time %.0f)", v.name.c_str(), playTime(lv));
+        riftOpenAt(lv, v.id, v.name, v.c + vec3(0.5f, 1, 5.5f), 0);
+        if (close) { lv.fx->sound("rift_open", v.c + vec3(0, 2, 0), 80); riftSay(lv, "Something tears open in the square of " + v.name + "\xE2\x80\xA6", "warn"); }
+        else riftSay(lv, "Far away, in " + v.name + ", the air tears with a sound like cloth. The elder will know more.", "warn");
+      }
     }
   }
   // his realm
