@@ -107,6 +107,30 @@ def main(d):
     recipe('glue', 4, items_=['slime_ball'])
     recipe('glue', 4, items_=['honey_bottle'])
 
+    # hanging chains and ropes drawn as the strung ones are (render/strung_layer.cpp): a chain as interlocking iron links,
+    # each a quarter turn from the last, two to a block and hooked through each other and into the next block; a rope as
+    # three strands twisting round each other (sizes in 16ths of a block)
+    shp = json.loads((d / 'shapes.json').read_text())
+    S = shp['shapes']
+    link = []
+    def ringXY(y0, y1):   # a link facing front-back: an oval of four bars, 1 thick, in the middle z
+        z0, z1 = 7.5, 8.5
+        return [[6, y0 + 1, z0, 7, y1 - 1, z1], [9, y0 + 1, z0, 10, y1 - 1, z1], [6.5, y0, z0, 9.5, y0 + 1, z1], [6.5, y1 - 1, z0, 9.5, y1, z1]]
+    def ringZY(y0, y1):   # the next, a quarter turn round
+        x0, x1 = 7.5, 8.5
+        return [[x0, y0 + 1, 6, x1, y1 - 1, 7], [x0, y0 + 1, 9, x1, y1 - 1, 10], [x0, y0, 6.5, x1, y0 + 1, 9.5], [x0, y1 - 1, 6.5, x1, y1, 9.5]]
+    for b in ringXY(0, 9) + ringZY(7, 16): link.append({'b': b, 'side': 'iron_block'})
+    S['chain'] = link
+    import math
+    rope = []
+    for k in range(8):
+        y0, a0 = k * 2, k * math.pi / 4
+        for j in range(3):
+            a = a0 + j * 2 * math.pi / 3
+            cx, cz = 8 + 0.55 * math.cos(a), 8 + 0.55 * math.sin(a)
+            rope.append({'b': [round(cx - 0.55, 3), y0, round(cz - 0.55, 3), round(cx + 0.55, 3), y0 + 2, round(cz + 0.55, 3)], 'side': 'rope', 'end': 'rope'})
+    S['rope'] = rope
+    (d / 'shapes.json').write_text(json.dumps(shp, indent=1, ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
     (d / 'tiles.json').write_text(json.dumps(tj, separators=(',', ':'), ensure_ascii=False))
     (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':'), ensure_ascii=False))
