@@ -437,6 +437,18 @@ void App::frameLoop() {
     if (audio) audio->setMuted(settings.muteOnLostFocus && !focused);
     ImGui::PopFont();
     ImGui::Render();
+    if (!gfx.vulkan) {
+      // the menus and HUD always reach the screen: whatever the world's passes left bound (an off-screen picture, a cut-down
+      // viewport, scissor) is put back first. A phone's OpenGL ES driver had a joined world draw black, its menus too: what was
+      // left is written to latest.log (the first 20 times) so the step that failed can be found.
+      GLint fb = 0; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &fb);
+      const GLenum err = glGetError();
+      static int told = 0;
+      if ((fb != 0 || err != GL_NO_ERROR) && told < 20) { told++; DQ_WARN("gl: after the world: picture %d still bound, error 0x%x (put right before the menus)", (int)fb, (unsigned)err); }
+      glBindFramebuffer(GL_FRAMEBUFFER, 0);
+      glViewport(0, 0, dw, dh); glDisable(GL_SCISSOR_TEST);
+      glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    }
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     if (screenshotPending) {
       std::vector<u8> px((size_t)dw * dh * 4);
