@@ -33,7 +33,7 @@ float strDamageFactor(const Player& p) { return 1 + st(p.statStr) * STR_DAMAGE; 
 float critChance(const Player& p) { return std::min(CRIT_CHANCE_CAP, st(p.statLck) * LCK_CRIT + talent(p, "crit_chance")); }
 float critMultiplier(const Player& p) { return CRIT_MUL + talent(p, "crit_damage"); }
 float moveFactor(const Player& p) {
-  return std::clamp(1 + st(p.statAgi) * AGI_MOVE + talent(p, "speed") - talent(p, "weight"), MOVE_FACTOR_MIN, MOVE_FACTOR_MAX);
+  return std::clamp(1 + st(p.statAgi) * AGI_MOVE + talent(p, "speed") - talent(p, "weight"), MOVE_FACTOR_MIN, MOVE_FACTOR_MAX) * exploringSpeedFactor(p);   // (Pathfinder, Wayfarer: past the cap)
 }
 float stepBonus(const Player& p) { return talent(p, "step"); }
 float dodgeCost(const Player& p) { return DODGE_COST * (1 - st(p.statAgi) * AGI_DODGE_COST) * (1 + 2 * talent(p, "weight")); }

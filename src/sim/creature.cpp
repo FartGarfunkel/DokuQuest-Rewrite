@@ -543,6 +543,7 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   if (src.type == "lava" && T->fireImmune) dmg = 0;
   if (dmg <= 0) { if (a && a->isPlayer()) floatText(lv, a->id, pos + vec3(0, h + 0.3f, 0), "Immune", "#ffb070"); return 0; }
   if (!src.bypassArmor) if (float ap = armourPoints() * (1 - std::clamp(src.pierce, 0.f, 1.f)); ap > 0) { dmg *= 1 - std::min(20.f, ap) * 0.04f; wolfArmourWear(*this, lv); horseArmourWear(*this, lv); }   // as a player's armour: 4% a point (wolf and horse armour wear down)
+  if (!owner.empty() && !absolute) dmg *= petHarmFactor(lv, owner);   // Bonded: a keeper's creatures take less harm (sim/skills.h)
   // the ender dragon: the head takes the blow, every other part takes a quarter plus at most 1
   if (type == "ender_dragon" && src.hasRay && dmg > 0) {
     const RigModel* RM = rigModel(modelKey());

@@ -893,7 +893,7 @@ bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
     if ((e.type == "slime" || e.type == "magma_slime") && e.size > 1) { toast("Only a little one can be tamed"); return true; }
     if (e.T->boss) return false;
     use1(p, held); lv.fx->soundUi(p.id, "eat");
-    float chance = p.creative() ? 1 : std::min(1.f, e.T->tameChance);
+    float chance = p.creative() ? 1 : std::min(1.f, tameChanceOf(p, e.T->tameChance));   // (Beast Master: sim/skills.h)
     if (frand() < chance) {
       e.owner = p.name; e.tamed = true; e.kept = true; e.angryT = 0; e.foe = 0; e.panicT = 0; e.quarrel = 0; e.petFoe = 0; e.stay = false; e.loveT = 0;
       hearts(lv, e.pos + vec3(0, e.h, 0), 7); lv.fx->sound("levelup", e.pos, 12);

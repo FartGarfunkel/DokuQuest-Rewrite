@@ -54,6 +54,7 @@ float damageEntity(Level& lv, Entity& target, float amount, Entity* attacker, co
   // a spell's summoned ally (owned, not a kept pet) strikes harder with its summoner's talents
   if (auto* ac = dynamic_cast<Creature*>(attacker); ac && !ac->kept && !ac->owner.empty())
     for (auto& e : lv.entities()) if (e->isPlayer() && !e->removed && static_cast<Player*>(e.get())->name == ac->owner) { amount *= summonDamageFactor(*static_cast<Player*>(e.get())); break; }
+  if (auto* ac = dynamic_cast<Creature*>(attacker); ac && !ac->owner.empty()) amount *= petHitFactor(lv, ac->owner);   // Pack Leader: any creature of a keeper's (sim/skills.h)
   if (auto* c = dynamic_cast<Creature*>(&target)) return c->hurt(lv, amount, src);
   if (auto* p = dynamic_cast<Player*>(&target)) return hurtPlayer(lv, *p, amount, attacker, src);
   return 0;
