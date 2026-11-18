@@ -104,7 +104,7 @@ public:
     if (top.button("Redo")) { undo.push_back(look); look = redo.back(); redo.pop_back(); apply(); }
     ImGui::EndDisabled();
     if (top.button(picker.busy() ? "Choosing..." : "Import skin PNG...")) picker.open("Your own skin under the character (64x32 or 64x64 PNG)", "png");
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Wear your own skin under a 3D character (or drop a skin .png on the window)");
+    if (ImGui::IsItemHovered()) ui::setTooltip("Wear your own skin under a 3D character (or drop a skin .png on the window)");
     if (top.button("Load...")) ImGui::OpenPopup("load##cc");
     if (ImGui::BeginPopup("load##cc")) {
       auto list = listCharacters();

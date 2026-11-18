@@ -26,6 +26,8 @@ bool bookUiStationInUse();             // the station's journal being used now (
 // on the page picture (it was cut off there); outside the book, false (draw it as ever)
 bool bookUiScreenTip(const std::string& text);
 void bookUiDrawScreenTip();
+// a point on the pages' picture to where it is on the window (the journal held flat in front; false: not that way up)
+bool bookUiPicToWindow(ImVec2& p);
 // something drawn on the window itself after the book (an item's tooltip: on the pages it was cut off at their edge and
 // drawn twice where it crossed it). Called from the book's drawing; false when not drawing the book (draw it yourself)
 bool bookUiScreenDraw(std::function<void()> f);   // (App::frameLoop, after the book)

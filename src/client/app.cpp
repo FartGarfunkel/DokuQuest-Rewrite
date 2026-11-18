@@ -422,7 +422,7 @@ void App::frameLoop() {
     glClearColor(0.05f, 0.04f, 0.035f, 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
     if (session && (!topScreen() || topScreen()->showsWorld())) { session->showReplicas(true); session->render(); if (session->split()) session->splitUi(); else if (!bookUiOn(*this)) session->drawHud(); session->showReplicas(false); }   // (the journal up before you: the HUD put away; guests drawn where they smoothly are)
     // screens draw back to front (an overlay may sit over another menu)
-    { static bool hid = false; const bool on = bookUiOn(*this); if (on != hid) { SDL_ShowCursor(on ? SDL_DISABLE : SDL_ENABLE); hid = on; } }   // (in the book: its own pointer, on the pages)
+    // (in the book too the system pointer is the one pointer: ui/book_ui.cpp carries it onto the pages)
     if (session && !session->split() && !bookUiOn(*this)) session->uiWantsText = false;   // (only the journal's pages set it: off with them)
     if (bookUiOn(*this)) { bookUiRender(*this); bookUiDrawScreenTip(); }   // first person: the menus on the pages of the journal in your hands (ui/book_ui.h)
     else {

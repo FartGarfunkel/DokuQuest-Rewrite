@@ -174,6 +174,60 @@ bool navVisible() { ImGuiContext& g = *GImGui; return g.NavCursorVisible && g.Na
 ImU32 withAlpha(ImU32 c, float a) { return (c & 0x00FFFFFF) | ((ImU32)clampv((int)(((c >> 24) & 255) * a), 0, 255) << 24); }
 void playClick() { if (app().audio) app().audio->play("click"); }
 
+// ---- tooltips -----------------------------------------------------------------------------------------------
+static LastTip g_lastTip;
+bool tipsFollowPad() { return app().input.usingPad(); }
+bool navItemRect(ImVec2& a, ImVec2& b) {
+  ImGuiContext& g = *GImGui;
+  ImGuiWindow* w = g.NavWindow;
+  if (!w || g.NavId == 0 || !g.NavCursorVisible) return false;
+  ImRect r = ImGui::WindowRectRelToAbs(w, w->NavRectRel[g.NavLayer]);
+  if (r.GetWidth() <= 0 || r.GetHeight() <= 0) return false;
+  a = r.Min; b = r.Max;
+  return true;
+}
+ImVec2 tipPlace(ImVec2 size, const ImVec2* ra, const ImVec2* rb) {
+  const ImVec2 ds = ImGui::GetIO().DisplaySize;
+  const float z = Z(), m = 4 * z;
+  ImVec2 a, b, p;
+  bool item = false;
+  if (tipsFollowPad()) {
+    if (ra && rb) { a = *ra; b = *rb; item = true; }
+    else item = navItemRect(a, b);
+  }
+  if (item) {
+    p = ImVec2(b.x + 8 * z, a.y);
+    if (p.x + size.x > ds.x - m) p.x = a.x - 8 * z - size.x;   // no room on the right: its left
+    if (p.x < m) { p.x = a.x; p.y = b.y + 6 * z; }              // nor there: under it
+  } else {
+    const ImVec2 mp = ImGui::GetIO().MousePos;
+    p = ImVec2(mp.x + 14 * z, mp.y + 10 * z);
+  }
+  p.x = std::max(m, std::min(p.x, ds.x - size.x - m));
+  p.y = std::max(m, std::min(p.y, ds.y - size.y - m));
+  p = ImVec2(std::round(p.x), std::round(p.y));
+  g_lastTip = {app().frame, item, a, b, p, size};
+  return p;
+}
+const LastTip& lastTooltip() { return g_lastTip; }
+void tipNextAt(const ImVec2* ra, const ImVec2* rb) {
+  if (!tipsFollowPad()) return;   // (the mouse: ImGui's own placement)
+  ImVec2 a, b;
+  if (ra && rb) { a = *ra; b = *rb; } else if (!navItemRect(a, b)) return;
+  // the size isn't known yet: right of the item (left when it is on the right of the display), top aligned (bottom
+  // aligned when it is low down)
+  const ImVec2 ds = ImGui::GetIO().DisplaySize;
+  const bool left = (a.x + b.x) * 0.5f > ds.x * 0.62f, up = (a.y + b.y) * 0.5f > ds.y * 0.62f;
+  g_lastTip = {app().frame, true, a, b, ImVec2(left ? a.x - 8 * Z() : b.x + 8 * Z(), up ? b.y : a.y), ImVec2(0, 0)};
+  ImGui::SetNextWindowPos(ImVec2(left ? a.x - 8 * Z() : b.x + 8 * Z(), up ? b.y : a.y), ImGuiCond_Always, ImVec2(left ? 1.f : 0.f, up ? 1.f : 0.f));
+}
+void setTooltip(const char* fmt, ...) {
+  va_list args; va_start(args, fmt);
+  tipNextAt();
+  ImGui::SetTooltipV(fmt, args);
+  va_end(args);
+}
+
 void init(App& a) {
   g_zoom = computeZoom(a);
   DQ_LOG("interface %d%%", (int)std::lround(g_zoom * 100.f));

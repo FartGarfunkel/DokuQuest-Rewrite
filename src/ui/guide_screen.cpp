@@ -207,7 +207,7 @@ private:
     if ((hot || padHere) && !item.empty()) {
       const ItemDef* d = reg().item(item);
       const std::string n = label.empty() ? (d ? d->name : item) : label;
-      if (!bookUiScreenTip(n)) ImGui::SetTooltip("%s", n.c_str());
+      if (!bookUiScreenTip(n)) ui::setTooltip("%s", n.c_str());
       if (hot && ImGui::IsMouseClicked(0)) open(item);
     }
   }

@@ -146,7 +146,7 @@ public:
       if (ImGui::IsItemActivated()) { drag = true; dragX = io.MousePos.x; dragYaw = yaw; }
       if (drag && ImGui::IsItemActive()) yaw = dragYaw + (io.MousePos.x - dragX) * 0.012f / z;
       if (!ImGui::IsItemActive()) drag = false;
-      if (ImGui::IsItemHovered()) ImGui::SetTooltip("Drag to turn");
+      if (ImGui::IsItemHovered()) ui::setTooltip("Drag to turn");
       yaw += (padAxis(ImGuiKey_GamepadRStickRight) - padAxis(ImGuiKey_GamepadRStickLeft)) * io.DeltaTime * 2.6f;
     }
     // the settings beside it

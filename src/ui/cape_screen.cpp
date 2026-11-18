@@ -137,7 +137,7 @@ public:
       status(saveCapePng(p, px) ? "Exported " + p.string() : "Could not export");
     }
     if (row.button(picker.busy() ? "Choosing..." : "Import PNG...", 140)) picker.open("Import a cape (64x32 PNG)", "png");
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Or drop a cape .png on the window");
+    if (ImGui::IsItemHovered()) ui::setTooltip("Or drop a cape .png on the window");
     if (row.button("Back", 90)) { if (dirty) confirm = true; else { endWin(); a.popScreen(); return; } }
     if (confirm) ImGui::OpenPopup("Unsaved changes##cpe");
     if (ImGui::BeginPopupModal("Unsaved changes##cpe", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
