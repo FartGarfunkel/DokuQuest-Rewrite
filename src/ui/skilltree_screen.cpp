@@ -19,6 +19,7 @@
 #include "sim/skills.h"
 #include "sim/magic.h"
 #include "common/noise.h"
+#include "sim/deeds.h"
 #include <imgui.h>
 #include <algorithm>
 #include <cmath>
@@ -50,6 +51,10 @@ class SkillTreeScreen : public Screen {
 public:
   const char* id() const override { return "skilltree"; }
   bool pausesGame() const override { return false; }
+  // learn a node; a tree's start taken without a Path says who teaches the Path that goes with it (sim/deeds.h)
+  static void learn(App& a, Player& p, const SkillTree& T, int i) {
+    if (treeLearn(p, T.key, T.nodes[i].id) && T.nodes[i].start && a.session && a.session->level) pathTreeOnStart(*a.session->level, p, T.key);
+  }
   void update(App& a, double) override {
     frames++;
     Player* p = a.session ? a.session->player : nullptr;
@@ -84,6 +89,7 @@ public:
       if (on) ImGui::PopStyleColor();
     }
     if (a.input.pressed(Act::MenuX)) { cur = (cur + 1) % (int)trees.size(); sel = -1; panX = panY = 0; zone = 0; }
+    if (const std::string tl = treeTrainerLine(*p, T.key); !tl.empty()) ImGui::TextDisabled("%s", tl.c_str());   // its Path and who teaches it (sim/deeds.h)
     ImDrawList* dl = ImGui::GetWindowDrawList();
     // the canvas: the rest of the left page
     const ImVec2 wp = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
@@ -150,7 +156,7 @@ public:
       if ((a.input.pressed(Act::MenuRight) && !step(1, 0)) || a.input.padButtonPressed(7)) { zone = 1; statSel = std::clamp(statSel, 0, NPICK - 1); resetAsk = 0; }
       if (a.input.pressed(Act::MenuUp)) step(0, -1);
       if (a.input.pressed(Act::MenuDown)) step(0, 1);
-      if (sel >= 0 && a.input.pressed(Act::MenuOk)) treeLearn(*p, T.key, T.nodes[sel].id);
+      if (sel >= 0 && a.input.pressed(Act::MenuOk)) learn(a, *p, T, sel);
     } else {           // your stats: up / down, A to spend a point (the reset asks for a second A), left back to the tree
       if (a.input.pressed(Act::MenuLeft) || a.input.padButtonPressed(6)) { zone = 0; resetAsk = 0; }
       statSel = std::clamp(statSel, 0, NPICK - 1);
@@ -159,7 +165,7 @@ public:
     }
     if (resetAsk > 0) resetAsk -= io.DeltaTime;
     const int show = hot >= 0 ? hot : zone == 0 ? sel : -1;
-    if (hot >= 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !dragged) treeLearn(*p, T.key, T.nodes[hot].id);
+    if (hot >= 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !dragged) learn(a, *p, T, hot);
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) dragged = false;
     ImGui::SetCursorScreenPos(ImVec2(wp.x, c1.y + 4 * z));
     if (a.input.usingPad()) ImGui::TextDisabled("D-pad: pick \xC2\xB7 A: learn \xC2\xB7 RT: stats \xC2\xB7 X: next tree");
@@ -182,8 +188,10 @@ public:
     else ImGui::TextDisabled("Point at a node (or pick one with the d-pad) to read it");
     ImGui::Separator();
     const int earned = treePointsEarned(*p), spent = treePointsSpent(*p);
+    const int deedT = deedTalentPoints(*p);
     ImGui::Text("Tree points: %d of %d", earned - spent, earned);
-    ImGui::TextDisabled("A point every 3 levels of your skills");
+    if (deedT > 0) { ImGui::SameLine(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(ui::ink::good), "(from your deeds: %d)", deedT); }
+    ImGui::TextDisabled("A point every 3 levels of your skills, and for your deeds");
     if (!p->creative()) ImGui::TextDisabled("To learn again: a Shrine of Renewal, in any village square");
     else {   // (creative: the pad's reset, picked last on this page, and a second A within a few seconds, so a stray press costs nothing)
       const bool on = zone == 1 && statSel == NSTAT;
@@ -195,6 +203,7 @@ public:
     }
     ImGui::Separator();
     ImGui::Text("Stat points: %d", p->statPoints);
+    if (const int deedS = deedStatPoints(*p); deedS > 0) { ImGui::SameLine(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(ui::ink::good), "(from your deeds: %d)", deedS); }
     ImGui::TextDisabled("A point every %d levels of your skills, up to %d a stat", bal::STAT_EVERY, bal::STAT_CAP);
     struct S { const char* name; int* v; std::string what; ui::Glyph g; };
     auto pc = [](float f) { return std::to_string((int)std::lround(f * 100)) + "%"; };

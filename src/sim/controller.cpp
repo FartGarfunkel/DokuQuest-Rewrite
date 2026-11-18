@@ -3,6 +3,7 @@
 // effect, the off hand), blocks2.js (bow and arrows) and blockfx.js (cracks that mend).
 #include "sim/attach_play.h"
 #include "sim/item_uses.h"
+#include "sim/deeds.h"
 #include "sim/dyntree.h"
 #include "sim/weather.h"
 #include "sim/controller.h"
@@ -985,7 +986,11 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       if (!bl.empty()) { takeOut(bl); swingArm(); } else toastMsg("Iron ore and as much charcoal; light it with a firestarter");
       return;
     }
-    if (reg().block(hit->id).key == "bellows" && held.empty() && bellowsPump(w, b.x, b.y, b.z)) { swingArm(); sfxMaterial(lv, "wool", "step", vec3(b) + vec3(0.5f)); return; }   // pumped by hand
+    if (reg().block(hit->id).key == "bellows" && held.empty() && bellowsPump(w, b.x, b.y, b.z)) {   // pumped by hand
+      swingArm(); sfxMaterial(lv, "wool", "step", vec3(b) + vec3(0.5f));
+      if (p.age - p.data.value("bellowsAt", -1e9) >= workxp::BELLOWS_GAP) { p.data["bellowsAt"] = p.age; workXp(lv, p, "smithing", workxp::BELLOWS); }   // (sim/deeds.h)
+      return;
+    }
     if (reg().block(hit->id).key == "forge") {
       if (!held.empty() && held.id == "charcoal") { if (!forgeAddFuel(w, b.x, b.y, b.z, held)) toastMsg("The forge is full of charcoal"); else swingArm(); return; }
       if (!held.empty() && heatable(held.id)) { if (!forgePut(w, b.x, b.y, b.z, held)) toastMsg("There's no more room in the forge"); else swingArm(); return; }

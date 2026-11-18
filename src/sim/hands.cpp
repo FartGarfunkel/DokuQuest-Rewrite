@@ -1,5 +1,6 @@
 // sim/hands.cpp — see hands-on.h
 #include "sim/hands.h"
+#include "sim/skills.h"
 #include "sim/blockinfo.h"
 #include "sim/worldsys.h"
 #include "sim/gameplay.h"
@@ -82,6 +83,7 @@ bool handsFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStac
     static const int SPOT[9] = {0, -1, -1, 1, 2, 3, -1, -1, -1};   // (an input spot's cooking starts over)
     if (k == 0) (*e)["cook"] = 0.0;
     if (SPOT[k] >= 0 && e->contains("cooks") && (*e)["cooks"].is_array() && (int)(*e)["cooks"].size() > SPOT[k]) (*e)["cooks"][SPOT[k]] = 0.0;
+    if (k == 2 || k >= 6) onSmeltedTaken(lv, p, s.id, s.n);   // its output taken by hand: Cooking / Smithing, as from its screen (sim/skills.h)
     if (int left = giveItem(lv, p, s); left > 0) { s.n = left; dropItem(lv, p.realm, s, p.pos + vec3(0, 1, 0), true, 0.f); }
     changed(); sfxAt(lv, "pop", c);
     return true;

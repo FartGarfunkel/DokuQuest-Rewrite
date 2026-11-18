@@ -34,6 +34,7 @@ void registerQuiver();
 void registerGuns();
 void registerTravelJournal();
 void registerAchievements();
+void registerDeeds();      // sim/deeds.cpp
 void registerSnowSentry();
 void registerExtraItems();   // sim/extra_items.cpp
 void registerDrift();      // sim/drift.cpp
@@ -1064,6 +1065,7 @@ void registerCreatures() {
   registerGuns();   // sim/guns.cpp
   registerTravelJournal();   // sim/travel_journal.cpp
   registerAchievements();     // sim/achievements.cpp
+  registerDeeds();            // sim/deeds.cpp: the story, bosses and achievements give points; work teaches skills
   registerSnowSentry();         // sim/snow_sentry.cpp
   registerExtraItems();           // sim/extra_items.cpp: steel bucket, wolf armour, label
   registerDrift();              // sim/drift.cpp: the Drift (its portal, the way there and back, its chickens)

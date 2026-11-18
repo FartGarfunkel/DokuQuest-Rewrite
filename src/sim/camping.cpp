@@ -1,5 +1,6 @@
 // sim/camping.cpp — campfires, the kit, rope, the grappling hook, the sleeping bag (game/camping.js).
 #include "sim/firepit.h"
+#include "sim/deeds.h"
 #include "sim/immersive.h"
 #include "sim/heat.h"
 #include "sim/camping.h"
@@ -450,6 +451,7 @@ void campingTick(Level& lv, double dt) {
           if (sm != reg().smelting.end()) {
             vec2 sp = CAMP_SPOTS[k];
             dropItem(lv, realm, ItemStack(sm->second, 1), vec3(c.x + sp.x, c.y + 0.7f, c.z + sp.y), vec3((sp.x - 0.5f) * 2, 3, (sp.y - 0.5f) * 2));
+            workXpNear(lv, realm, vec3(c) + vec3(0.5f), 10, "cooking", workxp::CAMPFIRE);   // the cook by the fire (sim/deeds.h)
           }
           sfxAt(lv, "pop", vec3(c.x + 0.5f, c.y + 0.6f, c.z + 0.5f));
           w->blockEntityChanged(c.x, c.y, c.z);

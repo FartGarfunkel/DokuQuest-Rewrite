@@ -3,6 +3,8 @@
 #include "sim/player.h"
 #include "sim/skilltree.h"
 #include "sim/skills.h"
+#include "sim/deeds.h"
+#include "sim/rpg.h"
 #include "core/tool_parts.h"
 #include "core/registry.h"
 #include <algorithm>
@@ -23,20 +25,20 @@ float talent(const Player& p, const std::string& attr) {
   return std::clamp(v, r->lo, r->hi);
 }
 
-int statPointsEarned(const Player& p) { return std::max(0, totalLevel(p) / STAT_EVERY); }
+int statPointsEarned(const Player& p) { return std::max(0, totalLevel(p) / STAT_EVERY) + deedStatPoints(p); }   // (+ the bosses beaten: sim/deeds.h)
 static int st(int v) { return std::clamp(v, 0, STAT_CAP); }
 
 float conStamina(const Player& p) { return st(p.statCon) * CON_STAMINA; }
 float conHealth(const Player& p) { return st(p.statCon) * CON_HEALTH; }
 float conReduction(const Player& p) { return std::min(CON_REDUCE_CAP, st(p.statCon) * CON_REDUCE); }
 float strDamageFactor(const Player& p) { return 1 + st(p.statStr) * STR_DAMAGE; }
-float critChance(const Player& p) { return std::min(CRIT_CHANCE_CAP, st(p.statLck) * LCK_CRIT + talent(p, "crit_chance")); }
+float critChance(const Player& p) { return std::min(CRIT_CHANCE_CAP, st(p.statLck) * LCK_CRIT + talent(p, "crit_chance") + (onPath(p, "rogue") ? ROGUE_CRIT : 0.f)); }
 float critMultiplier(const Player& p) { return CRIT_MUL + talent(p, "crit_damage"); }
 float moveFactor(const Player& p) {
   return std::clamp(1 + st(p.statAgi) * AGI_MOVE + talent(p, "speed") - talent(p, "weight"), MOVE_FACTOR_MIN, MOVE_FACTOR_MAX) * exploringSpeedFactor(p);   // (Pathfinder, Wayfarer: past the cap)
 }
 float stepBonus(const Player& p) { return talent(p, "step"); }
-float dodgeCost(const Player& p) { return DODGE_COST * (1 - st(p.statAgi) * AGI_DODGE_COST) * (1 + 2 * talent(p, "weight")); }
+float dodgeCost(const Player& p) { return DODGE_COST * (1 - st(p.statAgi) * AGI_DODGE_COST) * (1 + 2 * talent(p, "weight")) * (hasTal(p, "nimble") ? ROGUE_NIMBLE : 1.f); }
 float dodgeTime(const Player& p) { return DODGE_TIME * (1 + st(p.statAgi) * AGI_DODGE_TIME); }
 float dodgeChance(const Player& p) { return talent(p, "dodge"); }
 float attackSpeedFactor(const Player& p) { return 1 + std::clamp(st(p.statAgi) * AGI_ATTACK + talent(p, "attack_speed"), -0.2f, ATTACK_SPEED_CAP); }

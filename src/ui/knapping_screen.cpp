@@ -14,6 +14,7 @@
 #include "sim/gameplay.h"
 #include "input/input.h"
 #include "audio/audio.h"
+#include "sim/deeds.h"
 #include <imgui.h>
 
 namespace dq {
@@ -68,6 +69,7 @@ public:
     if ((material == "clay" || material == "fireclay") && !spend(p, knapCost(material))) { hudToast("You need five clay", "warn"); return; }
     ItemStack out(m->out, m->n);
     if (int left = giveItem(*a.session->level, p, out); left > 0) { out.n = left; dropItem(*a.session->level, p.realm, out, p.pos + vec3(0, 1, 0), true); }
+    onKnapped(*a.session->level, p, material);   // Smithing (sim/deeds.h)
     closing = true;   // popped in update(): this can run from draw(), and popping frees the screen under it
   }
   bool closing = false;

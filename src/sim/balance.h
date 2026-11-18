@@ -38,6 +38,11 @@ constexpr float LCK_CRIT = 0.003f;         // crit chance a point (15% at 50)
 constexpr float LCK_LOOT = 0.004f;         // loot luck a point (+20% at 50)
 // Focus: posture damage
 constexpr float FOC_POSTURE = 0.01f;       // posture damage a point (+50% at 50)
+// the Rogue's path (data/magic.json paths): its crit chance, and Nimble's rolls
+constexpr float ROGUE_CRIT = 0.05f;
+constexpr float ROGUE_NIMBLE = 0.75f;      // a roll's stamina cost with Nimble
+constexpr float ROGUE_BACKSTAB = 1.3f;     // Backstab: a sneaking melee blow
+constexpr float ROGUE_VENOM = 3.f;         // Envenomed Edge: seconds of poison a melee blow
 
 // ---- the combat base numbers that the stats scale ----------------------------------------------------------------------
 constexpr float STAMINA_MAX = 100, STAMINA_REGEN = 28, DODGE_COST = 30, DODGE_TIME = 0.40f;
