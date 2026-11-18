@@ -597,13 +597,13 @@ void NetClient::applyEntities(const json& m) {
     } else { e->netPos = pos; e->netYaw = yaw; }
     // when it was there: a player's own time ("ts", a guest's ME time as the host has it), else when the host sent it
     const double ts = s.value("ts", st);
-    if (st >= 0 && clock.known) e->netSample(clock.toLocal(ts), now, pos, yaw, pitch, body);
+    if (st >= 0 && clock.known) e->netSample(ts, now, clock.off, pos, yaw, pitch, body);
     // the rest is its state as it was then. It waits, in time order, until its body is drawn at that moment
     // (sim/net_interp.cpp), so what they do and where they are stay together, as on a split screen. Something new here
     // takes its state at once; news older than the state already shown (overtaken on the way: the movement channel is
     // unsequenced, and the reliable one can lag it) is let go — only its data, which comes no other way, is taken.
     const bool timed = st >= 0 && clock.known;
-    const double tl = timed ? clock.toLocal(ts) : now;
+    const double tl = timed ? ts : now + clock.off;   // (the host's clock, as its samples are)
     if (fresh || !timed) { applyState(e, s); e->netShownT = tl; lastState[id] = s; }
     else if (!e->isPlayer() && tl > e->netShownT) { applyState(e, s); e->netShownT = tl; lastState[id] = s; }   // (a creature's at once: a mount's rider must be its rider here the moment the host says so)
     else if (tl <= e->netShownT) {
@@ -633,7 +633,7 @@ void NetClient::applyPendingState() {
     Entity* e = lv ? lv->entity(it->first) : nullptr;
     if (!e || e->removed || !e->ghost) { lastState.erase(it->first); it = pendingState.erase(it); continue; }
     auto& q = it->second;
-    const double rt = now - e->netDelay;
+    const double rt = now + e->netOff - e->netDelay;   // (the host's clock: where its body is drawn)
     while (!q.empty() && (q.front().first <= rt || q.size() > 40)) { applyState(e, q.front().second); e->netShownT = q.front().first; lastState[it->first] = std::move(q.front().second); q.pop_front(); }
     if (q.empty()) it = pendingState.erase(it); else ++it;
   }

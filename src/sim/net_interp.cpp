@@ -52,7 +52,8 @@ bool Entity::netEval(double rt, vec3& p, float& yaw, float& pitch, float& body, 
   return true;
 }
 
-void Entity::netSample(double t, double now, vec3 p, float y, float pi, float b) {
+void Entity::netSample(double t, double now, double off, vec3 p, float y, float pi, float b) {
+  if (std::isfinite(off)) { netOffTarget = off; if (!netOffKnown || std::fabs(off - netOff) > 1.5) { netOff = off; netOffKnown = true; } }
   if (!std::isfinite(t) || !std::isfinite(p.x) || !std::isfinite(p.y) || !std::isfinite(p.z)) return;
   if (!netHist.empty()) {
     if (t < netHist.back().t - 5 || t > netHist.back().t + 30) netReset();   // the sender's clock started over (a restart)
@@ -83,7 +84,7 @@ void Entity::netSample(double t, double now, vec3 p, float y, float pi, float b)
   NetSample s{t, p, y, pi, b};
   netHist.insert(std::upper_bound(netHist.begin(), netHist.end(), t, [](double v, const NetSample& q) { return v < q.t; }), s);
   // how late it came, beyond the quickest any has (the clock is set by the quickest): the delay needs to cover this
-  const double age = std::max(0.0, now - t);
+  const double age = std::max(0.0, now + netOffTarget - t);   // (on the sender's clock: how long ago it was true)
   {   // (a smoothed mean and spread: one hitch, a frame of ours that took long, moves it only a little)
     const double a = std::min(age, 0.6);
     if (netAgeMean < 0) netAgeMean = a;
@@ -116,7 +117,10 @@ void Entity::netUpdateView(double now) {
   if (first) netDelay = want;
   else if (want > netDelay) netDelay = std::min(want, netDelay + dt * 0.3);   // (played at 70% speed meanwhile: no jump)
   else netDelay = std::max(want, netDelay - dt * 0.04);
-  double rt = now - netDelay;
+  // the sender's clock as drawn by: eased toward the newest estimate (at most 0.1 s a second: never a jump)
+  if (first || std::fabs(netOffTarget - netOff) > 1.5) netOff = netOffTarget;
+  else netOff += std::clamp(netOffTarget - netOff, -0.1 * dt, 0.1 * dt);
+  double rt = now + netOff - netDelay;
   if (netLastRt >= 0 && rt < netLastRt) rt = netLastRt;   // never backwards
   vec3 p; float y, pi, b;
   netEval(rt, p, y, pi, b, &viewVel);

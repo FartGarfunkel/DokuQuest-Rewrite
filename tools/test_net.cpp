@@ -183,7 +183,7 @@ static std::string describe(const PathStats& s) {
 // each packet comes 20-220 ms late (so they overtake each other), one in ten never, and once nothing at all for 0.4 s.
 // The viewer draws at 60 frames a second.
 static bool g_dumpPath = false;   // (DQ_INTERP_ONLY: the path printed, and nothing else run)
-static PathStats replicaUnderJitter(u32 seed, double lo = 0.02, double hi = 0.22, double loss = 0.1, double outage = 0.3) {
+static PathStats replicaUnderJitter(u32 seed, double lo = 0.02, double hi = 0.22, double loss = 0.1, double outage = 0.3, double stuck = 0) {
   Entity e; e.ghost = true;
   auto rnd01 = [&] { seed = seed * 1664525u + 1013904223u; return (seed >> 8) / 16777216.0; };
   const double speed = 4, omega = 2, base = 50;   // (both clocks: ours starts at 50, the sender's at 0 — a different clock)
@@ -193,7 +193,9 @@ static PathStats replicaUnderJitter(u32 seed, double lo = 0.02, double hi = 0.22
     if (rnd01() < loss) continue;
     if (st > 4.0 && st < 4.0 + outage) continue;   // an outage (nothing for that long, and the losses either side)
     const float yaw = (float)std::remainder(omega * st + 3.0, 2 * PI);
-    pkts.push_back({base + st + lo + rnd01() * (hi - lo), st, vec3((float)(st * speed), 7, 3), yaw});
+    double arrive = base + st + lo + rnd01() * (hi - lo);
+    if (st < stuck) arrive = std::max(arrive, base + stuck + 0.6);   // (the first ones held up together: the viewer busy, joining)
+    pkts.push_back({arrive, st, vec3((float)(st * speed), 7, 3), yaw});
   }
   std::sort(pkts.begin(), pkts.end(), [](const Pkt& a, const Pkt& b) { return a.arrive < b.arrive; });
   net::NetClock clock;
@@ -203,11 +205,11 @@ static PathStats replicaUnderJitter(u32 seed, double lo = 0.02, double hi = 0.22
     while (next < pkts.size() && pkts[next].arrive <= now) {
       const Pkt& k = pkts[next++];
       clock.heard(k.st, k.arrive);
-      e.netSample(clock.toLocal(k.st), k.arrive, k.p, k.yaw, 0, k.yaw);
+      e.netSample(k.st, k.arrive, clock.off, k.p, k.yaw, 0, k.yaw);
     }
     if (e.netHist.empty()) continue;
     e.netUpdateView(now);
-    if (now > base + 1.0 && now < base + 7.5) f.push_back({now, e.viewPos.x, e.viewPos.y - 7, e.viewPos.z - 3, e.viewYaw, 0});
+    if (now > base + 1.0 + (stuck > 0 ? stuck + 0.6 : 0) && now < base + 7.5) f.push_back({now, e.viewPos.x, e.viewPos.y - 7, e.viewPos.z - 3, e.viewYaw, 0});
   }
   if (g_dumpPath) for (auto& r : f) printf("path %.4f %.4f %.4f delay %.3f\n", r[0] - base, r[1], r[4], e.netDelay);
   return pathStats(f, speed, omega, 0, base);
@@ -507,6 +509,13 @@ int main(int argc, char** argv) {
       check(s.back < 0.02 && s.minV > 1.5 && s.maxV < 7.0 && s.maxAcc < 60 && s.maxTurn < 6,
             strFormat("walking over a 50-150 ms link with 0.6 s of silence: %s", describe(s).c_str()));
       printf("     (the old way, 0.3 s of silence: %s)\n", describe(o).c_str());
+    }
+    // the first second of it all held up and coming at once (a game still busy joining): the sender's clock is first
+    // misjudged, then put right as quicker news comes — eased, never a jump or a shuffle of what was heard
+    {
+      const PathStats s = replicaUnderJitter(9u, 0.05, 0.15, 0.02, 0, 1.0);
+      check(s.back < 0.02 && s.minV > 1.5 && s.maxV < 7.0 && s.maxAcc < 60 && s.maxTurn < 6,
+            strFormat("walking, the first second held up 0.6 s and then all at once: %s", describe(s).c_str()));
     }
     // the arm: digging cycles on smoothly, weapon swings play through, over the same links
     for (double loss : {0.02, 0.05}) {
@@ -826,10 +835,10 @@ int main(int argc, char** argv) {
         if (record) { A.me->swingN = (u8)(swing0 + (int)std::floor(tt * 3.3)); A.me->mineP = 0.5f; A.me->mineAt = ivec3(A.me->pos) - ivec3(0, 1, 0); }   // (digging as she goes: her arm cycling)
         else A.me->mineP = 0;
         for (auto* c : g_clients) {
-          double& at = c->tickAt;   // (the moment its game drew this frame: its replicas glide to it)
           c->step(1.0 / 30);
           if (record && tt > 1.5 && tt < secs - 0.3 && c != &A)
             if (Entity* g = c->ghost("player", "Alice")) {
+              const double at = g->netViewAt;   // (the very moment its game slid her to: the replica's own clock reading)
               // fed: drawing within what it has heard (or bridging a short gap). A spell with nothing heard — this
               // computer starved by the other games in the test, the server not ticking — is counted, and not judged
               // for smoothness (it can only wait, then catch up): the frames until 0.3 s after it start a new segment
@@ -854,6 +863,9 @@ int main(int argc, char** argv) {
       }
     };
     std::map<Client*, u64> moves0; for (Client* v : viewers) moves0[v] = v->nc->stats.movesIn;
+    // (the way walked once first, there and back: the land along it made and loaded in every game, so the measured walk
+    // isn't judged through this one process making terrain for five games at once)
+    walk(5.0, 1, false); walk(5.0, -1, false);
     walk(5.0, 1, true);
     {   // the movement packets that got through (ENet once dropped most of them on a jittery link: net/protocol.cpp steadyPeer)
       const double direct = (double)(B.nc->stats.movesIn - moves0[&B]);

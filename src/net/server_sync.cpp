@@ -80,7 +80,7 @@ json entitySnapshot(const Entity& e) {
     else
     for (auto& a : p->armor) { ar.push_back(a.empty() ? json() : json(a.id)); anyAr |= !a.empty(); }
     if (anyAr) s["ar"] = ar;
-    if (p->ghost && p->netHands) { if (!p->netOff.empty()) { s["of"] = p->netOff; if (!p->netOffModel.empty()) s["om"] = p->netOffModel; } }
+    if (p->ghost && p->netHands) { if (!p->netOffItem.empty()) { s["of"] = p->netOffItem; if (!p->netOffItemModel.empty()) s["om"] = p->netOffItemModel; } }
     else if (!p->offhand.empty() && !p->offhand[0].empty()) { s["of"] = p->offhand[0].id; if (const std::string mk = partToolModelKey(p->offhand[0]); !mk.empty()) s["om"] = mk; }
     if (!p->shield.empty() && !p->shield[0].empty()) s["sh"] = p->shield[0].id;   // (the shield slot's: on their forearm)
     {   // the backpack and the quiver on their back (unless they hide them), so the others see them
@@ -96,7 +96,7 @@ json entitySnapshot(const Entity& e) {
     if (pf) s["pf"] = pf;
     // when this place was true (our clock): a guest's body is where their game said, when it said (their ME's time put on
     // our clock), not when we pass it on — so their friends see the steps evenly
-    s["ts"] = p->ghost && !p->riding && !p->netHist.empty() ? p->netHist.back().t : nowSeconds();   // (riding: where the mount took them, now)
+    s["ts"] = p->ghost && !p->riding && !p->netHist.empty() ? p->netHist.back().t - p->netOffTarget : nowSeconds();   // (riding: where the mount took them, now)
     playerPoseInto(*p, s);
     if ((p->activity & Player::ACT_SCREEN) && !p->bookPic.empty()) {   // their open book's pages: when they change (and now and again for anyone who came in since)
       const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();

@@ -99,7 +99,7 @@ bool elytraUse(UseCtx& u) {
 
 void elytraTick(Level& lv, double dt) {
   for (Player* p : levelPlayers(lv))
-    if (p->gliding && (p->dead || p->inWater || p->inLava || p->flying || !hasElytra(*p))) { p->gliding = false; p->h = PLAYER_H; }
+    if (!p->ghost && p->gliding && (p->dead || p->inWater || p->inLava || p->flying || !hasElytra(*p))) { p->gliding = false; p->h = PLAYER_H; }   // (a replica's is its own game's to say: their wings may not have reached us yet)
 }
 
 std::array<ElytraWing, 2> elytraWings(bool open) {

@@ -261,7 +261,7 @@ void applyReplicaState(Entity* e, const json& s, u32 myEid, Player* me) {
 
 void hostViewStep(Player& p, double now, float dt) {
   if (!p.netView) return;
-  while (!p.netViewQ.empty() && (p.netViewQ.front().first <= now - p.netDelay || p.netViewQ.size() > 40)) {
+  while (!p.netViewQ.empty() && (p.netViewQ.front().first <= now + p.netOff - p.netDelay || p.netViewQ.size() > 40)) {
     applyReplicaState(p.netView.get(), p.netViewQ.front().second, 0, nullptr);
     p.netViewQ.pop_front();
   }

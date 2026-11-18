@@ -657,7 +657,7 @@ void ServerHost::applyMe(Peer& p, const json& m) {
     if (ct <= p.lastCt) {
       if (m.contains("bp") && m["bp"].is_string() && m["bp"].get_ref<const std::string&>().size() < 200000 && m["bp"].get_ref<const std::string&>() != pl.bookPic) { pl.bookPic = m["bp"]; pl.bookPicV++; pl.bookLay = m.value("bl", std::string()).substr(0, 2000); pl.bookPicAt = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count(); }
       if (!pl.riding && std::isfinite(np.x) && std::isfinite(np.y) && std::isfinite(np.z) && glm::distance(np, pl.pos) < 16)   // (overtaken on the way: still a place they were, for drawing)
-        pl.netSample(p.clock.toLocal(ct), nowSeconds(), np, m.value("r", pl.yaw), m.value("p", pl.pitch), m.value("b", pl.yaw));
+        pl.netSample(ct, nowSeconds(), p.clock.off, np, m.value("r", pl.yaw), m.value("p", pl.pitch), m.value("b", pl.yaw));
       return;
     }
     p.lastCt = ct;
@@ -682,12 +682,12 @@ void ServerHost::applyMe(Peer& p, const json& m) {
   pl.yaw = pl.netYaw = m.value("r", pl.yaw); pl.pitch = m.value("p", pl.pitch); pl.bodyYaw = m.value("b", pl.yaw);
   // drawn here between the places their game said, at the times it said them (client/session.cpp), and passed on with
   // that time (server_sync.cpp entitySnapshot "ts")
-  if (ct >= 0) pl.netSample(p.clock.toLocal(ct), nowSeconds(), pl.pos, pl.yaw, pl.pitch, pl.bodyYaw);
+  if (ct >= 0) pl.netSample(ct, nowSeconds(), p.clock.off, pl.pos, pl.yaw, pl.pitch, pl.bodyYaw);   // (their clock's times)
   applyPlayerPose(pl, m, true);   // their swings, digging, bow, glide, ledge, ladder, what's in their arms
   if (m.contains("hd")) {   // what's in their hands and on them now (drawn and passed on; the rules use their saved bags)
     pl.netHands = true;
     pl.netHeld = m.value("hd", std::string()); pl.netHeldModel = m.value("hm", std::string());
-    pl.netOff = m.value("of", std::string()); pl.netOffModel = m.value("om", std::string());
+    pl.netOffItem = m.value("of", std::string()); pl.netOffItemModel = m.value("om", std::string());
     pl.netArmor = m.contains("ar") && m["ar"].is_array() && m["ar"].size() <= 8 ? m["ar"] : json();
   }
   int f = m.value("f", 0);
@@ -725,7 +725,7 @@ void ServerHost::applyMe(Peer& p, const json& m) {
   // them drawn in their place: client/session.cpp showReplicas)
   if (!opts.dedicated && ct >= 0) {
     if (!pl.netView) { pl.netView = std::make_shared<Player>(pl); pl.netView->netView.reset(); pl.netView->netViewQ.clear(); }
-    pl.netViewQ.push_back({p.clock.toLocal(ct), entitySnapshot(pl)});
+    pl.netViewQ.push_back({ct, entitySnapshot(pl)});   // (their clock's time, as their body's samples)
     if (pl.netViewQ.size() > 64) pl.netViewQ.pop_front();
   }
   p.aPos = pl.pos; p.aVel = pl.vel; p.aHp = pl.hp; p.aRealm = pl.realm; p.aFly = pl.flying; p.aDead = dead;

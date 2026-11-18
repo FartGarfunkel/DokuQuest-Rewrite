@@ -88,7 +88,7 @@ public:
   json netCarry;                    // what a remote player carries in their arms, for drawing only (their own game has `carrying`)
   // a guest's hands and armour as their own game has them this moment (net/: the host draws and passes on these; its copy of
   // their bags only changes when their game saves them)
-  bool netHands = false; std::string netHeld, netHeldModel, netOff, netOffModel; json netArmor;
+  bool netHands = false; std::string netHeld, netHeldModel, netOffItem, netOffItemModel; json netArmor;
   // the host's drawing of a guest (net/server_host.cpp applyMe, client/session.cpp showReplicas): their news queued with its
   // moment and put on this copy when their smoothed body gets there, so what they do is seen with where they are
   std::shared_ptr<Player> netView; std::deque<std::pair<double, json>> netViewQ;

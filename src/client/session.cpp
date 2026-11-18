@@ -302,7 +302,7 @@ void GameSession::showReplicas(bool on) {
       Gear g; g.p = p; g.sel = clampv(p->selected, 0, (int)p->inv.size() - 1);
       g.held = p->inv[g.sel]; g.off = p->offhand.empty() ? ItemStack() : p->offhand[0]; g.armor = p->armor;
       if (g.held.id != p->netHeld) p->inv[g.sel] = p->netHeld.empty() ? ItemStack() : ItemStack(p->netHeld, 1);
-      if (!p->offhand.empty() && p->offhand[0].id != p->netOff) p->offhand[0] = p->netOff.empty() ? ItemStack() : ItemStack(p->netOff, 1);
+      if (!p->offhand.empty() && p->offhand[0].id != p->netOffItem) p->offhand[0] = p->netOffItem.empty() ? ItemStack() : ItemStack(p->netOffItem, 1);
       if (p->netArmor.is_array())
         for (size_t i = 0; i < p->armor.size() && i < p->netArmor.size(); i++) {
           const std::string id = p->netArmor[i].is_string() ? p->netArmor[i].get<std::string>() : std::string();
