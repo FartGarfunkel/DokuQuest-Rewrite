@@ -8,6 +8,7 @@
 #include "sim/skills.h"
 
 namespace dq {
+bool isCrafter(BlockId id); int crafterLocked(const json* be);   // sim/redstone.h
 
 static const char* GRP_NAMES[] = {"main", "armor", "off", "back", "hook", "charm", "cape", "bp", "grid", "cont", "furn", "out", "mach", "sta", "sout", "cut", "quiver", "qv", "mount", "shield"};
 const char* grpName(Grp g) { return (int)g < (int)Grp::Count ? GRP_NAMES[(int)g] : "?"; }
@@ -55,7 +56,7 @@ json* InvSession::entity(ivec3 pos, bool create, const json& init) {
 }
 
 void InvSession::refresh() {
-  ok = true;
+  ok = true; contLocked = -1;
   // the gear slots live on the Player (its save record and every gameplay rule use them). Builds up to alpha.3 also
   // kept a second copy in p.data, and the two drifting apart duplicated backpacks and gear: adopt that copy once
   // (into empty slots only) and drop it.
@@ -102,7 +103,7 @@ void InvSession::refresh() {
           cont = loadArr((*a)["items"], n); auto second = loadArr((*bb)["items"], n);
           cont.insert(cont.end(), second.begin(), second.end());
           title = "Large Chest";
-        } else if (e) { posA = o.pos; cont = loadArr((*e)["items"], n); title = b.name; }
+        } else if (e) { posA = o.pos; cont = loadArr((*e)["items"], n); title = b.name; if (isCrafter(w->getBlock(o.pos.x, o.pos.y, o.pos.z))) contLocked = crafterLocked(e); }
         else ok = false;
       } else if (b.key == "backpack_block") {
         json* e = entity(o.pos, false, nullptr);
@@ -245,7 +246,7 @@ bool InvSession::accepts(Grp g, int i, const ItemStack& s) const {
     case Grp::Quiver: return isQuiverItem(s);
     case Grp::Qv: return isArrowItem(s);
     case Grp::Bp: return !d->has("backpack");
-    case Grp::Cont: return !(contIsPack && d->has("backpack"));
+    case Grp::Cont: return !(contIsPack && d->has("backpack")) && !(contLocked > 0 && i >= 0 && i < 9 && (contLocked & (1 << i)));
     case Grp::Mount: return o.gearFits && o.gearFits(i, s);
     case Grp::Furn:
       if (furnaceKind == "trommel") return i < 4 ? trommelSifts(s.id) : fuelValue(s.id) > 0;   // four to sift, one fuel
@@ -306,6 +307,14 @@ void InvSession::slotClick(Grp g, int i, bool right, bool shift) {
   if (!a || i < 0 || i >= (int)a->size()) return;
   ItemStack& s = (*a)[i];
   ItemStack& cur = p.cursor;
+  if (g == Grp::Cont && contLocked >= 0 && i < 9 && cur.empty() && s.empty() && !shift) {   // a crafter's empty slot: switched off or on
+    if (json* e = entity(o.pos, false, nullptr)) {
+      contLocked ^= 1 << i;
+      (*e)["locked"] = contLocked;
+      changed(g); sound("click");
+    }
+    return;
+  }
   if (shift && !s.empty()) {
     const bool furnOut = g == Grp::Furn && i == 2 && !furnaceKind.empty() && furnaceKind != "trommel";
     const ItemStack had = s;

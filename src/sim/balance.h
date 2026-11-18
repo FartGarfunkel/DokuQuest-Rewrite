@@ -38,6 +38,11 @@ constexpr float LCK_CRIT = 0.003f;         // crit chance a point (15% at 50)
 constexpr float LCK_LOOT = 0.004f;         // loot luck a point (+20% at 50)
 // Focus: posture damage
 constexpr float FOC_POSTURE = 0.01f;       // posture damage a point (+50% at 50)
+// the Rogue's path (data/magic.json paths): its crit chance, and Nimble's rolls
+constexpr float ROGUE_CRIT = 0.05f;
+constexpr float ROGUE_NIMBLE = 0.75f;      // a roll's stamina cost with Nimble
+constexpr float ROGUE_BACKSTAB = 1.3f;     // Backstab: a sneaking melee blow
+constexpr float ROGUE_VENOM = 3.f;         // Envenomed Edge: seconds of poison a melee blow
 
 // ---- the combat base numbers that the stats scale ----------------------------------------------------------------------
 constexpr float STAMINA_MAX = 100, STAMINA_REGEN = 28, DODGE_COST = 30, DODGE_TIME = 0.40f;
@@ -52,7 +57,7 @@ constexpr float DRAW_SPEED_MIN = -0.4f, DRAW_SPEED_MAX = 0.6f;
 // ---- talent attributes (skill tree nodes and gems) ----------------------------------------------------------------------
 // value = flat x flatScale + pct, clamped to [lo, hi]. flatScale 0: the flat part is used elsewhere as it is (health, armour,
 // mana, stamina, damage add their flat amount directly) and only the percentage is capped here.
-struct TalentRule { const char* attr; float flatScale, lo, hi; const char* what; };
+struct TalentRule { const char* attr; float flatScale, lo, hi; const char* what; bool flag = false; };   // flag: on (any amount) or off
 inline constexpr TalentRule TALENTS[] = {
     {"damage", 0, -0.5f, 1.0f, "melee damage %"},
     {"health", 0, -0.5f, 1.0f, "max health %"},
@@ -79,7 +84,31 @@ inline constexpr TalentRule TALENTS[] = {
     {"summon_damage", 0, 0, 0.5f, "summoned allies' damage"},
     {"luck", 0.05f, 0, 0.3f, "loot luck (a flat point = 5%)"},
     {"fishing", 0.1f, 0, 0.5f, "fishing luck (a flat point = 10%)"},
+    // what the trees' notables and keystones do besides the numbers above (sim/talent_fx.h)
+    {"stealth", 0, 0, 0.6f, "sneaking: creatures notice you only this much nearer"},
+    {"bleed_chance", 0, 0, 0.6f, "chance a blow or arrow that lands makes the foe bleed"},
+    {"poison_chance", 0, 0, 0.6f, "chance a blow or arrow that lands poisons the foe"},
+    {"slow_chance", 0, 0, 0.6f, "chance a blow or arrow that lands slows the foe"},
+    {"burn_chance", 0, 0, 0.75f, "chance a blow or arrow that lands sets the foe alight"},
+    {"loot_double", 0, 0, 0.5f, "chance a creature you kill drops its loot twice"},
+    {"arrow_return", 0, 0, 0.6f, "chance an arrow you loose isn't used up"},
+    {"multishot", 0, 0, 0.5f, "chance a second arrow flies with the first"},
+    {"heal_received", 0, -0.5f, 0.5f, "healing received"},
+    {"effect_duration", 0, 0, 0.6f, "how much longer good potion and spell effects last on you"},
+    {"xp_gain", 0, 0, 0.5f, "experience gained"},
+    {"damage_reduction", 0, -0.3f, 0.25f, "less harm taken from everything but the void"},
+    {"jump", 0, 0, 0.15f, "jump strength"},
+    {"use_move", 0, 0, 0.4f, "movement speed while drawing a bow or holding a shield up"},
+    {"lifesteal", 0, 0, 0.15f, "share of the harm your blows and arrows deal that heals you"},
+    {"rage", 0, 0, 0.6f, "melee damage as your health runs out (all of it at the last heart)"},
+    {"venom_undead", 1, 0, 1, "your poison takes hold even on the undead", true},
+    {"venom_lethal", 1, 0, 1, "your poison can kill (it doesn't stop at the last half heart)", true},
 };
+// the statuses a talent's blow leaves (bleed_chance ... burn_chance): how long each lasts
+constexpr float HIT_BLEED_SECS = 4, HIT_BLEED_TICK = 1.0f;   // a heart's half each tick, through armour
+constexpr float HIT_POISON_SECS = 6, HIT_SLOW_SECS = 3, HIT_BURN_SECS = 4;
+constexpr float MULTISHOT_SPREAD = 0.06f;                    // the second arrow's angle off the first (radians)
+constexpr float SNEAK_NOTICE_MIN = 2.5f;                     // however stealthy, a creature this near notices you
 
 // ---- creature levels and elites ---------------------------------------------------------------------------------------------
 constexpr float MOB_HP_PER_LEVEL = 0.08f, MOB_DMG_PER_LEVEL = 0.05f, MOB_XP_PER_LEVEL = 0.06f;
@@ -100,6 +129,28 @@ constexpr int GEAR_LEVELS_PER_TIER = 6;                                  // copp
 inline constexpr const char* GEAR_TIERS[] = {"copper", "bronze", "iron", "steel", "diamond", "mithril", "adamantite"};
 inline constexpr const char* GEAR_PIECES[] = {"sword", "axe", "helmet", "chestplate", "leggings", "boots"};
 constexpr float GEAR_WORN_MIN = 0.2f, GEAR_WORN_MAX = 0.6f;              // dropped gear comes this worn
+
+// ---- skill perks (data/magic.json "perks": each description says what its number here does; sim/skills.h) -------------------
+constexpr float PERK_LUMBERJACK = 0.2f;          // Woodcutting 60: a fifth more logs (a felled tree's, and a log chopped alone)
+constexpr float PERK_HEARTWOOD = 0.5f;           // Woodcutting 90: an axe's wear from felling x this
+constexpr float PERK_PATIENT_ANGLER = 1.5f;      // Fishing 30: a bite stays on the hook this much longer
+constexpr float PERK_DOUBLE_CATCH = 0.2f;        // Fishing 60: the chance a fish comes up with a second
+constexpr float PERK_SEAS_FAVOUR = 3.f;          // Fishing 90: treasure this many times as often
+constexpr float PERK_KEEN_EDGE = 1.f / 16;       // Melee 30: added to a melee blow's crit chance (past the stats' cap)
+constexpr float PERK_CLEAVE = 1.f / 3;           // Melee 60: the share of a blow the foe beside its target takes...
+constexpr float PERK_CLEAVE_REACH = 2.5f;        // ...a foe this near the target (blocks)
+constexpr float PERK_BLOODTHIRST = 0.05f;        // Melee 90: the share of melee damage dealt that heals you
+constexpr float PERK_STEADY_AIM = 1.1f;          // Archery 30: arrow speed x this (an arrow's damage follows its speed)
+constexpr float PERK_RETRIEVAL = 1.f / 3;        // Archery 60: the chance a shot doesn't use up its arrow
+constexpr float PERK_EAGLE_EYE = 1.25f;          // Archery 90: an arrow's damage x this...
+constexpr float PERK_EAGLE_EYE_RANGE = 20;       // ...from this far off (blocks)
+constexpr float PERK_BONDED = 0.75f;             // Taming 30: harm your creatures take x this
+constexpr float PERK_PACK_LEADER = 4.f / 3;      // Taming 60: your creatures' blows x this
+constexpr float PERK_QUICK_BITE = 0.6f;          // Cooking 60: the wait between bites x this
+constexpr float PERK_FEAST_REGEN = 6;            // Cooking 90: seconds of Regeneration I after eating
+constexpr float PERK_UNBREAKABLE = 0.5f;         // Defence 90: the chance a blow doesn't wear a piece of armour
+constexpr float PERK_PATHFINDER = 0.05f;         // Exploring 30: walking and running faster (past the stats' cap)
+constexpr float PERK_WAYFARER = 0.05f;           // Exploring 90: another this much
 } // namespace bal
 
 // ---- helpers (sim/balance.cpp) --------------------------------------------------------------------------------------------
@@ -136,6 +187,14 @@ float overhealShare(const Player& p);
 float summonDamageFactor(const Player& p);
 float lootLuck(const Player& p);
 float fishingLuck(const Player& p);
+float noticeRange(const Player& p, float range);   // how far a creature notices `p` (sneaking: less, by stealth)
+float healReceivedFactor(const Player& p);
+float effectDurationFactor(const Player& p);       // good effects on you: their seconds x this
+float xpGainFactor(const Player& p);
+float damageTakenFactor(const Player& p);          // 1 - damage reduction
+float jumpFactor(const Player& p);                 // the jump's speed x this
+float useMoveFactor(const Player& p);              // drawing a bow / shield up: speed x this
+float rageFactor(const Player& p);                 // melee damage x this (more as your health runs out)
 
 // creature levels
 float mobEffLevel(int lvl);   // the level its health, damage and posture scale by (soft past MOB_SOFT_LEVEL)
@@ -143,7 +202,7 @@ float mobLevelHp(int lvl);
 float mobLevelDmg(int lvl);
 // what a creature's death adds to its drop table: rolls of the table, each entry's chance multiplier, the chance of one
 // more of an entry that drops, and a chance at a piece of gear of a tier fitting its level
-struct MobLoot { int rolls = 1; float chanceMul = 1, extra = 0, gearChance = 0; int gearTier = 0; };
+struct MobLoot { int rolls = 1; float chanceMul = 1, extra = 0, gearChance = 0, twice = 0; int gearTier = 0; };   // twice: the chance of one more roll (loot_double)
 MobLoot mobLoot(int level, bool elite, const Player* killer);
 ItemStack mobGearRoll(const MobLoot& l, double r1, double r2, double r3);   // r* in [0,1): which piece, its tier, its wear
 } // namespace dq

@@ -1,5 +1,6 @@
 // sim/firestarter.cpp — see firestarter.h
 #include "sim/firestarter.h"
+#include "sim/deeds.h"
 #include "sim/firepit.h"
 #include "sim/pit_kiln.h"
 #include "sim/charcoal_pit.h"
@@ -44,10 +45,12 @@ bool firestarterUse(Level& lv, Player& p, const RayHit* hit, bool repeat, float 
     if (json* e = w.blockEntity(b.x, b.y, b.z)) { if (e->value("burn", 0.f) < 20) (*e)["burn"] = 20; (*e)["temp"] = std::max(250.f, e->value("temp", 20.f)); (*e)["peak"] = e->value("peak", 450.f); w.blockEntityChanged(b.x, b.y, b.z); }
     lit = true;
   }
-  if (!lit) lit = kilnLight(lv, w, b.x, b.y, b.z);
-  if (!lit) lit = charcoalLight(lv, w, b.x, b.y, b.z);
-  if (!lit) lit = forgeLight(lv, w, b.x, b.y, b.z);
-  if (!lit) lit = bloomeryLight(lv, w, b.x, b.y, b.z);
+  // the metal chain's fires teach Smithing (sim/deeds.h)
+  auto fired = [&](bool ok, double xp) { if (ok) workXp(lv, p, "smithing", xp); return ok; };
+  if (!lit) lit = fired(kilnLight(lv, w, b.x, b.y, b.z), workxp::KILN_LIT);
+  if (!lit) lit = fired(charcoalLight(lv, w, b.x, b.y, b.z), workxp::CHARCOAL_LIT);
+  if (!lit) lit = fired(forgeLight(lv, w, b.x, b.y, b.z), workxp::FORGE_LIT);
+  if (!lit) lit = fired(bloomeryLight(lv, w, b.x, b.y, b.z), workxp::BLOOMERY_LIT);
   for (LightFn f : lightables()) if (!lit && f(lv, w, b.x, b.y, b.z)) lit = true;
   if (!lit && hit->normal.y == 1) {
     // the sticks on the ground are the host's: a guest asks it to make the firepit (sim/content.cpp's netAction)

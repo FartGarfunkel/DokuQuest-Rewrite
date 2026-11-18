@@ -1,5 +1,6 @@
 // sim/metalwork.cpp — see metalwork.h
 #include <atomic>
+#include "sim/deeds.h"
 #include "sim/metalwork.h"
 #include "sim/heat.h"
 #include "core/registry.h"
@@ -146,6 +147,7 @@ bool metalworkPourOnGround(Level& lv, Player& p, World& w, int x, int y, int z) 
   if (stack.n > 1) { stack.n -= 1; items[at] = stack.toJson(); items[free] = one.toJson(); (*e)["rot"][free] = (*e)["rot"][at]; }
   else items[at] = one.toJson();
   w.blockEntityChanged(x, y, z);
+  workXp(lv, p, "smithing", workxp::CAST_POUR);   // (sim/deeds.h)
   lv.fx->sound("lava_pop", vec3(x + 0.5f, y + 0.3f, z + 0.5f), 12);
   return true;
 }
@@ -173,6 +175,7 @@ bool metalworkUse(Level& lv, Player& p) {
       if (!pourInto(held, one, &why)) { toastMsg(why); return true; }
       if (--src->n <= 0) *src = ItemStack();
       if (int left = giveItem(lv, p, one); left > 0) dropItem(lv, p.realm, one, p.pos + vec3(0, 1, 0), true);
+      workXp(lv, p, "smithing", workxp::CAST_POUR);   // (sim/deeds.h)
       lv.fx->sound("lava_pop", p.pos + vec3(0, 1, 0), 12);
       toastMsg("Poured into a " + one.def()->name + ": let it cool, then use it to take the piece out");
       return true;
@@ -191,6 +194,7 @@ bool metalworkUse(Level& lv, Player& p) {
     if (piece.empty()) { toastMsg("Still too hot: let it cool"); return true; }
     if (!opened.empty()) if (int left = giveItem(lv, p, opened); left > 0) { opened.n = left; dropItem(lv, p.realm, opened, p.pos + vec3(0, 1, 0), true); }
     if (!kept) toastMsg("The mold cracked", "warn");
+    workXp(lv, p, "smithing", workxp::CAST_OPEN);   // a cast piece (sim/deeds.h)
     if (int left = giveItem(lv, p, piece); left > 0) { piece.n = left; dropItem(lv, p.realm, piece, p.pos + vec3(0, 1, 0), true); }
     return true;
   }

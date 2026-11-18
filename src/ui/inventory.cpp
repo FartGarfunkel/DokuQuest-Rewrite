@@ -219,6 +219,12 @@ public:
     lk.out = out; lk.ready = out && st && !st->empty();
     lk.full = st && !st->empty() && st->tag.is_object() && st->tag.contains("c") && st->tag["c"].is_array() && std::any_of(st->tag["c"].begin(), st->tag["c"].end(), [](const json& x) { return !x.is_null(); });
     drawSlot(dl, p, s, lk);
+    if (g == Grp::Cont && sess->contLocked > 0 && i < 9 && (sess->contLocked & (1 << i))) {   // a crafter's switched-off slot: shaded, crossed
+      const float in = s * 0.18f;
+      dl->AddRectFilled(p + ImVec2(2, 2) * Z(), p + ImVec2(s, s) - ImVec2(2, 2) * Z(), IM_COL32(60, 10, 10, 150));
+      dl->AddLine(p + ImVec2(in, in), p + ImVec2(s - in, s - in), IM_COL32(200, 60, 50, 230), 3 * Z());
+      dl->AddLine(p + ImVec2(s - in, in), p + ImVec2(in, s - in), IM_COL32(200, 60, 50, 230), 3 * Z());
+    }
     if (st && !st->empty()) drawItem(dl, *st, p, s);
     else if (g == Grp::Grid && i < (int)sess->ghost.size() && !sess->ghost[i].empty()) { float in = s * 0.12f; drawIcon(dl, ingredientIcon(sess->ghost[i]), p + ImVec2(in, in), s - in * 2, 0.35f); }
     else if (ph) { float in = s * 0.22f; drawIcon(dl, ph, p + ImVec2(in, in), s - in * 2, 0.22f); }

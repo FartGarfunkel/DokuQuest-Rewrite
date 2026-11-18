@@ -74,7 +74,7 @@ public:
       ImGui::TextDisabled("%d blocks %s", (int)std::lround(o.dist), o.dir.c_str());
       ImGui::EndGroup();
       ImGui::SameLine(ImGui::GetWindowWidth() - 130);
-      std::string lbl = (i < 9 ? std::to_string(i + 1) + " \xC2\xB7 " : std::string()) + (creativeOf(p) ? "Go" : std::to_string(o.cost) + " level" + (o.cost > 1 ? "s" : ""));
+      std::string lbl = (i < 9 ? std::to_string(i + 1) + " \xC2\xB7 " : std::string()) + (creativeOf(p) ? "Go" : o.cost <= 0 ? "Free" : std::to_string(o.cost) + " level" + (o.cost > 1 ? "s" : ""));   // (free: a village's Hero going home)
       if (selButton(lbl, pad.sel == i, o.can) || (pressed && pad.sel == i)) go = o.id;
       if (i < 9 && ImGui::IsKeyPressed((ImGuiKey)(ImGuiKey_1 + i))) go = o.id;
       ImGui::PopID();

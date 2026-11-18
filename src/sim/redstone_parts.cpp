@@ -9,6 +9,8 @@
 #include "sim/player.h"
 
 namespace dq {
+struct ToolInfo;
+void dropBlockItems(Level& lv, World& w, int x, int y, int z, BlockId id, bool washed, u8 meta, const ToolInfo* tool);   // sim/gameplay.h
 using namespace rs;
 
 namespace {
@@ -159,7 +161,8 @@ void Redstone::carry(const Plan& plan, int mv, const std::function<void()>& then
   const Tables& t = T();
   Guard g(this);
   for (auto& b : plan.breaks) {
-    if (!reg().tLiquid[b[3]]) dropBlockItems(lv, w.realm, b[0], b[1], b[2], (BlockId)b[3]);
+    // what it gives is what breaking it gives (a ripe crop its produce and seeds, a melon its slices), as water washing it off does
+    if (!reg().tLiquid[b[3]]) dq::dropBlockItems(lv, w, b[0], b[1], b[2], (BlockId)b[3], false, w.getBlock(b[0], b[1], b[2]) == (BlockId)b[3] ? w.getMeta(b[0], b[1], b[2]) : (u8)0, nullptr);
     if (w.hasAttachments(b[0], b[1], b[2])) dropAllAttachments(lv, w, b[0], b[1], b[2], true);
     w.setBlock(b[0], b[1], b[2], AIR, 0);
   }
@@ -266,6 +269,7 @@ void Redstone::dropAttached(int x, int y, int z) {
 void Redstone::targetHit(int x, int y, int z, vec3 hit) {
   BlockId id = w.getBlock(x, y, z);
   if (T().role[id] != TARGET) return;
+  if (id == T().sensor) { vibration(hit); return; }   // an arrow landing by a sculk sensor is a vibration like any other
   float fx = hit.x - x, fy = hit.y - y, fz = hit.z - z;
   // which face it went in by: the coordinate nearest an edge
   float ex = std::min(fx, 1 - fx), ey = std::min(fy, 1 - fy), ez = std::min(fz, 1 - fz), a, b2;

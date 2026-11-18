@@ -90,7 +90,7 @@ public:
     std::string name, skin; int R = 6;
     Player* pl = nullptr; u32 eid = 0;
     // what the player's own game last told us (anything else on the mirror was done by the server)
-    vec3 aPos{0}, aVel{0}; float aHp = 20; std::string aInv, aMode, aStory; int aXp = 0, aLevel = 0, aRealm = 0; bool aFly = false, aDead = false;
+    vec3 aPos{0}, aVel{0}; float aHp = 20; std::string aInv, aMode, aStory, aDeeds; int aXp = 0, aLevel = 0, aRealm = 0; bool aFly = false, aDead = false;
     int invSeq = 0;
     float aStam = 100, aParry = 0, aGuard = 0;   // their stamina as their game last said, the parry flash we last sent (sim/combat_rpg.h)
     u32 aRide = 0; bool rideSeen = true;   // riding: what the server last set (sent as SELF rd) and whether their game has it yet

@@ -3,6 +3,7 @@
 #include "sim/skilltree.h"
 #include "sim/player.h"
 #include "sim/skills.h"
+#include "sim/deeds.h"
 #include "common/fs.h"
 #include <algorithm>
 #include <unordered_map>
@@ -43,13 +44,14 @@ static const json& learnt(const Player& p) {
   static const json none = json::array();
   return p.stats.contains("tree") && p.stats["tree"].is_object() && p.stats["tree"].contains("nodes") && p.stats["tree"]["nodes"].is_array() ? p.stats["tree"]["nodes"] : none;
 }
-int treePointsEarned(const Player& p) { return std::min(200, totalLevel(p) / 3); }
-int treePointsSpent(const Player& p) { return (int)learnt(p).size(); }
+// a point every 3 levels (at most 200), and the deeds' (sim/deeds.h); the start of your Path's tree costs none
+int treePointsEarned(const Player& p) { return std::min(200, totalLevel(p) / 3) + deedTalentPoints(p); }
+int treePointsSpent(const Player& p) { return std::max(0, (int)learnt(p).size() - treeFreeNodes(p)); }
 bool treeHas(const Player& p, const std::string& id) { for (auto& x : learnt(p)) if (x == id) return true; return false; }
 
 std::string treeWhyNot(const Player& p, const SkillTree& t, const TreeNode& n) {
   if (treeHas(p, n.id)) return "Learnt";
-  if (treePointsSpent(p) >= treePointsEarned(p)) return "No points left (a point every 3 levels of your skills)";
+  if (treePointsSpent(p) >= treePointsEarned(p) && !treeStartFree(p, t, n)) return "No points left (a point every 3 levels of your skills, and your deeds)";
   // joined to one you have: its own links, or a node you have that links (or leads one-way) to it
   bool joined = n.start;
   for (const std::string& l : n.links) if (treeHas(p, l)) joined = true;
@@ -99,6 +101,17 @@ static float sumAttr(const Player& p, const std::string& attr, bool pct) {
   return s;
 }
 float treeAttr(const Player& p, const std::string& attr) { return sumAttr(p, attr, false); }
+std::vector<std::string> treeGrants(const Player& p, const std::string& prefix) {
+  std::vector<std::string> out;
+  auto add = [&](const std::string& attr) { if (attr.size() > prefix.size() && attr.compare(0, prefix.size(), prefix) == 0) { std::string k = attr.substr(prefix.size()); if (std::find(out.begin(), out.end(), k) == out.end()) out.push_back(k); } };
+  if (auto it = p.stats.find("attrBonus"); it != p.stats.end() && it->is_object()) for (auto& [k, v] : it->items()) add(k);
+  if (learnt(p).empty()) return out;
+  for (const SkillTree& t : skillTrees()) for (const TreeNode& n : t.nodes) {
+    bool any = false; for (auto& b : n.bonus) if (b.attr.compare(0, prefix.size(), prefix) == 0) any = true;
+    if (any && treeHas(p, n.id)) for (auto& b : n.bonus) if (b.v > 0) add(b.attr);
+  }
+  return out;
+}
 float treeAttrPct(const Player& p, const std::string& attr) { return sumAttr(p, attr, true); }
 
 } // namespace dq

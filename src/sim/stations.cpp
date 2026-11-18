@@ -85,6 +85,18 @@ static StationResult baseResult(const std::string& kind, const ItemStack& a, con
       r.out = out; r.useA = 1; r.useB = 1; r.note = "Upgraded, wear and all"; r.ok = true;
       return r;
     }
+    // a dragon's own scales on dragonscale armour: four make it that dragon's (sim/item_uses.h: its set bonus)
+    if (startsWith(a.id, "dragonscale_") && endsWith(b.id, "_dragon_scale")) {
+      const ItemDef* dt = reg().item(b.id.substr(0, b.id.size() - 13) + "scale_" + a.id.substr(12));
+      if (!dt) return r;
+      if (b.n < 4) { r.note = "Takes four " + (db ? db->name : b.id) + "s"; return r; }
+      const int maxA = maxDurabilityOf(da), maxT = maxDurabilityOf(dt);
+      r.out = ItemStack(dt->key, 1);
+      if (a.d && maxA) r.out.d = (int)std::lround(a.d / (double)maxA * maxT);
+      if (a.tag.is_object()) { r.out.tag = json::object(); for (const char* k : {"gx", "en", "trim"}) if (a.tag.contains(k)) r.out.tag[k] = a.tag[k]; }
+      r.useA = 1; r.useB = 4; r.note = "Uses 4 " + (db ? db->name : b.id) + "s"; r.ok = true;
+      return r;
+    }
     std::string to;
     if (startsWith(a.id, "diamond_") && b.id == "cinderite_shard") to = "cinderite_" + a.id.substr(8);
     else if (startsWith(a.id, "copper_") && b.id == "tin_ingot") to = "bronze_" + a.id.substr(7);
@@ -196,7 +208,7 @@ const char* stationHelp(const std::string& kind) {
   if (kind == "anvil") return "Put in a worn tool and its own material (ingots, planks, stones\xE2\x80\xA6), or two of the same tool.";
   if (kind == "forge") return "Put in a tool and a gem to set in it: diamond (tougher), emerald, amethyst or charged crystal (faster), ruby (fire), sapphire (frost), quartz, red crystal, or cinderite (a tier higher). One gem a tool.";
   if (kind == "grindstone") return "Put in two worn tools of the same kind to join them.";
-  if (kind == "smithing") return "Diamond gear + a cinderite shard \xE2\x86\x92 cinderite gear. Copper gear + a tin ingot \xE2\x86\x92 bronze gear.";
+  if (kind == "smithing") return "Diamond gear + a cinderite shard \xE2\x86\x92 cinderite gear. Copper gear + a tin ingot \xE2\x86\x92 bronze gear. Dragonscale armour + four of one dragon's scales \xE2\x86\x92 that dragon's armour.";
   if (kind == "loom") return "Wool, carpet, glass, terracotta, concrete powder, beds or candles + a dye: recolours up to eight.";
   if (kind == "fletching") return "A flint and a feather make six arrows.";
   return "";

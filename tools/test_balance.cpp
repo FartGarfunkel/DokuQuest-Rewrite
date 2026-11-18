@@ -12,6 +12,8 @@
 #include "sim/magic.h"
 #include "sim/skills.h"
 #include "sim/skilltree.h"
+#include "sim/talent_fx.h"
+#include "sim/effects.h"
 #include "world/world.h"
 #include <cstdio>
 #include <set>
@@ -160,10 +162,20 @@ int main(int argc, char** argv) {
     std::set<std::string> known = {"health", "mana", "mana_regen", "armor", "spell_resist", "spell_power", "damage", "stamina", "crit_chance", "crit_damage"};
     for (auto& r : bal::TALENTS) known.insert(r.attr);
     std::set<std::string> unread; int nodes = 0, bonuses = 0;
-    for (const SkillTree& t : skillTrees()) for (const TreeNode& n : t.nodes) { nodes++; for (auto& b : n.bonus) { bonuses++; if (!known.count(b.attr) && b.attr.rfind("spell_power.", 0) != 0) unread.insert(b.attr); } }
+    for (const SkillTree& t : skillTrees()) for (const TreeNode& n : t.nodes) { nodes++; for (auto& b : n.bonus) { bonuses++; if (!known.count(b.attr) && b.attr.rfind("spell_power.", 0) != 0 && !(b.attr.rfind("grant_spell.", 0) == 0 && magicData().spell(b.attr.substr(12)))) unread.insert(b.attr); } }
     if (skillTrees().empty()) printf("     (no skill-tree data here: data/local_models/skilltree.json is local only; checking the rules alone)\n");
     std::string list; for (auto& u : unread) list += " " + u;
-    check(unread.empty(), "every attribute in the trees (" + std::to_string(nodes) + " nodes, " + std::to_string(bonuses) + " bonuses) has a reader" + (list.empty() ? "" : ":" + list));
+    // every node does something and says what: a bonus, and words for it (no "(stealth)"-style stand-ins left by the import)
+    {
+      std::string empty, vague; int bare = 0, unclear = 0;
+      for (const SkillTree& t : skillTrees()) for (const TreeNode& n : t.nodes) {
+        if (n.bonus.empty()) { bare++; if (bare <= 6) empty += " " + n.id; }
+        if (n.desc.empty() || n.desc.find('(') != std::string::npos || n.desc.find("+-") != std::string::npos) { unclear++; if (unclear <= 6) vague += " " + n.id + " \"" + n.desc + "\""; }
+      }
+      check(bare == 0, "every tree node gives something (" + std::to_string(bare) + " give nothing" + (empty.empty() ? "" : ":" + empty + (bare > 6 ? " ..." : "")) + ")");
+      check(unclear == 0, "every tree node says what it gives in plain words (" + std::to_string(unclear) + " don't" + (vague.empty() ? "" : ":" + vague + (unclear > 6 ? " ..." : "")) + ")");
+    }
+    check(unread.empty(),"every attribute in the trees (" + std::to_string(nodes) + " nodes, " + std::to_string(bonuses) + " bonuses) has a reader" + (list.empty() ? "" : ":" + list));
     // everything, a hundred times over: still within the caps
     json big = json::object();
     for (auto& r : bal::TALENTS) big[r.attr] = json::array({100.f, 100.f});
@@ -195,6 +207,141 @@ int main(int argc, char** argv) {
       check(with > without, "armor_pierce: through iron armour " + std::to_string(without).substr(0, 4) + " -> " + std::to_string(with).substr(0, 4));
     }
     p.stats.erase("attrBonus");
+  }
+
+  printf("[the trees' own mechanics do what their nodes say]\n");
+  {
+    dress(p, 0, 1);
+    {   // the ground under the tests (a creature ticks only where its chunk is there)
+      const double t0 = nowSeconds();
+      auto all = [&] { for (int x = -16; x <= 16; x += 16) for (int z = -16; z <= 16; z += 16) if (!lv->world().isLoaded(ifloor(p.pos.x) + x, ifloor(p.pos.y), ifloor(p.pos.z) + z)) return false; return true; };
+      while (nowSeconds() - t0 < 30 && !all()) { lv->world().stream({{p.pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+      check(all(), "the ground under the tests is there");
+    }
+    auto give = [&](json attrs) { p.stats["attrBonus"] = attrs; p.recalcMax(); };
+    auto none = [&] { p.stats["attrBonus"] = json::object(); p.recalcMax(); };
+    // stealth: sneaking, a creature's notice shrinks (never below a few blocks); walking upright, no change
+    {
+      Creature* m = foe(*lv, p, 1, false);
+      p.sneaking = true; none();
+      const float r0 = noticeRange(p, 24);
+      give(json{{"stealth", {0.f, 0.5f}}});
+      const float r1 = noticeRange(p, 24);
+      m->pos = p.pos + vec3(0, 0, -15); m->losT = 0;
+      const bool near = m->senses(*lv, &p, 15, 0, TICK_DT, 24).near;
+      p.sneaking = false;
+      const float r2 = noticeRange(p, 24);
+      m->removed = true; none();
+      check(r0 == 24 && std::fabs(r1 - 12) < 1e-3f && r2 == 24 && !near, "stealth: sneaking, a creature's 24-block notice -> " + std::to_string(r1).substr(0, 4) + " (one 15 away doesn't sense you); upright still 24");
+    }
+    // the on-hit statuses: bleeding (through armour, and it ends), poison, slowness, fire, life drawn
+    {
+      Creature* m = foe(*lv, p, 1, false);
+      m->noGravity = true; m->maxHp = m->hp = 100; m->data["armor"] = json::array({"iron_helmet", "iron_chestplate", "iron_leggings", "iron_boots"});
+      talentOnHit(*lv, p, *m, 5, 0.0);
+      const bool nothing = bleedLeft(*m) <= 0 && m->poisonT <= 0 && m->slowT <= 0 && m->burn <= 0;
+      give(json{{"bleed_chance", {0.f, 1.f}}, {"poison_chance", {0.f, 1.f}}, {"slow_chance", {0.f, 1.f}}, {"burn_chance", {0.f, 1.f}}, {"lifesteal", {0.f, 0.1f}}});
+      p.hp = p.maxHp - 5; const float hp0 = p.hp;
+      talentOnHit(*lv, p, *m, 10, 0.0);
+      const float healed = p.hp - hp0;
+      const bool all = bleedLeft(*m) > 0 && m->poisonT > 0 && m->slowT > 0 && m->burn > 0;
+      m->poisonT = 0; m->burn = 0; m->slowT = 0;
+      const float before = m->hp;
+      for (double t = 0; t < 3; t += TICK_DT) { m->tick(*lv, TICK_DT); m->invulnT = 0; m->hurtTime = 0; }
+      const float bled = before - m->hp;
+      for (double t = 0; t < 3; t += TICK_DT) m->tick(*lv, TICK_DT);
+      const bool stopped = bleedLeft(*m) <= 0;
+      none(); m->removed = true;
+      check(nothing && all, "no talents: a blow leaves nothing; with them it leaves bleeding, poison, slowness and fire");
+      check(bled >= 2 && stopped, "a bleed wears down an iron-clad ghoul (" + std::to_string(bled).substr(0, 4) + " in 3 s) and stops when it runs out");
+      check(std::fabs(healed - 1) < 0.01f, "lifesteal 10%: a 10 blow heals 1 (" + std::to_string(healed).substr(0, 4) + ")");
+    }
+    // the Assassin's venom: on the undead with venom_undead; past the last half heart with venom_lethal
+    {
+      Creature* z = spawnCreature(*lv, 0, "skeleton", p.pos + vec3(0, 0, -2));
+      give(json{{"poison_chance", {0.f, 1.f}}});
+      talentOnHit(*lv, p, *z, 5, 0.0);
+      const bool plain = z->poisonT <= 0;
+      give(json{{"poison_chance", {0.f, 1.f}}, {"venom_undead", {1.f, 0.f}}});
+      talentOnHit(*lv, p, *z, 5, 0.0);
+      const bool undead = z->poisonT > 0;
+      z->removed = true;
+      Creature* a = spawnCreature(*lv, 0, "pig", p.pos + vec3(0, 0, -2));
+      Creature* b = spawnCreature(*lv, 0, "pig", p.pos + vec3(0, 0, 2));
+      give(json{{"poison_chance", {0.f, 1.f}}}); talentOnHit(*lv, p, *a, 1, 0.0);
+      give(json{{"poison_chance", {0.f, 1.f}}, {"venom_lethal", {1.f, 0.f}}}); talentOnHit(*lv, p, *b, 1, 0.0);
+      a->hp = b->hp = 1; a->noGravity = b->noGravity = true;
+      for (double t = 0; t < 4; t += TICK_DT) { a->tick(*lv, TICK_DT); b->tick(*lv, TICK_DT); a->invulnT = b->invulnT = 0; }
+      const bool aLives = a->alive(), bDies = !b->alive();
+      a->removed = b->removed = true; none();
+      check(plain && undead, "poison doesn't take on a skeleton, but does with venom_undead");
+      check(aLives && bDies, "poison stops at the last half heart, venom_lethal's doesn't");
+    }
+    // rage: nothing at full health, all of it at the last heart
+    {
+      give(json{{"rage", {0.f, 0.4f}}});
+      p.hp = p.maxHp; const float full = rageFactor(p);
+      p.hp = 1; const float low = rageFactor(p);
+      Creature* m = foe(*lv, p, 1, false); bool fin = false;
+      p.hp = p.maxHp; m->staggerT = 0; const float d0 = combatRpgOutgoing(*lv, p, *m, 10, fin);
+      p.hp = 1; m->staggerT = 0; const float d1 = combatRpgOutgoing(*lv, p, *m, 10, fin);
+      m->removed = true; none(); p.hp = p.maxHp;
+      check(full == 1 && std::fabs(low - 1.4f) < 1e-3f && d1 > d0 * 1.2f, "rage 40%: x" + std::to_string(full).substr(0, 4) + " at full health, x" + std::to_string(low).substr(0, 4) + " on the last heart (a 10 blow: " + std::to_string(d0).substr(0, 4) + " -> " + std::to_string(d1).substr(0, 4) + ")");
+    }
+    // loot twice: the chance is handed to the drop code, and kills drop more
+    {
+      give(json{{"loot_double", {0.f, 0.5f}}});
+      const float tw = mobLoot(1, false, &p).twice;
+      auto drops = [&](int kills) {
+        int n = 0;
+        for (int k = 0; k < kills; k++) {
+          Creature* c = spawnCreature(*lv, 0, "cow", p.pos + vec3(3, 0, 0));
+          c->mobLevel = 1; c->data["lvlSet"] = true;
+          combatHurt(*lv, *c, 1000, json{{"type", "magic"}}, &p);
+          for (auto& e : lv->entities()) if (!e->removed && e->type == "item") { n += e->data.contains("stack") ? e->data["stack"].value("n", 1) : 1; e->removed = true; }
+          c->removed = true;
+        }
+        lv->tick(TICK_DT);
+        return n;
+      };
+      const int more = drops(60); none(); const int plain = drops(60);
+      check(std::fabs(tw - 0.5f) < 1e-3f && more > plain * 1.25f, "loot_double 50%: 60 cows drop " + std::to_string(plain) + " -> " + std::to_string(more) + " items");
+    }
+    // healing received, effect duration, experience, damage reduction
+    {
+      give(json{{"heal_received", {0.f, 0.5f}}});
+      p.hp = 1; const float h1 = combatHeal(*lv, p, 4); none(); p.hp = 1; const float h0 = combatHeal(*lv, p, 4); p.hp = p.maxHp;
+      check(std::fabs(h1 - 6) < 1e-3f && std::fabs(h0 - 4) < 1e-3f, "heal_received +50%: a 4 heal mends " + std::to_string(h0).substr(0, 4) + " -> " + std::to_string(h1).substr(0, 4));
+      clearEffects(p); giveEffect(*lv, p, "speed", 10); const float t0 = effectTime(p, "speed");
+      clearEffects(p); give(json{{"effect_duration", {0.f, 0.5f}}}); giveEffect(*lv, p, "speed", 10); const float t1 = effectTime(p, "speed");
+      clearEffects(p); giveEffect(*lv, p, "poison", 10); const float tp = effectTime(p, "poison"); clearEffects(p); none();
+      check(std::fabs(t1 - t0 * 1.5f) < 0.01f && std::fabs(tp - 10) < 0.01f, "effect_duration +50%: Speed " + std::to_string(t0).substr(0, 4) + " -> " + std::to_string(t1).substr(0, 4) + " s; Poison stays " + std::to_string(tp).substr(0, 4) + " s");
+      p.level = 30; p.xp = 0; grantXP(*lv, p, 10); const int x0 = p.xp;
+      give(json{{"xp_gain", {0.f, 0.5f}}}); p.level = 30; p.xp = 0; grantXP(*lv, p, 10); const int x1 = p.xp; none();
+      check(x0 == 10 && x1 == 15, "xp_gain +50%: 10 experience -> " + std::to_string(x1));
+      Creature* m = foe(*lv, p, 1, false);
+      auto blow = [&]() { double sum = 0; for (int i = 0; i < 40; i++) { p.hp = p.maxHp; p.invuln = 0; m->attackCd = 0; magicState(*lv, p).ward = 0; m->meleeAt(*lv, p, 1.f, 0.f); sum += p.maxHp - p.hp; } return sum; };
+      const double b0 = blow(); give(json{{"damage_reduction", {0.f, 0.2f}}}); const double b1 = blow(); none(); m->removed = true;
+      check(b1 < b0 * 0.9, "damage_reduction 20%: a ghoul's blows " + std::to_string(b0 / 40).substr(0, 4) + " -> " + std::to_string(b1 / 40).substr(0, 4));
+    }
+    // granted spells: known without a tome, from a bonus and from a learnt node
+    {
+      p.stats["spells"] = json::array();
+      const bool before = knownSpells(p).empty();
+      give(json{{"grant_spell.fireball", {1.f, 0.f}}});
+      const auto ks = knownSpells(p);
+      const bool viaBonus = std::find(ks.begin(), ks.end(), "fireball") != ks.end();
+      none();
+      bool viaNode = true;
+      if (!skillTrees().empty()) {
+        p.stats["tree"] = json{{"nodes", json::array({"mage-ks_utility-ice"})}};
+        const auto kn = knownSpells(p);
+        viaNode = std::find(kn.begin(), kn.end(), "icenova") != kn.end();
+        treeReset(p);
+      }
+      check(before && viaBonus && viaNode && knownSpells(p).empty(), "grant_spell: Fireball known from a bonus, Ice Nova from Winter's Heart, gone again on a reset");
+    }
+    none(); p.stats.erase("attrBonus");
   }
 
   printf("[tougher creatures pay]\n");

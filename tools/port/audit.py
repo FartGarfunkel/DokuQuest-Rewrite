@@ -75,6 +75,14 @@ def main(d, src):
             k = e[0] if isinstance(e, list) else e
             if k not in known: broken.append(f'mob {m} drops {k}')
             made[k].add('mob')
+    for r in (load(d, 'barrel.json') or {}).get('recipes', []):   # the sealed barrel (sim/barrel.h)
+        for x in expand(r.get('item', '')): used[x].add('barrel')
+        if r.get('out'): made[r['out']].add('barrel')
+    for k, (out, n) in (load(d, 'quern.json') or {}).get('grind', {}).items():   # the quern (sim/quern.h)
+        used[k].add('quern'); made[out].add('quern')
+    for k, v in items.items():   # a dragon's armour: dragonscale armour and its scales at the smithing table (sim/stations.cpp)
+        s = (v.get('armor') or {}).get('set', '')
+        if s.endswith('scale') and s != 'dragonscale': made[k].add('smithing')
     for k, v in items.items():
         ic = v.get('icon')
         if ic and ic.startswith('block:'):

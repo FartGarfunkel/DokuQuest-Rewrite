@@ -120,6 +120,42 @@ int main(int argc, char** argv) {
     cases++;
     CHECK(std::fabs(with.a[f] - alone.a[f]) < 0.5, "carve %02x, open chest at face %d: face area %.0f, alone %.0f", cv, f, with.a[f], alone.a[f]);
   }
+  // attachments (world/attach.h) are drawn in their cell beside its main block: candles (lit: their flames too) and a
+  // chain hanging in a ladder's cell, away from the ladder's wall
+  {
+    auto quadsOffWall = [&](const MeshOutput& o) {   // quads in the ladder's cell, clear of its north wall (z > 0.25)
+      int n = 0;
+      auto pos = [](u32 v) { return (float)v / 256.f - 16.f; };
+      for (const std::vector<ChunkVertex>* list : {&o.opaque, &o.cutout, &o.trans})
+        for (size_t q = 0; q + 3 < list->size(); q += 4) {
+          vec3 c(0);
+          for (int k = 0; k < 4; k++) { const ChunkVertex& v = (*list)[q + k]; c += vec3(pos(v.a & 16383), pos((v.a >> 14) & 16383), pos(v.b & 16383)) * 0.25f; }
+          if (c.x > SX && c.x < SX + 1 && c.y > SY && c.y < SY + 1 && c.z > SZ + 0.25f && c.z < SZ + 1) n++;
+        }
+      return n;
+    };
+    const BlockId ladder = R.blockId("ladder"), candle = R.blockId("candle"), chain = R.blockId("chain");
+    auto cellIn = [&] {
+      auto in = emptyInput();
+      put(*in, SX, SY, SZ, ladder, 0); put(*in, SX, SY, SZ - 1, stone); put(*in, SX, SY - 1, SZ, stone); put(*in, SX, SY + 1, SZ, stone);
+      return in;
+    };
+    auto in = cellIn(); buildSectionMesh(*in, out, opt);
+    const int bare = quadsOffWall(out);
+    // each part draws in the shared cell what it draws as the cell's only block (the same neighbours round it)
+    struct Case { BlockId id; u8 meta; const char* what; };
+    for (const Case& k : {Case{candle, 1, "two candles"}, Case{candle, 1 | 4, "two lit candles"}, Case{candle, 3, "four candles"}, Case{chain, 0, "a chain"}}) {
+      auto alone = emptyInput();
+      put(*alone, SX, SY, SZ, k.id, k.meta); put(*alone, SX, SY, SZ - 1, stone); put(*alone, SX, SY - 1, SZ, stone); put(*alone, SX, SY + 1, SZ, stone);
+      buildSectionMesh(*alone, out, opt);
+      const int own = quadsOffWall(out);
+      in = cellIn(); in->parts.push_back({(i8)SX, (i8)SY, (i8)SZ, k.id, k.meta}); buildSectionMesh(*in, out, opt);
+      const int shared = quadsOffWall(out);
+      CHECK(shared - bare == own, "%s sharing a ladder's cell: %d quads beside the ladder's, %d alone", k.what, shared - bare, own);
+      if (k.id == candle) CHECK(own > 0, "%s draw something (%d quads)", k.what, own);
+      cases++;
+    }
+  }
   printf("mesher carve checks: %d cases, %d passed, %d failed\n", cases, passes, fails);
   return fails;
 }

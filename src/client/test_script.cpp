@@ -543,6 +543,7 @@ void runStep(App& a, const json& st) {
     else if (n == "close") { if (a.topScreen()) a.popScreen(); }
     else if (n == "hud_edit") a.pushScreen(makeHudEditScreen());
     else if (n == "pause") a.pushScreen(makePauseScreen());
+    else if (n == "howto") a.pushScreen(makeHowToScreen());
     else if (n == "journal") { while (a.topScreen()) a.popScreen(); a.pushScreen(makeJournalScreen()); }
     else if (n == "guide") { while (a.topScreen()) a.popScreen(); a.pushScreen(makeGuideScreen(st.value("item", std::string()))); }
     else if (n == "options") a.pushScreen(makeOptionsScreen());

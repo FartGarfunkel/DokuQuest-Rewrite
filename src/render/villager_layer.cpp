@@ -88,6 +88,7 @@ public:
       if (id == "talk") app.pushScreen(makeVillagerTalkScreen(args.value("npc", 0u), args.value("confront", false), args.value("victim", std::string())));
       else if (id == "board") app.pushScreen(makeQuestBoardScreen(ivec3(args.value("x", 0), args.value("y", 0), args.value("z", 0))));
       else if (id == "path") app.pushScreen(makePathScreen(args.value("hint", std::string())));
+      else if (id == "shrine") app.pushScreen(makeShrineScreen(ivec3(args.value("x", 0), args.value("y", 0), args.value("z", 0)), args.value("vid", std::string())));
       return true;
     });
   }

@@ -3,6 +3,7 @@
 // (following food, babies trailing their elders, bees working flowers), game/aquatic.js (stranded flopping),
 // game/pets.js (taming, follow/stay, defending, riding with saddles) and monsters.js's stalking big cats.
 #include "sim/mob_carry.h"
+#include "sim/deeds.h"
 #include "core/tool_parts.h"
 #include "sim/husbandry.h"
 #include "sim/trough.h"
@@ -882,7 +883,9 @@ bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
     return true;
   }
   if (mine && !held.empty() && tameFood(e.type, held.id) && e.hp < e.maxHp) {
-    e.hp = std::min(e.maxHp, e.hp + 4); use1(p, held); lv.fx->soundUi(p.id, "eat"); hearts(lv, e.pos + vec3(0, e.h, 0), 2); return true;
+    e.hp = std::min(e.maxHp, e.hp + 4); use1(p, held); lv.fx->soundUi(p.id, "eat"); hearts(lv, e.pos + vec3(0, e.h, 0), 2);
+    workXp(lv, p, "taming", workxp::CARE);   // a companion cared for (sim/deeds.h)
+    return true;
   }
   if (e.owner.empty() && !held.empty() && held.id == "saddle" && mountable) {
     std::string foods;
@@ -893,11 +896,12 @@ bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
     if ((e.type == "slime" || e.type == "magma_slime") && e.size > 1) { toast("Only a little one can be tamed"); return true; }
     if (e.T->boss) return false;
     use1(p, held); lv.fx->soundUi(p.id, "eat");
-    float chance = p.creative() ? 1 : std::min(1.f, e.T->tameChance);
+    float chance = p.creative() ? 1 : std::min(1.f, tameChanceOf(p, e.T->tameChance));   // (Beast Master: sim/skills.h)
     if (frand() < chance) {
       e.owner = p.name; e.tamed = true; e.kept = true; e.angryT = 0; e.foe = 0; e.panicT = 0; e.quarrel = 0; e.petFoe = 0; e.stay = false; e.loveT = 0;
       hearts(lv, e.pos + vec3(0, e.h, 0), 7); lv.fx->sound("levelup", e.pos, 12);
       toast("Tamed! The " + name + " is yours" + (mountable ? " (a saddle lets you ride it)" : ""), "good");
+      workXp(lv, p, "taming", workxp::TAME);   // (sim/deeds.h)
     } else mobBurst(lv, e.pos + vec3(0, e.h, 0), "smoke", 6, 0.4f);
     return true;
   }
@@ -921,6 +925,7 @@ bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
     const bool imm = rule(lv, "immersive");   // sim/husbandry.h: once a day it gets to know you; only the familiar breed
     if (imm && !e.baby) {
       if (!husbandryFeed(lv, e)) { toast(name + " has eaten today \xC2\xB7 " + husbandryLabel(e)); return true; }
+      workXp(lv, p, "taming", workxp::CARE);   // its daily feed (sim/deeds.h)
       toast(name + " \xC2\xB7 " + husbandryLabel(e));
       if (familiarity(e) >= FAM_BREED && e.loveT <= 0 && e.breedCd <= 0) e.loveT = 30;
     } else if (e.baby) e.growT -= 60;

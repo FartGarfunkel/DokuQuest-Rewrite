@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(DokuQuest VERSION 1.0.0 LANGUAGES C CXX)
 # DokuQuest C++ — game client, launcher (with dedicated server + Mod Studio) and headless server.
-set(DQ_VERSION "1.0.0-alpha.35" CACHE STRING "Full game version shown in game and launcher")
+set(DQ_VERSION "1.0.0-alpha.36" CACHE STRING "Full game version shown in game and launcher")
 # the launcher's own version: always the game's. The launcher holds the dedicated server (all the game's world and network
 # code), so every release changes it; an update installs the whole package and the new launcher takes over at its next
 # start (launcher/updater.cpp, launcher_main.cpp handOff). (It was set apart once and never raised: updates fetched only
@@ -174,6 +174,7 @@ target_link_libraries(test_song PRIVATE dqclient)
 # Content features test (headless): maps, fishing, camping, travel, elytra, the stable, places, farming. Run: build/test_content
 add_executable(test_content tools/test_content.cpp)
 target_link_libraries(test_content PRIVATE dqcore)
+target_compile_definitions(test_content PRIVATE DQ_SRC_DIR="${CMAKE_SOURCE_DIR}/src")   # (the dead-end item check reads the sim code)
 # Ingot and log piles (headless, sim/piles.h). Run: build/test_piles
 add_executable(test_piles tools/test_piles.cpp)
 target_link_libraries(test_piles PRIVATE dqcore)
@@ -229,6 +230,10 @@ add_test(NAME endstory COMMAND test_endstory)
 add_executable(test_villagers tools/test_villagers.cpp)
 target_link_libraries(test_villagers PRIVATE dqcore)
 add_test(NAME villagers COMMAND test_villagers)
+# What a village gives back (headless): the trades' requests, standing's doors, the Shrine of Renewal. Run: build/test_village_life
+add_executable(test_village_life tools/test_village_life.cpp)
+target_link_libraries(test_village_life PRIVATE dqcore)
+add_test(NAME village_life COMMAND test_village_life)
 # Hitbox audit (headless): drawn vs collision vs selection bounds of every shaped block. Run: build/test_shapes [--all]
 add_executable(test_shapes tools/test_shapes.cpp)
 target_link_libraries(test_shapes PRIVATE dqcore)
@@ -241,12 +246,16 @@ add_test(NAME npc_paths COMMAND test_npc_paths)
 add_executable(test_attachments tools/test_attachments.cpp)
 target_link_libraries(test_attachments PRIVATE dqcore)
 add_test(NAME attachments COMMAND test_attachments)
+# Time keeps passing where nobody is: crops, machines, hoppers and the young catch up (headless, sim/catchup.h). Run: build/test_catchup
+add_executable(test_catchup tools/test_catchup.cpp)
+target_link_libraries(test_catchup PRIVATE dqcore)
+add_test(NAME catchup COMMAND test_catchup)
 # Redstone, rails/carts, boats/ships and machines test (headless). Run: build/test_redstone
 add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
 
 # every program finds data/ and assets/ next to it
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_attachments test_piles test_immersive test_fire test_metal test_materials test_world test_life test_progression test_anim test_mesher test_weather test_balance test_npc_paths test_shapes)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_village_life test_redstone test_attachments test_piles test_immersive test_fire test_metal test_materials test_world test_life test_progression test_anim test_mesher test_weather test_balance test_npc_paths test_shapes test_catchup)
   if(TARGET ${t})
     add_dependencies(${t} dq_runtime_data)
   endif()

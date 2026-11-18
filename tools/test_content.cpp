@@ -28,9 +28,85 @@
 #include "sim/combat.h"
 #include "sim/shield_shape.h"
 #include "sim/spell_items.h"
+#include "core/metals.h"
+#include "sim/knapping.h"
+#include "sim/item_uses.h"
+#include "sim/magic_combat.h"
+#include "sim/inventory.h"
+#include "sim/villagers.h"
 #include <thread>
 #include <cstdio>
+#include <regex>
+#include <set>
 using namespace dq;
+
+// ---- every item has a use: what an item can be put to (placed, worn, eaten, an ingredient, a station's input, a
+// creature's food, melted down, or named by the sim code that handles it). Selling or a transmute value is not a use.
+// Returns the items with none, each with what was looked at. allowed: world-only things kept on purpose (with why).
+static const std::map<std::string, std::string>& deadEndAllowed() {
+  static const std::map<std::string, std::string> A = {
+    {"summoning_wand", "creative only: calls up creatures for builders"},
+    {"unfinished_*", "the anvil's armour pieces (sim/anvil.cpp names them by piece), padded at the crafting table (sim/crafting.cpp)"},
+  };
+  return A;
+}
+static std::vector<std::string> deadEndItems() {
+  const Registry& R = reg();
+  std::set<std::string> used;
+  auto addKey = [&](const std::string& k) {
+    if (k.empty()) return;
+    if (k[0] == '#') { auto it = R.tags.find(k); if (it != R.tags.end()) for (auto& x : it->second) used.insert(x); }
+    else used.insert(k);
+  };
+  for (auto& r : R.recipes) { for (auto& [c, k] : r.key) addKey(k); for (auto& k : r.items) addKey(k); }
+  for (auto& [in, out] : R.smelting) addKey(in);
+  auto keysOf = [&](const json* j) { if (j && j->is_object()) for (auto& [k, v] : j->items()) addKey(k); };
+  auto data = [](const char* f) { return readJson(dataDir() / f).value_or(json()); };
+  const json quern = data("quern.json"), mach = data("machines.json"), trom = data("trommel.json"), barrel = data("barrel.json"),
+             magic = data("magic.json"), tm = data("tool_materials.json");
+  if (quern.contains("grind")) keysOf(&quern["grind"]);
+  for (const char* k : {"milling", "sawing", "crushing", "compost"}) if (mach.contains(k)) keysOf(&mach[k]);
+  if (trom.contains("sift")) keysOf(&trom["sift"]);
+  if (barrel.contains("recipes")) for (auto& r : barrel["recipes"]) if (r.contains("item") && r["item"].is_string()) addKey(r["item"]);
+  if (magic.contains("brewIngs")) for (auto& k : magic["brewIngs"]) if (k.is_string()) addKey(k);
+  if (magic.contains("enchItems")) keysOf(&magic["enchItems"]);
+  if (tm.contains("materials")) for (auto& [k, m] : tm["materials"].items()) if (m.contains("items")) for (auto& i : m["items"]) if (i.is_string()) addKey(i);
+  if (R.mobs.is_object()) for (auto& [k, m] : R.mobs.items()) {   // a creature's food, its taming food
+    if (m.contains("food") && m["food"].is_array()) for (auto& f : m["food"]) if (f.is_string()) addKey(f);
+    if (m.contains("tame") && m["tame"].is_object() && m["tame"].contains("foods")) for (auto& f : m["tame"]["foods"]) if (f.is_string()) addKey(f);
+  }
+  // the code: an item named by its key ("key") in the sim, the land's places or a station's screen is handled there (a
+  // use, a key's gate, the anvil's flux)
+  std::set<std::string> named;
+#ifdef DQ_SRC_DIR
+  {
+    static const std::regex lit("\"([a-z0-9_]+)\"");
+    for (const char* dir : {"sim", "gen", "ui"}) for (auto& e : fs::recursive_directory_iterator(fs::path(DQ_SRC_DIR) / dir)) {
+      const std::string ext = e.path().extension().string();
+      if (ext != ".cpp" && ext != ".h" && ext != ".inc") continue;
+      auto txt = readFile(e.path()); if (!txt) continue;
+      for (std::sregex_iterator it(txt->begin(), txt->end(), lit), end; it != end; ++it) named.insert((*it)[1].str());
+    }
+  }
+#endif
+  static const char* USE[] = {"tool", "armor", "food", "drink", "potion", "splash", "fuel", "spawnEgg", "forgeHead", "metalHead", "metalPiece", "tome",
+    "cape", "dye", "firework", "plants", "hat", "mobHead", "charm", "cart", "boat", "staff", "hook", "bow", "disc", "bucket", "backpack", "compass",
+    "igniter", "mapItem", "snowball", "bonemeal", "bottle", "weWand", "heartCrystal", "clock", "spyglass", "shears", "summon", "pocketKey", "fishing",
+    "xpBottle", "gustPuff", "grapple", "campKit", "pearl", "light", "holy", "school", "lore", "forged", "pottery", "mold", "template", "wolfArmor",
+    "horseArmor", "knife", "arrow", "javelin", "hammer", "scythe", "saw", "enderEye", "chorus", "wateringCan", "paintbrush", "summonWand", "cannonAmmo",
+    "charges", "calendar", "label", "propick", "tongs", "shield", "mixedTool", "mixedArmor", "warHorn"};
+  std::vector<std::string> out;
+  for (auto& d : R.items) {
+    if (d.has("hidden") || d.has("spawnEgg") || d.key.find("debug") != std::string::npos) continue;
+    if (!d.block.empty() || R.blockIds.count(d.key)) continue;
+    bool ok = used.count(d.key) || named.count(d.key) || !metalOfItem(d.key).empty() || !knapMaterialOf(d.key).empty() || deadEndAllowed().count(d.key);
+    for (auto& [k, why] : deadEndAllowed()) if (!ok && k.back() == '*' && d.key.rfind(k.substr(0, k.size() - 1), 0) == 0) ok = true;
+    for (const char* f : USE) if (!ok && d.has(f)) ok = true;
+    if (!ok) out.push_back(d.key);
+  }
+  std::sort(out.begin(), out.end());
+  return out;
+}
 namespace dq { bool deflectFireball(Level& lv, Entity& by, vec3 eye, vec3 look, float reach); }   // sim/creature_entities.cpp
 
 static int fails = 0, passes = 0;
@@ -308,7 +384,7 @@ int main(int argc, char** argv) {
       cow->loveT = 0; cow->breedCd = 0;
       tick(8);
       check(cow->loveT > 0 || cow->breedCd > 0, "a grown cow walks to the trough, eats and is in the mood");
-      check(troughStack(w, TX, Y + 1, TZ).n == 19 && (!calf || calf->loveT <= 0), "...one bite of it (a calf leaves it be)");
+      check(troughStack(w, TX, Y + 1, TZ).n == 19 && (!calf || calf->loveT <= 0), "...one bite of it (a calf leaves it be): " + std::to_string(troughStack(w, TX, Y + 1, TZ).n) + " left, calf love " + std::to_string(calf ? calf->loveT : 0.f));
       ItemStack empty;
       int got0 = 0; for (auto& s : P->inv) if (s.id == food) got0 += s.n;
       check(troughUse(*L, *P, w, h, empty) && troughStack(w, TX, Y + 1, TZ).empty(), "an empty hand takes what's left back");
@@ -818,6 +894,91 @@ int main(int argc, char** argv) {
     check(ms("diamond_sword") == 1 && ms("iron_chestplate") == 1 && ms("leather_backpack") == 1 && ms("water_bucket") == 1 && ms("mushroom_stew") == 1 && ms("elytra") == 1, "worn-out things, carried containers, filled buckets and stews stay single");
     ItemStack full("chest", 1); full.tag = json{{"c", json::array({ItemStack("dirt", 3).toJson()})}};
     check(!ItemStack("chest", 1).canMerge(full) && ItemStack("chest", 1).canMerge(ItemStack("chest", 5)), "a chest carried with things in it never merges with an empty one");
+  }
+
+  printf("[every item has a use]\n");
+  {
+    const auto dead = deadEndItems();
+    std::string list; for (auto& k : dead) list += " " + k;
+    check(dead.empty(), "no dead-end items (placed, worn, eaten, an ingredient, a station's input, a creature's food, melted, or handled by the sim)" + (dead.empty() ? std::string() : ":" + list));
+  }
+
+  printf("[the War Horn]\n");
+  {
+    auto hasRecipe = [](const char* out, const char* in) {
+      for (auto& r : reg().recipes) if (r.out == out) { for (auto& k : r.items) if (k == in) return true; for (auto& [c, k] : r.key) if (k == in) return true; }
+      return false;
+    };
+    check(reg().item("war_horn") && hasRecipe("war_horn", "minotaur_horn"), "the Minotaur's horn is made into a War Horn");
+    for (auto& q : P->inv) q = ItemStack();
+    Entity* we = spawnCreature(*L, "wolf", P->realm, P->pos + vec3(20, 0.5f, 0));
+    auto* wolf = dynamic_cast<Creature*>(we);
+    if (wolf) { wolf->tamed = true; wolf->owner = P->name; wolf->data["owner"] = P->name; wolf->data["tamed"] = true; }
+    int called = 0; std::string why;
+    P->stats.erase("warHornAt");
+    check(warHornBlow(*L, *P, called, why) && called == 1, "blowing it: one companion answers (" + std::to_string(called) + ")");
+    check(wolf && glm::distance(wolf->pos, P->pos) < 4 && rallied(*L, *wolf), "blowing it brings your tamed wolf to you, under its call");
+    float k = wolf ? pathPetFactor(*L, *wolf, nullptr) : 0;   // (a blow on it: not stronger)
+    Entity* zz = spawnCreature(*L, "zombie", P->realm, P->pos + vec3(3, 0.5f, 0));
+    float out = zz && wolf ? pathPetFactor(*L, *static_cast<Creature*>(zz), wolf) : 0;
+    check(k == 1.f && std::abs(out - RALLY_DAMAGE) < 1e-4f, "...and its blows are stronger while it lasts (x" + std::to_string(out) + ")");
+    int n = 0;
+    check(!warHornBlow(*L, *P, n, why) && why.find("breath") != std::string::npos, "a second blow at once waits for your breath (" + why + ")");
+    if (zz) zz->removed = true;
+    if (wolf) wolf->removed = true;
+    for (auto& q : P->inv) q = ItemStack();
+  }
+
+  printf("[the dragons' own scales and armour]\n");
+  {
+    int own = 0;
+    for (const char* el : {"verdant", "sand", "frost", "bog", "ember", "storm", "tide"}) {
+      const json& M = reg().mobs[std::string(el) + "_dragon"];
+      const std::string scale = std::string(el) + "_dragon_scale";
+      bool drops = false; for (auto& d : M["drops"]) if (d[0] == scale) drops = true;
+      if (drops && reg().item(scale) && reg().item(std::string(el) + "scale_chestplate")) own++;
+    }
+    check(own == 7, "each of the seven dragons drops its own scale, with an armour set of its own (" + std::to_string(own) + ")");
+    StationResult r = stationResult("smithing", ItemStack("dragonscale_chestplate", 1), ItemStack("frost_dragon_scale", 4));
+    check(r.ok && r.out.id == "frostscale_chestplate" && r.useB == 4, "at the smithing table, four frost scales make a dragonscale chestplate Frost Scale");
+    check(!stationResult("smithing", ItemStack("dragonscale_chestplate", 1), ItemStack("frost_dragon_scale", 3)).ok, "...three are not enough");
+    bool back = false; for (auto& rc : reg().recipes) if (rc.out == "dragon_scale" && rc.items.size() == 1 && rc.items[0] == "tide_dragon_scale") back = true;
+    check(back, "a dragon's own scale still crafts into a plain Dragon Scale (the old recipes)");
+    for (int i = 0; i < 4; i++) P->armor[i] = ItemStack(std::string("frostscale_") + (const char*[]){"helmet", "chestplate", "leggings", "boots"}[i], 1);
+    DamageSource frost; frost.element = "frost";
+    check(gearSet(*P) == "frostscale" && gearHarmFactor(*P, frost) < 0.25f, "the whole Frost Scale set: frost hurts a fifth");
+    Entity* z = spawnCreature(*L, "zombie", P->realm, P->pos + vec3(1.5f, 0, 0));
+    DamageSource blow; blow.type = "mob"; blow.attacker = z ? z->id : 0;
+    P->invuln = 0; P->hp = P->maxHp;
+    if (z) damagePlayer(*L, *P, 4, blow);
+    check(z && mobStatus(*z, "slowT") > 0, "...and what strikes you is slowed");
+    if (z) z->removed = true;
+    P->armor[3] = ItemStack("dragonscale_boots", 1);
+    check(gearSet(*P).empty(), "a mixed set has no set bonus");
+    for (int i = 0; i < 4; i++) P->armor[i] = ItemStack(std::string("tidescale_") + (const char*[]){"helmet", "chestplate", "leggings", "boots"}[i], 1);
+    P->air = 1; tick(0.2);
+    check(P->air >= P->maxAir - 0.01f, "the Tide Scale set: your breath never runs out");
+    for (auto& a : P->armor) a = ItemStack();
+  }
+
+  printf("[barley, oats and rye; the capes]\n");
+  {
+    auto made = [](const char* out, const char* in) { for (auto& r : reg().recipes) if (r.out == out) { for (auto& k : r.items) if (k == in) return true; for (auto& [c, k] : r.key) if (k == in) return true; } return false; };
+    check(made("rye_bread", "rye") && made("barley_bread", "barley") && made("porridge", "oat") && made("oatcake", "oat"), "rye bread, barley bread, porridge and oatcakes");
+    const json barrel = readJson(dataDir() / "barrel.json").value_or(json());
+    bool ale = false, mead = false; for (auto& r : barrel["recipes"]) { if (r.value("item", "") == "barley" && r.value("out", "") == "ale_mug") ale = true; if (r.value("item", "") == "honey_bottle" && r.value("out", "") == "mead") mead = true; }
+    check(ale && mead, "barley brews into ale and honey into mead, sealed in a barrel with water");
+    auto eats = [](const char* mob, const char* f) { const json& m = reg().mobs[mob]; for (auto& x : m["food"]) if (x == f) return true; return false; };
+    check(eats("cow", "oat") && eats("sheep", "barley") && eats("horse", "oat") && eats("chicken", "rye"), "farm animals eat the grains (breeding, the feeding trough)");
+    for (auto& c : P->cape) c = ItemStack();
+    const float bare = fireResist(*P);
+    P->cape[0] = ItemStack("ember_cape", 1);
+    check(fireResist(*P) > bare + 0.15f && reg().item("ember_cape")->str("desc").find("fire") != std::string::npos, "the ember cape takes a fifth off fire, and says so");
+    P->cape[0] = ItemStack("frost_cape", 1);
+    check(gearHarmFactor(*P, DamageSource{"", "frost"}) < 0.75f, "the frost cape: frost hurts less");
+    P->cape[0] = ItemStack("royal_cape", 1);
+    check(capeShopFactor(*P) < 1, "the royal cape: the shops ask less");
+    P->cape[0] = ItemStack();
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

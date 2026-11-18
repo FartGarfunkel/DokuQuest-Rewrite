@@ -30,6 +30,8 @@ bool initCore(const CoreOptions& o) {
   registerTreasureMaps();   // a treasure map's X and the chest buried there (sim/treasure_maps.cpp)
   registerStrung();         // chains and ropes strung between blocks (sim/strung.cpp)
   registerAttachments();    // parts sharing a cell with its main block (sim/attach_play.h)
+  registerItemUses();       // the War Horn, the dragons' armour sets, the capes (sim/item_uses.h)
+  registerGuidance();       // the first-time hints and What next (sim/guidance.h)
   registerFallen();         // the fallen adventurers: their bones are their hitboxes (sim/fallen.h)
   return true;
 }

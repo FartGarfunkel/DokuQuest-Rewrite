@@ -1,7 +1,9 @@
 // tools/test_attachments.cpp — headless checks for attachments (world/attach.h, sim/attach_play.h): small parts that
 // share a cell with its main block. Placing (and refusing by overlap), the ladder shaft with a torch on its wall, the
 // trapdoor flipped up behind a chest that then can't swing down, light from a torch attachment, breaking each part on
-// its own, a part popping off when its support goes, saving and loading (and old saves), a lever attachment powering.
+// its own, a part popping off when its support goes, saving and loading (and old saves), a lever attachment powering;
+// candles on the floor of a ladder's cell (stacked, lit, put out, popping off), a chain hanging beside a ladder, rails laid
+// under a torch or a lever on the tunnel wall (the lever still powers a powered rail), the new parts on the wire.
 // Run: build/test_attachments (exit code = failures)
 #include "core/init.h"
 #include "core/registry.h"
@@ -20,6 +22,13 @@
 #include <cstring>
 
 using namespace dq;
+namespace dq {   // (sim/villagers_internal.h: the townsfolk's way finding)
+struct NpcStep { ivec3 at{0}; float floor = 0; bool climb = false; vec2 c{0}; };
+std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, float bodyH, bool* partial, int maxNodes, bool* snapped);
+float npcStandAt(const World& w, int x, int y, int z, float bodyW, float bodyH);
+}
+static std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bw, float bh, bool* partial) { return dq::npcPath(w, from, to, bw, bh, partial, 2400, nullptr); }
+static float npcStandAt(const World& w, int x, int y, int z) { return dq::npcStandAt(w, x, y, z, 0.3f, 1.8f); }
 static int fails = 0, passes = 0;
 static void check(bool ok, const std::string& what) { printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str()); (ok ? passes : fails)++; }
 
@@ -238,10 +247,249 @@ int main(int argc, char** argv) {
     check(qp && !((*qp)[0].meta & 4), "and shut again when it's off");
   }
 
+  printf("[a pressure plate attachment is pressed]\n");
+  {   // a plate on the floor of a wall torch's cell: stood on, it lights the lamp beside it; stepped off, the lamp goes out
+    const ivec3 Q(26, Y + 1, 4);
+    w.setBlock(Q.x, Q.y, Q.z - 1, stone);
+    w.setBlock(Q.x, Q.y, Q.z, torch, 3);   // (on the wall to the north)
+    w.setBlock(Q.x + 1, Q.y, Q.z, lamp);
+    check(placeAttachment(*L, P, w, Q.x, Q.y, Q.z, B("stone_pressure_plate"), 0) == 1, "a pressure plate shares a wall torch's cell");
+    tick(4);
+    check(w.getBlock(Q.x + 1, Q.y, Q.z) == lamp, "the lamp beside it is dark");
+    P->flying = false; P->pos = vec3(Q.x + 0.5f, Q.y, Q.z + 0.5f); P->vel = vec3(0);
+    for (int i = 0; i < 8; i++) { P->pos = vec3(Q.x + 0.5f, Q.y, Q.z + 0.5f); tick(1); }
+    const auto* qp = w.attachments(Q.x, Q.y, Q.z);
+    check(qp && !qp->empty() && ((*qp)[0].meta & 15) > 0, "stood on, the plate part is pressed");
+    check(R.block(w.getBlock(Q.x + 1, Q.y, Q.z)).key == "redstone_lamp_on", "and the lamp beside it lights (" + R.block(w.getBlock(Q.x + 1, Q.y, Q.z)).key + ")");
+    P->flying = true; P->pos = vec3(Q.x + 0.5f, Y + 1, Q.z + 6.5f);
+    tick(40);
+    qp = w.attachments(Q.x, Q.y, Q.z);
+    check(qp && !qp->empty() && ((*qp)[0].meta & 15) == 0 && w.getBlock(Q.x + 1, Q.y, Q.z) == lamp, "stepped off, it lets go and the lamp goes out");
+  }
+
+  printf("[candles share a cell]\n");
+  const BlockId candle = B("candle"), chain = B("chain"), rail = B("rail"), prail = B("powered_rail"), plate = B("stone_pressure_plate");
+  check(attachable(candle) && attachable(B("white_candle")) && attachable(B("soul_wax_candle")), "candles may be attachments");
+  check(!attachable(B("sea_pickle")) && !attachable(B("white_carpet")) && !attachable(B("redstone_wire")) && !attachable(rail) && !attachable(B("mob_head"))
+        && !attachable(B("flower_pot")) && !attachable(B("tripwire_hook")) && !attachable(B("end_rod")),
+        "sea pickles, carpets (rugs), dust, rails, heads, pots, tripwire hooks and end rods are not");
+  auto partCentreOf = [&](ivec3 c, int slot) { std::vector<BoxF> bx; partWorldBoxes(w, c.x, c.y, c.z, slot, ShapePurpose::Select, bx);
+    return (bx[0].lo + bx[0].hi) * 0.5f; };   // (the first box: two candles' middle is the gap between them)
+  const ivec3 K(4, Y + 1, 10);
+  w.setBlock(K.x, K.y, K.z - 1, stone);
+  w.setBlock(K.x, K.y, K.z, ladder, 0);
+  check(attachSupported(w, K.x, K.y, K.z, ladder, 0), "(a ladder on the north wall of the candle's cell)");
+  tick(2);
+  h = aim(vec3(K.x + 0.5f, Y + 1, K.z + 3.5f), vec3(K.x + 0.5f, K.y, K.z + 0.5f));
+  check(h.hit && h.block == ivec3(K.x, K.y - 1, K.z) && h.normal == ivec3(0, 1, 0), "looking at the floor of the ladder's cell");
+  useWith("candle");
+  parts = w.attachments(K.x, K.y, K.z);
+  check(w.getBlock(K.x, K.y, K.z) == ladder && parts && parts->size() == 1 && (*parts)[0].id == candle && ((*parts)[0].meta & 3) == 0,
+        "a candle stands on the floor of the ladder's cell, as an attachment");
+  { std::vector<BoxF> bx; partWorldBoxes(w, K.x, K.y, K.z, 0, ShapePurpose::Select, bx);
+    check(!bx.empty() && bx[0].hi.y - bx[0].lo.y < 0.5f && bx[0].lo.z > K.z + 0.1f, "its outline is the candle's own"); }
+  h = aim(vec3(K.x + 0.5f, Y + 1, K.z + 3.5f), partCentreOf(K, 0));
+  check(h.hit && h.block == K && h.part == 0 && h.id == candle, "aiming at the candle picks it");
+  P->held() = ItemStack("candle", 8); pc.use(false, PlayerInput{});
+  parts = w.attachments(K.x, K.y, K.z);
+  check(parts && ((*parts)[0].meta & 3) == 1 && w.getBlock(K.x, K.y, K.z) == ladder && P->held().n == 7, "a candle on the candle makes two (one used); the ladder stays");
+  w.removeAttachment(S.x, S.y, S.z, 0); tick(2);   // (the shaft's torch out for a moment: its light reaches this far)
+  const int dark = w.getLight(K.x, K.y, K.z) & 15;
+  h = aim(vec3(K.x + 0.5f, Y + 1, K.z + 3.5f), partCentreOf(K, 0));
+  useWith("flint_and_steel"); tick(2);
+  parts = w.attachments(K.x, K.y, K.z);
+  check(parts && ((*parts)[0].meta & 4), "flint and steel lights the candles");
+  check((w.getLight(K.x, K.y, K.z) & 15) >= std::max(6, dark + 1), "two lit candles light the cell (" + std::to_string(w.getLight(K.x, K.y, K.z) & 15) + ", dark " + std::to_string(dark) + ")");
+  h = aim(vec3(K.x + 0.5f, Y + 1, K.z + 3.5f), partCentreOf(K, 0));
+  useWith(""); tick(2);
+  parts = w.attachments(K.x, K.y, K.z);
+  check(parts && !((*parts)[0].meta & 4) && (w.getLight(K.x, K.y, K.z) & 15) == dark, "an empty hand puts them out (" + std::to_string(w.getLight(K.x, K.y, K.z) & 15) + ")");
+  placeAttachment(*L, P, w, S.x, S.y, S.z, torch, 2);
+  for (int i = 0; i < 3; i++) { h = aim(vec3(K.x + 0.5f, Y + 1, K.z + 3.5f), partCentreOf(K, 0)); P->held() = ItemStack("candle", 8); pc.use(false, PlayerInput{}); }
+  parts = w.attachments(K.x, K.y, K.z);
+  check(parts && parts->size() == 1 && ((*parts)[0].meta & 3) == 3 && w.getBlock(K.x, K.y, K.z) == ladder, "four at most: a fifth changes nothing, the ladder stays");
+  { P->sneaking = true; h = aim(vec3(K.x + 0.5f, Y + 1, K.z + 3.5f), partCentreOf(K, 0)); P->held() = ItemStack("candle", 8); pc.use(false, PlayerInput{}); P->sneaking = false;
+    check(w.getBlock(K.x, K.y, K.z) == ladder && w.attachments(K.x, K.y, K.z) && w.attachments(K.x, K.y, K.z)->size() == 1, "(sneaking with a candle on it never turns the ladder into candles)"); }
+  check(placeAttachment(*L, P, w, K.x, K.y, K.z, candle, 0) == 0, "a second candle in the cell is refused (it would stand in the first)");
+  { // what can't share a floor with a candle
+    const ivec3 F(6, Y + 1, 10);
+    w.setBlock(F.x, F.y, F.z, plate, 0);
+    check(placeAttachment(*L, P, w, F.x, F.y, F.z, candle, 0) == 0 && !w.hasAttachments(F.x, F.y, F.z), "a candle on a pressure plate is refused");
+    w.setBlock(F.x, F.y, F.z, torch, 0);
+    check(placeAttachment(*L, P, w, F.x, F.y, F.z, candle, 0) == 0, "and beside a standing torch (they'd overlap)");
+    w.setBlock(F.x + 1, F.y, F.z, stone);
+    w.setBlock(F.x, F.y, F.z, torch, 2);
+    check(placeAttachment(*L, P, w, F.x, F.y, F.z, candle, 0) == 1, "but under a torch on the wall it stands");
+    w.setBlock(F.x + 1, F.y, F.z, AIR); w.setBlock(F.x, F.y, F.z, AIR);
+  }
+  clearItems();
+  h = aim(vec3(K.x + 0.5f, Y + 1, K.z + 3.5f), partCentreOf(K, 0));
+  check(h.part == 0, "aiming at the candles");
+  pc.breakBlock(K.x, K.y, K.z); tick(1);
+  check(!w.hasAttachments(K.x, K.y, K.z) && w.getBlock(K.x, K.y, K.z) == ladder, "breaking the candles takes them only: the ladder stays");
+  check(itemsNear(vec3(K) + vec3(0.5f), "candle") == 4, "and drops all four (" + std::to_string(itemsNear(vec3(K) + vec3(0.5f), "candle")) + ")");
+  clearItems();
+  check(placeAttachment(*L, P, w, K.x, K.y, K.z, candle, 1) == 1, "two candles back");
+  w.setBlock(K.x, K.y - 1, K.z, AIR); tick(1);
+  check(!w.hasAttachments(K.x, K.y, K.z) && w.getBlock(K.x, K.y, K.z) == ladder, "the floor gone, the candles pop off; the ladder on its wall stays");
+  check(itemsNear(vec3(K) + vec3(0.5f), "candle") == 2, "as two candles");
+  w.setBlock(K.x, K.y - 1, K.z, stone);
+  placeAttachment(*L, P, w, K.x, K.y, K.z, candle, 2 | 4);
+  clearItems();
+
+  printf("[chains share a cell]\n");
+  check(attachable(chain) && attachable(B("thallasium_chain")), "chains may be attachments");
+  const ivec3 N(8, Y + 2, 10);
+  w.setBlock(N.x, N.y, N.z - 1, stone); w.setBlock(N.x, N.y - 1, N.z - 1, stone);
+  w.setBlock(N.x, N.y + 1, N.z, stone);
+  w.setBlock(N.x, N.y, N.z, ladder, 0); w.setBlock(N.x, N.y - 1, N.z, ladder, 0);
+  tick(2);
+  h = aim(vec3(N.x + 0.5f, Y + 1, N.z + 2.5f), vec3(N.x + 0.5f, N.y + 1.0f, N.z + 0.5f));
+  check(h.hit && h.block == ivec3(N.x, N.y + 1, N.z) && h.normal == ivec3(0, -1, 0), "looking up at the ceiling over the ladder");
+  useWith("chain");
+  parts = w.attachments(N.x, N.y, N.z);
+  check(w.getBlock(N.x, N.y, N.z) == ladder && parts && parts->size() == 1 && (*parts)[0].id == chain, "a chain hangs in the ladder's cell, as an attachment");
+  { std::vector<BoxF> bx; partWorldBoxes(w, N.x, N.y, N.z, 0, ShapePurpose::Select, bx);
+    bool thin = !bx.empty(); for (auto& b : bx) if (b.hi.x - b.lo.x > 0.5f || b.hi.z - b.lo.z > 0.5f) thin = false;
+    check(thin, "its outline is the chain's own, not the cell"); }
+  check(placeAttachment(*L, P, w, N.x, N.y, N.z, B("lantern"), 1) == 0, "a lantern in the chain's place is refused");
+  check(placeAttachment(*L, P, w, N.x, N.y, N.z, candle, 0) == 0, "(a candle would stand in the chain too)");
+  clearItems();
+  h = aim(vec3(N.x + 0.5f, Y + 1, N.z + 2.5f), partCentreOf(N, 0));
+  check(h.hit && h.part == 0 && h.id == chain, "aiming at the chain picks it");
+  pc.breakBlock(N.x, N.y, N.z); tick(1);
+  check(!w.hasAttachments(N.x, N.y, N.z) && w.getBlock(N.x, N.y, N.z) == ladder && itemsNear(vec3(N) + vec3(0.5f), "chain") == 1, "breaking the chain leaves the ladder, drops a chain");
+  check(placeAttachment(*L, P, w, N.x, N.y, N.z, chain, 0) == 1, "the chain back");
+  // a ladder put up where a chain hangs: the ladder joins the chain's cell
+  w.setBlock(N.x, N.y - 1, N.z, chain, 0);
+  check(placeAttachment(*L, P, w, N.x, N.y - 1, N.z, ladder, 0) == 1 && w.getBlock(N.x, N.y - 1, N.z) == chain, "a ladder on the wall beside a hanging chain");
+  clearItems();
+
+  printf("[rails under a wall torch]\n");
+  const ivec3 Rr(12, Y + 1, 10);
+  w.setBlock(Rr.x + 1, Rr.y, Rr.z, stone);
+  w.setBlock(Rr.x, Rr.y, Rr.z, torch, 2);
+  tick(2);
+  h = aim(vec3(Rr.x + 0.5f, Y + 1, Rr.z + 3.5f), vec3(Rr.x + 0.4f, Rr.y, Rr.z + 0.5f));
+  check(h.hit && h.block == ivec3(Rr.x, Rr.y - 1, Rr.z) && h.normal == ivec3(0, 1, 0), "looking at the floor under the wall torch");
+  useWith("rail");
+  parts = w.attachments(Rr.x, Rr.y, Rr.z);
+  check(w.getBlock(Rr.x, Rr.y, Rr.z) == rail && parts && parts->size() == 1 && (*parts)[0].id == torch && ((*parts)[0].meta & 7) == 2,
+        "a rail laid under a wall torch: the rail holds the cell, the torch steps aside onto its wall (" + R.block(w.getBlock(Rr.x, Rr.y, Rr.z)).key + ")");
+  tick(2);
+  check((w.getLight(Rr.x, Rr.y, Rr.z) & 15) >= 13, "the torch still lights the track");
+  { const ivec3 F(14, Y + 1, 10);
+    w.setBlock(F.x, F.y, F.z, torch, 0);
+    h = aim(vec3(F.x + 0.5f, Y + 1, F.z + 3.5f), vec3(F.x + 0.2f, F.y, F.z + 0.8f));
+    useWith("rail");
+    check(w.getBlock(F.x, F.y, F.z) == torch && !w.hasAttachments(F.x, F.y, F.z), "a rail over a standing torch is refused");
+    w.setBlock(F.x, F.y, F.z, AIR); }
+  clearItems();
+  h = aim(vec3(Rr.x + 0.5f, Y + 1, Rr.z + 3.5f), vec3(Rr.x + 0.3f, Rr.y + 0.05f, Rr.z + 0.5f));
+  check(h.hit && h.block == Rr && h.part == -1 && h.id == rail, "aiming at the rail picks the rail");
+  pc.breakBlock(Rr.x, Rr.y, Rr.z); tick(1);
+  check(w.getBlock(Rr.x, Rr.y, Rr.z) == torch && (w.getMeta(Rr.x, Rr.y, Rr.z) & 7) == 2 && !w.hasAttachments(Rr.x, Rr.y, Rr.z), "breaking the rail leaves the torch on its wall");
+  check(itemsNear(vec3(Rr) + vec3(0.5f), "rail") == 1 && itemsNear(vec3(Rr) + vec3(0.5f), "torch") == 0, "and drops the rail");
+  clearItems();
+  { // a lever on the wall of a powered rail's cell powers it (through the block it's fixed to)
+    const ivec3 PR(18, Y + 1, 10);
+    w.setBlock(PR.x + 1, PR.y, PR.z, stone);
+    w.setBlock(PR.x, PR.y, PR.z, lever, 2 + 1);
+    tick(2);
+    h = aim(vec3(PR.x + 0.5f, Y + 1, PR.z + 3.5f), vec3(PR.x + 0.3f, PR.y, PR.z + 0.5f));
+    useWith("powered_rail");
+    parts = w.attachments(PR.x, PR.y, PR.z);
+    check(w.getBlock(PR.x, PR.y, PR.z) == prail && parts && parts->size() == 1 && (*parts)[0].id == lever, "a powered rail laid under a lever on the wall");
+    tick(6);
+    check(!(w.getMeta(PR.x, PR.y, PR.z) & 8), "unpowered while the lever is off");
+    h = aim(vec3(PR.x + 0.5f, Y + 1, PR.z + 3.5f), partCentreOf(PR, 0));
+    check(h.part == 0 && h.id == lever, "aiming at the lever");
+    useWith(""); tick(8);
+    check((w.getMeta(PR.x, PR.y, PR.z) & 8) != 0, "the lever pulled on powers the rail it shares a cell with");
+    h = aim(vec3(PR.x + 0.5f, Y + 1, PR.z + 3.5f), partCentreOf(PR, 0));
+    useWith(""); tick(8);
+    check(!(w.getMeta(PR.x, PR.y, PR.z) & 8), "and off again");
+  }
+
+  printf("[the new parts save, load and travel]\n");
+  {
+    Chunk* c = w.chunkAtBlock(K.x, K.y, K.z);
+    c->savedAt = 4321;
+    std::vector<u8> blob = encodeChunk(*c);
+    Chunk back(c->dim, c->cx, c->cz);
+    check(decodeChunk(back, blob.data(), blob.size()), "the chunk saves and loads");
+    auto it = back.attach.find(colIdx(K.x & 15, K.y & 255, K.z & 15));
+    check(it != back.attach.end() && it->second.size() == 1 && it->second[0].id == candle && it->second[0].meta == (2 | 4), "the lit candles come back, three of them");
+    it = back.attach.find(colIdx(N.x & 15, N.y & 255, N.z & 15));
+    check(it != back.attach.end() && it->second.size() == 1 && it->second[0].id == chain, "the chain comes back beside its ladder");
+    check(back.get(N.x & 15, N.y & 255, N.z & 15) == ladder && back.get(K.x & 15, K.y & 255, K.z & 15) == ladder, "(the ladders too)");
+    const json j = attachmentsToJson(w.attachments(K.x, K.y, K.z));
+    const auto v = attachmentsFromJson(json::parse(j.dump()));
+    check(v.size() == 1 && v[0].id == candle && v[0].meta == (2 | 4) && j[0][0] == "candle", "on the wire a candle part is its key and meta");
+    const auto v2 = attachmentsFromJson(json::parse(attachmentsToJson(w.attachments(N.x, N.y, N.z)).dump()));
+    check(v2.size() == 1 && v2[0].id == chain, "and a chain");
+  }
+
   printf("[explosions and mods]\n");
   check(w.hasAttachments(S.x, S.y, S.z), "(the shaft's torch is there)");
   dropAllAttachments(*L, w, S.x, S.y, S.z, false);
   check(!w.hasAttachments(S.x, S.y, S.z) && w.getBlock(S.x, S.y, S.z) == ladder, "a blast takes the parts off a cell");
+
+  printf("[townsfolk's way finding sees the parts as you find them]\n");
+  {
+    const BlockId planks = B("planks"), button = B("stone_button"), plate = B("stone_pressure_plate");
+    for (int x = 31; x < 47; x++) for (int z = 10; z < 31; z++) { w.setBlock(x, Y, z, stone); for (int y = Y + 1; y < Y + 10; y++) w.setBlock(x, y, z, AIR); }
+    // a body's footing as the planner gives it is where you'd stand: on something, nothing in the way above
+    auto standsTrue = [&](int x, int y, int z) {
+      const float f = npcStandAt(w, x, y, z);
+      if (std::isnan(f)) return false;
+      return collides(w, x + 0.3, f - 0.06, z + 0.3, x + 0.7, f - 0.01, z + 0.7) && !collides(w, x + 0.3, f + 0.01, z + 0.3, x + 0.7, f + 1.8, z + 0.7);
+    };
+    // a shaft with a torch on its west wall and the ladder put up after it: in two cells the torch is the main block and
+    // the ladder an attachment beside it
+    for (int y = Y + 1; y <= Y + 9; y++) for (int x = 33; x <= 39; x++) w.setBlock(x, y, 19, stone);   // (the wall)
+    for (int x = 33; x <= 39; x++) for (int z = 14; z <= 18; z++) w.setBlock(x, Y + 6, z, planks);   // (the loft)
+    for (int y = Y + 1; y <= Y + 5; y++) { w.setBlock(35, y, 18, stone); w.setBlock(37, y, 18, stone); }
+    for (int y = Y + 1; y <= Y + 6; y++) w.setBlock(36, y, 18, ladder, 2);
+    for (int y : {Y + 2, Y + 4}) {
+      w.setBlock(36, y, 18, torch, 1);
+      check(attachRoomFree(w, 36, y, 18, ladder, 2) && w.addAttachment(36, y, 18, ladder, 2), "a ladder attachment beside a wall torch in the shaft (y+" + std::to_string(y - Y) + ")");
+    }
+    { Entity e; e.pos = vec3(36.5f, Y + 2, 18.5f); e.w = 0.3f; e.h = 1.8f; check(sampleContacts(w, e).ladder, "you climb the ladder attachment"); }
+    bool part = true;
+    auto way = npcPath(w, vec3(36.5f, Y + 1, 12.5f), vec3(36.5f, Y + 7, 15.5f), 0.3f, 1.8f, &part);
+    int climbs = 0; for (auto& s : way) climbs += s.climb;
+    check(!part && climbs >= 4, "a townsperson's way goes up the shaft past the torch (" + std::to_string(climbs) + " rungs" + (part ? ", partial" : "") + ")");
+    way = npcPath(w, vec3(36.5f, Y + 7, 15.5f), vec3(36.5f, Y + 1, 12.5f), 0.3f, 1.8f, &part);
+    check(!part, "and back down it");
+    // a walkway with a pressure plate, a torch and a button in it: nothing there you'd bump into
+    for (int x = 31; x < 47; x++) for (int y = Y + 1; y <= Y + 3; y++) { w.setBlock(x, y, 23, stone); w.setBlock(x, y, 25, stone); }
+    w.setBlock(37, Y + 1, 24, plate, 0);
+    w.addAttachment(37, Y + 1, 24, torch, 3);
+    w.setBlock(40, Y + 2, 24, torch, 4);
+    int bm = -1; for (int m = 0; m < 8 && bm < 0; m++) if (attachSupported(w, 40, Y + 2, 24, button, (u8)m) && attachRoomFree(w, 40, Y + 2, 24, button, (u8)m)) bm = m;
+    check(bm >= 0 && w.addAttachment(40, Y + 2, 24, button, (u8)bm), "a button beside a torch at head height in the walkway");
+    way = npcPath(w, vec3(32.5f, Y + 1, 24.5f), vec3(45.5f, Y + 1, 24.5f), 0.3f, 1.8f, &part);
+    bool straight = !way.empty(); for (auto& s : way) if (s.at.z != 24 || s.floor > Y + 1.2f) straight = false;
+    check(!part && straight, "a townsperson walks straight along it (" + std::to_string(way.size()) + " steps" + (part ? ", partial" : "") + ")");
+    check(standsTrue(37, Y + 1, 24) && standsTrue(40, Y + 1, 24), "and stands where you would by the parts");
+    // a hatch: a closed trapdoor attachment (top half, flush with the floor) over a hole in a walkway, a torch on the
+    // hole's wall its main block
+    for (int x = 31; x < 47; x++) for (int y = Y + 1; y <= Y + 3; y++) { w.setBlock(x, y, 27, stone); w.setBlock(x, y, 29, stone); }
+    for (int y = Y - 3; y <= Y; y++) for (int x = 37; x <= 39; x++) for (int z = 27; z <= 29; z++) w.setBlock(x, y, z, stone);
+    for (int y = Y - 2; y <= Y; y++) w.setBlock(38, y, 28, AIR);
+    w.setBlock(38, Y, 28, torch, 1);
+    check(attachRoomFree(w, 38, Y, 28, trap, 8) && w.addAttachment(38, Y, 28, trap, 8), "a shut trapdoor over the hole beside the torch");
+    check(!collides(w, 38.3, Y + 1.01, 28.3, 38.7, Y + 2.8, 28.7) && collides(w, 38.3, Y + 0.9, 28.3, 38.7, Y + 0.99, 28.7), "you walk on it");
+    check(standsTrue(38, Y + 1, 28) && std::fabs(npcStandAt(w, 38, Y + 1, 28) - (Y + 1)) < 0.01f, "a townsperson stands on it as you do (" + std::to_string(npcStandAt(w, 38, Y + 1, 28) - Y) + ")");
+    way = npcPath(w, vec3(32.5f, Y + 1, 28.5f), vec3(45.5f, Y + 1, 28.5f), 0.3f, 1.8f, &part);
+    straight = !way.empty(); for (auto& s : way) if (s.floor < Y + 0.9f) straight = false;
+    check(!part && straight, "and walks across it, not down the hole (" + std::to_string(way.size()) + " steps" + (part ? ", partial" : "") + ")");
+    w.setAttachmentMeta(38, Y, 28, 0, 8 | 4);
+    check(std::isnan(npcStandAt(w, 38, Y + 1, 28)) && !collides(w, 38.3, Y + 0.5, 28.3, 38.7, Y + 0.99, 28.7), "open, it's a hole to them as to you");
+    w.setAttachmentMeta(38, Y, 28, 0, 0);   // (shut, the bottom half: a step down into the hatch's cell)
+    check(standsTrue(38, Y, 28) && std::fabs(npcStandAt(w, 38, Y, 28) - (Y + 3 / 16.f)) < 0.01f, "shut at the bottom, they stand on it down in the cell, as you do");
+  }
 
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails;

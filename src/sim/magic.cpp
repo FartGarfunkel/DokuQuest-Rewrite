@@ -113,6 +113,8 @@ const std::vector<std::string>& knownSpells(const Player& p) {
   if (p.stats.contains("spells") && p.stats["spells"].is_array()) for (auto& k : p.stats["spells"]) if (k.is_string()) v.push_back(k);
   // a spellbook in the off hand: its spells too (cast at the rank written in it: docs/MAGIC_MERGE.md)
   if (!p.offhand.empty()) for (auto& [k, r] : bookSpells(p.offhand[0])) if (std::find(v.begin(), v.end(), k) == v.end()) v.push_back(k);
+  // the skill trees' granted spells (no tome, no Magic level: sim/skilltree.h)
+  for (const std::string& k : treeGrants(p, "grant_spell.")) if (magicData().spell(k) && std::find(v.begin(), v.end(), k) == v.end()) v.push_back(k);
   return v;
 }
 std::string activeSpell(Player& p) {
@@ -282,7 +284,7 @@ bool magicItemUse(Level& lv, Player& p, const std::string& key, ivec3 at, int fa
   if (face >= 0 && !p.sneaking) {
     const BlockId bid = lv.world(p.realm).getBlock(at.x, at.y, at.z);
     const BlockDef& b = reg().block(bid);
-    if (b.has("container") || b.has("table") || b.has("door") || b.has("station") || b.has("questBoard") || b.has("bed") || b.has("furnace")) return true;
+    if (b.has("container") || b.has("table") || b.has("door") || b.has("station") || b.has("questBoard") || b.has("respecShrine") || b.has("bed") || b.has("furnace")) return true;
     if (b.has("grave") || b.has("rs") || b.has("machine") || b.has("trapdoor") || b.has("gate") || b.has("sign") || b.has("cauldron") || b.has("composter") ||
         b.has("jukebox") || b.has("lectern") || b.has("noteBlock") || b.has("cake") || b.has("carry") || reg().tShape[bid] == ShapeKind::Gate || reg().tShape[bid] == ShapeKind::Trapdoor || reg().tShape[bid] == ShapeKind::Door) return true;
     // what a thing in hand is set on: a shelf, a bookcase, a pile, a rack or stand (a potion goes on it, not down your throat)

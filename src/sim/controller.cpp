@@ -2,10 +2,13 @@
 // felling/breath/fire/falls/drop/pick block), fairplay.js (food over time), itemfix.js (eating for
 // effect, the off hand), blocks2.js (bow and arrows) and blockfx.js (cracks that mend).
 #include "sim/attach_play.h"
+#include "sim/item_uses.h"
+#include "sim/deeds.h"
 #include "sim/dyntree.h"
 #include "sim/weather.h"
 #include "sim/controller.h"
 #include "sim/balance.h"
+#include "sim/talent_fx.h"
 #include "sim/skills.h"
 #include "sim/station_work.h"
 #include "sim/hands.h"
@@ -119,7 +122,7 @@ void PlayerController::consumeHeld(int n) {
 }
 
 bool itemHasUse(const ItemDef& d) {   // (also sim/combat_rpg.cpp: a shield waits for a main hand that has a use)
-  for (const char* k : {"cape", "block", "heartCrystal", "cart", "boat", "food", "backpack", "bucket", "igniter", "pocketKey", "summon", "armor", "bow", "spyglass", "bonemeal", "plants", "disc", "bottle", "drink", "summonWand", "paintbrush", "pottery"})
+  for (const char* k : {"cape", "block", "heartCrystal", "cart", "boat", "food", "backpack", "bucket", "igniter", "pocketKey", "summon", "armor", "bow", "spyglass", "bonemeal", "plants", "disc", "bottle", "drink", "summonWand", "paintbrush", "pottery", "warHorn"})
     if (d.has(k)) return true;
   return false;
 }
@@ -181,6 +184,7 @@ void PlayerController::update(float dt, const PlayerInput& in) {
   bool wasHang = (bool)p.hang, wasClimb = (bool)p.climb;
   MoveOpts mo; mo.slow = (p.carrying.is_null() ? 1.f : CARRY_SLOW) * (p.scoping ? 0.25f : 1.f);   // (a spyglass to your eye: you edge along) mo.noLedge = !p.carrying.is_null(); mo.noSprint = !rule(lv, "allowSprinting");
   mo.autoJump = in.autoJump;
+  mo.slow *= gearMoveFactor(lv, p);   // a dragon set's footing (sim/item_uses.h)
   MoveInfo mv = p.move(w, in, dt, mo);
   if (in.crawl) toastMsg(p.crawlWant ? "Crawling" : "Standing up");
   if (p.hang && !wasHang) { sfxMaterial(lv, "stone", "step", p.pos); if (!ledgeTip) { ledgeTip = true; toastMsg("Hanging on \xE2\x80\x94 move left or right along the ledge, jump to climb up, sneak to drop"); } }
@@ -258,6 +262,7 @@ void PlayerController::tickSurvival(float dt, const MoveInfo& mv) {
     float soft = (bhas(landId, BF::Bed) || bhas(landId, BF::Bouncy) || bhas(landId, BF::Sticky) || R.block(landId).has("cloud") ||
                   R.block(w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y + 0.1f), ifloor(p.pos.z))).has("softLanding") ? 0.f : startsWith(R.block(landId).key, "hay") ? 0.2f : 1.f) * (1 - charmBonus(p, "fall"));
     if (R.block(landId).has("sunCloud")) giveEffect(lv, p, "slowfall", 10);   // a golden cloud: float down from it
+    if (fall > 1.1f && landId == KB().farmland && landId && !lv.isRemote()) trampleFarmland(lv, w, ifloor(p.pos.x), ifloor(p.pos.y - 0.2f), ifloor(p.pos.z));   // jumped on: back to dirt
     int dmg = (int)std::floor((fall - 3) * soft);
     if (fall > 3.4f && !p.creative() && dmg > 0) { DamageSource s; s.type = "fall"; s.bypassArmor = true; hurt((float)dmg, s); sfxUi(lv, p, "thud"); }
   }
@@ -699,7 +704,7 @@ void PlayerController::breakBlock(int x, int y, int z) {
   if (!p.creative() && bhas(id, BF::IsLeaves) && immersive(lv) && rnd() < LEAF_STICK_CHANCE) dropItem(lv, p.realm, ItemStack("stick", 1), c, true, (const vec3*)nullptr);   // immersive: sticks from leaves
   if (harvest && b.num("xp") > 0) { vec3 at(x + 0.5f, y + 0.8f, z + 0.5f); grantXP(lv, p, (int)b.num("xp"), &at); }
   if (!p.creative()) onBlockBroken(lv, p, x, y, z, b, meta, harvest, placed);   // the gathering skills, their luck and perks (sim/skills.h)
-  wearHeld(lv, p, b.hardness > 0 ? 1 : 0);
+  wearHeld(lv, p, b.hardness > 0 && !(bhas(id, BF::IsLog) && woodcuttingSavesWear(p)) ? 1 : 0);   // (Heartwood: a log spares the axe half the time)
   p.stats["blocksMined"] = p.stats.value("blocksMined", 0) + 1;
 }
 
@@ -771,6 +776,14 @@ void PlayerController::fellTree(int x, int y, int z, const std::vector<std::arra
     { static const BlockId palmLeaves = R.blockId("palm_leaves"); if (palmLeaves && l[3] == palmLeaves && rnd() < 0.06) extras["coconut"]++; }   // a felled palm drops its coconuts
     if (rnd() < 0.015) extras["stick"]++;
   }
+  if (!p.creative()) {   // Lumberjack's fifth more logs, Forester's sapling (the leaves' kind, else the trunk's: sim/skills.h)
+    std::string sap = leaves.empty() ? std::string() : R.block((BlockId)leaves[0][3]).str("sapling", "sapling");
+    if (sap.empty() || !R.item(sap)) {
+      const std::string lk = R.block((BlockId)logs[0][3]).key;
+      sap = lk == "log" ? "sapling" : endsWith(lk, "_log") ? lk.substr(0, lk.size() - 4) + "_sapling" : "";
+    }
+    woodcuttingFelled(p, counts, extras, sap);
+  }
   if (!p.creative()) {   // Woodcutting: each log of the felled tree (none for logs a player put there)
     double xp = 0; BlockSkill sk;
     for (auto& l : logs) if (blockSkill(R.block((BlockId)l[3]), sk) && !skillTakePlaced(lv, p.realm, l[0], l[1], l[2])) xp += sk.xp;
@@ -784,7 +797,7 @@ void PlayerController::fellTree(int x, int y, int z, const std::vector<std::arra
   float dirYaw = std::atan2(-(x + 0.5f - p.pos.x), -(z + 0.5f - p.pos.z));   // fall away from the chopper
   spawnFallingTree(lv, p.realm, blocks, ivec3(x, y, z), dirYaw, drops);
   sfxMaterial(lv, "wood", "break", vec3(x, y, z));
-  wearHeld(lv, p, (int)std::ceil(logs.size() / 2.0));
+  wearHeld(lv, p, woodcuttingFellWear(p, (int)logs.size()));   // (Heartwood halves it)
   p.stats["blocksMined"] = p.stats.value("blocksMined", 0) + (int)logs.size();
   int got = 0; for (auto& [k, n] : counts) got += n;
   toastMsg("Timber! " + std::to_string(got) + " logs", "good");
@@ -800,7 +813,7 @@ void PlayerController::useOffhand(bool repeat, const PlayerInput& in) {
 bool interactable(BlockId id) {
   const BlockDef& b = reg().block(id);
   static const char* keys[] = {"anvil", "enchant", "brewing", "grindstone", "loom", "smithing", "cartography", "fletching", "composter", "cauldron", "lectern", "barrel", "chest", "furnace", "smoker", "crafting", "table", "bench", "bed", "door", "gate", "trapdoor", "bell", "note", "jukebox", "shelf", "bookcase", "campfire", "cooking", "altar", "forge", "press", "mill", "rack", "stand"};
-  for (const char* k : {"container", "table", "furnace", "lectern", "station", "enderChest", "partyChest", "machine", "stonecutter", "jukebox", "bed", "door", "trapdoor", "noteBlock", "bellBlock", "cauldron", "pile", "placedBackpack", "frame", "sign", "pot"}) if (b.has(k)) return true;
+  for (const char* k : {"container", "table", "furnace", "lectern", "station", "enderChest", "partyChest", "machine", "stonecutter", "jukebox", "bed", "door", "trapdoor", "noteBlock", "bellBlock", "cauldron", "pile", "placedBackpack", "frame", "sign", "pot", "respecShrine"}) if (b.has(k)) return true;
   if (b.has("grave") || b.has("rs") || b.has("carry")) return true;   // (your grave, levers and buttons, things you pick up)
   if (reg().tShape[id] == ShapeKind::Gate) return true;
   for (const char* k : keys) if (b.key.find(k) != std::string::npos) return true;
@@ -974,7 +987,11 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       if (!bl.empty()) { takeOut(bl); swingArm(); } else toastMsg("Iron ore and as much charcoal; light it with a firestarter");
       return;
     }
-    if (reg().block(hit->id).key == "bellows" && held.empty() && bellowsPump(w, b.x, b.y, b.z)) { swingArm(); sfxMaterial(lv, "wool", "step", vec3(b) + vec3(0.5f)); return; }   // pumped by hand
+    if (reg().block(hit->id).key == "bellows" && held.empty() && bellowsPump(w, b.x, b.y, b.z)) {   // pumped by hand
+      swingArm(); sfxMaterial(lv, "wool", "step", vec3(b) + vec3(0.5f));
+      if (p.age - p.data.value("bellowsAt", -1e9) >= workxp::BELLOWS_GAP) { p.data["bellowsAt"] = p.age; workXp(lv, p, "smithing", workxp::BELLOWS); }   // (sim/deeds.h)
+      return;
+    }
     if (reg().block(hit->id).key == "forge") {
       if (!held.empty() && held.id == "charcoal") { if (!forgeAddFuel(w, b.x, b.y, b.z, held)) toastMsg("The forge is full of charcoal"); else swingArm(); return; }
       if (!held.empty() && heatable(held.id)) { if (!forgePut(w, b.x, b.y, b.z, held)) toastMsg("There's no more room in the forge"); else swingArm(); return; }
@@ -1185,7 +1202,8 @@ bool PlayerController::eatFood(ItemStack& held, const ItemDef& def, bool repeat)
       p.eatId = held.id;
       if (--held.n <= 0) held.clear();
       p.eatAnim = EAT_ANIM; sfxUi(lv, p, held.id.find("bottle") != std::string::npos || held.id.find("stew") != std::string::npos || held.id.find("soup") != std::string::npos ? "drink" : "eat");
-      p.foodCd = FOOD_CD;
+      p.foodCd = FOOD_CD * foodWaitFactor(p);   // (Quick Bite)
+      if (const float rg = feastRegenSecs(p); rg > 0) giveEffect(lv, p, "regen", rg);   // (Feast: sim/skills.h)
       if (lv.events) lv.events->emit("foodEffect", json::array({p.name, def.key, food.value("effect", json()), food.value("cure", json())}));
       if (def.has("bowl") || def.has("returns")) { ItemStack bw(def.str("returns", "bowl"), 1); if (held.empty()) held = bw; else giveItem(lv, p, bw); }
       return true;
@@ -1204,7 +1222,8 @@ bool PlayerController::eatFood(ItemStack& held, const ItemDef& def, bool repeat)
   p.eatId = held.id;
   if (--held.n <= 0) held.clear();
   p.eatAnim = EAT_ANIM; sfxUi(lv, p, "eat"); sfxUi(lv, p, "heal");
-  p.foodCd = FOOD_CD;
+  p.foodCd = FOOD_CD * foodWaitFactor(p);   // (Quick Bite)
+  if (const float rg = feastRegenSecs(p); rg > 0) giveEffect(lv, p, "regen", rg);   // (Feast: sim/skills.h)
   vec3 L = lookVector(p.yaw, p.pitch);
   burst(lv, p.pos + vec3(L.x * 0.4f, p.eye - 0.25f, L.z * 0.4f), icon, 8, 0.6f);
   char buf[32]; snprintf(buf, sizeof buf, "+%g \xE2\x99\xA5", healed / 2);
@@ -1301,7 +1320,7 @@ public:
           Entity* o = owner ? lv.entity(owner) : nullptr;
           // the Ranger's path (Eagle Eye, Deadeye at range, Poisoned Tips: sim/villager_quests.cpp)
           float pk = o && o->isPlayer() ? pathArrowFactor(*static_cast<Player*>(o), glm::distance(o->pos, e->pos)) : 1.f;
-          if (o && o->isPlayer()) pk *= skillHitFactor(*static_cast<Player*>(o), "archery", ItemStack());   // the Archery skill (sim/skills.h)
+          if (o && o->isPlayer()) pk *= skillHitFactor(*static_cast<Player*>(o), "archery", ItemStack()) * archeryRangeFactor(*static_cast<Player*>(o), glm::distance(o->pos, e->pos));   // the Archery skill, Eagle Eye (sim/skills.h)
           const float hp0 = e->hp;
           float dealt = damageEntity(lv, *e, std::max(1.f, std::round(data.value("damage", 3.0f) * pk * speed / 30)), src);
           if (dealt <= 0 && (e->type == "wither" || e->type == "wither_storm") && e->hp > 0) {
@@ -1318,6 +1337,7 @@ public:
           }
           if (dealt > 0 && o && o->isPlayer() && !e->isPlayer() && !e->ghost) onPlayerHitMob(lv, *static_cast<Player*>(o), *e, "archery", dealt, hp0);   // (Archery grows with the arrows that land)
           if (dealt > 0 && o && o->isPlayer() && !e->isPlayer() && pathArrowPoisons(*static_cast<Player*>(o))) poisonCreature(*e, 4);
+          if (dealt > 0 && o && o->isPlayer() && !e->isPlayer() && !e->ghost) talentOnHit(lv, *static_cast<Player*>(o), *e, dealt);   // (the trees: sim/talent_fx.h)
           if ((data.value("flame", false) || data.value("fire", false)) && !e->isPlayer()) igniteEntity(*e, data.value("fire", false) ? 8 : 5);
           if (dealt > 0 && o && o->isPlayer()) { char buf[16]; snprintf(buf, sizeof buf, "%g", std::round(dealt * 10) / 10); floatText(lv, *static_cast<Player*>(o), e->pos + vec3(0, e->h + 0.2f, 0), buf, "#ffffff"); }
           sfxAt(lv, "hit", e->pos);
@@ -1374,17 +1394,25 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
         float power = std::min(1.f, bowPull);
         bool goldShot = false;
         std::string kind = "arrow";
-        if (isArrow(p.offhand[0])) { kind = p.offhand[0].id; if (!p.creative() && --p.offhand[0].n <= 0) p.offhand[0].clear(); }
-        else if (std::string q = p.creative() ? std::string() : quiverTake(p); !q.empty()) kind = q;
-        else if (ItemStack* b = bagArrow()) { kind = b->id; if (!p.creative() && --b->n <= 0) b->clear(); }
+        const bool kept = !p.creative() && archeryKeepsArrow(p);   // Retrieval: this shot doesn't use its arrow (sim/skills.h)
+        bool fromStack = false;
+        if (isArrow(p.offhand[0])) { kind = p.offhand[0].id; fromStack = true; if (!p.creative() && !kept && --p.offhand[0].n <= 0) p.offhand[0].clear(); }
+        else if (std::string q = p.creative() ? std::string() : quiverTake(p); !q.empty()) {
+          kind = q; fromStack = true;
+          if (kept) { ItemStack back(q, 1); if (const int left = quiverStow(p, back); left > 0) { back.n = left; giveItem(lv, p, back); } }   // (back where it came from)
+        }
+        else if (ItemStack* b = bagArrow()) { kind = b->id; fromStack = true; if (!p.creative() && !kept && --b->n <= 0) b->clear(); }
         else goldShot = golden && !p.creative();
         const ItemDef* ad = reg().item(kind);
         const json arrowProps = ad && ad->props.contains("arrow") && ad->props["arrow"].is_object() ? ad->props["arrow"] : json::object();
-        vec3 L = lookVector(p.yaw, p.pitch); float sp = (8 + power * 30) * arrowProps.value("speed", 1.0f) * arrowSpeedFactor(p);
+        vec3 L = lookVector(p.yaw, p.pitch); float sp = (8 + power * 30) * arrowProps.value("speed", 1.0f) * arrowSpeedFactor(p) * archerySpeedFactor(p);   // (Steady Aim)
+        // the trees' arrow_return: now and then the arrow taken is given back at once (not with Retrieval's, which never took it),
+        // so the one loosed can't be picked up as well
+        const bool tKept = !kept && !p.creative() && !goldShot && !enchInfinity(held) && rnd() < talent(p, "arrow_return");
         auto a = std::make_unique<ArrowEntity>();
         a->realm = p.realm; a->pos = p.pos + vec3(L.x * 0.4f, p.eye - 0.1f + L.y * 0.4f, L.z * 0.4f); a->vel = L * sp;
         a->data = {{"owner", p.id}, {"damage", (3 + power * 6) * enchArrowDamageFactor(held) * (goldShot ? 0.8f : 1.f) * arrowProps.value("damage", 4.0f) / 4.f * arrowDamageFactor(p)},
-                   {"pickup", !p.creative() && !enchInfinity(held) && !goldShot && !arrowProps.value("breaks", false)}, {"item", kind}};
+                   {"pickup", !tKept && !p.creative() && !enchInfinity(held) && !goldShot && !(kept && fromStack) && !arrowProps.value("breaks", false)}, {"item", kind}};
         if (arrowProps.value("gravity", 1.0f) != 1.0f) a->data["grav"] = arrowProps.value("gravity", 1.0f);
         if (arrowProps.value("fire", false)) a->data["fire"] = true;
         if (arrowProps.value("breaks", false)) a->data["breaks"] = true;
@@ -1399,8 +1427,17 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
           if (lv_) a->data["ench"] = lv_;
         }
         a->aim();
+        if (rnd() < talent(p, "multishot")) {   // the trees' multishot: a second arrow alongside, a little off the line (it can't be picked up)
+          auto b = std::make_unique<ArrowEntity>();
+          b->realm = a->realm; b->data = a->data; b->data["pickup"] = false;
+          const float off = (rnd() < 0.5 ? -1.f : 1.f) * bal::MULTISHOT_SPREAD, cs = std::cos(off), sn = std::sin(off);
+          b->vel = vec3(a->vel.x * cs - a->vel.z * sn, a->vel.y, a->vel.x * sn + a->vel.z * cs);
+          b->pos = a->pos; b->aim();
+          lv.spawn(std::move(b));
+        }
         lv.spawn(std::move(a));
-        if (enchInfinity(held) && !p.creative()) p.give(ItemStack(kind, 1));   // Infinity: the arrow isn't used up
+        if (tKept) p.give(ItemStack(kind, 1));
+        else if (enchInfinity(held) && !p.creative()) p.give(ItemStack(kind, 1));   // Infinity: the arrow isn't used up
         else if (!p.creative() && !goldShot && pathQuiverSaves(p)) p.give(ItemStack(kind, 1));   // Quiver Master
         sfxUi(lv, p, "bow");
         wearHeld(lv, p, 1);

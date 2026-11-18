@@ -1,7 +1,8 @@
 // sim/skilltree.h — the passive skill trees (the warrior, ranger, rogue and mage trees, tools/local/skilltree_import.py ->
 // data/local_models/skilltree.json; git-ignored, so a game without it simply has none). Points come from your total level
-// (a point every 3); you learn a tree's starting node first, then any node joined to one you have. A tree's limits (its tags)
-// cap how many of a kind (one subclass, two keystones of a school...). What you've learnt adds to your attributes:
+// (a point every 3) and your deeds (sim/deeds.h); the start of your Path's tree is free. You learn a tree's starting
+// node first, then any node joined to one you have. A tree's limits (its tags) cap how many of a kind (one subclass, two
+// keystones of a school...). What you've learnt adds to your attributes:
 // treeAttr(p, "health") the flat bonus, treeAttrPct(p, "damage") the percentage (0.1 = +10%).
 // Saved in the player's stats "tree": {"nodes": [ids]}.
 #pragma once
@@ -32,4 +33,7 @@ bool treeLearn(Player& p, const std::string& tree, const std::string& id);
 void treeReset(Player& p);
 float treeAttr(const Player& p, const std::string& attr);      // flat
 float treeAttrPct(const Player& p, const std::string& attr);   // fraction
+// the keys of what you've learnt (and stats "attrBonus") that start with `prefix`, the prefix cut off: "grant_spell." -> the
+// spells the trees grant (sim/magic.cpp knownSpells)
+std::vector<std::string> treeGrants(const Player& p, const std::string& prefix);
 } // namespace dq

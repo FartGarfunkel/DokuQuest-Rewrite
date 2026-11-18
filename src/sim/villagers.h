@@ -94,7 +94,7 @@ void npcRep(Level& lv, Player& p, const std::string& vid, double n, const std::s
 
 // ---- quests (villagers.js + livingworld.js elites, hearth.js the missing, dungeons.js, rpg.js scout/word) ----
 json npcQuestFor(Level& lv, const Village& v, int i);   // today's errand from one villager (null = none)
-json boardQuests(Level& lv, const Village& v);          // today's notes on the board
+json boardQuests(Level& lv, const Village& v, Player* reader = nullptr);   // today's notes on the board (a reader: the trades' requests too, sim/village_life.h)
 int questHave(Level& lv, Player& p, json& q);
 bool questReady(Level& lv, Player& p, json& q);
 bool questTake(Level& lv, Player& p, const json& q, bool shared = false);
@@ -135,13 +135,13 @@ void talkHold(Level& lv, Player& p, Talk& t);                   // each frame: t
 bool talkStillOk(Level& lv, Player& p, const Talk& t);           // false = they're gone / too far: close it
 void talkClosed(Level& lv, Player& p, Talk& t);
 
-// ---- paths.js: Knight, Ranger, Mage chosen at a village guard, fletcher, librarian or elder ----
+// ---- paths.js: Knight, Ranger, Mage chosen at a village guard, fletcher, librarian or elder; the Rogue at an innkeeper ----
 int combatLevel(const Player& p);
-int pathPoints(const Player& p);
+int pathPoints(const Player& p);                                // (a Friend's advanced lessons add to it: sim/village_life.h)
 int pathSpent(const Player& p);
 bool pathPick(Level& lv, Player& p, const std::string& k);     // walk a path (combat level 20)
 bool pathLearn(Level& lv, Player& p, const std::string& talent);
-bool pathForget(Level& lv, Player& p);                          // 20 emeralds
+bool pathForget(Level& lv, Player& p);                          // 20 gold coins (less for a Friend at a village's trainer: sim/village_life.h)
 int pathMaxHealthBonus(const Player& p);                        // the Knight's two hearts (+4): Player::recalcMax adds it
 // the Knight's and Ranger's talents for the combat code (Mage ones are in sim/magic.cpp)
 float pathMeleeFactor(const Player& p);                         // Heavy Blows
@@ -151,6 +151,9 @@ bool pathQuiverSaves(const Player& p);                          // Quiver Master
 float pathSpeedFactor(const Player& p);                         // Fleet Foot
 bool pathCheatDeath(Level& lv, Player& p);                      // Unbreakable: true = stood on half a heart instead
 void pathCleave(Level& lv, Player& p, Creature& hit, float dealt);   // Cleaving Arc (call after a weapon blow)
+// the Rogue's: Backstab (a sneaking melee blow, sim/balance.h ROGUE_BACKSTAB) and Envenomed Edge (melee blows poison);
+// Nimble and its crit chance are in sim/balance.cpp, Light Fingers in sim/village_theft.cpp
+float pathBackstabFactor(const Player& p);
 float pathPetFactor(Level& lv, const Creature& victim, const Entity* attacker);   // Beast Friend (both ways)
 
 // ---- the quest board block, gates, levers (itemUse) ----
@@ -158,7 +161,7 @@ VillageRef boardVillage(Level& lv, int realm, ivec3 at);         // null: "this 
 bool gateUse(Level& lv, Player& p, ivec3 at, bool lever);       // a gate or its lever (towns3.js)
 bool gateShutAt(Level& lv, const VGate& g);
 
-// ---- hearth.js: a house for a village's Hero (the builders) ----
+// ---- hearth.js: a house for a village's Hero (the builders); Honoured is enough now, and a house nobody lives in comes first (sim/village_life.h) ----
 // The house itself is raised by a hook (the structures workstream's village house template, VTEMPLATES.house_m);
 // the default builds a plain house of the village's planks with a bed and a chest of gifts. Returns the bed and door.
 struct HeroHouse { bool ok = false; ivec3 bed{0}, door{0}; std::string name; };
@@ -170,7 +173,7 @@ bool isHero(Player& p, const std::string& vid);
 bool lostTake(Level& lv, Creature& e, Player& p, std::string* said = nullptr);
 
 // ---- events the client listens to ----
-// "villagerScreen" [playerName, "talk"|"board"|"path", {npc, confront, victim} | {vid}]
+// "villagerScreen" [playerName, "talk"|"board"|"path"|"shrine", {npc, confront, victim} | {vid} | {x, y, z, vid}]
 // "questHud" [playerName] when the list of jobs changed; "villagerScreen" [name, "close"] closes the talk window
 void openVillagerScreen(Level& lv, const Player& p, const std::string& id, const json& args);
 

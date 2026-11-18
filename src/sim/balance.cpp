@@ -3,6 +3,8 @@
 #include "sim/player.h"
 #include "sim/skilltree.h"
 #include "sim/skills.h"
+#include "sim/deeds.h"
+#include "sim/rpg.h"
 #include "core/tool_parts.h"
 #include "core/registry.h"
 #include <algorithm>
@@ -23,20 +25,20 @@ float talent(const Player& p, const std::string& attr) {
   return std::clamp(v, r->lo, r->hi);
 }
 
-int statPointsEarned(const Player& p) { return std::max(0, totalLevel(p) / STAT_EVERY); }
+int statPointsEarned(const Player& p) { return std::max(0, totalLevel(p) / STAT_EVERY) + deedStatPoints(p); }   // (+ the bosses beaten: sim/deeds.h)
 static int st(int v) { return std::clamp(v, 0, STAT_CAP); }
 
 float conStamina(const Player& p) { return st(p.statCon) * CON_STAMINA; }
 float conHealth(const Player& p) { return st(p.statCon) * CON_HEALTH; }
 float conReduction(const Player& p) { return std::min(CON_REDUCE_CAP, st(p.statCon) * CON_REDUCE); }
 float strDamageFactor(const Player& p) { return 1 + st(p.statStr) * STR_DAMAGE; }
-float critChance(const Player& p) { return std::min(CRIT_CHANCE_CAP, st(p.statLck) * LCK_CRIT + talent(p, "crit_chance")); }
+float critChance(const Player& p) { return std::min(CRIT_CHANCE_CAP, st(p.statLck) * LCK_CRIT + talent(p, "crit_chance") + (onPath(p, "rogue") ? ROGUE_CRIT : 0.f)); }
 float critMultiplier(const Player& p) { return CRIT_MUL + talent(p, "crit_damage"); }
 float moveFactor(const Player& p) {
-  return std::clamp(1 + st(p.statAgi) * AGI_MOVE + talent(p, "speed") - talent(p, "weight"), MOVE_FACTOR_MIN, MOVE_FACTOR_MAX);
+  return std::clamp(1 + st(p.statAgi) * AGI_MOVE + talent(p, "speed") - talent(p, "weight"), MOVE_FACTOR_MIN, MOVE_FACTOR_MAX) * exploringSpeedFactor(p);   // (Pathfinder, Wayfarer: past the cap)
 }
 float stepBonus(const Player& p) { return talent(p, "step"); }
-float dodgeCost(const Player& p) { return DODGE_COST * (1 - st(p.statAgi) * AGI_DODGE_COST) * (1 + 2 * talent(p, "weight")); }
+float dodgeCost(const Player& p) { return DODGE_COST * (1 - st(p.statAgi) * AGI_DODGE_COST) * (1 + 2 * talent(p, "weight")) * (hasTal(p, "nimble") ? ROGUE_NIMBLE : 1.f); }
 float dodgeTime(const Player& p) { return DODGE_TIME * (1 + st(p.statAgi) * AGI_DODGE_TIME); }
 float dodgeChance(const Player& p) { return talent(p, "dodge"); }
 float attackSpeedFactor(const Player& p) { return 1 + std::clamp(st(p.statAgi) * AGI_ATTACK + talent(p, "attack_speed"), -0.2f, ATTACK_SPEED_CAP); }
@@ -58,6 +60,21 @@ float overhealShare(const Player& p) { return talent(p, "overheal"); }
 float summonDamageFactor(const Player& p) { return 1 + talent(p, "summon_damage"); }
 float lootLuck(const Player& p) { return st(p.statLck) * LCK_LOOT + talent(p, "luck"); }
 float fishingLuck(const Player& p) { return talent(p, "fishing"); }
+float noticeRange(const Player& p, float range) {
+  if (!p.sneaking) return range;
+  return std::max(std::min(range, SNEAK_NOTICE_MIN), range * (1 - talent(p, "stealth")));
+}
+float healReceivedFactor(const Player& p) { return 1 + talent(p, "heal_received"); }
+float effectDurationFactor(const Player& p) { return 1 + talent(p, "effect_duration"); }
+float xpGainFactor(const Player& p) { return 1 + talent(p, "xp_gain"); }
+float damageTakenFactor(const Player& p) { return 1 - talent(p, "damage_reduction"); }
+float jumpFactor(const Player& p) { return 1 + talent(p, "jump"); }
+float useMoveFactor(const Player& p) { return 1 + talent(p, "use_move"); }
+float rageFactor(const Player& p) {
+  const float r = talent(p, "rage");
+  if (r <= 0 || p.maxHp <= 0) return 1;
+  return 1 + r * std::clamp(1 - (p.hp - 1) / std::max(1.f, p.maxHp - 1), 0.f, 1.f);   // (none at full health, all of it at the last heart)
+}
 
 float mobEffLevel(int lvl) { lvl = std::max(1, lvl); return lvl <= MOB_SOFT_LEVEL ? (float)lvl : MOB_SOFT_LEVEL + (lvl - MOB_SOFT_LEVEL) * MOB_SOFT_SLOPE; }
 float mobLevelHp(int lvl) { return 1.f + MOB_HP_PER_LEVEL * (mobEffLevel(lvl) - 1); }
@@ -71,6 +88,7 @@ MobLoot mobLoot(int level, bool elite, const Player* killer) {
   l.rolls = elite ? ELITE_ROLLS : 1;
   l.chanceMul = std::min(LOOT_CHANCE_MAX, 1 + up * LOOT_CHANCE_PER_LEVEL + luck);
   l.extra = std::min(LOOT_EXTRA_MAX, up * LOOT_EXTRA_PER_LEVEL + luck * 0.5f);
+  l.twice = talent(*killer, "loot_double");
   if (elite) l.gearChance = std::min(ELITE_GEAR_MAX, ELITE_GEAR + up * ELITE_GEAR_PER_LEVEL);
   else if (level >= GEAR_FROM) l.gearChance = std::min(GEAR_CHANCE_MAX, (level - GEAR_FROM + 1) * GEAR_CHANCE_PER_LEVEL);
   if (l.gearChance > 0) l.gearChance = std::min(1.f, l.gearChance * (1 + luck));

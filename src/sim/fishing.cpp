@@ -25,10 +25,11 @@ const int* fishSizes(const std::string& id) {
 static int sizeOf(const std::string& id) { const int* s = fishSizes(id); return (int)std::lround(s[0] + std::pow(frand(), 1.6f) * (s[1] - s[0])); }
 
 // ---- what bites
-FishCatch fishingCatch(Level& lv, int realm, vec3 at, float luck) {
+FishCatch fishingCatch(Level& lv, int realm, vec3 at, float luck, float treasure) {
   float r = frand();
   // fishing luck (talents, sim/balance.h): treasure more often, junk less (the 4% treasure and 8% junk bands shift)
-  const float treasureTop = 0.04f * (1 + 2 * luck), junkTop = treasureTop + 0.08f * (1 - luck);
+  // (Sea's Favour: x `treasure`, sim/skills.h)
+  const float treasureTop = 0.04f * (1 + 2 * luck) * treasure, junkTop = treasureTop + 0.08f * (1 - luck);
   World& w = lv.world(realm);
   int bx = ifloor(at.x), bz = ifloor(at.z), dim = realm == REALM_MAIN ? dimOfY(ifloor(at.y)) : DIM_OVERWORLD;
   // the water's temperature (the chunk's climate) and whether this is the open sea (deep water at sea level)
@@ -72,7 +73,8 @@ float Bobber::ownerLuck(Level& lv) const {
   return o && o->isPlayer() ? fishingLuck(*static_cast<Player*>(o)) : 0.f;
 }
 void Bobber::comeUp(Level& lv, float top) {
-  FishCatch c = fishingCatch(lv, realm, pos, ownerLuck(lv));
+  Entity* o = owner ? lv.entity(owner) : nullptr;
+  FishCatch c = fishingCatch(lv, realm, pos, ownerLuck(lv), o && o->isPlayer() ? fishingTreasureFactor(*static_cast<Player*>(o)) : 1.f);   // (Sea's Favour)
   catchId = c.id; catchKind = c.kind; catchCm = c.cm;
   comeT = std::max(0.5f, waitT);
   float a = frand() * TAU, r = 2.6f + frand() * 1.2f;
@@ -189,7 +191,7 @@ void Bobber::tick(Level& lv, double dtd) {
   }
   if (biteT <= 0 && waitT <= 0) {
     if (!coming) { comeUp(lv, top); f = fish ? lv.entity(fish) : nullptr; }
-    biteT = 0.85f + frand() * 0.3f;
+    biteT = (0.85f + frand() * 0.3f) * fishingBiteFactor(*p);   // (Patient Angler: sim/skills.h)
     sfxAt(lv, "splash_small", vec3(pos.x, top, pos.z), 24);
     lv.fx->particles("water", vec3(pos.x, top + 0.05f, pos.z), 10, {{"spread", 2}});
     lv.fx->shake(owner, 0.4f);   // a rumble on a controller
@@ -257,17 +259,18 @@ void endFishing(Level& lv, Player& p, bool reel) {
   if (b->state == Bobber::Float) sfxAt(lv, "splash_small", b->pos, 16);
   if (bite) {
     FishCatch c{b->catchId, b->catchKind, b->catchCm};
-    if (c.id.empty()) c = fishingCatch(lv, b->realm, b->pos, fishingLuck(p));
+    if (c.id.empty()) c = fishingCatch(lv, b->realm, b->pos, fishingLuck(p), fishingTreasureFactor(p));
+    const int caught = fishingCatchCount(p, c.kind);   // (Double Catch: now and then a second fish)
     if (Entity* f = b->fish ? lv.entity(b->fish) : nullptr) { f->data.erase("hooked"); f->removed = true; }
     b->fish = 0;
     // up out of the water and over to you
     vec3 d = p.pos + vec3(0, 1.2f, 0) - b->pos; float t = 0.9f;
-    dropItem(lv, b->realm, ItemStack(c.id, 1), b->pos + vec3(0, 0.3f, 0), vec3(d.x / t, d.y / t + 0.5f * 18 * t, d.z / t));
+    dropItem(lv, b->realm, ItemStack(c.id, caught), b->pos + vec3(0, 0.3f, 0), vec3(d.x / t, d.y / t + 0.5f * 18 * t, d.z / t));
     grantXp(lv, p, c.kind == "treasure" ? 6 : 1 + (int)(frand() * 3), b->pos + vec3(0, 0.5f, 0));
     onFishCaught(lv, p, c.kind);   // the Fishing skill (sim/skills.h)
     const ItemDef* def = reg().item(c.id);
     std::string name = def ? def->name : c.id;
-    toast(lv, p, c.kind == "fish" ? "You caught a " + toLower(name) + " (" + std::to_string(c.cm) + " cm)!" : c.kind == "treasure" ? "Treasure! " + name : "Reeled in some " + toLower(name),
+    toast(lv, p, c.kind == "fish" ? "You caught a " + toLower(name) + " (" + std::to_string(c.cm) + " cm)" + (caught > 1 ? ", and another!" : "!") : c.kind == "treasure" ? "Treasure! " + name : "Reeled in some " + toLower(name),
           c.kind == "treasure" ? "good" : "");
     sfxUi(lv, p, c.kind == "treasure" ? "levelup" : "pop");
     if (lv.events) lv.events->emit("fishCaught", json::array({p.name, c.id, c.kind, c.cm}));

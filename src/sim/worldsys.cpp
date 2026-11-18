@@ -4,6 +4,7 @@
 #include "sim/crafting.h"
 #include "core/metals.h"
 #include "sim/worldsys.h"
+#include "sim/catchup.h"
 #include "sim/cave_drips.h"
 #include "sim/trommel.h"
 #include "sim/gameplay.h"
@@ -406,24 +407,25 @@ public:
   }
 };
 
-static bool waterNear(World& w, int x, int y, int z, int r) {
+bool waterNear(World& w, int x, int y, int z, int r) {
   for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) for (int dy = 0; dy <= 1; dy++) if (waterAt(w, x + dx, y + dy, z + dz)) return true;
   return false;
 }
-static float bandDaylight(Level& lv, int y) {
+float bandDaylight(Level& lv, int y) {
   switch (dimOfY(y)) { case DIM_NETHER: return 0.22f; case DIM_SKYLANDS: return 1; case DIM_END: return 0.7f; default: return daylight(lv); }
 }
-static void stemFruit(World& w, int x, int y, int z, const BlockDef& d) {
+bool stemFruit(World& w, int x, int y, int z, const BlockDef& d) {
   BlockId fruit = reg().blockId(d.props["crop"].value("fruit", std::string()));
-  if (!fruit) return;
+  if (!fruit) return false;
   int ks[4] = {0, 1, 2, 3};
   std::shuffle(ks, ks + 4, std::mt19937((unsigned)(rnd() * 1e9)));
   auto& soil = soilIds();
   for (int k : ks) {
     int fx = x + DIRX[k], fz = z + DIRZ[k];
-    if (w.getBlock(fx, y, fz) == fruit) return;
-    if (w.getBlock(fx, y, fz) == AIR && std::find(soil.begin(), soil.end(), w.getBlock(fx, y - 1, fz)) != soil.end()) { w.setBlock(fx, y, fz, fruit, 0); return; }
+    if (w.getBlock(fx, y, fz) == fruit) return false;
+    if (w.getBlock(fx, y, fz) == AIR && std::find(soil.begin(), soil.end(), w.getBlock(fx, y - 1, fz)) != soil.end()) { w.setBlock(fx, y, fz, fruit, 0); return true; }
   }
+  return false;
 }
 static void grassTick(Level& lv, World& w, int x, int y, int z, BlockId id) {
   const Registry& R = reg(); const KnownBlocks& B = KB();
@@ -495,6 +497,46 @@ static void growExtra(Level& lv, World& w, int x, int y, int z, BlockId id, u8 m
   if (id == puddleId || id == snowLayerId || id == iceId) { if (WeatherSystem* ws = weatherOf(lv)) ws->blockTick(lv, w, x, y, z, id, meta); return; }
 }
 
+bool saplingStep(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta) {
+  const Registry& R = reg();
+  if (!(meta & 8)) { w.setBlock(x, y, z, id, meta | 8); return true; }
+  const std::string fl = R.block(id).str("fruitLeaves");
+  const bool grew = growTree(lv, w, x, y, z, rnd());
+  if (grew && !fl.empty()) if (BlockId f = R.blockId(fl)) {   // a fruit tree: its leaves bear fruit
+    const BlockId oak = R.blockId("leaves");
+    for (int dy = 1; dy <= 9; dy++) for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) if (w.getBlock(x + dx, y + dy, z + dz) == oak) w.setBlock(x + dx, y + dy, z + dz, f, w.getMeta(x + dx, y + dy, z + dz));
+  }
+  return grew;
+}
+
+// Farmland's moisture (meta & 7): water within four blocks (or rain falling on it) keeps it at 7; away from water it
+// dries a step at a time, and dry farmland with nothing planted on it goes back to dirt. Crops on moist farmland grow
+// twice as fast as on dry.
+bool farmlandMoist(World& w, int x, int y, int z) {
+  static const BlockId fl = reg().blockId("farmland");
+  return fl && w.getBlock(x, y, z) == fl && ((w.getMeta(x, y, z) & 7) > 0 || waterNear(w, x, y, z, 4));
+}
+bool farmlandTick(Level& lv, World& w, int x, int y, int z, u8 meta) {
+  static const BlockId fl = reg().blockId("farmland"), dirt = reg().blockId("dirt");
+  const int m = meta & 7;
+  WeatherSystem* ws = weatherOf(lv);
+  const bool rainedOn = ws && ws->kind != "clear" && ws->precipAt(w, x + 0.5f, y + 1.0f, z + 0.5f) == 1 && ws->topAt(w, x, z) <= y + 1;
+  if (waterNear(w, x, y, z, 4) || rainedOn) { if (m != 7) { w.setBlock(x, y, z, fl, (u8)((meta & ~7) | 7)); return true; } return false; }
+  if (m > 0) { w.setBlock(x, y, z, fl, (u8)((meta & ~7) | (m - 1))); return true; }
+  const BlockId above = w.getBlock(x, y + 1, z);
+  if (above == AIR || !bhas(above, BF::Crop)) { if (dirt) w.setBlock(x, y, z, dirt, 0); return true; }
+  return false;
+}
+
+void trampleFarmland(Level& lv, World& w, int x, int y, int z) {
+  static const BlockId fl = reg().blockId("farmland"), dirt = reg().blockId("dirt");
+  if (!fl || !dirt || w.getBlock(x, y, z) != fl) return;
+  const BlockId above = w.getBlock(x, y + 1, z);
+  if (above && bhas(above, BF::Crop)) { dropBlockItems(lv, w, x, y + 1, z, above, false, w.getMeta(x, y + 1, z)); w.setBlock(x, y + 1, z, AIR, 0); }
+  w.setBlock(x, y, z, dirt, 0);
+  lv.fx->material("gravel", "dig", vec3(x + 0.5f, y + 1, z + 0.5f));
+}
+
 void randomTicks(Level& lv, World& w, float px, float pz, int slice, int slices) {
   const double RT = 68.27;
   const Registry& R = reg(); const KnownBlocks& B = KB();
@@ -504,7 +546,8 @@ void randomTicks(Level& lv, World& w, float px, float pz, int slice, int slices)
   int scanned = 0;
   const double tickSpeed = std::clamp(ruleNum(lv, "randomTickSpeed"), 0.0, 100.0);
   std::vector<Chunk*> list;
-  for (auto& [k, c] : w.chunks()) if (std::abs(k.cx - pcx) <= 6 && std::abs(k.cz - pcz) <= 6) {
+  const int simR = simDistance(lv);   // (beyond it, the catch-up makes up the time: sim/catchup.h)
+  for (auto& [k, c] : w.chunks()) if (std::abs(k.cx - pcx) <= simR && std::abs(k.cz - pcz) <= simR) {
     if (slices > 1 && ((k.cx * 7 + k.cz * 13) % slices + slices) % slices != slice) continue;   // another tick's share
     list.push_back(c.get());
   }
@@ -523,17 +566,10 @@ void randomTicks(Level& lv, World& w, float px, float pz, int slice, int slices)
       if (!R.tTick[id]) { cache->tickables[c->key()].erase(i); continue; }
       u8 meta = c->getMeta(lx, ly, lz);
       const BlockDef& d = R.block(id);
-      if (d.key == "pointed_dripstone") { if (meta & 1) caveDripTick(w, x, y, z, rnd()); continue; }   // (sim/cave_drips.h: a cauldron under it fills)
+      if (d.key == "pointed_dripstone") { if (meta & 1) caveDripTick(w, x, y, z, rnd()); continue; }
+      if (id == B.farmland) { if (rnd() < 1.0 / 20) farmlandTick(lv, w, x, y, z, meta); continue; }   // (moisture: about every 20 s)   // (sim/cave_drips.h: a cauldron under it fills)
       if (bhas(id, BF::Tree)) {   // saplings: two stages, each a 1 in 7 chance per random tick
-        if (rnd() < 1 / (RT * 7)) {
-          if (meta & 8) {
-            const std::string fl = d.str("fruitLeaves");
-            if (growTree(lv, w, x, y, z, rnd()) && !fl.empty()) if (BlockId f = R.blockId(fl)) {   // a fruit tree: its leaves bear fruit
-              const BlockId oak = R.blockId("leaves");
-              for (int dy = 1; dy <= 9; dy++) for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) if (w.getBlock(x + dx, y + dy, z + dz) == oak) w.setBlock(x + dx, y + dy, z + dz, f, w.getMeta(x + dx, y + dy, z + dz));
-            }
-          } else w.setBlock(x, y, z, id, meta | 8);
-        }
+        if (rnd() < 1 / (RT * 7)) saplingStep(lv, w, x, y, z, id, meta);
       } else if (id == B.berry_bush_empty) { if (rnd() < 1 / (RT * 5)) w.setBlock(x, y, z, B.berry_bush); }
       else if (d.has("refill")) { if (rnd() < 1 / (RT * 5)) if (BlockId f = R.blockId(d.str("refill"))) w.setBlock(x, y, z, f); }   // a picked berry bush bears again
       else if (bhas(id, BF::Crop)) {
@@ -543,7 +579,7 @@ void randomTicks(Level& lv, World& w, float px, float pz, int slice, int slices)
           u8 l = w.getLight(x, y, z);
           if (std::max(l >> 4, l & 15) < 9 && (l >> 4) * bandDaylight(lv, y) < 9) continue;
         }
-        bool wet = d.has("soil") || d.has("cocoa") || waterNear(w, x, y - 1, z, 4);
+        bool wet = d.has("soil") || d.has("cocoa") || farmlandMoist(w, x, y - 1, z) || waterNear(w, x, y - 1, z, 4);
         if (seasonOf(lv) == 3 && skyLandOf(dimOfY(y)) == DIM_OVERWORLD && w.realm == REALM_MAIN && rnd() < 0.7) continue;   // winter: crops out in the cold grow slowly
         if (rnd() < (wet ? 1 / (RT * 4) : 1 / (RT * 8))) w.setBlock(x, y, z, id, (u8)((meta & ~15) | (m + 1)));
       } else if (id == B.sugar_cane || id == B.cactus || id == B.kelp) {

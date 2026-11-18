@@ -17,6 +17,7 @@
 #include "core/tool_parts.h"
 #include "input/input.h"
 #include "audio/audio.h"
+#include "sim/deeds.h"
 #include <imgui.h>
 
 namespace dq {
@@ -76,6 +77,7 @@ public:
     if (r.weld) useFlux(*p);
     p->offhand[0].n -= r.n; if (p->offhand[0].n <= 0) p->offhand[0] = ItemStack();
     if (int left = giveItem(*a.session->level, *p, out); left > 0) { out.n = left; dropItem(*a.session->level, p->realm, out, p->pos + vec3(0, 1, 0), true); }
+    onAnvilWorked(*a.session->level, *p, anvilQuality(work));   // Smithing (sim/deeds.h)
     if (a.audio) a.audio->material("anvil", "place");
     pick = -1; cur = 0; refresh(a);
     if (choices.empty()) closing = true;   // popped in update(): finish() can run from draw()

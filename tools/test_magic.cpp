@@ -21,6 +21,11 @@ namespace dq { bool interactable(BlockId id); }   // (sim/controller.cpp)
 #include "sim/combat_rpg.h"
 #include "sim/balance.h"
 #include "world/world.h"
+#include "sim/combat.h"
+#include "sim/mob_combat.h"
+namespace dq { struct FishCatch { std::string id, kind; int cm = 0; }; FishCatch fishingCatch(Level& lv, int realm, vec3 at, float luck, float treasure); }   // (sim/fishing.h: its content.h clashes with gameplay.h here)
+#include <functional>
+#include <map>
 #include <cstdio>
 #include <thread>
 
@@ -543,6 +548,175 @@ int main(int argc, char** argv) {
     check(rankAfter(150) < 10 && rankAfter(150) >= 5, "150: well along, not yet mastered (" + std::to_string(rankAfter(150)) + ")");
     check(rankAfter(300) == 10, "about three hundred: mastered");
     p.stats["spellXp"] = keepX;
+  }
+
+  printf("[the skill perks: each does what its description says (data/magic.json, numbers in sim/balance.h)]\n");
+  {
+    const json keepSk = p.stats.value("skills", json::object());
+    const vec3 keepPos = p.pos;
+    p.pos = vec3(40.5f, 700, 40.5f);
+    auto noSkills = [&]() { p.stats["skills"] = json::object(); };
+    auto setSkill = [&](const char* k, int L) { json sk = p.stats.value("skills", json::object()); sk[k] = skillXpFor(L); p.stats["skills"] = sk; };
+    auto rate = [](int n, const std::function<bool()>& f) { int k = 0; for (int i = 0; i < n; i++) k += f() ? 1 : 0; return k / (double)n; };
+    auto plain = [&](const char* type, vec3 at) -> Creature* {
+      auto* c = dynamic_cast<Creature*>(spawnCreature(*lv, type, 0, at));
+      if (c) { c->data.erase("armor"); c->variant = ""; c->hp = c->maxHp = 40; c->invulnT = 0; }
+      return c;
+    };
+    noSkills();
+    // ---- Woodcutting ----
+    {
+      std::map<std::string, int> logs{{"birch_log", 10}}, extras;
+      woodcuttingFelled(p, logs, extras, "birch_sapling");
+      check(logs["birch_log"] == 10 && !extras.count("birch_sapling"), "no Woodcutting perks: a felled tree's logs as they were, no sapling promised");
+      setSkill("woodcutting", 30);
+      woodcuttingFelled(p, logs, extras, "birch_sapling");
+      check(extras["birch_sapling"] == 1 && logs["birch_log"] == 10, "Forester: a felled tree always leaves a sapling");
+      woodcuttingFelled(p, logs, extras, "birch_sapling");
+      check(extras["birch_sapling"] == 1, "Forester: ...one, not one more when it already dropped one");
+      setSkill("woodcutting", 60);
+      std::map<std::string, int> l2{{"birch_log", 10}}, e2;
+      woodcuttingFelled(p, l2, e2, "birch_sapling");
+      check(l2["birch_log"] == 12, "Lumberjack: a fifth more logs (10 -> " + std::to_string(l2["birch_log"]) + ")");
+      double avg = 0; for (int i = 0; i < 4000; i++) { std::map<std::string, int> l3{{"birch_log", 3}}, e3; woodcuttingFelled(p, l3, e3, ""); avg += l3["birch_log"]; }
+      avg /= 4000;
+      check(avg > 3.5 && avg < 3.7, "Lumberjack: three logs give 3.6 on average (" + std::to_string(avg) + ")");
+      const double lone = rate(4000, [&] { return woodcuttingExtraLog(p); });
+      check(lone > 0.17 && lone < 0.23, "Lumberjack: a log chopped on its own gives another one time in five (" + std::to_string(lone) + ")");
+      check(woodcuttingFellWear(p, 10) == 5, "felling ten logs wears the axe 5 without Heartwood");
+      check(rate(2000, [&] { return woodcuttingSavesWear(p); }) == 0, "...and every log chopped wears it");
+      setSkill("woodcutting", 90);
+      check(woodcuttingFellWear(p, 10) == 3 && woodcuttingFellWear(p, 1) == 1, "Heartwood: felling wears the axe half as much (10 logs: 3)");
+      const double sv = rate(4000, [&] { return woodcuttingSavesWear(p); });
+      check(sv > 0.45 && sv < 0.55, "Heartwood: a log chopped on its own wears the axe half the time (" + std::to_string(sv) + ")");
+      noSkills();
+      check(rate(2000, [&] { return woodcuttingExtraLog(p); }) == 0, "no extra logs without Lumberjack");
+    }
+    // ---- Fishing ----
+    {
+      check(near(fishingBiteFactor(p), 1) && fishingCatchCount(p, "fish") == 1 && near(fishingTreasureFactor(p), 1), "no Fishing perks: bites, catches and treasure as they were");
+      auto treasure = [&] { int t = 0; for (int i = 0; i < 6000; i++) t += fishingCatch(*lv, 0, p.pos, 0, fishingTreasureFactor(p)).kind == "treasure"; return t / 6000.0; };
+      const double t0 = treasure();
+      setSkill("fishing", 30);
+      check(near(fishingBiteFactor(p), 1.5f), "Patient Angler: a bite stays on the hook half again as long");
+      setSkill("fishing", 60);
+      const double dc = rate(4000, [&] { return fishingCatchCount(p, "fish") == 2; });
+      check(dc > 0.17 && dc < 0.23 && fishingCatchCount(p, "treasure") == 1 && fishingCatchCount(p, "junk") == 1, "Double Catch: one fish in five comes with a second (" + std::to_string(dc) + "), never treasure or junk");
+      setSkill("fishing", 90);
+      const double t1 = treasure();
+      check(t0 > 0.025 && t0 < 0.055 && t1 > 0.10 && t1 < 0.14, "Sea's Favour: treasure three times as often (" + std::to_string(t0) + " -> " + std::to_string(t1) + ")");
+      noSkills();
+    }
+    // ---- Melee ----
+    {
+      p.mode = "survival"; p.statLck = 0;
+      Creature* a = plain("skeleton", p.pos + vec3(0, 0, -2));
+      auto crits = [&] { int n = 0; float base = 1e9f; std::vector<float> got;
+        for (int i = 0; i < 6000; i++) { a->staggerT = 0; a->posture = 0; bool fin = false; got.push_back(combatRpgOutgoing(*lv, p, *a, 10, fin)); base = std::min(base, got.back()); }
+        for (float g : got) n += g > base + 0.01f; return n / 6000.0; };
+      const double c0 = crits();
+      setSkill("melee", 30);
+      const double c1 = crits();
+      check(c1 - c0 > 0.045 && c1 - c0 < 0.08, "Keen Edge: a sixteenth more of your blows are critical (" + std::to_string(c0) + " -> " + std::to_string(c1) + ")");
+      noSkills();
+      Creature* b = plain("skeleton", p.pos + vec3(1.2f, 0, -2));
+      p.inv[p.selected] = ItemStack("iron_sword", 1); p.attackCd = 0;
+      float bh = b->hp;
+      float dealt = attackEntity(*lv, p, *a);
+      check(dealt > 0 && near(b->hp, bh), "without Cleave a blow touches only its target");
+      setSkill("melee", 60);
+      a->hp = 40; a->invulnT = 0; b->invulnT = 0; p.attackCd = 0; bh = b->hp;
+      dealt = attackEntity(*lv, p, *a);
+      check(dealt > 0 && near(bh - b->hp, dealt / 3, 0.6), "Cleave: the foe beside your target takes a third (" + std::to_string(dealt) + " -> " + std::to_string(bh - b->hp) + ")");
+      Creature* far = plain("skeleton", p.pos + vec3(8, 0, -2));
+      a->hp = 40; a->invulnT = 0; b->removed = true; p.attackCd = 0; const float fh = far->hp;
+      attackEntity(*lv, p, *a);
+      check(near(far->hp, fh), "Cleave: ...not one across the field");
+      far->removed = true;
+      setSkill("melee", 90);
+      a->hp = 40; a->invulnT = 0; p.attackCd = 0; p.hp = 10;
+      dealt = attackEntity(*lv, p, *a);
+      check(dealt > 0 && near(p.hp, 10 + dealt * 0.05f, 0.01), "Bloodthirst: you heal a twentieth of the melee damage you deal (" + std::to_string(p.hp - 10) + ")");
+      a->removed = true; p.hp = p.maxHp; p.inv[p.selected].clear();
+      noSkills();
+    }
+    // ---- Archery ----
+    {
+      check(near(archerySpeedFactor(p), 1) && !archeryKeepsArrow(p) && near(archeryRangeFactor(p, 30), 1), "no Archery perks: arrows as they were");
+      setSkill("archery", 30);
+      check(near(archerySpeedFactor(p), 1.1f), "Steady Aim: arrows fly a tenth faster (their damage follows their speed)");
+      setSkill("archery", 60);
+      const double kept = rate(6000, [&] { return archeryKeepsArrow(p); });
+      check(kept > 0.30 && kept < 0.37, "Retrieval: one arrow in three isn't used up (" + std::to_string(kept) + ")");
+      setSkill("archery", 90);
+      check(near(archeryRangeFactor(p, 25), 1.25f) && near(archeryRangeFactor(p, 20), 1.25f) && near(archeryRangeFactor(p, 12), 1), "Eagle Eye: from 20 blocks or more a quarter harder, not closer");
+      noSkills();
+    }
+    // ---- Taming ----
+    {
+      Creature* wolf = plain("wolf", p.pos + vec3(-3, 0, 0));
+      Creature* foe = plain("skeleton", p.pos + vec3(-3, 0, 2));
+      check(wolf && foe, "a wolf and a skeleton to try it on");
+      if (wolf && foe) {
+        wolf->owner = p.name; wolf->tamed = true; wolf->kept = true;
+        auto harm = [&] { wolf->hp = 40; wolf->invulnT = 0; damageEntity(*lv, *wolf, 8, nullptr, "generic"); return 40 - wolf->hp; };
+        auto bite = [&] { foe->hp = 40; foe->invulnT = 0; DamageSrc s; s.knock = 0; damageEntity(*lv, *foe, 6, wolf, "mob", s); return 40 - foe->hp; };
+        const float h0 = harm(), b0 = bite();
+        setSkill("taming", 30);
+        const float h1 = harm();
+        check(near(h0, 8) && near(h1, 6), "Bonded: your creatures take a quarter less harm (8 -> " + std::to_string(h1) + ")");
+        setSkill("taming", 60);
+        const float b1 = bite();
+        check(near(b0, 6) && near(b1, 8), "Pack Leader: your creatures hit a third harder (" + std::to_string(b0) + " -> " + std::to_string(b1) + ")");
+        wolf->owner = "Somebody";
+        check(near(harm(), 8), "...only your own creatures");
+        wolf->removed = true; foe->removed = true;
+      }
+      check(near(tameChanceOf(p, 0.3f), 0.3f), "taming without Beast Master: the creature's chance");
+      setSkill("taming", 90);
+      check(near(tameChanceOf(p, 0.3f), 1), "Beast Master: taming always works the first time");
+      noSkills();
+    }
+    // ---- Cooking ----
+    {
+      PlayerController pc(*lv, p);
+      const ItemDef* beef = reg().item("cooked_beef");
+      auto eat = [&] { p.foodCd = 0; p.hp = 4; clearEffects(p); ItemStack s("cooked_beef", 1); pc.eatFood(s, *beef, false); };
+      eat();
+      const float cd0 = p.foodCd;
+      check(beef && cd0 > 2 && !hasEffect(p, "regen"), "eating without the perks: the usual wait, no Regeneration");
+      setSkill("cooking", 60);
+      eat();
+      check(near(p.foodCd, cd0 * 0.6f), "Quick Bite: the wait between bites two-fifths shorter (" + std::to_string(p.foodCd) + "s)");
+      setSkill("cooking", 90);
+      eat();
+      check(hasEffect(p, "regen") && near(effectTime(p, "regen"), 6, 0.05), "Feast: eating gives 6 seconds of Regeneration");
+      clearEffects(p); p.hp = p.maxHp; p.foodPool = 0;
+      noSkills();
+    }
+    // ---- Defence ----
+    {
+      p.armor[0] = ItemStack("iron_helmet", 1);
+      for (int i = 0; i < 100; i++) wearArmor(p);
+      const int w0 = p.armor[0].d;
+      setSkill("defence", 90);
+      p.armor[0].d = 0;
+      for (int i = 0; i < 100; i++) wearArmor(p);
+      const int w1 = p.armor[0].d;
+      check(w0 == 100 && w1 > 30 && w1 < 70, "Unbreakable: armour wears half as fast (100 blows: " + std::to_string(w0) + " -> " + std::to_string(w1) + ")");
+      p.armor[0].clear();
+      noSkills();
+    }
+    // ---- Exploring ----
+    {
+      const float m0 = moveFactor(p);
+      setSkill("exploring", 30);
+      const float m1 = moveFactor(p);
+      setSkill("exploring", 90);
+      const float m2 = moveFactor(p);
+      check(near(m1, m0 * 1.05f) && near(m2, m0 * 1.10f), "Pathfinder 5% faster on your feet, Wayfarer another 5% (" + std::to_string(m0) + " -> " + std::to_string(m1) + " -> " + std::to_string(m2) + ")");
+    }
+    p.stats["skills"] = keepSk; p.pos = keepPos;
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

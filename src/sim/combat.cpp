@@ -2,7 +2,9 @@
 // entities.js Mob.hurt/die, fairplay.js raw-blow floor).
 #include "core/tool_parts.h"
 #include "sim/rpg.h"
+#include "sim/item_uses.h"
 #include "sim/skilltree.h"
+#include "sim/talent_fx.h"
 #include "sim/balance.h"
 #include "sim/skills.h"
 #include "sim/combat.h"
@@ -74,6 +76,7 @@ bool wearHeld(Level& lv, Player& p, int n) {
   return false;
 }
 void wearArmor(Player& p) {
+  if (armourSavesWear(p)) return;   // Unbreakable: half the blows leave it be (sim/skills.h)
   for (int i = 0; i < 4; i++) {
     ItemStack& s = p.armor[i];
     if (s.empty()) continue;
@@ -94,6 +97,7 @@ static float playerHurtRaw(Player& p, float amount, const DamageSource& src) {
   if (src.type == "magic") dmg *= 1 - std::min(0.6f, treeAttrPct(p, "spell_resist") + treeAttr(p, "spell_resist"));
   if (src.raw > 0 && !src.bypassArmor) dmg = std::max(dmg, src.raw * 0.2f);
   if (src.element == "fire" || src.type == "lava" || src.type == "burn") dmg *= 1 - fireResist(p);
+  dmg *= gearHarmFactor(p, src);   // a dragon set's bonus, a cape (sim/item_uses.h)
   dmg = std::max(0.5f, std::round(dmg * 2) / 2);
   p.hp = std::max(0.f, p.hp - dmg);
   p.invuln = src.type == "burn" || src.type == "lava" ? 0.45f : 0.6f;
@@ -123,6 +127,7 @@ float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
   float dealt = playerHurtRaw(p, amount, src);
   if (!dealt) return 0;
   afterPlayerHurt(lv, p, dealt, mj);
+  gearOnHurt(lv, p, src, dealt);   // a dragon set strikes back (sim/item_uses.h)
   if (dealt >= 5) DQ_LOG("%s took %.1f (%s)", p.name.c_str(), dealt, src.type.c_str());   // big hits, for playtests and the bridge's log
   sfxUi(lv, p, "hurt");
   if (lv.events) lv.events->emit("rumble", json::array({p.name, std::min(1.f, 0.25f + dealt * 0.08f), 140}));
@@ -138,7 +143,8 @@ void mobDeath(Level& lv, Entity& m, const DamageSource& src) {
   bool baby = m.data.value("baby", false);
   Entity* by = src.attacker ? lv.entity(src.attacker) : nullptr;
   const MobLoot L = mobLoot(m.mobLevel, mobIsElite(m.data), by && by->isPlayer() ? static_cast<Player*>(by) : nullptr);   // (its level, an elite, your luck: sim/balance.h)
-  for (int roll = 0; roll < L.rolls; roll++)
+  const int rolls = L.rolls + (L.twice > 0 && rnd() < L.twice ? 1 : 0);   // (the trees' loot_double: the table once more)
+  for (int roll = 0; roll < rolls; roll++)
   if (!baby && T.contains("drops") && T["drops"].is_array()) for (auto& d : T["drops"]) {
     if (!d.is_array() || d.size() < 4) continue;
     if (rnd() < d[3].get<double>() * L.chanceMul) { int a = d[1], b = d[2]; int n = a + (int)(rnd() * (b - a + 1)) + (rnd() < L.extra ? 1 : 0); if (n > 0) dropItem(lv, m.realm, ItemStack(d[0], n), m.pos + vec3(0, 0.5f, 0), true); }
@@ -239,6 +245,17 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
   } else dealt = damageEntity(lv, e, dmg, src);
   if (setCd) p.attackCd = (tool && tool->type == "sword" ? 0.45f : 0.6f) / attackSpeedFactor(p);   // (Agility, attack-speed talents)
   if (dealt > 0 && !e.isPlayer() && !e.ghost) onPlayerHitMob(lv, p, e, "melee", dealt, hpBefore);   // (Melee grows with the blows that land)
+  if (dealt > 0 && !e.isPlayer() && !e.ghost) talentOnHit(lv, p, e, dealt);   // (the trees: bleeding, poison, slowness, fire, life drawn: sim/talent_fx.h)
+  if (dealt > 0 && !e.isPlayer()) {   // the Melee perks (sim/skills.h): Cleave's foe beside it, Bloodthirst's health back
+    if (Entity* o = cleaveTarget(lv, p, e)) {
+      const float part = dealt * bal::PERK_CLEAVE;
+      DamageSource cs; cs.attacker = p.id; cs.element = src.element; cs.knock = src.knock * 0.5f; cs.tool = src.tool; cs.weapon = src.weapon; cs.pierce = src.pierce;
+      if (o->ghost && lv.net && lv.net->isClient()) lv.net->hitEntity(p, o->id, part, {{"element", cs.element}, {"knock", cs.knock}, {"tool", cs.tool}, {"weapon", cs.weapon}});   // (a joined world: the host's creature)
+      else damageEntity(lv, *o, part, cs);
+      lv.fx->particles("crit", o->pos + vec3(0, o->h * 0.6f, 0), 4);
+    }
+    p.heal(bloodthirstHeal(p, dealt));
+  }
   if (dealt > 0) {
     sfxUi(lv, p, crit ? "crit" : "hit");
     if (crit) lv.fx->particles("crit", e.pos + vec3(0, e.h * 0.6f, 0), 10);   // a burst of stars on a critical blow

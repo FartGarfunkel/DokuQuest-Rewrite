@@ -5,6 +5,7 @@
 #include "sim/gameplay.h"
 #include "sim/player.h"
 #include "sim/events.h"
+#include "sim/combat.h"
 
 namespace dq {
 
@@ -42,8 +43,10 @@ int placeAttachment(Level& lv, Player* p, World& w, int x, int y, int z, BlockId
     sfxMaterial(lv, R.block(bid).sound, "place", partCentre(w, x, y, z, (int)w.attachments(x, y, z)->size() - 1));
     return 1;
   }
-  // the cell's main block is a small part (a trapdoor flipped up against the wall): it steps aside for this one
-  if (attachable(cur) && !bigBlock(bid) && R.tSolid[bid]) {
+  // the cell's main block is a small part (a trapdoor flipped up against the wall, a torch on the wall of a tunnel): it
+  // steps aside for this one. Rails too: track laid under the tunnel's torches (the rail stays the cell's main block, so
+  // carts and the redstone find it where they always do)
+  if (attachable(cur) && !bigBlock(bid) && (R.tSolid[bid] || traits(bid).rail)) {
     if (parts && (int)parts->size() >= MAX_ATTACH) { say("There's no room for it there"); return 0; }
     std::vector<PixBox> mine, other;
     const bool fullMine = !partRoom(w, x, y, z, bid, meta, true, mine);
@@ -102,6 +105,20 @@ bool useAttachment(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack*
     return true;
   }
   if (bhas(a.id, BF::Sign)) { openScreen(lv, p, "sign", {{"pos", {x, y, z}}, {"slot", slot}}); return true; }
+  if (k == ShapeKind::Candle) {   // (build.cpp useBlock: another of the same candle joins them, flint lights them, a bare hand puts them out)
+    const ItemDef* hd = held && !held->empty() ? R.item(held->id) : nullptr;
+    if (hd && hd->block == d.key) {
+      if ((a.meta & 3) < 3 && !partBlocked(w, x, y, z, slot, a.id, (u8)(a.meta + 1))) {
+        w.setAttachmentMeta(x, y, z, slot, (u8)(a.meta + 1), SetFlags::Urgent);
+        if (!p.creative() && --held->n <= 0) held->clear();
+        sfxMaterial(lv, d.sound, "place", c);
+      }
+      return true;   // (four already: nothing, never the cell's main block)
+    }
+    if (hd && hd->str("igniter") == "flint" && !(a.meta & 4)) { w.setAttachmentMeta(x, y, z, slot, a.meta | 4, SetFlags::Urgent); lv.fx->sound("ignite", c, 16); wearHeld(lv, p, 1); return true; }
+    if (!held && (a.meta & 4)) { w.setAttachmentMeta(x, y, z, slot, a.meta & ~4, SetFlags::Urgent); lv.fx->sound("fizz", c, 16); return true; }
+    return false;
+  }
   if (d.has("frame")) {
     json* e = w.attachmentEntity(x, y, z, slot);
     if (!e) return false;
@@ -132,7 +149,8 @@ void breakAttachment(Level& lv, Player* p, World& w, int x, int y, int z, int sl
   if (!drops) return;
   if (a.be.is_object() && a.be.contains("item")) { ItemStack s = ItemStack::fromJson(a.be["item"]); if (!s.empty()) dropItem(lv, w.realm, s, c, true); }
   const std::string drop = d.drop.empty() ? d.key : d.drop;   // (the block's own drop: a lit redstone torch's is a torch)
-  if (drop != "air" && drop != "none" && reg().item(drop)) dropItem(lv, w.realm, ItemStack(drop, 1), c, true);
+  const int n = reg().tShape[a.id] == ShapeKind::Candle ? (a.meta & 3) + 1 : 1;   // (candles: each of them)
+  if (drop != "air" && drop != "none" && reg().item(drop)) dropItem(lv, w.realm, ItemStack(drop, n), c, true);
   (void)tool;
 }
 
@@ -211,20 +229,16 @@ public:
 
 // collision and climbing (sim/physics.h): the attachments' own boxes
 void extraBoxes(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ, std::vector<DBox>& out) {
-  const Registry& R = reg();
   static thread_local std::vector<PixBox> pb;
   for (int y = (int)std::floor(minY); y <= (int)std::floor(maxY - 1e-7); y++)
     for (int z = (int)std::floor(minZ); z <= (int)std::floor(maxZ - 1e-7); z++)
       for (int x = (int)std::floor(minX); x <= (int)std::floor(maxX - 1e-7); x++) {
-        const auto* parts = w.attachments(x, y, z);
-        if (!parts) continue;
-        for (const Attachment& a : *parts) {
-          if (!R.tSolid[a.id] || !partBoxes(w, x, y, z, a.id, a.meta, ShapePurpose::Collide, pb)) continue;
-          for (auto& b : pb) {
-            DBox d{x + b.x0 / 16.0, y + b.y0 / 16.0, z + b.z0 / 16.0, x + b.x1 / 16.0, y + b.y1 / 16.0, z + b.z1 / 16.0};
-            if (d.x1 <= minX || d.x0 >= maxX || d.y1 <= minY || d.y0 >= maxY || d.z1 <= minZ || d.z0 >= maxZ) continue;
-            out.push_back(d);
-          }
+        if (!w.hasAttachments(x, y, z)) continue;
+        pb.clear(); attachCollideBoxes(w, x, y, z, pb);
+        for (auto& b : pb) {
+          DBox d{x + b.x0 / 16.0, y + b.y0 / 16.0, z + b.z0 / 16.0, x + b.x1 / 16.0, y + b.y1 / 16.0, z + b.z1 / 16.0};
+          if (d.x1 <= minX || d.x0 >= maxX || d.y1 <= minY || d.y0 >= maxY || d.z1 <= minZ || d.z0 >= maxZ) continue;
+          out.push_back(d);
         }
       }
 }
@@ -232,7 +246,7 @@ bool extraClimb(const World& w, const Entity& e) {
   const int x0 = ifloor(e.pos.x - e.w), x1 = ifloor(e.pos.x + e.w), z0 = ifloor(e.pos.z - e.w), z1 = ifloor(e.pos.z + e.w);
   const int y0 = ifloor(e.pos.y), y1 = ifloor(e.pos.y + e.h - 0.01f);
   for (int y = y0; y <= y1; y++) for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++)
-    if (const auto* parts = w.attachments(x, y, z)) for (const Attachment& a : *parts) if (bhas(a.id, BF::Climb)) return true;
+    if (attachClimb(w, x, y, z)) return true;
   return false;
 }
 } // namespace

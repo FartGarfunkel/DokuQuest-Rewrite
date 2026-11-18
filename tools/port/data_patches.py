@@ -139,6 +139,8 @@ _sHG = _u.spec_from_file_location('horse_gear', pathlib.Path(__file__).with_name
 _s = _u.spec_from_file_location('forging', pathlib.Path(__file__).with_name('forging.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 # ---- moving structures: the Hinge, the Slider and Glue (tools/port/moving_parts.py) ----
 _s = _u.spec_from_file_location('moving_parts', pathlib.Path(__file__).with_name('moving_parts.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
+# ---- what a village gives back: the Shrine of Renewal, each trade's wants (tools/port/village_life.py) ----
+_s = _u.spec_from_file_location('village_life', pathlib.Path(__file__).with_name('village_life.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 # ---- the sunflower's head: pictures of its own (tools/port/plant_heads.py) ----
 _s = _u.spec_from_file_location('plant_heads', pathlib.Path(__file__).with_name('plant_heads.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 # ---- drips off a stalactite, a cauldron of lava (tools/port/cave_drips.py) ----
@@ -517,3 +519,7 @@ for _n in ('new_materials', 'forging', 'tool_parts', 'armor_art', 'elytra_art', 
 
 # ---- everything stacks unless stacking would break it (tools/port/stacking.py) ----
 _s22 = _u.spec_from_file_location('stacking', pathlib.Path(__file__).with_name('stacking.py')); _m22 = _u.module_from_spec(_s22); _s22.loader.exec_module(_m22); _m22.main(d)
+
+# ---- every drop has a use: the War Horn, each dragon's own scales and armour, grain foods and feed, the capes' words
+#      (tools/port/item_uses.py; checked by tools/test_content.cpp) ----
+_s23 = _u.spec_from_file_location('item_uses', pathlib.Path(__file__).with_name('item_uses.py')); _m23 = _u.module_from_spec(_s23); _s23.loader.exec_module(_m23); _m23.main(d)

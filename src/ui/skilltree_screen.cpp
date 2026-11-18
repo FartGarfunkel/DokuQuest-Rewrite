@@ -3,6 +3,9 @@
 // the left stick) and zoom (the wheel, or the triggers); point at a node for what it gives, click it (or A on the one
 // picked with the d-pad, which steps to the nearest node that way) to learn it. The side panel: points, the six stats
 // with a + each, and a reset. Mouse, keyboard and controller all work (the menu tabs: LB / RB).
+// A controller (or the arrows) works one page at a time: the d-pad picks nodes on the tree, and right past the last node
+// (or RT) crosses to the right page, where up / down picks a stat (or the reset) and A spends the point; left (or LT) goes back. The
+// pages' buttons are kept out of the menu's own highlight, so one press never moves something on both pages.
 #include "ui/magic_screens.h"
 #include "ui/ui.h"
 #include "ui/book.h"
@@ -14,8 +17,11 @@
 #include "sim/skilltree.h"
 #include "sim/balance.h"
 #include "sim/skills.h"
+#include "sim/magic.h"
 #include "common/noise.h"
+#include "sim/deeds.h"
 #include <imgui.h>
+#include <algorithm>
 #include <cmath>
 
 namespace dq {
@@ -45,6 +51,10 @@ class SkillTreeScreen : public Screen {
 public:
   const char* id() const override { return "skilltree"; }
   bool pausesGame() const override { return false; }
+  // learn a node; a tree's start taken without a Path says who teaches the Path that goes with it (sim/deeds.h)
+  static void learn(App& a, Player& p, const SkillTree& T, int i) {
+    if (treeLearn(p, T.key, T.nodes[i].id) && T.nodes[i].start && a.session && a.session->level) pathTreeOnStart(*a.session->level, p, T.key);
+  }
   void update(App& a, double) override {
     frames++;
     Player* p = a.session ? a.session->player : nullptr;
@@ -59,10 +69,11 @@ public:
     const float z = ui::Z();
     // in the book, as the spellbook and the journal are: the tree on the left page, what it gives on the right
     ui::bookPagesBegin(a, "##skilltree");
+    ImGui::PushItemFlag(ImGuiItemFlags_NoNav, true);   // (the pad and the arrows go by this screen's own picking, below)
     if (trees.empty()) {
       ui::bookPageTitle(a, "Skill Trees");
       ImGui::TextWrapped("No skill trees here: none have been brought in.");
-      ui::bookPagesEnd(); return;
+      ImGui::PopItemFlag(); ui::bookPagesEnd(); return;
     }
     cur = std::clamp(cur, 0, (int)trees.size() - 1);
     const SkillTree& T = trees[cur];
@@ -72,12 +83,13 @@ public:
       const bool on = i == cur;
       if (on) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
       const ImVec2 bp = ImGui::GetCursorScreenPos();
-      if (ImGui::SmallButton(("     " + trees[i].name + "##t").c_str())) { cur = i; sel = -1; panX = panY = 0; }
+      if (ImGui::SmallButton(("     " + trees[i].name + "##t").c_str())) { cur = i; sel = -1; panX = panY = 0; zone = 0; }
       const float bh = ImGui::GetItemRectSize().y;
       ui::drawGlyph(ImGui::GetWindowDrawList(), treeGlyph(trees[i].key), ImVec2(bp.x + bh * 0.62f, bp.y + bh * 0.5f), bh * 0.36f, ImGui::GetColorU32(ImGuiCol_Text));
       if (on) ImGui::PopStyleColor();
     }
-    if (a.input.pressed(Act::MenuX)) { cur = (cur + 1) % (int)trees.size(); sel = -1; panX = panY = 0; }
+    if (a.input.pressed(Act::MenuX)) { cur = (cur + 1) % (int)trees.size(); sel = -1; panX = panY = 0; zone = 0; }
+    if (const std::string tl = treeTrainerLine(*p, T.key); !tl.empty()) ImGui::TextDisabled("%s", tl.c_str());   // its Path and who teaches it (sim/deeds.h)
     ImDrawList* dl = ImGui::GetWindowDrawList();
     // the canvas: the rest of the left page
     const ImVec2 wp = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
@@ -118,36 +130,50 @@ public:
       const ImU32 base = has ? ui::inkOf(hexCol(n.col.empty() ? "ebd93b" : n.col)) : can ? ui::ink::good : ui::withAlpha(ui::ink::muted, 0.55f);
       if (n.size == 2) dl->AddNgonFilled(q, r, base, 6); else dl->AddCircleFilled(q, r, base, 20);
       if (n.size == 2) dl->AddNgon(q, r + 3 * z, has ? base : ui::withAlpha(ui::ink::muted, 0.6f), 6, 1.2f * z);   // (a keystone: a second rim)
-      dl->AddCircle(q, r, i == sel ? ui::ink::head : ui::withAlpha(ui::ink::text, 0.6f), 20, (i == sel ? 2.5f : 1.f) * z);
+      dl->AddCircle(q, r, i == sel && zone == 0 ? ui::ink::head : ui::withAlpha(ui::ink::text, 0.6f), 20, (i == sel && zone == 0 ? 2.5f : 1.f) * z);
       if (r >= 5.5f) ui::drawGlyph(dl, nodeGlyph(n), q, r * 0.6f, has || can ? ui::col::rgb(0xf8f1df) : ui::withAlpha(ui::col::rgb(0xf8f1df), 0.8f));
       const float dx = io.MousePos.x - q.x, dy = io.MousePos.y - q.y;
       if (hov && dx * dx + dy * dy <= r * r * 1.4f) hot = i;
     }
     dl->PopClipRect();
-    auto step = [&](float ux, float uy) {   // the d-pad: the nearest node that way from the picked one (or the middle)
+    auto step = [&](float ux, float uy) -> bool {   // the d-pad: the nearest node that way from the picked one (or the middle)
       const ImVec2 from = sel >= 0 ? at(T.nodes[sel]) : mid;
       int best = -1; float bd = 1e9f;
       for (int i = 0; i < (int)T.nodes.size(); i++) {
         if (i == sel) continue;
         const ImVec2 q = at(T.nodes[i]); const float dx = q.x - from.x, dy = q.y - from.y, along = dx * ux + dy * uy;
-        if (along <= 1) continue;
+        if (along <= 1 || std::fabs(dx * uy - dy * ux) > along * 1.4f) continue;   // (only what lies that way, within about 55 degrees: at the edge, the press goes on to the next page)
         const float d = along + 2.5f * std::fabs(dx * uy - dy * ux);
         if (d < bd) { bd = d; best = i; }
       }
       if (best >= 0) { sel = best; const ImVec2 q = at(T.nodes[sel]); if (q.x < c0.x + 40 || q.x > c1.x - 40 || q.y < c0.y + 40 || q.y > c1.y - 40) { panX = -T.nodes[sel].x; panY = -T.nodes[sel].y; } }
+      return best >= 0;
     };
-    if (a.input.pressed(Act::MenuLeft)) step(-1, 0);
-    if (a.input.pressed(Act::MenuRight)) step(1, 0);
-    if (a.input.pressed(Act::MenuUp)) step(0, -1);
-    if (a.input.pressed(Act::MenuDown)) step(0, 1);
-    const int show = hot >= 0 ? hot : sel;
-    if (hot >= 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !dragged) treeLearn(*p, T.key, T.nodes[hot].id);
-    if (sel >= 0 && a.input.pressed(Act::MenuOk)) treeLearn(*p, T.key, T.nodes[sel].id);
+    const int NSTAT = 6;   // the six stats, then the reset (index NSTAT: in creative; otherwise a Shrine of Renewal does it, sim/village_life.h)
+    const int NPICK = NSTAT + (p->creative() ? 1 : 0);
+    if (zone == 0) {   // the tree: the d-pad picks nodes; right past the last one crosses to your stats
+      if (a.input.pressed(Act::MenuLeft)) step(-1, 0);
+      if ((a.input.pressed(Act::MenuRight) && !step(1, 0)) || a.input.padButtonPressed(7)) { zone = 1; statSel = std::clamp(statSel, 0, NPICK - 1); resetAsk = 0; }
+      if (a.input.pressed(Act::MenuUp)) step(0, -1);
+      if (a.input.pressed(Act::MenuDown)) step(0, 1);
+      if (sel >= 0 && a.input.pressed(Act::MenuOk)) learn(a, *p, T, sel);
+    } else {           // your stats: up / down, A to spend a point (the reset asks for a second A), left back to the tree
+      if (a.input.pressed(Act::MenuLeft) || a.input.padButtonPressed(6)) { zone = 0; resetAsk = 0; }
+      statSel = std::clamp(statSel, 0, NPICK - 1);
+      if (a.input.pressed(Act::MenuUp)) { statSel = (statSel + NPICK - 1) % NPICK; resetAsk = 0; }
+      if (a.input.pressed(Act::MenuDown)) { statSel = (statSel + 1) % NPICK; resetAsk = 0; }
+    }
+    if (resetAsk > 0) resetAsk -= io.DeltaTime;
+    const int show = hot >= 0 ? hot : zone == 0 ? sel : -1;
+    if (hot >= 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !dragged) learn(a, *p, T, hot);
     if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) dragged = false;
     ImGui::SetCursorScreenPos(ImVec2(wp.x, c1.y + 4 * z));
-    ImGui::TextDisabled("Drag or stick: move \xC2\xB7 wheel: zoom \xC2\xB7 d-pad, A: learn \xC2\xB7 X: next tree");
+    if (a.input.usingPad()) ImGui::TextDisabled("D-pad: pick \xC2\xB7 A: learn \xC2\xB7 RT: stats \xC2\xB7 X: next tree");
+    else ImGui::TextDisabled("Drag: move \xC2\xB7 wheel: zoom \xC2\xB7 click: learn \xC2\xB7 arrows: pick");
+    ImGui::PopItemFlag();
     // the right page: the picked node, the points, the six stats, what the trees give
     ui::bookPagesRight("##skilltree-r");
+    ImGui::PushItemFlag(ImGuiItemFlags_NoNav, true);
     ui::bookPageTitle(a, "Your Path");
     if (show >= 0) {
       const TreeNode& n = T.nodes[show];
@@ -158,14 +184,26 @@ public:
       ImGui::PopStyleColor();
       if (!n.desc.empty()) ImGui::TextWrapped("%s", n.desc.c_str());
       ImGui::TextDisabled("%s", treeHas(*p, n.id) ? "Learnt" : why.empty() ? "Click (or A) to learn it" : why.c_str());
-    } else ImGui::TextDisabled("Point at a node (or pick one with the d-pad) to read it");
+    } else if (zone == 1) ImGui::TextDisabled(a.input.usingPad() ? "Up / down: a stat \xC2\xB7 A: spend a point \xC2\xB7 LT or left: the tree" : "Up / down: a stat \xC2\xB7 Enter: spend a point \xC2\xB7 left: the tree");
+    else ImGui::TextDisabled("Point at a node (or pick one with the d-pad) to read it");
     ImGui::Separator();
     const int earned = treePointsEarned(*p), spent = treePointsSpent(*p);
+    const int deedT = deedTalentPoints(*p);
     ImGui::Text("Tree points: %d of %d", earned - spent, earned);
-    ImGui::TextDisabled("A point every 3 levels of your skills");
-    if (ImGui::SmallButton("Reset the tree")) treeReset(*p);
+    if (deedT > 0) { ImGui::SameLine(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(ui::ink::good), "(from your deeds: %d)", deedT); }
+    ImGui::TextDisabled("A point every 3 levels of your skills, and for your deeds");
+    if (!p->creative()) ImGui::TextDisabled("To learn again: a Shrine of Renewal, in any village square");
+    else {   // (creative: the pad's reset, picked last on this page, and a second A within a few seconds, so a stray press costs nothing)
+      const bool on = zone == 1 && statSel == NSTAT;
+      if (ImGui::SmallButton(on && resetAsk > 0 ? "Press A again to reset" : "Reset the tree")) treeReset(*p);
+      if (on) {
+        ImGui::GetWindowDrawList()->AddRect(ImVec2(ImGui::GetItemRectMin().x - 3 * z, ImGui::GetItemRectMin().y - 2 * z), ImVec2(ImGui::GetItemRectMax().x + 3 * z, ImGui::GetItemRectMax().y + 2 * z), ui::ink::head, 3 * z, 0, 2 * z);
+        if (a.input.pressed(Act::MenuOk)) { if (resetAsk > 0) { treeReset(*p); resetAsk = 0; } else resetAsk = 3; }
+      }
+    }
     ImGui::Separator();
     ImGui::Text("Stat points: %d", p->statPoints);
+    if (const int deedS = deedStatPoints(*p); deedS > 0) { ImGui::SameLine(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(ui::ink::good), "(from your deeds: %d)", deedS); }
     ImGui::TextDisabled("A point every %d levels of your skills, up to %d a stat", bal::STAT_EVERY, bal::STAT_CAP);
     struct S { const char* name; int* v; std::string what; ui::Glyph g; };
     auto pc = [](float f) { return std::to_string((int)std::lround(f * 100)) + "%"; };
@@ -178,16 +216,24 @@ public:
         {"Luck", &p->statLck, "Critical hits and drops. A point: +" + strFormat("%.1f", LCK_CRIT * 100) + "% crit chance, +" + strFormat("%.1f", LCK_LOOT * 100) + "% loot luck.\nNow: " + pc(critChance(*p)) + " crit chance (at most " + pc(CRIT_CHANCE_CAP) + "), +" + pc(lootLuck(*p)) + " loot", ui::Glyph::Clover},
         {"Focus", &p->statFoc, "Posture damage: break a guard sooner for a finisher. A point: +" + pc(FOC_POSTURE) + ".\nNow: x" + strFormat("%.2f", postureFactor(*p)), ui::Glyph::Target}};
     const float pw = ImGui::GetWindowSize().x;
-    for (auto& st : stats) {
+    for (int si = 0; si < NSTAT; si++) {
+      S& st = stats[si];
+      const bool on = zone == 1 && statSel == si, can = p->statPoints > 0 && *st.v < bal::STAT_CAP;
       ImGui::PushID(st.name);
+      const ImVec2 row0 = ImGui::GetCursorScreenPos();
       glyphInline(st.g, ImGui::GetColorU32(ImGuiCol_Text), ImGui::GetTextLineHeight());
       ImGui::Text("%s", st.name); ImGui::SameLine(pw * 0.55f); ImGui::Text("%d", *st.v); ImGui::SameLine(pw * 0.7f);
-      ImGui::BeginDisabled(p->statPoints <= 0 || *st.v >= bal::STAT_CAP);
+      ImGui::BeginDisabled(!can);
       if (ImGui::SmallButton("+")) { (*st.v)++; p->statPoints--; }
       ImGui::EndDisabled();
-      if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || ImGui::IsItemFocused()) ui::setTooltip("%s", st.what.c_str());   // (focused: a pad's d-pad reads it too)
+      if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) ui::setTooltip("%s", st.what.c_str());
+      if (on) {   // the pad's pick: the row framed, what it gives below the stats, A spends a point
+        ImGui::GetWindowDrawList()->AddRect(ImVec2(row0.x - 3 * z, row0.y - 2 * z), ImVec2(row0.x + pw * 0.82f, ImGui::GetItemRectMax().y + 2 * z), ui::ink::head, 3 * z, 0, 2 * z);
+        if (can && a.input.pressed(Act::MenuOk)) { (*st.v)++; p->statPoints--; }
+      }
       ImGui::PopID();
     }
+    if (zone == 1 && statSel < NSTAT) { ImGui::PushTextWrapPos(0); ImGui::TextDisabled("%s", stats[statSel].what.c_str()); ImGui::PopTextWrapPos(); }
     ImGui::Separator();
     ImGui::Text("From the trees and your gems:");
     static const char* SHOW[][2] = {{"health", "health"}, {"damage", "damage"}, {"armor", "armour"}, {"mana", "mana"}, {"crit_chance", "crit chance"},
@@ -201,18 +247,23 @@ public:
       ImGui::Text("%s %s%s", sh[1], f ? ("+" + std::to_string((int)std::round(f))).c_str() : "", pc ? (" +" + std::to_string((int)std::round(pc * 100)) + "%").c_str() : "");
     }
     for (const bal::TalentRule& r : bal::TALENTS) {   // the rest, capped as they work in play (sim/balance.h)
-      if (r.flatScale == 0) continue;
       bool shown = false; for (auto& sh : SHOW) shown |= r.attr == std::string(sh[0]);
       if (shown || (treeAttr(*p, r.attr) == 0 && treeAttrPct(*p, r.attr) == 0)) continue;
       any++;
       const float v = talent(*p, r.attr);
-      ImGui::Text("%s %s%s", r.attr, std::string(r.attr) == "step" ? strFormat("+%.2f", v).c_str() : ((v >= 0 ? "+" : "") + std::to_string((int)std::lround(v * 100)) + "%").c_str(), v >= r.hi || v <= r.lo ? " (capped)" : "");
+      std::string name = r.attr; std::replace(name.begin(), name.end(), '_', ' ');
+      if (r.flag) ImGui::Text("%s%s", name.c_str(), v > 0 ? "" : " (none)");
+      else ImGui::Text("%s %s%s", name.c_str(), std::string(r.attr) == "step" ? strFormat("+%.2f", v).c_str() : ((v >= 0 ? "+" : "") + std::to_string((int)std::lround(v * 100)) + "%").c_str(), v >= r.hi || v <= r.lo ? " (capped)" : "");
       if (ImGui::IsItemHovered()) ui::setTooltip("%s", r.what);
     }
+    for (const std::string& k : treeGrants(*p, "grant_spell.")) if (const SpellDef* S = magicData().spell(k)) { any++; ImGui::Text("spell: %s", S->name.c_str()); }
     if (!any) ImGui::TextDisabled("Nothing yet");
+    ImGui::PopItemFlag();
     ui::bookPagesEnd();
   }
   bool want = false, dragged = false; int frames = 0, cur = 0, sel = -1;
+  int zone = 0, statSel = 0;   // the pad's page: 0 the tree, 1 your stats (statSel: a stat, or 6 the reset)
+  float resetAsk = 0;          // seconds left to press A again for the reset
   float panX = 0, panY = 0, scale = 0;
 };
 } // namespace

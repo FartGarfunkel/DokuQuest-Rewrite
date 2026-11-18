@@ -11,6 +11,9 @@ bool attachable(BlockId id) {
   const int k = R.tShape[id];
   if (k == ShapeKind::Trapdoor || k == ShapeKind::Ladder || k == ShapeKind::Lever || k == ShapeKind::Button || k == ShapeKind::Plate || k == ShapeKind::Frame) return true;
   if (bhas(id, BF::Sign) || traits(id).lantern) return true;
+  // candles standing on the floor (not sea pickles: a plant of the sea bed) and hanging chains
+  if (k == ShapeKind::Candle && bhas(id, BF::Candle)) return true;
+  if (R.block(id).str("shape") == "chain") return true;
   return false;
 }
 
@@ -29,8 +32,9 @@ bool attachSupportDir(BlockId id, u8 meta, ivec3& d) {
     return true;
   }
   if (k == ShapeKind::Trapdoor) return false;   // (a trapdoor holds itself up, as the block does)
+  if (R.block(id).str("shape") == "chain") return false;   // (nor does a chain: the block hangs on nothing either)
   if (traits(id).lantern && hangingLantern(id, meta)) { d = ivec3(0, 1, 0); return true; }
-  d = ivec3(0, -1, 0);   // standing: a sign on its post, a plate, a lantern
+  d = ivec3(0, -1, 0);   // standing: a sign on its post, a plate, a lantern, candles
   return true;
 }
 bool attachSupported(const World& w, int x, int y, int z, BlockId id, u8 meta) {
@@ -113,6 +117,20 @@ bool partBoxes(const World& w, int x, int y, int z, BlockId id, u8 meta, int pur
   return true;
 }
 
+void attachCollideBoxes(const World& w, int x, int y, int z, std::vector<PixBox>& out) {
+  const auto* parts = w.attachments(x, y, z);
+  if (!parts) return;
+  static thread_local std::vector<PixBox> pb;
+  for (const Attachment& a : *parts) {
+    if (!reg().tSolid[a.id] || !partBoxes(w, x, y, z, a.id, a.meta, ShapePurpose::Collide, pb)) continue;
+    out.insert(out.end(), pb.begin(), pb.end());
+  }
+}
+bool attachClimb(const World& w, int x, int y, int z) {
+  if (const auto* parts = w.attachments(x, y, z)) for (const Attachment& a : *parts) if (bhas(a.id, BF::Climb)) return true;
+  return false;
+}
+
 bool partRoom(const World& w, int x, int y, int z, BlockId id, u8 meta, bool main, std::vector<PixBox>& out) {
   out.clear();
   const Registry& R = reg();
@@ -136,6 +154,7 @@ bool partRoom(const World& w, int x, int y, int z, BlockId id, u8 meta, bool mai
   bool any = false;
   for (int purpose : {(int)ShapePurpose::Collide, (int)ShapePurpose::Draw}) {
     if (purpose == ShapePurpose::Collide && !R.tSolid[id]) continue;
+    if (purpose == ShapePurpose::Collide && R.tShape[id] == ShapeKind::Candle) continue;   // (a loose square round the candles: the drawn candles are what take room)
     if (partBoxes(w, x, y, z, id, meta, purpose, tmp)) { out.insert(out.end(), tmp.begin(), tmp.end()); any = true; }
     else if (cube) return false;
   }
@@ -159,6 +178,11 @@ static bool roomsOverlap(bool fullA, const std::vector<PixBox>& a, bool fullB, c
 }
 
 bool attachRoomFree(const World& w, int x, int y, int z, BlockId id, u8 meta, int skipSlot, bool skipMain) {
+  if (reg().tShape[id] == ShapeKind::Candle) {   // one group of candles to a cell (another joins it: sim/attach_play.cpp), never two side by side
+    if (!skipMain && reg().tShape[w.getBlock(x, y, z)] == ShapeKind::Candle) return false;
+    if (const auto* parts = w.attachments(x, y, z))
+      for (int i = 0; i < (int)parts->size(); i++) if (i != skipSlot && reg().tShape[(*parts)[i].id] == ShapeKind::Candle) return false;
+  }
   std::vector<PixBox> mine, other;
   const bool fullMine = !partRoom(w, x, y, z, id, meta, false, mine);
   if (!skipMain) {

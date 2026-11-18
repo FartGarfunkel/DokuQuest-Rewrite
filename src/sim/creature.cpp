@@ -2,10 +2,12 @@
 // layers the later modules wrapped round it: dismember.js, bestiary.js, sounds2.js, monsters.js,
 // quarrels.js, pets.js (hurt), nightmobs.js (jockeys, slime split), husbandry.js (kept animals).
 #include "sim/world_life.h"
+#include "sim/item_uses.h"
 #include "core/tool_parts.h"
 #include <cstdlib>
 #include "sim/rpg.h"
 #include "sim/creature.h"
+#include "sim/worldsys.h"
 #include "sim/barrel.h"
 #include "sim/blockfx.h"
 #include "sim/rules.h"
@@ -30,6 +32,7 @@
 #include <cstring>
 
 namespace dq {
+vec3 flowAt(const World& w, int x, int y, int z);   // sim/gameplay.h (its dropItem is not this file's)
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
 void stormFalls(Level& lv, Creature& m);   // sim/wither.cpp
 bool stableCreatureDies(Level& lv, Entity& m);   // sim/stable.h (not included: its helpers clash with gameplay's here)
@@ -543,6 +546,7 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   if (src.type == "lava" && T->fireImmune) dmg = 0;
   if (dmg <= 0) { if (a && a->isPlayer()) floatText(lv, a->id, pos + vec3(0, h + 0.3f, 0), "Immune", "#ffb070"); return 0; }
   if (!src.bypassArmor) if (float ap = armourPoints() * (1 - std::clamp(src.pierce, 0.f, 1.f)); ap > 0) { dmg *= 1 - std::min(20.f, ap) * 0.04f; wolfArmourWear(*this, lv); horseArmourWear(*this, lv); }   // as a player's armour: 4% a point (wolf and horse armour wear down)
+  if (!owner.empty() && !absolute) dmg *= petHarmFactor(lv, owner);   // Bonded: a keeper's creatures take less harm (sim/skills.h)
   // the ender dragon: the head takes the blow, every other part takes a quarter plus at most 1
   if (type == "ender_dragon" && src.hasRay && dmg > 0) {
     const RigModel* RM = rigModel(modelKey());
@@ -644,7 +648,8 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   // its level, an elite, the killer's luck (sim/balance.h): more rolls, better odds, now and then a piece of gear
   Entity* killer = ent(lv, src.attacker);
   const MobLoot L = mobLoot(mobLevel, mobIsElite(data), killer && killer->isPlayer() ? static_cast<Player*>(killer) : nullptr);
-  if (!baby && !noDrops) for (int r = 0; r < L.rolls; r++) for (auto& d : T->drops) if (frand() < d.chance * L.chanceMul) {
+  const int rolls = L.rolls + (L.twice > 0 && frand() < L.twice ? 1 : 0);   // (the trees' loot_double: the table once more)
+  if (!baby && !noDrops) for (int r = 0; r < rolls; r++) for (auto& d : T->drops) if (frand() < d.chance * L.chanceMul) {
     int n = roll(d.lo, d.hi) + (frand() < L.extra ? 1 : 0);
     if (n > 0) dropItem(lv, realm, proceduralOf(hideFor(d.id, imm), n), at, true);   // (metal gear procedural; immersive: raw hide for leather, sim/barrel.h)
   }
@@ -760,7 +765,11 @@ void Creature::tick(Level& lv, double dtd) {
       if (frand() < 0.25f) data["hat"] = frand() < 0.4f ? "jack_o_lantern" : "carved_pumpkin";
   }
   // nothing moves in a chunk that isn't there (it would fall out of the world)
-  if (!w.isLoaded(ifloor(pos.x), clampv(ifloor(pos.y), 0, WORLD_H - 1), ifloor(pos.z))) { age -= dt; return; }
+  if (!w.isLoaded(ifloor(pos.x), clampv(ifloor(pos.y), 0, WORLD_H - 1), ifloor(pos.z))) {
+    age -= dt;
+    if (baby && growT < 1e8f && !lv.isRemote()) growT = std::max(0.01f, growT - dt);   // the young grow up all the same (sim/catchup.h)
+    return;
+  }
   // pets.js: riding along in a vehicle is handled by the vehicle (mountedOn) — not ported yet
   // quarrels.js timers
   if (quarrelT > 0) quarrelT -= dt;
@@ -769,7 +778,20 @@ void Creature::tick(Level& lv, double dtd) {
   // monsters.js: venom works on creatures too
   if (poisonT > 0 && alive()) {
     poisonT -= dt; poisonTick += dt;
-    if (poisonTick >= 1.25f) { poisonTick = 0; if (hp > 1) { DamageSrc s; s.type = "poison"; s.knock = 0; hurt(lv, 1, s); } }
+    const bool kills = data.value("venomKills", false);   // (the trees' venom_lethal: it doesn't stop at the last half heart)
+    if (poisonTick >= 1.25f) { poisonTick = 0; if (hp > 1 || kills) { DamageSrc s; s.type = "poison"; s.knock = 0; hurt(lv, 1, s); } }
+    if (poisonT <= 0 && kills) data.erase("venomKills");
+  }
+  // bleeding (a talent's blow, sim/talent_fx.h): half a heart a tick through armour, and a kill is the bleeder's
+  if (data.contains("bleedT") && alive()) {
+    const float left = data.value("bleedT", 0.f) - dt, tick = data.value("bleedTick", 0.f) + dt;
+    if (tick >= bal::HIT_BLEED_TICK) {
+      data["bleedTick"] = 0.f;
+      DamageSrc s; s.type = "bleed"; s.knock = 0; s.bypassArmor = true; s.attacker = data.value("bleedBy", 0u);
+      hurt(lv, 1, s);
+      if (!alive()) return;
+    } else data["bleedTick"] = tick;
+    if (left <= 0) { data.erase("bleedT"); data.erase("bleedTick"); data.erase("bleedBy"); } else data["bleedT"] = left;
   }
   // a Wither's skull (Wither II): a heart a second, and unlike venom it kills
   if (witherT > 0 && alive()) {
@@ -957,6 +979,7 @@ void Creature::update(Level& lv, float dt) {
   if (regrab.on && alive()) if (OptMove fw = fetchWeapon(lv, dt)) { want = fw->want; dir = fw->dir; }
   if (float stun = data.value("hitStun", 0.f); stun > 0) { data["hitStun"] = std::max(0.f, stun - dt); want = 0; }
   if (slowT > 0) want *= 0.5f;
+  if (tamed && rallied(lv, *this)) want *= RALLY_SPEED;   // the War Horn's call (sim/item_uses.h)
   if (crawling) want *= 0.35f;
   if (limp) want *= std::max(0.3f, 1 - limp * 0.25f);
   lastWant = want;
@@ -973,12 +996,12 @@ void Creature::update(Level& lv, float dt) {
   if (onGround && !noGravity && want > 0.05f && !T->swims && !T->flyer && !T->floaty && !(angryT > 0 && foe)) {
     World& wd = lv.world(realm);
     float ax = pos.x - std::sin(yaw) * (w + 0.45f), az = pos.z - std::cos(yaw) * (w + 0.45f);
-    int bx = ifloor(ax), bz = ifloor(az), by = ifloor(pos.y);
-    if (wd.isLoaded(bx, std::max(by, 0), bz) && !reg().tSolid[wd.getBlock(bx, by, bz)]) {
-      int drop = 0;
-      while (drop < 5 && by - 1 - drop > 0 && !reg().tSolid[wd.getBlock(bx, by - 1 - drop, bz)] && !reg().tLiquid[wd.getBlock(bx, by - 1 - drop, bz)]) drop++;
-      if (drop >= 4) { tx = 0; tz = 0; dir = yaw + PI; }
-    }
+    if (sheerDrop(wd, ifloor(ax), ifloor(pos.y), ifloor(az))) { tx = 0; tz = 0; dir = yaw + PI; }
+  }
+  if (c.water && !T->boss) {   // running water carries it along (a stream leads creatures to where it ends)
+    const vec3 fl = flowAt(wd, ifloor(pos.x), ifloor(pos.y + 0.1f), ifloor(pos.z));
+    tx += fl.x * 2.2f; tz += fl.z * 2.2f;
+    if (lockMove) { vel.x += fl.x * 4.f * dt; vel.z += fl.z * 4.f * dt; }
   }
   float k = std::min(1.f, dt * (onGround ? 10 : 2));
   if (!lockMove) { vel.x += (tx - vel.x) * k; vel.z += (tz - vel.z) * k; }
@@ -1015,6 +1038,11 @@ void Creature::update(Level& lv, float dt) {
     onGround = r.onGround && vel.y <= 0.01f;
     if (onGround && vel.y < 0) vel.y = 0;
     if (!onGround && vel.y < 0) fallDist += before.y - pos.y;
+    if (onGround && fallDist > 1.1f && !lv.isRemote()) {   // a heavy landing on farmland tramples it back to dirt
+      static const BlockId farmland = reg().blockId("farmland");
+      const int bx = ifloor(pos.x), by = ifloor(pos.y - 0.2f), bz = ifloor(pos.z);
+      if (farmland && wd.getBlock(bx, by, bz) == farmland) trampleFarmland(lv, wd, bx, by, bz);
+    }
     if (onGround) fallDist = 0;
   }
   // walked into something: hop up only if it's a step it can get onto. (Next tick, as a wanted jump: set here, after the

@@ -81,7 +81,7 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
   auto set = [&](int xx, int yy, int zz, u8 m, bool merge = false) { out.x = xx; out.y = yy; out.z = zz; out.meta = m; out.merge = merge; return true; };
   // ---- placeSpecial (blocks2.js) ----
   if (kind == ShapeKind::Candle) {
-    if (hit.id == bid && (hitMeta & 3) < 3) return set(hit.block.x, hit.block.y, hit.block.z, hitMeta + 1, true);
+    if (hit.id == bid && hit.part < 0 && (hitMeta & 3) < 3) return set(hit.block.x, hit.block.y, hit.block.z, hitMeta + 1, true);   // (candles that are a part of the cell: sim/attach_play.cpp)
     if (!R.tSolid[w.getBlock(x, y - 1, z)]) return false;
     return set(x, y, z, wet ? WLOG : 0);
   }
@@ -319,7 +319,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     if (R.tLiquid[w.getBlock(x, y, z)] == 1 && (w.getMeta(x, y, z) & 15) == 0) meta |= WLOG;
   } else if (R.block(bid).str("shape") == "chain") {
     BlockId curC = w.getBlock(x, y, z);
-    if (curC != AIR && !R.tReplaceable[curC]) return;
+    if (curC != AIR && !R.tReplaceable[curC] && !attachable(bid)) return;   // (an occupied cell: maybe an attachment, below)
     meta = 0;
     if (R.tLiquid[curC] == 1 && (w.getMeta(x, y, z) & 15) == 0) meta |= WLOG;
   } else {
@@ -327,6 +327,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     if (!placement(hit, bid, pl)) return;
     x = pl.x; y = pl.y; z = pl.z; meta = pl.meta; also = pl.also;
     if (pl.merge) {
+      if (partBlocked(w, x, y, z, -1, bid, meta)) { toastMsg("There's no room for it there"); return; }   // (more candles beside a cell's other parts)
       if (lv.events && !lv.events->emit("blockPlace", json::array({p.name, x, y, z, bdef.key}))) return;
       w.setBlock(x, y, z, bid, meta, SetFlags::Urgent);
       consumeHeld(); swingArm(); sfxMaterial(lv, bdef.sound, "place", vec3(x, y, z) + vec3(0.5f));
@@ -448,12 +449,10 @@ bool PlayerController::plantItem(const ItemDef& def, const RayHit& hit, ItemStac
   return true;
 }
 
-// Bone meal: crops ripen, saplings grow, grass blooms.
-void PlayerController::useBonemeal(const RayHit& hit, ItemStack& held) {
-  World& w = world();
+// Bone meal: crops ripen, saplings grow, grass blooms. The player's hand and a dispenser both use this.
+bool applyBonemeal(Level& lv, World& w, int x, int y, int z) {
   const Registry& R = reg(); const KnownBlocks& B = KB();
-  int x = hit.block.x, y = hit.block.y, z = hit.block.z;
-  BlockId id = hit.id; const BlockDef& d = R.block(id);
+  BlockId id = w.getBlock(x, y, z); const BlockDef& d = R.block(id);
   u8 meta = w.getMeta(x, y, z);
   bool ok = false;
   if (bhas(id, BF::Crop)) {
@@ -504,10 +503,14 @@ void PlayerController::useBonemeal(const RayHit& hit, ItemStack& held) {
   } else if (id && id == B.sea_pickle && (meta & 3) < 3) { w.setBlock(x, y, z, id, meta + 1); ok = true; }
   else if (id && id == B.berry_bush_empty) { w.setBlock(x, y, z, B.berry_bush); ok = true; }
   if (!ok && lifeBonemeal(lv, w, x, y, z, id)) ok = true;   // a huge mushroom, a longer vine (sim/world_life.h)
-  if (!ok) return;
-  consumeHeld();
+  if (!ok) return false;
   lv.fx->particles("growth", vec3(x + 0.5f, y + 0.6f, z + 0.5f), 8);
-  sfxMaterial(lv, "grass", "place", vec3(x, y, z)); swingArm();
+  sfxMaterial(lv, "grass", "place", vec3(x, y, z));
+  return true;
+}
+void PlayerController::useBonemeal(const RayHit& hit, ItemStack& held) {
+  if (!applyBonemeal(lv, world(), hit.block.x, hit.block.y, hit.block.z)) return;
+  consumeHeld(); swingArm();
   (void)held;
 }
 

@@ -329,7 +329,12 @@ void Book::begin(App& a, const char* id, const std::vector<BookTab>& tabs) {
     Input& in = a.input;
     if ((keysTurn && in.pressed(Act::MenuLeft)) || in.keyPressed(SDL_SCANCODE_PAGEUP)) wheelDir -= 1;
     if ((keysTurn && in.pressed(Act::MenuRight)) || in.keyPressed(SDL_SCANCODE_PAGEDOWN)) wheelDir += 1;
-    if (((keysTab && in.pressed(Act::MenuX)) || in.keyPressed(SDL_SCANCODE_TAB)) && !tabs_.empty()) wantTab = (curTab + 1) % (int)tabs_.size();
+    // the next bookmark: after the one opened if this is still its spread, else after the right page's section (one starting
+    // on the right-hand page shares its spread with the one before: counting from the left page, X stood still there)
+    if (((keysTab && in.pressed(Act::MenuX)) || in.keyPressed(SDL_SCANCODE_TAB)) && !tabs_.empty()) {
+      const bool opened = openTab >= 0 && openTab < (int)tabSpread.size() && tabSpread[openTab] == spread;
+      wantTab = ((opened ? openTab : std::max(curTab, rightSec)) + 1) % (int)tabs_.size();
+    }
     // the triggers turn the pages on every book screen (the d-pad may be walking a cursor there)
     if (in.padButtonPressed(6)) wheelDir -= 1;
     if (in.padButtonPressed(7)) wheelDir += 1;
@@ -377,13 +382,16 @@ void Book::draw(const std::vector<BookRows>& sections) {
   for (size_t s = 0; s < sections.size(); s++) tabSpread[s] = secPage[s] / 2;
   // ---- where to open ----
   int was = spread;
-  if (wantTab >= 0 && wantTab < (int)tabSpread.size()) spread = tabSpread[wantTab];
+  if (wantTab >= 0 && wantTab < (int)tabSpread.size()) { spread = tabSpread[wantTab]; openTab = wantTab; }
   if (wantSel >= 0) for (auto& [id, pg] : selPage) if (id == wantSel) { spread = pg / 2; break; }
   spread += wheelDir;
   wantTab = wantSel = -1; wheelDir = 0;
   spread = std::clamp(spread, 0, nSpreads - 1);
   if (spread != was) { turned = true; playClick(); }
   curTab = pages[std::min((size_t)spread * 2, pages.size() - 1)].sec;
+  rightSec = pages[std::min((size_t)spread * 2 + 1, pages.size() - 1)].sec;
+  if (openTab >= 0 && openTab < (int)tabSpread.size() && tabSpread[openTab] == spread) curTab = openTab;   // (its bookmark shows as the one open)
+  else openTab = -1;
 
   // ---- the picture ----
   const GuiSprite book = pic({"gui/book.png"});
@@ -458,7 +466,7 @@ void Book::draw(const std::vector<BookRows>& sections) {
       text(fg, F_MID, ImVec2(b0.x + 6 * z, b0.y + 4 * z), col::rgb(0xf0e0b8), tabs_[i].name.c_str());
     }
   }
-  if (wantTab >= 0 && wantTab < (int)tabSpread.size()) { spread = tabSpread[wantTab]; wantTab = -1; turned = true; }
+  if (wantTab >= 0 && wantTab < (int)tabSpread.size()) { spread = tabSpread[wantTab]; openTab = wantTab; wantTab = -1; turned = true; }
   {
     const float s = std::round(18 * z);
     if (bookThemeButton(a, dl, ImVec2(o.x + bw + 4 * z, o.y + bh - s - 6 * k), s)) {

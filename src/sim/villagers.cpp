@@ -5,6 +5,7 @@
 #include "sim/villagers_internal.h"
 #include "sim/skills.h"
 #include "sim/rpg.h"
+#include "sim/balance.h"
 #include "sim/commands.h"
 #include "sim/crafting.h"
 #include "gen/overworld.h"
@@ -16,6 +17,7 @@
 #include <regex>
 
 namespace dq {
+void poisonCreature(Entity& e, float secs);   // sim/mob_combat.cpp
 
 // ------------------------------------------------------------------ data
 const json& VD() {
@@ -484,6 +486,8 @@ static bool hookBeforeHurt(Level& lv, Creature& c, float& amount, const DamageSr
   }
   // paths.js Beast Friend (a ranger's creatures take less, strike harder)
   amount *= pathPetFactor(lv, c, lv.entity(src.attacker));
+  // the Rogue's Backstab: a sneaking melee blow
+  if (Player* a = attackerPlayer(lv, src); a && src.weapon && src.tool != "arrow" && src.type != "cleave") amount *= pathBackstabFactor(*a);
   return true;
 }
 static void hookAfterHurt(Level& lv, Creature& c, float dealt, const DamageSrc& src) {
@@ -505,6 +509,8 @@ static void hookAfterHurt(Level& lv, Creature& c, float dealt, const DamageSrc& 
   }
   // paths.js Cleaving Arc
   if (who && src.weapon && src.type != "cleave" && src.tool != "arrow") pathCleave(lv, *who, c, dealt);
+  // the Rogue's Envenomed Edge: what a melee blow lands on is poisoned
+  if (who && src.weapon && src.tool != "arrow" && dealt > 0 && c.alive() && hasTal(*who, "venom")) poisonCreature(c, bal::ROGUE_VENOM);
 }
 void villagerLost(Level& lv, Creature& c) {
   if (lv.isRemote()) return;
@@ -586,6 +592,12 @@ static bool onItemUse(Level& lv, const json& a) {
     if (!boardVillage(lv, p->realm, at)) { toast(lv, *p, "The notes are blank \xE2\x80\x94 this board belongs to no village"); return false; }
     p->swingT = 0.001f;
     openVillagerScreen(lv, *p, "board", {{"x", at.x}, {"y", at.y}, {"z", at.z}});
+    return false;
+  }
+  if (b.has("respecShrine") && !p->sneaking) {   // the Shrine of Renewal (sim/village_life.h): its price is the village's
+    VillageRef sv = villageAtPos(lv, p->realm, vec3(at), 8);
+    p->swingT = 0.001f;
+    openVillagerScreen(lv, *p, "shrine", {{"x", at.x}, {"y", at.y}, {"z", at.z}, {"vid", sv ? sv->id : std::string()}});
     return false;
   }
   // (a town gate's lever: the redstone side works the gate when the lever flips, sim/rsplace.cpp gateLever)

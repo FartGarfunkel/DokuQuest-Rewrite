@@ -119,8 +119,9 @@ bool ServerHost::start(std::string* err) {
   fx = new NetFx(*this, innerFx);
   level.fx = fx;
   ensureWatchers();
-  // a screen the world opens for a guest (talking to a villager, a stable...) opens on their game
-  if (level.events) for (const char* ev : {"screenOpen", "villagerScreen", "contentScreen"}) {
+  // a screen the world opens for a guest (talking to a villager, a stable...) opens on their game; the experience their
+  // work here earned them (sim/deeds.h workXp) grows on their game
+  if (level.events) for (const char* ev : {"screenOpen", "villagerScreen", "contentScreen", "workXp"}) {
     const std::string name = ev;
     uiHandles.push_back(level.events->on(name, [this, name](const json& a) {
       if (!a.is_array() || a.empty() || !a[0].is_string()) return true;
@@ -800,6 +801,11 @@ void ServerHost::diffMirrors() {
       for (const char* k : {"darkT", "dreadT", "dreadAll"}) if (pl.data.contains(k) && pl.data[k].is_number()) sd[k] = std::round(pl.data[k].get<float>() * 10) / 10;
       const std::string sig = sd.dump();
       if (sig != p.aStory) { s["sd"] = sd; p.aStory = sig; }
+    }
+    {   // their deeds' points, kept here (sim/deeds.h): their skill book counts them
+      const json dd = pl.data.is_object() && pl.data.contains("deeds") ? pl.data["deeds"] : json();
+      const std::string sig = dd.dump();
+      if (sig != p.aDeeds) { if (!dd.is_null() || !p.aDeeds.empty()) s["dd"] = dd; p.aDeeds = sig; }
     }
     if (!s.empty()) send(p.enet, SELF, s);
   }
