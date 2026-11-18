@@ -197,10 +197,14 @@ void runStep(App& a, const json& st) {
     Sint16 rest = trig ? SDL_JOYSTICK_AXIS_MIN : 0;
     R.later.push_back({f + hold, [ax, vj, rest] { SDL_JoystickSetVirtualAxis(vj, ax, rest); }});
   } else if (op == "setting") {   // an engine setting (settings.extra[key] = value), e.g. {"key":"bookMenus","value":false}: the menus flat, not in the journal
-    a.settings.extra[st.value("key", std::string())] = st.contains("value") ? st["value"] : json();
+    const std::string key = st.value("key", std::string());
+    json all = a.settings.toJson();
+    if (all.contains(key)) { all[key] = st.contains("value") ? st["value"] : json(); a.settings.fromJson(all); }   // (a named setting: handsStations...)
+    else a.settings.extra[key] = st.contains("value") ? st["value"] : json();
   } else if (op == "navlog") {   // log what the pad's highlight is on (exploring a screen)
     std::string got; for (auto& l : ui::navLabels(true)) got += (got.empty() ? "" : " | ") + l;
-    DQ_LOG("test: nav %s: %s [%s]", st.value("tag", std::string()).c_str(), got.empty() ? "(nothing)" : got.c_str(), screenStack(a).c_str());
+    const std::string inv = inventoryPadFocus();
+    DQ_LOG("test: nav %s: %s%s [%s]", st.value("tag", std::string()).c_str(), got.empty() ? "(nothing)" : got.c_str(), inv.empty() ? "" : (" | inv " + inv).c_str(), screenStack(a).c_str());
   } else if (op == "unfocus") {   // the window stops being the one in front: SDL's own focus change, as when another program takes it
     SDL_SetKeyboardFocus(nullptr); a.args.scriptFocusPause = true;
   } else if (op == "focus") {   // the window comes back to the front
@@ -391,6 +395,10 @@ void runStep(App& a, const json& st) {
       json* e = s->world().blockEntity(b.x, b.y, b.z);
       std::string dump = e ? e->dump() : "null", want = st.value("has", "");
       result(dump.find(want) != std::string::npos, "block entity " + st["blockEntity"].dump() + " has '" + want + "' (got " + dump.substr(0, 200) + ")");
+    }
+    if (st.contains("invCursor")) {   // the inventory's pad cursor ("slot Cont 3", "recipe 2"...)
+      const std::string got = inventoryPadFocus(), want = st["invCursor"].get<std::string>();
+      result(got == want || (want.back() == '*' && got.rfind(want.substr(0, want.size() - 1), 0) == 0), "inventory cursor on \"" + want + "\" (on: \"" + got + "\")");
     }
     if (st.contains("nav")) {   // the pad's highlight is on an item whose label holds this text
       std::string want = st["nav"].get<std::string>(), got; bool ok = false;

@@ -34,6 +34,7 @@ struct BookState { bool open = false; std::string cat = "all", ccat = "all"; boo
 BookState& book() { static BookState b; return b; }
 
 enum HK { H_SLOT, H_BOOKR, H_CI, H_CAT, H_BOOKBTN, H_BOOKCLOSE, H_TRASH, H_VIS, H_CUT };
+std::string g_invFocus; u64 g_invFocusFrame = 0;
 struct Hit { HK k; Grp g = Grp::Main; int i = 0; std::string s; ImVec2 a, b; bool contains(ImVec2 p) const { return p.x >= a.x && p.y >= a.y && p.x < b.x && p.y < b.y; } };
 bool sameKey(const Hit& x, const Hit& y) { return x.k == y.k && x.g == y.g && x.i == y.i && x.s == y.s; }
 std::string lower(std::string s) { for (auto& c : s) c = (char)tolower((unsigned char)c); return s; }
@@ -362,6 +363,12 @@ public:
   }
   // the end of a frame (both layouts): the mouse, the stack on the cursor, the tooltip, the menu tabs
   void finish(App& a) {
+    {   // (playtests: where the pad's cursor is, "slot Cont 3" etc.)
+      static const char* const GN[] = {"Main", "Armor", "Off", "Back", "Hook", "Charm", "Cape", "Bp", "Grid", "Cont", "Furn", "Out", "Mach", "Sta", "SOut", "Cut", "Quiver", "Qv", "Mount", "Shield"};
+      static const char* const KN[] = {"slot", "recipe", "item", "cat", "bookbtn", "bookclose", "trash", "vis", "cut"};
+      g_invFocus = hasFocus && a.input.usingPad() ? std::string(KN[focus.k]) + (focus.k == H_SLOT ? std::string(" ") + GN[(int)focus.g] : std::string()) + " " + std::to_string(focus.i) : std::string();
+      g_invFocusFrame = a.frame;
+    }
     Player& p = sess->p;
     // ---- input from the mouse ----
     mouse(a);
@@ -1111,5 +1118,7 @@ void openInventory(App& a, const InvOpen& o) {
 void registerInventoryTab() {
   registerMenuTab({"inventory", "Inventory", [](App& a) { openInventory(a); }, nullptr});
 }
+
+std::string inventoryPadFocus() { return g_invFocusFrame + 1 >= app().frame ? g_invFocus : std::string(); }
 
 } // namespace dq

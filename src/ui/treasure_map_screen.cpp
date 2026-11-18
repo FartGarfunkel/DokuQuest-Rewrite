@@ -49,6 +49,7 @@ public:
     vec2 mv = in.moveAxis();
     if (mv.x || mv.y) { cx += mv.x * (float)dt * 300 / k; cz -= mv.y * (float)dt * 300 / k; }
     if (in.pressed(Act::MenuOk)) recentre();
+    if (in.usingPad()) { ui::padHint(0, -1, "Centre"); ui::padHint(2, 3, "Zoom"); }   // (the stick pans)
     for (auto& pad : in.pads()) {
       auto pr = [&](int b) { return b < 17 && pad.b[b] && !pad.prevB[b]; };
       if (pr(SDL_CONTROLLER_BUTTON_X)) zoomBy(1 / 1.5f);

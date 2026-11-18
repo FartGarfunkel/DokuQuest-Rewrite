@@ -10,6 +10,7 @@
 #include "client/session.h"
 #include "gen/generator.h"
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <miniz.h>
 #include <ctime>
 
@@ -329,7 +330,9 @@ public:
     WorldEntry* w = sel();
     const float cx = a.width * 0.5f, y1 = a.height - 52 * U, y2 = a.height - 28 * U;
     if (kit.buttonAt("Play Selected World", ImVec2(cx - 154 * U, y1), 150, 20, !w)) playSelected(a);
+    const bool listBack = a.frame > listFrame + 1 && listFrame > 0; listFrame = a.frame;   // (back from the create form)
     if (kit.buttonAt("Create New World", ImVec2(cx + 4 * U, y1), 150, 20)) { view = CREATE; msg.clear(); name = "New World"; seed.clear(); mode = 0; wtype = 0; underDepth = 4; form.init(json(), false, nullptr, nullptr); }
+    if (listBack && a.input.usingPad()) { ImGui::SetFocusID(ImGui::GetItemID(), ImGui::GetCurrentWindow()); ImGui::SetNavCursorVisible(true); }   // (the highlight back on Create New World)
     // the folder button, Rename, Delete | Edit (this world's settings, backups), Cancel
     ImVec2 fp(cx - 154 * U, y2);
     if (kit.buttonAt("##folder", fp, 20, 20)) {
@@ -348,11 +351,15 @@ public:
   }
 
   // Create New World
+  u64 createFrame = 0, listFrame = 0;   // (the last frame the form / the list was drawn)
   void drawCreate(App& a) {
     kit.beginPlain(a, "##createworld", "Create New World");
     const float U = kit.u(), cx = a.width * 0.5f;
     kit.textAt("World Name", ImVec2(cx - 100 * U, 47 * U));
     kit.fieldAt("##nwname", &name, ImVec2(cx - 100 * U, 60 * U), 176, "New World", 0, 32);
+    // the form just opened with the pad in hand: the name box has the highlight (A types in it)
+    if (a.frame > createFrame + 1 && a.input.usingPad()) { ImGui::SetFocusID(ImGui::GetItemID(), ImGui::GetCurrentWindow()); ImGui::SetNavCursorVisible(true); }
+    createFrame = a.frame;
     if (kit.buttonAt("?##rname", ImVec2(cx + 80 * U, 60 * U), 20, 20)) name = randomWorldName();
     if (ImGui::IsItemHovered()) kit.tooltip("A random name");
     kit.textAt("Seed", ImVec2(cx - 100 * U, 88 * U));

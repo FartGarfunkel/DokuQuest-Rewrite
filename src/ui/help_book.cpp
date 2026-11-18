@@ -184,6 +184,7 @@ public:
       }
     }
     book.draw(rows);
+    if (a.input.usingPad()) padHint(14, -1, "Turn pages");
     book.hint(a.input.usingPad() ? "D-pad: turn the pages \xC2\xB7 X: next bookmark \xC2\xB7 B: close" : "\xE2\x86\x90 \xE2\x86\x92 or the wheel: turn the pages \xC2\xB7 Tab or a bookmark: next subject \xC2\xB7 Esc: close");
     book.end();
   }

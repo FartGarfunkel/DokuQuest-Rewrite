@@ -542,6 +542,18 @@ bool inputText(const char* id, std::string* s, const char* hint, size_t maxLen, 
   return ch;
 }
 
+bool padSliderAdjust(float* v, float lo, float hi, float step) {
+  if (!ImGui::IsItemFocused() || ImGui::IsItemActive() || !navVisible()) return false;
+  const ImGuiID id = ImGui::GetItemID();
+  for (ImGuiKey k : {ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadDpadRight, ImGuiKey_GamepadLStickLeft, ImGuiKey_GamepadLStickRight}) ImGui::SetKeyOwner(k, id);
+  const int dx = app().input.navStep().x;
+  if (!dx) return false;
+  const float nv = clampv(*v + step * (float)dx, lo, hi);
+  if (nv == *v) return false;
+  *v = nv;
+  return true;
+}
+
 void padScrollHere() {
   float d = app().input.padScroll();
   if (d == 0) return;
@@ -569,7 +581,9 @@ bool Panel::begin(const char* id, const char* title, float maxW, const char* clo
     ui::bookPageTitle(a, title);
     if (closeLabel) {
       std::string lbl = std::string(closeLabel) + "##close";
+      ImGui::PushItemFlag(ImGuiItemFlags_NoNavDefaultFocus, true);   // (the pad's first highlight goes to the panel's body, not Back)
       if (button(lbl.c_str(), BTN_GHOST, false, std::min(bS.x, textSize(F_BODY, closeLabel).x + 40 * z))) closed = true;
+      ImGui::PopItemFlag();
       ImGui::Dummy(ImVec2(1, 4 * z));
     }
     headH = ImGui::GetCursorScreenPos().y - bL.y;
@@ -609,7 +623,9 @@ bool Panel::begin(const char* id, const char* title, float maxW, const char* clo
     float bw = textSize(F_BODY, closeLabel).x + 40 * z;
     ImGui::SetCursorScreenPos(ImVec2(b0.x + width - 16 * z - bw, b0.y + (headH - 44 * z) * 0.5f));
     std::string lbl = std::string(closeLabel) + "##close";
+    ImGui::PushItemFlag(ImGuiItemFlags_NoNavDefaultFocus, true);   // (the pad's first highlight goes to the panel's body, not Back)
     if (button(lbl.c_str(), BTN_GHOST, false, bw)) closed = true;
+    ImGui::PopItemFlag();
   }
   ImGui::SetCursorScreenPos(ImVec2(b0.x, b0.y + headH));
   return open;

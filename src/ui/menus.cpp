@@ -15,7 +15,7 @@ using namespace ui;
 
 bool backupWorldFolder(const fs::path& folder, const std::string& name, fs::path& out, std::string& err);   // worlds.cpp
 std::string agoText(i64 ms);
-std::unique_ptr<Screen> makePhotoModeScreen();   // ui/photo_mode.cpp                                                                                  // worlds.cpp
+std::unique_ptr<Screen> makePhotoModeScreen(bool fromPause = false);   // ui/photo_mode.cpp                                                                                  // worlds.cpp
 
 // ---- pause ---------------------------------------------------------------------------------------------
 class PauseScreen : public Screen {
@@ -50,9 +50,12 @@ public:
     if (greyButton("Back to Game", ImVec2(bw, bh))) { a.popScreen(); ImGui::End(); ImGui::PopStyleVar(); return; }
     if (greyButton("Options...", ImVec2(half, bh))) a.pushScreen(makeOptionsScreen());
     ImGui::SameLine(); if (greyButton("Players & Skins", ImVec2(half, bh))) a.pushScreen(makePlayersScreen());
-    if (greyButton("Photo Mode...", ImVec2(bw, bh), !p || p->dead || a.session->split())) {   // the camera flies free (ui/photo_mode.cpp)
-      a.popScreen(); a.pushScreen(makePhotoModeScreen()); ImGui::End(); ImGui::PopStyleVar(); return;
+    if (greyButton("Photo Mode...", ImVec2(half, bh), !p || p->dead || a.session->split())) {   // the camera flies free (ui/photo_mode.cpp)
+      a.popScreen(); a.pushScreen(makePhotoModeScreen(true)); ImGui::End(); ImGui::PopStyleVar(); return;
     }
+    // chat for a controller in hand (no button of its own on the pad): the line opens with the on-screen keyboard
+    ImGui::SameLine();
+    if (greyButton("Chat...", ImVec2(half, bh), !p)) { a.popScreen(); a.pushScreen(makeChatScreen("")); ImGui::End(); ImGui::PopStyleVar(); return; }
     bool guest = netIsGuest(a);
     // (netui.js) a guest has no world settings, backups, mode switch or LAN of its own
     if (greyButton("How to Play", ImVec2(guest ? bw : half, bh))) a.pushScreen(makeHowToScreen());

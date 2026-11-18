@@ -350,6 +350,10 @@ static void padNavAfterScreens(App& a) {
   ImGuiContext* c = ImGui::GetCurrentContext();
   if (!s || !c) return;
   ImGuiContext& g = *c;
+  // B where there's nothing to back out of (the death screen, the title) hid ImGui's highlight, and the next A only
+  // brought it back: with the controller in hand it stays shown
+  if (a.input.usingPad() && g.NavId != 0 && !g.NavCursorVisible && g.ActiveId == 0 && g.NavWindow && !(g.NavWindow->Flags & ImGuiWindowFlags_NoFocusOnAppearing))
+    ImGui::SetNavCursorVisible(true);
   Screen::NavKeep& k = s->navKeep;
   if (k.back) {
     k.back = false;   // (one try: the frame it is drawn again)

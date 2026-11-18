@@ -81,7 +81,7 @@ public:
     const float W = (float)a.width, z = ui::Z();
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const bool overUi = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook();
-    if (mouseTookOver(a)) pad = false;
+    if (mouseTookOver(a)) pad = false; else if (a.input.usingPad()) pad = true;   // (the controller in hand: A acts on its spot from the start, no d-pad press first)
     const std::vector<ItemStack> v = inscribeWorkItems(w, at);
     // the columns: the book's spells over the book; with paper and lapis there, the spells you've learnt over the paper
     bookList.clear(); writeList.clear();

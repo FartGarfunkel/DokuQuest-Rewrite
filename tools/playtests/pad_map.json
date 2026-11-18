@@ -1,0 +1,78 @@
+{
+"note": "The map by the pad alone (flat menus): Y opens the inventory, RB twice reaches the map tab, A finds you, X / Y zoom, B closes.",
+"steps": [
+{
+"wait": 200,
+"do": "setting",
+"key": "bookMenus",
+"value": false
+},
+{
+"do": "give",
+"item": "filled_map",
+"n": 1
+},
+{
+"wait": 5,
+"do": "pad",
+"button": "y",
+"hold": 3
+},
+{
+"wait": 20,
+"do": "expect",
+"screen": "inventory"
+},
+{
+"do": "pad",
+"button": "rb",
+"hold": 3
+},
+{
+"wait": 15,
+"do": "pad",
+"button": "rb",
+"hold": 3
+},
+{
+"wait": 20,
+"do": "expect",
+"screen": "map"
+},
+{
+"do": "pad",
+"button": "a",
+"hold": 3
+},
+{
+"wait": 8,
+"do": "pad",
+"button": "x",
+"hold": 3
+},
+{
+"wait": 8,
+"do": "pad",
+"button": "y",
+"hold": 3
+},
+{
+"wait": 8,
+"do": "expect",
+"screen": "map"
+},
+{
+"do": "pad",
+"button": "b",
+"hold": 3
+},
+{
+"wait": 20,
+"do": "expect",
+"screen": null
+},
+{
+"do": "report"
+}
+]
+}

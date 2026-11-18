@@ -150,6 +150,7 @@ public:
       book.active = !ImGui::IsItemActive();
       ImGui::End();
     }
+    if (a.input.usingPad()) { ui::padHint(0, -1, "Open"); ui::padHint(2, 3, "Turn pages"); }
     book.hint("Click a picture: its page \xC2\xB7 B / Esc: back \xC2\xB7 X / Y or the arrows: turn the pages \xC2\xB7 D-pad + A on a controller");
     book.end();
   }

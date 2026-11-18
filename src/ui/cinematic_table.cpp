@@ -159,6 +159,7 @@ public:
     const ivec2 nav = in.navStep();
     if (nav != ivec2(0)) { padMode = true; if (cursor < 0) cursor = 4; int cx = cursor % 3 + nav.x, cz = cursor / 3 + nav.y; cursor = std::clamp(cz, 0, 2) * 3 + std::clamp(cx, 0, 2); }
     if (glm::length(vec2(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y)) > 0.5f) padMode = false;
+    else if (in.usingPad() && !padMode) { padMode = true; if (cursor < 0) cursor = 4; }   // (the controller in hand: the middle square from the start)
     if (padMode && cursor >= 0) {
       if (in.pressed(Act::MenuOk)) act(a, cursor, false);
       if (in.pressed(Act::MenuX)) act(a, cursor, true);
@@ -433,7 +434,7 @@ public:
     const bool overUi = (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook());
     const vec3 c = vec3(at) + vec3(0.5f, 1.f, 0.5f);
     const vec3 right(std::cos(scene().viewYaw), 0, -std::sin(scene().viewYaw));
-    if (mouseTookOver(a)) pad = false;
+    if (mouseTookOver(a)) pad = false; else if (a.input.usingPad()) pad = true;   // (the controller in hand: A acts on its spot from the start, no d-pad press first)
     int hover = pad ? zone : -1;
     if (!pad && !overUi && scene().phase == 2) {   // the ray through the mouse onto the face
       const ImVec2 m = ImGui::GetIO().MousePos; const vec2 ndc(m.x / W * 2 - 1, 1 - m.y / H * 2);
@@ -550,7 +551,7 @@ public:
     const float W = (float)a.width, H = (float)a.height, z = ui::Z();
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const bool overUi = (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook());
-    if (mouseTookOver(a)) pad = false;
+    if (mouseTookOver(a)) pad = false; else if (a.input.usingPad()) pad = true;   // (the controller in hand: A acts on its spot from the start, no d-pad press first)
     auto project = [&](vec3 wp, ImVec2& out) { vec4 q = cam.viewProj * vec4(cam.rel(glm::dvec3(wp)), 1); if (q.w <= 0.01f) return false; out = ImVec2((q.x / q.w * 0.5f + 0.5f) * W, (1 - (q.y / q.w * 0.5f + 0.5f)) * H); return true; };
     const vec3 top = vec3(at) + vec3(0.5f, 0.75f, 0.5f);
     const vec3 side(std::sin(scene().viewYaw), 0, std::cos(scene().viewYaw)), right(std::cos(scene().viewYaw), 0, -std::sin(scene().viewYaw));
@@ -684,7 +685,7 @@ public:
     const float W = (float)a.width, H = (float)a.height, z = ui::Z();
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const bool overUi = (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook());
-    if (mouseTookOver(a)) pad = false;
+    if (mouseTookOver(a)) pad = false; else if (a.input.usingPad()) pad = true;   // (the controller in hand: A acts on its spot from the start, no d-pad press first)
     auto project = [&](vec3 wp, ImVec2& out) { vec4 q = cam.viewProj * vec4(cam.rel(glm::dvec3(wp)), 1); if (q.w <= 0.01f) return false; out = ImVec2((q.x / q.w * 0.5f + 0.5f) * W, (1 - (q.y / q.w * 0.5f + 0.5f)) * H); return true; };
     // (on the stand's own pads, data/shapes.json: their tops 2 px up, centred 12.5,8  3.5,4  3.5,12; the bowl at the top of the rod)
     static const vec3 SPOT[5] = {{12.5f / 16, 2.5f / 16, 8 / 16.f}, {3.5f / 16, 2.5f / 16, 4 / 16.f}, {3.5f / 16, 2.5f / 16, 12 / 16.f}, {0.5f, 14.5f / 16, 0.5f}, {11 / 16.f, 1.5f / 16.f, 13 / 16.f}};
@@ -781,7 +782,7 @@ public:
     const float W = (float)a.width, H = (float)a.height, z = ui::Z();
     ImDrawList* dl = ImGui::GetBackgroundDrawList();
     const bool overUi = (ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook());
-    if (mouseTookOver(a)) pad = false;
+    if (mouseTookOver(a)) pad = false; else if (a.input.usingPad()) pad = true;   // (the controller in hand: A acts on its spot from the start, no d-pad press first)
     auto project = [&](vec3 wp, ImVec2& out) { vec4 q = cam.viewProj * vec4(cam.rel(glm::dvec3(wp)), 1); if (q.w <= 0.01f) return false; out = ImVec2((q.x / q.w * 0.5f + 0.5f) * W, (1 - (q.y / q.w * 0.5f + 0.5f)) * H); return true; };
     const vec3 side(std::sin(scene().viewYaw), 0, std::cos(scene().viewYaw));
     const vec3 face = vec3(at) + vec3(0.5f) + side * 0.5f;
@@ -915,7 +916,7 @@ public:
       }
       cursor = h * per + std::min(per - 1, r * 9 + c);
     }
-    if (mouseTookOver(a)) pad = false;
+    if (mouseTookOver(a)) pad = false; else if (a.input.usingPad()) pad = true;   // (the controller in hand: A acts on its spot from the start, no d-pad press first)
     if (pad && cursor >= 0) {
       if (in.pressed(Act::MenuOk)) act(a, cursor, false, false);
       if (in.pressed(Act::MenuX)) act(a, cursor, true, false);
