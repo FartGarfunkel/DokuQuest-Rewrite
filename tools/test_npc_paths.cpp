@@ -83,25 +83,31 @@ int main(int argc, char** argv) {
     L->tick(0.05);   // (the villages' first look round, which sends home any townsperson of no village, done first)
     Creature* ce = spawnCreature(*L, REALM_MAIN, "villager", vec3(4.5f, Y + 1, 2.5f));
     Creature* c = ce;
-    bool upOk = false, downOk = false;
+    bool upOk = false, downOk = false, attUp = false, attDown = false;
     if (c) {
       c->data["npc"] = json{{"v", "none"}, {"i", 0}, {"n", "Climber"}};
       NpcMind& M = vsys(*L)->mind(c->id);
       const vec3 ups[2] = {vec3(4.5f, Y + 7, 6.5f), vec3(4.5f, Y + 1, 2.5f)};
-      for (int leg = 0; leg < 2; leg++) {
-        M.sent = true; M.sentTo = ups[leg];
+      for (int leg = 0; leg < 4; leg++) {
+        if (leg == 2)   // (then torches on the shaft's side put up first: up most of it the ladder is an attachment beside one)
+          for (int y = Y + 2; y <= Y + 5; y++) { w.setBlock(3, y, 8, stone); w.setBlock(4, y, 8, reg().blockId("torch"), 1); w.addAttachment(4, y, 8, ladder, 2); }
+        M.sent = true; M.sentTo = ups[leg & 1];
+        bool moved = false;   // (set there by the rescue, not climbed: a jump of over 2 blocks in a tick)
         for (double t = 0; t < 40 && M.sent; t += 0.05) {
+          const vec3 was = c->pos;
           L->tick(0.05); P->pos = vec3(4.5f, Y + 1, -6.5f);
+          if (glm::distance(was, c->pos) > 2.f) moved = true;
           if ((int)(t * 20) % 20 == 0 && std::getenv("DQ_NAV_TRACE")) printf("    (climber t%.0f: %.2f %.2f %.2f climbing %d path %zu/%zu%s)\n", t, c->pos.x, c->pos.y - Y, c->pos.z, M.climbing, M.pathI, M.path.size(), M.pathPartial ? " partial" : "");
         }
-        const bool there = std::hypot(c->pos.x - ups[leg].x, c->pos.z - ups[leg].z) < 1 && std::fabs(c->pos.y - ups[leg].y) < 0.6f;
-        (leg ? downOk : upOk) = there;
+        const bool there = !moved && std::hypot(c->pos.x - ups[leg & 1].x, c->pos.z - ups[leg & 1].z) < 1 && std::fabs(c->pos.y - ups[leg & 1].y) < 0.6f;
+        (leg == 0 ? upOk : leg == 1 ? downOk : leg == 2 ? attUp : attDown) = there;
         M.sent = false;
       }
       c->removed = true;
     }
     printf("%s a townsperson climbs a ladder up to a loft\n%s and back down it\n", upOk ? "ok  " : "FAIL", downOk ? "ok  " : "FAIL");
-    if (!upOk || !downOk) millerFails++;
+    printf("%s a townsperson climbs it with a torch on the shaft's wall, the ladder an attachment beside it\n%s and back down\n", attUp ? "ok  " : "FAIL", attDown ? "ok  " : "FAIL");
+    if (!upOk || !downOk || !attUp || !attDown) millerFails++;
     // a golem (1.4 wide) by a wall with a 1-wide gap straight ahead and a 2-wide one further along: it goes round by the
     // broad one (it had walked at the narrow one and stuck in it)
     {

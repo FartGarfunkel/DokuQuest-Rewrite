@@ -26,7 +26,7 @@ using ExtraClimbFn = bool (*)(const World& w, const Entity& e);
 void addExtraClimb(ExtraClimbFn f);
 extern thread_local bool t_noExtraBoxes;   // set: only the world's own blocks (is there room for something a piece pushes?)
 // Collision boxes of one block (compat helper).
-void blockBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out);
+void blockBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out);   // a cell's collision: main block + attachments
 
 // Move an entity by its velocity for dt, sliding along walls and stepping up onto slabs and
 // stairs (stepHeight; airStep = the little lip a body just off the ground may still step over).

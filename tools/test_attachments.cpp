@@ -20,6 +20,13 @@
 #include <cstring>
 
 using namespace dq;
+namespace dq {   // (sim/villagers_internal.h: the townsfolk's way finding)
+struct NpcStep { ivec3 at{0}; float floor = 0; bool climb = false; vec2 c{0}; };
+std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, float bodyH, bool* partial, int maxNodes, bool* snapped);
+float npcStandAt(const World& w, int x, int y, int z, float bodyW, float bodyH);
+}
+static std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bw, float bh, bool* partial) { return dq::npcPath(w, from, to, bw, bh, partial, 2400, nullptr); }
+static float npcStandAt(const World& w, int x, int y, int z) { return dq::npcStandAt(w, x, y, z, 0.3f, 1.8f); }
 static int fails = 0, passes = 0;
 static void check(bool ok, const std::string& what) { printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str()); (ok ? passes : fails)++; }
 
@@ -242,6 +249,62 @@ int main(int argc, char** argv) {
   check(w.hasAttachments(S.x, S.y, S.z), "(the shaft's torch is there)");
   dropAllAttachments(*L, w, S.x, S.y, S.z, false);
   check(!w.hasAttachments(S.x, S.y, S.z) && w.getBlock(S.x, S.y, S.z) == ladder, "a blast takes the parts off a cell");
+
+  printf("[townsfolk's way finding sees the parts as you find them]\n");
+  {
+    const BlockId planks = B("planks"), button = B("stone_button"), plate = B("stone_pressure_plate");
+    for (int x = 31; x < 47; x++) for (int z = 10; z < 31; z++) { w.setBlock(x, Y, z, stone); for (int y = Y + 1; y < Y + 10; y++) w.setBlock(x, y, z, AIR); }
+    // a body's footing as the planner gives it is where you'd stand: on something, nothing in the way above
+    auto standsTrue = [&](int x, int y, int z) {
+      const float f = npcStandAt(w, x, y, z);
+      if (std::isnan(f)) return false;
+      return collides(w, x + 0.3, f - 0.06, z + 0.3, x + 0.7, f - 0.01, z + 0.7) && !collides(w, x + 0.3, f + 0.01, z + 0.3, x + 0.7, f + 1.8, z + 0.7);
+    };
+    // a shaft with a torch on its west wall and the ladder put up after it: in two cells the torch is the main block and
+    // the ladder an attachment beside it
+    for (int y = Y + 1; y <= Y + 9; y++) for (int x = 33; x <= 39; x++) w.setBlock(x, y, 19, stone);   // (the wall)
+    for (int x = 33; x <= 39; x++) for (int z = 14; z <= 18; z++) w.setBlock(x, Y + 6, z, planks);   // (the loft)
+    for (int y = Y + 1; y <= Y + 5; y++) { w.setBlock(35, y, 18, stone); w.setBlock(37, y, 18, stone); }
+    for (int y = Y + 1; y <= Y + 6; y++) w.setBlock(36, y, 18, ladder, 2);
+    for (int y : {Y + 2, Y + 4}) {
+      w.setBlock(36, y, 18, torch, 1);
+      check(attachRoomFree(w, 36, y, 18, ladder, 2) && w.addAttachment(36, y, 18, ladder, 2), "a ladder attachment beside a wall torch in the shaft (y+" + std::to_string(y - Y) + ")");
+    }
+    { Entity e; e.pos = vec3(36.5f, Y + 2, 18.5f); e.w = 0.3f; e.h = 1.8f; check(sampleContacts(w, e).ladder, "you climb the ladder attachment"); }
+    bool part = true;
+    auto way = npcPath(w, vec3(36.5f, Y + 1, 12.5f), vec3(36.5f, Y + 7, 15.5f), 0.3f, 1.8f, &part);
+    int climbs = 0; for (auto& s : way) climbs += s.climb;
+    check(!part && climbs >= 4, "a townsperson's way goes up the shaft past the torch (" + std::to_string(climbs) + " rungs" + (part ? ", partial" : "") + ")");
+    way = npcPath(w, vec3(36.5f, Y + 7, 15.5f), vec3(36.5f, Y + 1, 12.5f), 0.3f, 1.8f, &part);
+    check(!part, "and back down it");
+    // a walkway with a pressure plate, a torch and a button in it: nothing there you'd bump into
+    for (int x = 31; x < 47; x++) for (int y = Y + 1; y <= Y + 3; y++) { w.setBlock(x, y, 23, stone); w.setBlock(x, y, 25, stone); }
+    w.setBlock(37, Y + 1, 24, plate, 0);
+    w.addAttachment(37, Y + 1, 24, torch, 3);
+    w.setBlock(40, Y + 2, 24, torch, 4);
+    int bm = -1; for (int m = 0; m < 8 && bm < 0; m++) if (attachSupported(w, 40, Y + 2, 24, button, (u8)m) && attachRoomFree(w, 40, Y + 2, 24, button, (u8)m)) bm = m;
+    check(bm >= 0 && w.addAttachment(40, Y + 2, 24, button, (u8)bm), "a button beside a torch at head height in the walkway");
+    way = npcPath(w, vec3(32.5f, Y + 1, 24.5f), vec3(45.5f, Y + 1, 24.5f), 0.3f, 1.8f, &part);
+    bool straight = !way.empty(); for (auto& s : way) if (s.at.z != 24 || s.floor > Y + 1.2f) straight = false;
+    check(!part && straight, "a townsperson walks straight along it (" + std::to_string(way.size()) + " steps" + (part ? ", partial" : "") + ")");
+    check(standsTrue(37, Y + 1, 24) && standsTrue(40, Y + 1, 24), "and stands where you would by the parts");
+    // a hatch: a closed trapdoor attachment (top half, flush with the floor) over a hole in a walkway, a torch on the
+    // hole's wall its main block
+    for (int x = 31; x < 47; x++) for (int y = Y + 1; y <= Y + 3; y++) { w.setBlock(x, y, 27, stone); w.setBlock(x, y, 29, stone); }
+    for (int y = Y - 3; y <= Y; y++) for (int x = 37; x <= 39; x++) for (int z = 27; z <= 29; z++) w.setBlock(x, y, z, stone);
+    for (int y = Y - 2; y <= Y; y++) w.setBlock(38, y, 28, AIR);
+    w.setBlock(38, Y, 28, torch, 1);
+    check(attachRoomFree(w, 38, Y, 28, trap, 8) && w.addAttachment(38, Y, 28, trap, 8), "a shut trapdoor over the hole beside the torch");
+    check(!collides(w, 38.3, Y + 1.01, 28.3, 38.7, Y + 2.8, 28.7) && collides(w, 38.3, Y + 0.9, 28.3, 38.7, Y + 0.99, 28.7), "you walk on it");
+    check(standsTrue(38, Y + 1, 28) && std::fabs(npcStandAt(w, 38, Y + 1, 28) - (Y + 1)) < 0.01f, "a townsperson stands on it as you do (" + std::to_string(npcStandAt(w, 38, Y + 1, 28) - Y) + ")");
+    way = npcPath(w, vec3(32.5f, Y + 1, 28.5f), vec3(45.5f, Y + 1, 28.5f), 0.3f, 1.8f, &part);
+    straight = !way.empty(); for (auto& s : way) if (s.floor < Y + 0.9f) straight = false;
+    check(!part && straight, "and walks across it, not down the hole (" + std::to_string(way.size()) + " steps" + (part ? ", partial" : "") + ")");
+    w.setAttachmentMeta(38, Y, 28, 0, 8 | 4);
+    check(std::isnan(npcStandAt(w, 38, Y + 1, 28)) && !collides(w, 38.3, Y + 0.5, 28.3, 38.7, Y + 0.99, 28.7), "open, it's a hole to them as to you");
+    w.setAttachmentMeta(38, Y, 28, 0, 0);   // (shut, the bottom half: a step down into the hatch's cell)
+    check(standsTrue(38, Y, 28) && std::fabs(npcStandAt(w, 38, Y, 28) - (Y + 3 / 16.f)) < 0.01f, "shut at the bottom, they stand on it down in the cell, as you do");
+  }
 
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails;

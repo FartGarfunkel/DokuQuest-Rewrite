@@ -7,6 +7,7 @@
 // goal says so (partial) and ends where it got closest along the way, not at a wall beside the goal.
 #include "sim/villagers_internal.h"
 #include "sim/physics.h"
+#include "world/attach.h"
 #include "core/registry.h"
 #include <queue>
 #include <deque>
@@ -58,8 +59,17 @@ struct Finder {
     const BlockId id = w.getBlock(x, y, z);
     c.f = id < g_flags.size() ? g_flags[id] : 0;
     c.liquid = reg().tLiquid[id];
-    if (c.f & F_DOOR) return c;   // (walked through: opened on the way)
-    boxes.clear(); blockBoxes(w, x, y, z, boxes);
+    // (the cell's attachments as you find them: a ladder or a vine on the wall beside a torch is climbed, a shut
+    // trapdoor over a hole is a floor; their boxes are blockBoxes', world/attach.h)
+    const bool parts = w.hasAttachments(x, y, z);
+    if (parts && attachClimb(w, x, y, z)) c.f |= F_CLIMB;
+    boxes.clear();
+    if (c.f & F_DOOR) {   // (walked through: opened on the way — whatever shares its cell isn't)
+      if (!parts) return c;
+      static thread_local std::vector<PixBox> pb;
+      pb.clear(); attachCollideBoxes(w, x, y, z, pb);
+      for (auto& p : pb) boxes.push_back({vec3(x, y, z) + vec3(p.x0, p.y0, p.z0) / 16.f, vec3(x, y, z) + vec3(p.x1, p.y1, p.z1) / 16.f});
+    } else blockBoxes(w, x, y, z, boxes);
     const float fx0 = x + 0.5f - hw, fx1 = x + 0.5f + hw, fz0 = z + 0.5f - hw, fz1 = z + 0.5f + hw;
     auto side = [&](int k, const AABB& b) { c.slo[k] = std::min(c.slo[k], b.lo.y - y); c.shi[k] = std::max(c.shi[k], b.hi.y - y); };
     for (const AABB& b : boxes) {
