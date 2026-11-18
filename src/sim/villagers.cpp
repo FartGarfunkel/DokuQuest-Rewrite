@@ -588,6 +588,12 @@ static bool onItemUse(Level& lv, const json& a) {
     openVillagerScreen(lv, *p, "board", {{"x", at.x}, {"y", at.y}, {"z", at.z}});
     return false;
   }
+  if (b.has("respecShrine") && !p->sneaking) {   // the Shrine of Renewal (sim/village_life.h): its price is the village's
+    VillageRef sv = villageAtPos(lv, p->realm, vec3(at), 8);
+    p->swingT = 0.001f;
+    openVillagerScreen(lv, *p, "shrine", {{"x", at.x}, {"y", at.y}, {"z", at.z}, {"vid", sv ? sv->id : std::string()}});
+    return false;
+  }
   // (a town gate's lever: the redstone side works the gate when the lever flips, sim/rsplace.cpp gateLever)
   if (b.key == "gate_barrier" && gateUse(lv, *p, at, false)) { p->swingT = 0.001f; return false; }
   return true;

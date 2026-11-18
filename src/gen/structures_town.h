@@ -63,6 +63,7 @@ struct Town {
   std::vector<std::array<int, 2>> lamps, trees, banners;
   std::vector<std::array<int, 3>> decor;
   std::array<int, 3> board{}, bell{};
+  bool hasShrine = false; std::array<int, 3> shrine{};   // terrain 25: the Shrine of Renewal by the board (sim/village_life.h): x, y (on the ground), z
   std::vector<Stall> stalls;
   std::vector<VSeat> seats;
   bool hasWall = false; TownWall wall{};

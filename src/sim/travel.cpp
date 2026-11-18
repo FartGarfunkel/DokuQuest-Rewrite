@@ -1,5 +1,6 @@
 // sim/travel.cpp — waystones and the measure of a mount (game/travel.js).
 #include "sim/travel.h"
+#include "sim/village_life.h"
 
 namespace dq {
 
@@ -64,7 +65,7 @@ std::vector<WayEntry> wayList(Level& lv, Player& p, const std::string& hereId) {
   for (auto& [id, r] : waysOf(p).items()) {
     if (id == hereId || r.value("dim", 0) != dim) continue;
     WayEntry e; e.id = id; e.name = r.value("name", std::string("A waystone")); e.pos = ivec3(r.value("x", 0), r.value("y", 0), r.value("z", 0));
-    e.dist = std::hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z); e.cost = wayCost(e.dist);
+    e.dist = std::hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z); e.cost = wayFreeFor(lv, p, id) ? 0 : wayCost(e.dist);   // (free to a village's Hero: sim/village_life.h)
     e.dir = dirWord(e.pos.x - p.pos.x, e.pos.z - p.pos.z);
     e.can = creativeOf(p) || p.level >= e.cost;
     out.push_back(e);
@@ -81,7 +82,7 @@ std::string wayGo(Level& lv, Player& p, const std::string& id) {
   if (rec.value("dim", 0) != jsDimOf(p)) return fail("That waystone is in another layer of the world");
   ivec3 r(rec.value("x", 0), rec.value("y", 0), rec.value("z", 0));
   float d = std::hypot(r.x - p.pos.x, r.z - p.pos.z);
-  int cost = wayCost(d);
+  int cost = wayFreeFor(lv, p, id) ? 0 : wayCost(d);
   if (!creativeOf(p) && p.level < cost) return fail("You need " + std::to_string(cost) + " level" + (cost > 1 ? "s" : "") + " of experience to go that far");
   World& w = lv.world(p.realm);
   for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) w.requestChunk(dimOfY(r.y), (r.x >> 4) + dx, (r.z >> 4) + dz, 1000);

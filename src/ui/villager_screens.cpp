@@ -15,6 +15,7 @@
 #include "sim/villagers.h"
 #include "sim/magic_data.h"
 #include "sim/rpg.h"
+#include "sim/village_life.h"
 #include "core/registry.h"
 #include <imgui.h>
 
@@ -335,7 +336,7 @@ public:
     if (!s || !v || closeReq) { a.popScreen(); return; }
     age += (float)dt;
     if (a.input.pressed(Act::Inventory) || a.input.pressed(Act::MenuY)) { a.popScreen(); return; }
-    if ((refreshT -= (float)dt) <= 0) { refreshT = 1; posted = boardQuests(*s->level, *v); }
+    if ((refreshT -= (float)dt) <= 0) { refreshT = 1; posted = boardQuests(*s->level, *v, s->player); }   // (the trades' requests sized for you: sim/village_life.h)
     int was = sel;
     sel = padStep(a, sel, nButtons, true);
     selMoved = sel != was;
@@ -448,7 +449,10 @@ public:
     for (auto& q : posted) { json* m = findQuest(p, q.value("id", "")); board.push_back({m ? *m : q, m != nullptr}); }
     notes(board);
     std::vector<std::pair<json, bool>> errands;
-    for (auto& q : S["quests"]) if (q.value("vid", "") == v->id && q.value("giver", -1) >= 0) errands.push_back({q, true});
+    for (auto& q : S["quests"]) if (q.value("vid", "") == v->id && q.value("giver", -1) >= 0) {
+      bool onBoard = false; for (auto& o : posted) if (o.value("id", "") == q.value("id", "")) onBoard = true;   // (a trade's request taken from the board is pinned there already)
+      if (!onBoard) errands.push_back({q, true});
+    }
     if (!errands.empty()) {   // .qb-sub: margin 10px 0 6px, gold 14px
       const float osz = css(F_MID, 14);
       y += 10 * z;
@@ -554,7 +558,7 @@ public:
       const std::string k = (*P)["k"]; const json& D = PD[k];
       int left = pts - spent;
       headRow("The " + D.value("name", k) + "'s path", colOf(D), "Combat level " + std::to_string(cl) + " \xC2\xB7 " +
-              (left > 0 ? std::to_string(left) + " talent point" + (left > 1 ? "s" : "") + " to spend" : pts < 6 ? "next point at combat level " + std::to_string(AT + std::max(0, pts) * 6) : std::string("every point spent")));
+              (left > 0 ? std::to_string(left) + " talent point" + (left > 1 ? "s" : "") + " to spend" : pts < 6 ? "next point at combat level " + std::to_string(AT + std::max(0, pts - pathLessons(p)) * 6) : std::string("every point spent")));
       label(F_MID, col::rgb(0xfff3d6), D.value("base", std::string()).c_str(), cw - pad * 2);
       ImGui::Dummy(ImVec2(1, 6 * z));
       static const char* TN[3] = {"First", "Second", "Third"};
@@ -588,7 +592,7 @@ public:
       }
       ImGui::SetCursorPosX(pad);
       bool sl = sel == btn;
-      if (button("Forget it all (20 gold coins)", BTN_NORMAL, true) || (sl && pressA)) forget = true;
+      if (button(("Forget it all (" + std::to_string(pathForgetPrice(lv, p)) + " gold coins)").c_str(), BTN_NORMAL, true) || (sl && pressA)) forget = true;   // (less for a Friend: sim/village_life.h)
       outlineLast(sl); btn++;
     }
     ImGui::SetCursorPosX(pad); label(F_SMALL, col::muted, "E to close");
@@ -603,5 +607,69 @@ private:
   std::string hint; int sel = 0, nButtons = 0; bool pressA = false; float lastH = 0;
 };
 std::unique_ptr<Screen> makePathScreen(const std::string& hint) { return std::make_unique<PathScreen>(hint); }
+
+// ------------------------------------------------------------------ the Shrine of Renewal (sim/village_life.h)
+// What it takes back and what it asks; "Renew" asks twice (A, then A again), "Leave" closes. Up/down or left/right
+// pick, A presses, B / Y / E close.
+class ShrineScreen : public Screen {
+public:
+  ShrineScreen(ivec3 at, std::string vid) : at(at), vid(std::move(vid)) {}
+  const char* id() const override { return "shrine"; }
+  bool pausesGame() const override { return false; }
+  void update(App& a, double dt) override {
+    GameSession* s = sess(a);
+    if (!s || glm::distance(s->player->pos, vec3(at) + vec3(0.5f)) > 7) { a.popScreen(); return; }
+    if (a.input.pressed(Act::Inventory) || a.input.pressed(Act::MenuY)) { a.popScreen(); return; }   // (B: the app pops it)
+    if (askT > 0) askT -= (float)dt;
+    sel = padStep(a, sel, 2, true);
+    pressA = a.input.pressed(Act::MenuOk);
+  }
+  void draw(App& a) override {
+    GameSession* s = sess(a); if (!s) return;
+    Level& lv = *s->level; Player& p = *s->player;
+    const float z = Z(), W = (float)a.width, H = (float)a.height;
+    ImGui::GetBackgroundDrawList()->AddRectFilled(ImVec2(0, 0), ImVec2(W, H), IM_COL32(0, 0, 0, 102));
+    const float cw = std::min(460 * z, W * 0.94f);
+    ImGui::SetNextWindowPos(ImVec2(W / 2, H / 2), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(cw, lastH > 0 ? std::min(H * 0.9f, lastH) : 300 * z));
+    ImGui::Begin("##shrine", nullptr, CARD);
+    ImDrawList* dl = ImGui::GetWindowDrawList();
+    const ImVec2 w0 = ImGui::GetWindowPos(), ws = ImGui::GetWindowSize();
+    dl->AddRectFilled(w0, w0 + ws, IM_COL32(14, 18, 20, 242)); dl->AddRect(w0, w0 + ws, IM_COL32(150, 226, 214, 110), 0, 0, 1 * z);
+    const float pad = 14 * z;
+    ImGui::SetCursorPos(ImVec2(pad, 12 * z));
+    label(F_H3, col::rgb(0x96e2d6), "Shrine of Renewal");
+    const int pts = respecPoints(p), tree = treeSpentOf(p), cost = respecCost(p, vid);
+    const Standing st = standingOf(vid.empty() ? 0 : repOf(p, vid));
+    ImGui::SetCursorPosX(pad);
+    label(F_MID, col::muted, pts > 0 ? ("It will take back your " + std::to_string(tree) + " talent" + (tree == 1 ? "" : "s") + " and " + std::to_string(pts - tree) + " stat point" + (pts - tree == 1 ? "" : "s") + ", to choose again.").c_str()
+                                     : "You've spent no talents or stat points: there is nothing to take back.", cw - pad * 2);
+    ImGui::Dummy(ImVec2(1, 4 * z));
+    ImGui::SetCursorPosX(pad);
+    if (pts > 0) label(F_BODY, col::gold, ("It asks " + std::to_string(cost) + " gold coins" + (vid.empty() ? std::string() : " (you are a " + st.name + " here)") + ". You have " + std::to_string(purseCoins(p)) + ".").c_str(), cw - pad * 2);
+    ImGui::Dummy(ImVec2(1, 8 * z));
+    if (!said.empty()) { ImGui::SetCursorPosX(pad); label(F_MID, col::rgb(0xfff3d6), said.c_str(), cw - pad * 2); ImGui::Dummy(ImVec2(1, 6 * z)); }
+    ImGui::SetCursorPosX(pad);
+    bool renew = false, leave = false;
+    const bool can = pts > 0 && purseCoins(p) >= cost;
+    { const bool sl = sel == 0;
+      if (button(askT > 0 ? "Press again to renew##renew" : ("Renew (" + std::to_string(cost) + " gold coins)##renew").c_str(), can ? BTN_PRIMARY : BTN_NORMAL, true, 0, !can) || (sl && pressA && can)) renew = true;
+      outlineLast(sl); }
+    ImGui::SameLine();
+    { const bool sl = sel == 1; if (button("Leave##leave", BTN_NORMAL, true) || (sl && pressA)) leave = true; outlineLast(sl); }
+    ImGui::Dummy(ImVec2(1, 6 * z));
+    ImGui::SetCursorPosX(pad); label(F_SMALL, col::muted, "The more you've spent, the more it asks; a village that thinks well of you asks less \xC2\xB7 E to close", cw - pad * 2);
+    lastH = ImGui::GetCursorPosY() + 12 * z;
+    pressA = false;
+    ImGui::End();
+    if (renew) { if (askT > 0) { askT = 0; respecDo(lv, p, vid, said); } else askT = 3; }
+    if (leave) a.popScreen();
+  }
+private:
+  static int treeSpentOf(const Player& p) { return p.stats.contains("tree") && p.stats["tree"].is_object() && p.stats["tree"].contains("nodes") && p.stats["tree"]["nodes"].is_array() ? (int)p.stats["tree"]["nodes"].size() : 0; }
+  static int purseCoins(Player& p) { int n = 0; for (auto& s : p.inv) if (s.id == "gold_coin") n += s.n; else if (s.id == "emerald") n += s.n * 4; return n; }
+  ivec3 at; std::string vid, said; int sel = 0; bool pressA = false; float lastH = 0, askT = 0;
+};
+std::unique_ptr<Screen> makeShrineScreen(ivec3 at, const std::string& vid) { return std::make_unique<ShrineScreen>(at, vid); }
 
 } // namespace dq

@@ -811,7 +811,7 @@ void PlayerController::useOffhand(bool repeat, const PlayerInput& in) {
 bool interactable(BlockId id) {
   const BlockDef& b = reg().block(id);
   static const char* keys[] = {"anvil", "enchant", "brewing", "grindstone", "loom", "smithing", "cartography", "fletching", "composter", "cauldron", "lectern", "barrel", "chest", "furnace", "smoker", "crafting", "table", "bench", "bed", "door", "gate", "trapdoor", "bell", "note", "jukebox", "shelf", "bookcase", "campfire", "cooking", "altar", "forge", "press", "mill", "rack", "stand"};
-  for (const char* k : {"container", "table", "furnace", "lectern", "station", "enderChest", "partyChest", "machine", "stonecutter", "jukebox", "bed", "door", "trapdoor", "noteBlock", "bellBlock", "cauldron", "pile", "placedBackpack", "frame", "sign", "pot"}) if (b.has(k)) return true;
+  for (const char* k : {"container", "table", "furnace", "lectern", "station", "enderChest", "partyChest", "machine", "stonecutter", "jukebox", "bed", "door", "trapdoor", "noteBlock", "bellBlock", "cauldron", "pile", "placedBackpack", "frame", "sign", "pot", "respecShrine"}) if (b.has(k)) return true;
   if (b.has("grave") || b.has("rs") || b.has("carry")) return true;   // (your grave, levers and buttons, things you pick up)
   if (reg().tShape[id] == ShapeKind::Gate) return true;
   for (const char* k : keys) if (b.key.find(k) != std::string::npos) return true;

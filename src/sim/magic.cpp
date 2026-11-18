@@ -284,7 +284,7 @@ bool magicItemUse(Level& lv, Player& p, const std::string& key, ivec3 at, int fa
   if (face >= 0 && !p.sneaking) {
     const BlockId bid = lv.world(p.realm).getBlock(at.x, at.y, at.z);
     const BlockDef& b = reg().block(bid);
-    if (b.has("container") || b.has("table") || b.has("door") || b.has("station") || b.has("questBoard") || b.has("bed") || b.has("furnace")) return true;
+    if (b.has("container") || b.has("table") || b.has("door") || b.has("station") || b.has("questBoard") || b.has("respecShrine") || b.has("bed") || b.has("furnace")) return true;
     if (b.has("grave") || b.has("rs") || b.has("machine") || b.has("trapdoor") || b.has("gate") || b.has("sign") || b.has("cauldron") || b.has("composter") ||
         b.has("jukebox") || b.has("lectern") || b.has("noteBlock") || b.has("cake") || b.has("carry") || reg().tShape[bid] == ShapeKind::Gate || reg().tShape[bid] == ShapeKind::Trapdoor || reg().tShape[bid] == ShapeKind::Door) return true;
     // what a thing in hand is set on: a shelf, a bookcase, a pile, a rack or stand (a potion goes on it, not down your throat)

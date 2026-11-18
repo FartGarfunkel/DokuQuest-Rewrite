@@ -16178,6 +16178,68 @@
     "side": "glass",
     "end": "glass"
    }
+  ],
+  "respec_shrine": [
+   {
+    "b": [
+     0,
+     0,
+     0,
+     16,
+     2,
+     16
+    ],
+    "side": "shrine_stone",
+    "end": "shrine_stone"
+   },
+   {
+    "b": [
+     2,
+     2,
+     2,
+     14,
+     4,
+     14
+    ],
+    "side": "shrine_stone",
+    "end": "shrine_stone"
+   },
+   {
+    "b": [
+     4,
+     4,
+     4,
+     12,
+     11,
+     12
+    ],
+    "side": "shrine_rune",
+    "end": "shrine_stone"
+   },
+   {
+    "b": [
+     2,
+     11,
+     2,
+     14,
+     13,
+     14
+    ],
+    "side": "shrine_stone",
+    "end": "shrine_stone"
+   },
+   {
+    "b": [
+     1,
+     13,
+     1,
+     15,
+     15,
+     15
+    ],
+    "side": "shrine_stone",
+    "end": "shrine_top"
+   }
   ]
  }
 }
