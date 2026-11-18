@@ -475,8 +475,8 @@ public:
       bookPageBlock(a, dl, L, pw, ph);
       bookPageBag(a, dl, R, pw, ph);
     }
-    if (!tip.empty() && !bookUiScreenTip(tip)) { ImVec2 m = ImGui::GetIO().MousePos, s = textSize(F_MID, tip.c_str()); ImDrawList* fg = ImGui::GetForegroundDrawList();
-      fg->AddRectFilled(ImVec2(m.x + 14 * z, m.y - 4 * z), ImVec2(m.x + 26 * z + s.x, m.y + 4 * z + s.y), col::rgb(0x1a120c, 235), 3 * z); text(fg, F_MID, ImVec2(m.x + 20 * z, m.y), col::rgb(0xf0e0b8), tip.c_str()); }
+    if (!tip.empty() && !bookUiScreenTip(tip)) { const ImVec2 s = textSize(F_MID, tip.c_str()), q = tipPlace(s + ImVec2(12, 8) * z); ImDrawList* fg = ImGui::GetForegroundDrawList();
+      fg->AddRectFilled(q, q + s + ImVec2(12, 8) * z, col::rgb(0x1a120c, 235), 3 * z); text(fg, F_MID, q + ImVec2(6, 4) * z, col::rgb(0xf0e0b8), tip.c_str()); }
     // the sun / moon under the book's corner
     { const float s = std::round(18 * z);
       if (bookThemeButton(a, dl, ImVec2(panelB.x - s, panelB.y + 6 * z), s)) { a.settings.extra["bookDark"] = !bookThemeDark(); a.settings.save(); playClick(); } }
@@ -852,16 +852,25 @@ public:
     std::vector<std::pair<std::string, u32>> lines;
     itemInfoText(s, &sess->p, &lines);
     // (on the journal's pages: drawn on the window after the book, at the real pointer, so it isn't cut off at the page)
-    if (bookUiScreenDraw([lines, &a] { drawTip(a, lines, ImGui::GetIO().MousePos); })) return;
-    drawTip(a, lines, m);
+    // the item's box (the pad: the tooltip sits beside it; the mouse: by the pointer — ui::tipPlace decides)
+    const bool byItem = m.x >= 0;
+    ImVec2 ia = h->a, ib = h->b;
+    if (bookUiScreenDraw([lines, &a, byItem, ia, ib] {
+          ImVec2 wa = ia, wb = ib;
+          const bool mapped = byItem && bookUiPicToWindow(wa) && bookUiPicToWindow(wb);
+          if (byItem && !mapped) return;   // (the pad, and the pages not open yet: nowhere to put it)
+          drawTip(a, lines, mapped ? &wa : nullptr, mapped ? &wb : nullptr);
+        })) return;
+    drawTip(a, lines, byItem ? &ia : nullptr, byItem ? &ib : nullptr);
   }
-  static void drawTip(App& a, const std::vector<std::pair<std::string, u32>>& lines, ImVec2 m) {
+  static void drawTip(App& a, const std::vector<std::pair<std::string, u32>>& lines, const ImVec2* ia, const ImVec2* ib) {
     float z = Z(), maxW = 260 * z - 16 * z, k = 13.f / 15.f;
     float w = 0, hgt = 0;
     for (auto& [t, c] : lines) { if (!t.empty() && t[0] == '\x02') { w = std::max(w, 120 * z); hgt += 8 * z; continue; } ImVec2 ts = textSize(F_BODY, t.c_str(), maxW, k); w = std::max(w, ts.x); hgt += ts.y; }
     ImDrawList* dl = ImGui::GetForegroundDrawList();
-    ImVec2 p(m.x + 14 * z, m.y + 10 * z), size(w + 16 * z, hgt + 10 * z);
-    p.x = std::max(4 * z, std::min(p.x, (float)a.width - size.x - 6 * z)); p.y = std::max(4 * z, std::min(p.y, (float)a.height - size.y - 6 * z));
+    const ImVec2 size(w + 16 * z, hgt + 10 * z);
+    const ImVec2 p = tipPlace(size + ImVec2(8, 8) * z, ia, ib) + ImVec2(4, 4) * z;   // (the frame is 4 px round the box)
+    (void)a;
     dl->AddRectFilled(p - ImVec2(4, 4) * z, p + size + ImVec2(4, 4) * z, col::black);
     dl->AddRectFilled(p - ImVec2(2, 2) * z, p + size + ImVec2(2, 2) * z, col::pnHi);
     dl->AddRectFilled(p, p + size, IM_COL32(18, 12, 8, 245));

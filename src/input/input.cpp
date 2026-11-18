@@ -164,7 +164,11 @@ void Input::handle(const SDL_Event& e) {
     case SDL_KEYUP: if (e.key.keysym.scancode < SDL_NUM_SCANCODES) keys[e.key.keysym.scancode] = false; break;
     case SDL_MOUSEBUTTONDOWN: if (e.button.button < 8) { mouseBtn[e.button.button] = true; mouseHit[e.button.button] = true; lastCode = "Mouse" + std::to_string(e.button.button - 1); } lastWasPad = false; break;
     case SDL_MOUSEBUTTONUP: if (e.button.button < 8) mouseBtn[e.button.button] = false; break;
-    case SDL_MOUSEMOTION: if (capture) mouseDelta += vec2((float)e.motion.xrel, (float)e.motion.yrel); break;
+    case SDL_MOUSEMOTION:
+      if (capture) mouseDelta += vec2((float)e.motion.xrel, (float)e.motion.yrel);
+      // the pointer moved over a menu: the mouse is in use again (tooltips go back to it from the pad's highlight)
+      else if (std::abs(e.motion.xrel) + std::abs(e.motion.yrel) >= 3) lastWasPad = false;
+      break;
     case SDL_MOUSEWHEEL: wheelY += e.wheel.preciseY != 0 ? e.wheel.preciseY : (float)e.wheel.y; break;
     case SDL_TEXTINPUT: typed += e.text.text; break;
     case SDL_JOYDEVICEADDED: openDevice(e.jdevice.which); break;

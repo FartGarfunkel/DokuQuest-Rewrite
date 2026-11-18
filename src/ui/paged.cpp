@@ -52,7 +52,7 @@ bool resetButton(ImVec2 p, float s) {
   ImVec2 tip(c.x + r * std::cos(3.14159f * 0.15f), c.y + r * std::sin(3.14159f * 0.15f));
   dl->AddTriangleFilled(ImVec2(tip.x + s * 0.12f, tip.y - s * 0.02f), ImVec2(tip.x - s * 0.1f, tip.y - s * 0.02f), ImVec2(tip.x + s * 0.01f, tip.y + s * 0.14f), ic);
   if (hit) playClick();
-  if (hot) ImGui::SetTooltip("Reset to default");
+  if (hot) ui::setTooltip("Reset to default");
   return hit;
 }
 // the classic text field: black, a grey frame (white while typing)
@@ -439,8 +439,10 @@ int Paged::footer(const std::vector<std::string>& labels, const std::vector<bool
 void Paged::end() {
   if (contentOpen) endContent();
   if (!tipText.empty()) {
-    ImVec2 p = tipAtMouse ? ImGui::GetIO().MousePos + ImVec2(12, -10) * Z() : tipPos;
-    tooltipBox(ImGui::GetForegroundDrawList(), p, tipText, std::min(W * 0.45f, 420 * Z()));
+    const float maxW = std::min(W * 0.45f, 420 * Z());
+    // (at the mouse, or with the pad beside the highlighted item: ui::tipPlace)
+    ImVec2 p = tipAtMouse ? tipPlace(textSize(F_BODY, tipText.c_str(), maxW) + ImVec2(10, 10) * Z()) : tipPos;
+    tooltipBox(ImGui::GetForegroundDrawList(), p, tipText, maxW);
   }
   ImGui::PopFont();
   ImGui::End();

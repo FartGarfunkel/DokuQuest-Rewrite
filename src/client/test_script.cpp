@@ -14,7 +14,7 @@
 //     hurt{entity,amount,tool,type,at} (strike the nearest creature of that type as the player, e.g. tool "axe")
 //     kill (the player / "local" dies)  drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
 //     expect{screen | block:[x,y,z],is | entity,near | held | inv:slot,item,n | count:item,n | cursor:item |
-//            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text | typing (the text box being edited holds it; null: none)} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
+//            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text | typing (the text box being edited holds it; null: none) | tooltipNear (true: a tooltip beside the pad's highlight; false: none)} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
 // give takes "d" (wear) and "tag" (enchantments, gear xp). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
 #include "sim/creature_rig.h"
@@ -34,6 +34,7 @@
 #include "ui/magic_screens.h"
 #include "ui/content_screens.h"
 #include "ui/osk.h"
+#include "ui/theme.h"
 #include <imgui_internal.h>
 #include "sim/commands.h"
 #include "sim/endstory_int.h"
@@ -380,6 +381,15 @@ void runStep(App& a, const json& st) {
       json* e = s->world().blockEntity(b.x, b.y, b.z);
       std::string dump = e ? e->dump() : "null", want = st.value("has", "");
       result(dump.find(want) != std::string::npos, "block entity " + st["blockEntity"].dump() + " has '" + want + "' (got " + dump.substr(0, 200) + ")");
+    }
+    if (st.contains("tooltipNear")) {   // true: a tooltip shows beside the highlighted item (the pad); false: none placed by an item
+      const ui::LastTip& t = ui::lastTooltip();
+      const bool recent = t.frame + 2 >= a.frame;
+      const float gx = std::max({0.f, t.a.x - (t.pos.x + t.size.x), t.pos.x - t.b.x}), gy = std::max({0.f, t.a.y - (t.pos.y + t.size.y), t.pos.y - t.b.y});
+      const bool near = recent && t.byItem && gx <= 40 * ui::Z() && gy <= 40 * ui::Z();
+      char b[200]; std::snprintf(b, sizeof b, "tooltip %s (last: frame %llu of %llu, %s, item %.0f,%.0f-%.0f,%.0f, tip at %.0f,%.0f)", st["tooltipNear"].get<bool>() ? "beside the highlight" : "not by a highlight",
+        (unsigned long long)t.frame, (unsigned long long)a.frame, t.byItem ? "by an item" : "by the mouse", t.a.x, t.a.y, t.b.x, t.b.y, t.pos.x, t.pos.y);
+      result(st["tooltipNear"].get<bool>() ? near : !(recent && t.byItem), b);
     }
     if (st.contains("typing")) {   // a text box is being edited and holds this text (null: none is being edited)
       std::string got; const bool on = ui::oskSeenEditing(a, &got);   // (in the main context, a viewport or the journal's pages)

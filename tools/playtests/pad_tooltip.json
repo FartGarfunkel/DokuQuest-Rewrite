@@ -1,0 +1,21 @@
+{
+"note": "Tooltips follow the controller's highlight: the inventory opened with the pad, the highlight moved onto a stack, its tooltip sits beside that slot (not at the mouse); moving the mouse hands tooltips back to the pointer.",
+"steps": [
+{"wait": 200, "do": "give", "item": "cobblestone", "n": 20, "clear": true},
+{"do": "give", "item": "torch", "n": 8},
+{"do": "give", "item": "apple", "n": 3},
+{"wait": 5, "do": "pad", "button": "y", "hold": 3},
+{"wait": 240, "do": "expect", "screen": "inventory"},
+{"do": "pad", "button": "right", "hold": 3},
+{"wait": 8, "do": "pad", "button": "left", "hold": 3},
+{"wait": 8, "do": "shot", "path": "/tmp/dq_pad_tooltip.png"},
+{"wait": 2, "do": "expect", "tooltipNear": true},
+{"do": "move", "dx": 40, "dy": 20},
+{"wait": 6, "do": "expect", "tooltipNear": false},
+{"do": "pad", "button": "right", "hold": 3},
+{"wait": 8, "do": "expect", "tooltipNear": true},
+{"do": "pad", "button": "b", "hold": 3},
+{"wait": 20, "do": "expect", "screen": null},
+{"do": "report"}
+]
+}

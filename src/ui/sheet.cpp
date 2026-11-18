@@ -187,7 +187,7 @@ float drawSheet(ImDrawList* dl, ImVec2 p, float w, float is, const Player& pl, b
     if (ImGui::IsMouseHoveringRect(ImVec2(x, yy), ImVec2(x + cw, yy + rh))) {
       std::string tip = std::string(SKILLS[i][1]) + " level " + lv + " \xC2\xB7 " + std::to_string((long long)xp) + " xp";
       if (L < 99) tip += " \xC2\xB7 " + std::to_string((long long)std::ceil(T[L + 1] - xp)) + " to " + std::to_string(L + 1);
-      ImGui::SetTooltip("%s", tip.c_str());
+      ui::setTooltip("%s", tip.c_str());
     }
   }
   y += ((SKILLS.size() + 1) / 2) * (rh + 2 * Z() * is / 40) + is * 0.04f;
@@ -223,7 +223,7 @@ void drawDoll(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& pl, double t) {
   if (std::fabs(stick) > 0.15f) D.base += stick * io.DeltaTime * 2.6f;
   if (D.drag) D.spin = D.dragS + (io.MousePos.x - D.dragX) * 0.02f / Z();
   else D.spin = D.base + std::sin((float)t / 2.6f) * 0.45f;
-  if (over) ImGui::SetTooltip("Drag to turn");
+  if (over) ui::setTooltip("Drag to turn");
   // you as the doll: standing still, facing out, what you wear and hold
   auto spec = resolveCharacter(pl.skin);
   CharWear wear = charWearOf(pl, *spec, true);
@@ -262,7 +262,7 @@ void drawGearVis(ImDrawList* dl, ImVec2 a, ImVec2 b, const Player& p, int k, boo
     ImVec2 c((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f); float r = w * 0.38f, dx = std::cos(0.61f) * r, dy = std::sin(0.61f) * r;
     dl->AddLine(ImVec2(c.x - dx, c.y + dy), ImVec2(c.x + dx, c.y - dy), col::rgb(0xe0584a), 2 * z);
   }
-  if (hover) ImGui::SetTooltip("%s %s", off ? "Show" : "Hide", toLower(GEAR_VIS[k][0]).c_str());
+  if (hover) ui::setTooltip("%s %s", off ? "Show" : "Hide", toLower(GEAR_VIS[k][0]).c_str());
 }
 
 } // namespace dq

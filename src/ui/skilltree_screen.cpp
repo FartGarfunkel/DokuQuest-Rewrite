@@ -185,7 +185,7 @@ public:
       ImGui::BeginDisabled(p->statPoints <= 0 || *st.v >= bal::STAT_CAP);
       if (ImGui::SmallButton("+")) { (*st.v)++; p->statPoints--; }
       ImGui::EndDisabled();
-      if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || ImGui::IsItemFocused()) ImGui::SetTooltip("%s", st.what.c_str());   // (focused: a pad's d-pad reads it too)
+      if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) || ImGui::IsItemFocused()) ui::setTooltip("%s", st.what.c_str());   // (focused: a pad's d-pad reads it too)
       ImGui::PopID();
     }
     ImGui::Separator();
@@ -207,7 +207,7 @@ public:
       any++;
       const float v = talent(*p, r.attr);
       ImGui::Text("%s %s%s", r.attr, std::string(r.attr) == "step" ? strFormat("+%.2f", v).c_str() : ((v >= 0 ? "+" : "") + std::to_string((int)std::lround(v * 100)) + "%").c_str(), v >= r.hi || v <= r.lo ? " (capped)" : "");
-      if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", r.what);
+      if (ImGui::IsItemHovered()) ui::setTooltip("%s", r.what);
     }
     if (!any) ImGui::TextDisabled("Nothing yet");
     ui::bookPagesEnd();

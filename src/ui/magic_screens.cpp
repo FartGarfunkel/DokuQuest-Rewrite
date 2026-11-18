@@ -86,6 +86,7 @@ static bool slotButton(const char* id, const ItemStack& s, float size, const cha
   if (!s.empty() && ImGui::IsItemHovered()) {
     const ItemDef* d = s.def();
     std::string tip = magicItemTooltip(s);
+    { const ImVec2 ia = ImGui::GetItemRectMin(), ib = ImGui::GetItemRectMax(); ui::tipNextAt(&ia, &ib); }   // (the pad: by the highlighted slot)
     ImGui::BeginTooltip();
     ImGui::TextColored(itemGlints(s) ? ImVec4(0.56f, 0.91f, 1, 1) : ImVec4(1, 1, 1, 1), "%s", d ? d->name.c_str() : s.id.c_str());
     if (!tip.empty()) ImGui::TextDisabled("%s", tip.c_str());
@@ -259,7 +260,7 @@ public:
             ImGui::SetCursorScreenPos(ImVec2(pt.x - nr, pt.y - nr));
             ImGui::PushID(("tree" + k).c_str());
             const bool hit = ImGui::InvisibleButton("##n", ImVec2(2 * nr, 2 * nr), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-            if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s \xC2\xB7 Magic %d \xC2\xB7 %d mana%s%s", S.name.c_str(), S.lvl, S.mana, S.cast != "instant" ? (" \xC2\xB7 " + S.cast + " cast").c_str() : "", k1 ? (" \xC2\xB7 " + std::string(spellRarityName(effectiveSpellRank(*p, k)))).c_str() : " \xC2\xB7 not learnt");
+            if (ImGui::IsItemHovered()) ui::setTooltip("%s \xC2\xB7 Magic %d \xC2\xB7 %d mana%s%s", S.name.c_str(), S.lvl, S.mana, S.cast != "instant" ? (" \xC2\xB7 " + S.cast + " cast").c_str() : "", k1 ? (" \xC2\xB7 " + std::string(spellRarityName(effectiveSpellRank(*p, k)))).c_str() : " \xC2\xB7 not learnt");
             if (hit && k1) { if (ImGui::IsMouseReleased(ImGuiMouseButton_Right)) setOffSpell(*lv, *p, k); else toggleRightSpell(*lv, *p, k); }
             ImGui::PopID();
             prev = pt; prevLit = k1;
@@ -303,7 +304,7 @@ public:
           ImVec2 cs = ui::textSize(ui::F_SMALL, cost.c_str());
           ui::text(dl, ui::F_SMALL, ImVec2(q.x + w - cs.x, q.y + (lh - cs.y) * 0.5f), ui::ink::muted, cost.c_str());
           for (size_t i = 0; i < lines.size(); i++) ui::text(dl, ui::F_SMALL, ImVec2(nx, q.y + lh + i * sh), kn ? ui::ink::text : ui::ink::muted, lines[i].c_str());
-          if (kn && hot) ImGui::SetTooltip("Rank %d of 10 (%s) \xC2\xB7 %d%% to the next%s", spellRank(*p, k), spellRarityName(spellRank(*p, k)), (int)(spellRankProgress(*p, k) * 100), bookRank(*p, k) > spellRank(*p, k) ? " \xC2\xB7 your spellbook holds it higher" : "");
+          if (kn && hot) ui::setTooltip("Rank %d of 10 (%s) \xC2\xB7 %d%% to the next%s", spellRank(*p, k), spellRarityName(spellRank(*p, k)), (int)(spellRankProgress(*p, k) * 100), bookRank(*p, k) > spellRank(*p, k) ? " \xC2\xB7 your spellbook holds it higher" : "");
           (void)a;
         };
         r.push_back(std::move(row));
@@ -367,7 +368,7 @@ public:
         dl->AddRectFilled(b0, b1, ui::ink::faint);
         dl->AddRectFilled(b0, ImVec2(b0.x + (b1.x - b0.x) * std::clamp(pr, 0.f, 1.f), b1.y), inkOf(col));
         dl->AddRect(b0, b1, ui::withAlpha(ui::ink::text, 0.5f), 0, 0, std::max(1.f, z));
-        if (hot) ImGui::SetTooltip("%s", tip.c_str());
+        if (hot) ui::setTooltip("%s", tip.c_str());
       };
       sk.push_back(std::move(row));
     }

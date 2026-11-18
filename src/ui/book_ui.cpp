@@ -30,6 +30,7 @@ namespace {
 ImGuiContext* g_ctx = nullptr;
 GLuint g_fbo = 0, g_tex = 0; int g_w = 0, g_h = 0;
 vec2 g_lo{0}, g_hi{0}; bool g_rect = false; bool g_drawing = false;
+static vec2 g_size(1);   // the pages' picture (logical pixels)
 ImVec2 g_spA, g_spB; bool g_spread = false, g_hadSpread = false; vec4 g_crop(0, 0, 1, 1);
 std::vector<vec4> g_ribs, g_ribsShown;   // the ribbons drawn this frame (picture pixels), and last frame's in crop space
 vec4 g_spreadUV(0, 0, 1, 1);
@@ -166,15 +167,31 @@ bool bookUiMouseOverBook() { return g_overBook; }
 bool bookUiStationInUse() { return g_stationPad >= 0 || g_overBook; }   // (the pad in the bag, or the pointer on its pages)
 namespace { std::string g_screenTip; std::function<void()> g_screenDraw; }
 bool bookUiScreenDraw(std::function<void()> f) { if (!g_drawing) return false; g_screenDraw = std::move(f); return true; }
-bool bookUiScreenTip(const std::string& t) { if (!g_drawing) return false; g_screenTip = t; return true; }
+namespace { bool g_screenTipAt = false; ImVec2 g_screenTipA, g_screenTipB; }
+bool bookUiScreenTip(const std::string& t) {
+  if (!g_drawing) return false;
+  g_screenTip = t;
+  // the pad points: the tip goes beside the highlighted item (on the pages, carried to the window); else at the pointer
+  ImVec2 a, b;
+  g_screenTipAt = ui::tipsFollowPad() && ui::navItemRect(a, b) && bookUiPicToWindow(a) && bookUiPicToWindow(b);
+  if (g_screenTipAt) { g_screenTipA = a; g_screenTipB = b; }
+  return true;
+}
+bool bookUiPicToWindow(ImVec2& p) {
+  if (!g_rect || g_size.x <= 0 || g_size.y <= 0) return false;   // (a station's book at an angle: not carried back)
+  p = ImVec2(g_lo.x + p.x / g_size.x * (g_hi.x - g_lo.x), g_lo.y + p.y / g_size.y * (g_hi.y - g_lo.y));
+  return true;
+}
 void bookUiDrawScreenTip() {
+  using ui::operator+; using ui::operator*;
   if (g_screenDraw) { auto f = std::move(g_screenDraw); g_screenDraw = nullptr; f(); }
   if (g_screenTip.empty()) return;
   const float z = ui::Z();
-  const ImVec2 m = ImGui::GetIO().MousePos, s = ui::textSize(ui::F_MID, g_screenTip.c_str());
+  const ImVec2 s = ui::textSize(ui::F_MID, g_screenTip.c_str()), box = s + ImVec2(12, 8) * z;
+  const ImVec2 q = g_screenTipAt ? ui::tipPlace(box, &g_screenTipA, &g_screenTipB) : ui::tipPlace(box);
   ImDrawList* fg = ImGui::GetForegroundDrawList();
-  fg->AddRectFilled(ImVec2(m.x + 14 * z, m.y - 4 * z), ImVec2(m.x + 26 * z + s.x, m.y + 4 * z + s.y), ui::col::rgb(0x1a120c, 235), 3 * z);
-  ui::text(fg, ui::F_MID, ImVec2(m.x + 20 * z, m.y), ui::col::rgb(0xf0e0b8), g_screenTip.c_str());
+  fg->AddRectFilled(q, q + box, ui::col::rgb(0x1a120c, 235), 3 * z);
+  ui::text(fg, ui::F_MID, q + ImVec2(6, 4) * z, ui::col::rgb(0xf0e0b8), g_screenTip.c_str());
   g_screenTip.clear();
 }
 void bookUiDebugQuad(ImDrawList* dl) { if (!g_quad || !std::getenv("DQ_DEV_QUAD")) return; for (int i = 0; i < 4; i++) dl->AddLine(ImVec2(g_q[i].x, g_q[i].y), ImVec2(g_q[(i + 1) % 4].x, g_q[(i + 1) % 4].y), IM_COL32(255, 0, 255, 255), 2); }
@@ -225,7 +242,7 @@ bool bookUiSnapshot(JournalPic& p) {
   return true;
 }
 std::string bookUiLayout() { JournalPic p; p.spread = g_spreadUV; p.ribbons = g_ribsShown; return journalLayoutString(p); }
-static vec2 g_size(1);
+// (g_size: up top)
 vec2 bookUiSize() { return g_size; }
 void bookUiSetRect(vec2 lo, vec2 hi) { g_lo = lo; g_hi = hi; g_rect = hi.x - lo.x > 8 && hi.y - lo.y > 8; }
 
@@ -264,7 +281,11 @@ void bookUiRender(App& a, bool station) {
   io.ConfigFlags = cfg; io.BackendFlags = bf;
   io.DisplaySize = ImVec2((float)W, (float)H); io.DisplayFramebufferScale = fbScale;
   io.DeltaTime = std::max(1e-4f, (float)a.dt);
-  io.MouseDrawCursor = !station || std::getenv("DQ_DEV_QUAD");   // (at a station the window keeps its own pointer) (the pointer drawn on the pages: you see it in the book, and so do the others, moving your things)
+  // one pointer: the system's own, over the window. (A second one drawn on the pages showed beside it: ImGui's SDL
+  // backend shows the system pointer again every frame, so hiding it never lasted.) The mouse is carried onto the pages
+  // from where the system pointer is, so it sits on what it points at; its shape (a text beam over a text box) is handed
+  // to the main context below.
+  io.MouseDrawCursor = std::getenv("DQ_DEV_QUAD") != nullptr;
   ImGui::GetStyle() = style;
   {   // the paper shows through the menus' panels: a window's own background is the page
     ImGuiStyle& st = ImGui::GetStyle();
@@ -332,6 +353,7 @@ void bookUiRender(App& a, bool station) {
     }
   } else { g_crop = vec4(0, 0, 1, 1); g_spreadUV = vec4(0, 0, 1, 1); g_ribsShown.clear(); }
   const bool wantText = io.WantTextInput;
+  const ImGuiMouseCursor shape = ImGui::GetMouseCursor();
   ImGui::PopFont();
   ImGui::Render();
   ImDrawData* dd = ImGui::GetDrawData();
@@ -339,6 +361,7 @@ void bookUiRender(App& a, bool station) {
   ui::localZoom(1);
   a.width = sw; a.height = sh; a.uiScale = su;
   ImGui::SetCurrentContext(mainCtx);
+  if (g_overBook || (!station && g_rect)) ImGui::SetMouseCursor(shape);   // (the system pointer takes the pages' shape)
   if (a.session && !station) a.session->uiWantsText = wantText;   // (each frame: it used to stay on once a field on the pages had been typed in, and the game took no keys after)
   // onto the pages: the paper first (dark or light, as the book screens), the interface over it
   GLint prevFbo = 0, vp[4]; glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prevFbo); glGetIntegerv(GL_VIEWPORT, vp);

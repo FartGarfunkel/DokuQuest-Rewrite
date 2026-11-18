@@ -118,5 +118,20 @@ ImVec2 textLinesSize(FontId f, const char* t, float wrap, float lineH, float sca
 float baselineOf(FontId f, float scale = 1);
 void playClick();                  // the menu click sound
 
+// ---- tooltips: every tooltip goes through these, so it follows whatever points ----
+// The controller was used last: tooltips sit by the highlighted item, not the mouse (moving the mouse hands them back).
+bool tipsFollowPad();
+// the item ImGui's navigation highlights in the current context (screen rect); false: none
+bool navItemRect(ImVec2& a, ImVec2& b);
+// top-left for a tooltip of `size` on the current display: with the pad, right of the item a..b (else its left), top
+// aligned, kept on screen (no rect given: the highlighted ImGui item; none of either: the mouse); else by the mouse
+ImVec2 tipPlace(ImVec2 size, const ImVec2* a = nullptr, const ImVec2* b = nullptr);
+// before ImGui::BeginTooltip: with the pad, beside a..b (none given: the highlighted ImGui item)
+void tipNextAt(const ImVec2* a = nullptr, const ImVec2* b = nullptr);
+void setTooltip(const char* fmt, ...) IM_FMTARGS(1);   // ImGui::SetTooltip, placed by tipNextAt
+// the last tooltip placed (playtests): the frame, whether it went by an item (the pad) and that item's box, where it went
+struct LastTip { u64 frame = 0; bool byItem = false; ImVec2 a, b, pos, size; };
+const LastTip& lastTooltip();
+
 } // namespace ui
 } // namespace dq

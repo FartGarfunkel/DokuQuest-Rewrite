@@ -372,7 +372,7 @@ void drawBag(App& a, Player& p, int padCur) {
     if (slot == p.selected) wl->AddRect(pos, ImVec2(pos.x + is, pos.y + is), IM_COL32(255, 220, 120, 255), 3 * z, 0, 2 * z);
     if (i == padCur) wl->AddRect(ImVec2(pos.x - 2 * z, pos.y - 2 * z), ImVec2(pos.x + is + 2 * z, pos.y + is + 2 * z), IM_COL32(120, 220, 255, 255), 4 * z, 0, 3 * z);   // (the pad's cursor)
     if (!p.inv[slot].empty()) ui::drawItem(wl, p.inv[slot], ImVec2(pos.x + 2 * z, pos.y + 2 * z), is - 4 * z);
-    if ((ImGui::IsItemHovered() || i == padCur) && !p.inv[slot].empty() && p.inv[slot].def()) { ImGui::BeginTooltip(); ImGui::TextUnformatted(p.inv[slot].def()->name.c_str()); ImGui::EndTooltip(); }
+    if ((ImGui::IsItemHovered() || i == padCur) && !p.inv[slot].empty() && p.inv[slot].def()) { const ImVec2 ia = ImGui::GetItemRectMin(), ib = ImGui::GetItemRectMax(); ui::tipNextAt(&ia, &ib); ImGui::BeginTooltip(); ImGui::TextUnformatted(p.inv[slot].def()->name.c_str()); ImGui::EndTooltip(); }
     ImGui::PopID();
     if (i == 26) ImGui::Dummy(ImVec2(1, 4 * z));
   }
