@@ -1,6 +1,8 @@
 // sim/rsplace.cpp — placing and using redstone parts, rails, minecarts, boats and mech blocks (game/rsplace.js,
 // the vehicle parts of local.js use(), trains.js/ships.js use overrides, build.js mech placement), all through
 // the EventBus "itemUse" event. Also registerRedstone() (level systems and entity factories).
+#include "sim/attach_play.h"
+#include "world/attach.h"
 #include "sim/blockinfo.h"
 #include "sim/redstone.h"
 #include "sim/villagers.h"
@@ -236,9 +238,14 @@ static int placeRedstone(Level& lv, Player& p, World& w, ivec3 hit, int face, Bl
     case DAYLIGHT: meta = 0; break;
     default: return -1;   // torches, lamps, note blocks, TNT, doors...: the usual rules
   }
-  // the cell must be free, and not inside someone
+  // the cell must be free, and not inside someone (or a lever, a button, a plate shares it: sim/attach_play.h)
   BlockId cur = w.getBlock(x, y, z);
-  if (cur != AIR && !R.tReplaceable[cur]) return 0;
+  if ((cur != AIR && !R.tReplaceable[cur]) || w.hasAttachments(x, y, z)) {
+    if (!attachable(bid)) return 0;
+    const int ar = placeAttachment(lv, &p, w, x, y, z, bid, (u8)meta);
+    if (ar == 1) { consume(p, held); return 1; }
+    return 0;
+  }
   if (R.tSolid[bid]) {
     AABB cell{vec3(x, y, z), vec3(x + 1, y + 1, z + 1)};
     for (auto& e : lv.entities()) {

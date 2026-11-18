@@ -542,6 +542,34 @@ public:
         }
       }
     });
+    {   // item frames sharing a cell with its main block (world/attach.h): the item flat against the wall behind
+      const int r = 3, pcx = ifloor(f.cam.pos.x) >> 4, pcz = ifloor(f.cam.pos.z) >> 4;
+      static const float TURN[4] = {0, -PI / 2, PI, PI / 2};
+      for (int cz = pcz - r; cz <= pcz + r; cz++) for (int cx = pcx - r; cx <= pcx + r; cx++) {
+        const Chunk* c = w.chunk(f.dim, cx, cz);
+        if (!c || c->attach.empty()) continue;
+        for (auto& [ci, parts] : c->attach) for (const Attachment& a : parts) {
+          if (!a.be.is_object() || a.be.value("type", "") != "frame" || !a.be.contains("item") || !a.be["item"].is_object()) continue;
+          const int x = cx * 16 + (ci & 15), y = c->baseY() + (ci >> 8), z = cz * 16 + ((ci >> 4) & 15);
+          const vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
+          if (!f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f)) continue;
+          ItemStack st = ItemStack::fromJson(a.be["item"]);
+          if (st.empty() || !st.def()) continue;
+          const VoxelModel& im = itemModel(stackModelKey(st));
+          if (!im.ready()) continue;
+          const u8 l = w.getLight(x, y, z);
+          const bool glow = reg().block(a.id).num("frame") == 2;
+          const VoxelLight L = glow ? VoxelLight{1, 1} : VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f};
+          begin();
+          mat4 m = glm::translate(mat4(1), rel + vec3(0.5f));
+          m = glm::rotate(m, TURN[a.meta & 3], vec3(0, 1, 0));
+          m = glm::translate(m, vec3(0, 0, -0.5f + std::max(0.09f, im.depth * 0.55f + 0.07f)));
+          m = glm::rotate(m, -(float)a.be.value("rot", 0) * PI / 4, vec3(0, 0, 1));
+          m = glm::scale(m, vec3(im.kind == VoxelModel::Block ? 0.36f : 0.55f));
+          VR.draw(im.gl, m * im.matrix(), L, vec4(0), itemGlints(st) ? 1.f : 0.f);
+        }
+      }
+    }
     if (begun) VR.end();
     if (!handsWater.empty()) {
       ContentDraw& cd = contentDraw();

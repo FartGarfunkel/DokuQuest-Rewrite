@@ -90,6 +90,7 @@ public:
   const char* name() const override { return "redstone"; }
   void tick(World&, double dt) override;     // runs step() 20 times a second
   void onBlockChanged(World&, int x, int y, int z, BlockId oldId, BlockId newId) override;
+  void onAttachmentsChanged(World&, int x, int y, int z) override;   // levers, buttons, torches, plates, trapdoors sharing a cell
   void onChunkLoaded(World&, Chunk& c) override;
   void onChunkUnloading(World&, Chunk& c) override;
 
@@ -138,6 +139,7 @@ private:
 
   void observe(int x, int y, int z);
   void update(int x, int y, int z);
+  void updateAttachments(int x, int y, int z);   // the trapdoors and redstone torches among a cell's attachments
   void fire(const Sched& s);
   bool supportPowered(int x, int y, int z);
   void dustArms(int x, int y, int z, bool arms[4]);

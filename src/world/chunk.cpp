@@ -73,6 +73,16 @@ std::vector<u8> encodeChunk(const Chunk& c) {
   json be = json::object();
   for (auto& [i, e] : c.blockEntities) { int x = i & 15, z = (i >> 4) & 15, y = i >> 8; be[std::to_string(x) + "," + std::to_string(y) + "," + std::to_string(z)] = e; }
   head["be"] = be;
+  if (!c.attach.empty()) {   // attachments (world/attach.h): only when there are some, so a chunk without any saves as before
+    json at = json::object();
+    for (auto& [i, parts] : c.attach) {
+      if (parts.empty()) continue;
+      json l = json::array();
+      for (const Attachment& a : parts) { json e = json::array({reg().block(a.id).key, a.meta}); if (!a.be.is_null()) e.push_back(a.be); l.push_back(e); }
+      at[std::to_string(i & 15) + "," + std::to_string(i >> 8) + "," + std::to_string((i >> 4) & 15)] = l;
+    }
+    if (!at.empty()) { head["at"] = at; head["atv"] = 1; }
+  }
   if (!c.extra.is_null()) head["x"] = c.extra;
   std::string hs = head.dump();
   putVar(raw, (u32)hs.size()); raw.insert(raw.end(), hs.begin(), hs.end());
@@ -145,6 +155,19 @@ bool decodeChunk(Chunk& c, const u8* data, size_t n) {
   if (head.contains("be")) for (auto& [pos, ent] : head["be"].items()) {
     auto parts = splitStr(pos, ',');
     if (parts.size() == 3) c.blockEntities[colIdx(std::stoi(parts[0]), std::stoi(parts[1]), std::stoi(parts[2]))] = ent;
+  }
+  c.attach.clear();
+  if (head.contains("at") && head["at"].is_object() && head.value("atv", 0) >= 1) for (auto& [pos, l] : head["at"].items()) {
+    auto parts = splitStr(pos, ',');
+    if (parts.size() != 3 || !l.is_array()) continue;
+    std::vector<Attachment> v;
+    for (auto& e : l) {
+      if (!e.is_array() || e.size() < 2 || !e[0].is_string()) continue;
+      Attachment a; a.id = reg().blockId(e[0].get<std::string>()); a.meta = (u8)e[1].get<int>();
+      if (e.size() > 2) a.be = e[2];
+      if (a.id && v.size() < (size_t)MAX_ATTACH) v.push_back(std::move(a));   // (a block a mod took away is gone)
+    }
+    if (!v.empty()) c.attach[colIdx(std::stoi(parts[0]), std::stoi(parts[1]), std::stoi(parts[2]))] = std::move(v);
   }
   if (head.contains("x")) c.extra = head["x"];
   c.savedAt = head.value("t", (i64)0);

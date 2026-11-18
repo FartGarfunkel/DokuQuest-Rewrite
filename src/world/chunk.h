@@ -45,6 +45,11 @@ struct Section {
   u16 solidCount = 0;   // non-air blocks (0 -> may be freed)
 };
 
+// A small part sharing a cell with its main block (a torch on the wall of a ladder's cell, a trapdoor behind a chest):
+// up to MAX_ATTACH per cell, each with its own block entity (signs, item frames). world/attach.h has the rules.
+struct Attachment { BlockId id = 0; u8 meta = 0; json be; };
+constexpr int MAX_ATTACH = 4;
+
 struct ChunkKey {
   int dim, cx, cz;
   bool operator==(const ChunkKey& o) const { return dim == o.dim && cx == o.cx && cz == o.cz; }
@@ -83,6 +88,7 @@ public:
   std::array<u8, SECS> airLight;  // nibble of unallocated sections
   std::array<LightRgb, SECS> airRgb;  // rgb of unallocated sections (open sky is full sun)
   std::unordered_map<int, json> blockEntities;   // colIdx -> {type, items:[...], ...} (chests, furnaces, piles, signs)
+  std::unordered_map<int, std::vector<Attachment>> attach;   // colIdx -> the parts sharing that cell with its main block (sparse)
   std::array<u8, 512> climate{};  // temp, humidity per column (colour tints) — like JS chunk.climate
   u8 heightMap[256]{};            // highest non-air y per column (band-local), for skylight and LOD
   int maxY = 0;                   // highest non-air y + 1

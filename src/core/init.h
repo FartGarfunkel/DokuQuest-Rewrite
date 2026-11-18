@@ -25,7 +25,8 @@ void registerBossBrains();       // sim/boss_brains.cpp
 void registerVillageTheft();     // sim/village_theft.cpp
 void registerTreasureMaps();     // sim/treasure_maps.cpp
 void registerStrung();           // sim/strung.cpp
-void registerMovingBodies();     // sim/moving.cpp (hinges and sliders)
+void registerMovingBodies();
+void registerAttachments();      // sim/attach_play.cpp     // sim/moving.cpp (hinges and sliders)
 void registerGlue();             // sim/glue.cpp (moving structures: glue between faces)
 void registerContent();          // sim/content.cpp (maps, farming, fishing, camping, travel, elytra, stable, places)
 void registerEndStory();      // sim/endstory.cpp: the End, dragons, the Deep Dark, the watcher and the rift

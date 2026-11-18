@@ -1,4 +1,5 @@
 // mod/mod_api.cpp — the DQ API's actions (game/mods.js modApi), shared by JS mods and native plugins.
+#include "world/attach.h"
 #include "mod/mod_internal.h"
 #include "sim/level.h"
 #include "sim/player.h"
@@ -43,6 +44,30 @@ json getBlock(ModLoader& L, double x, double y, double z, int realm) {
   int ix = ifloor(x), iy = ifloor(y), iz = ifloor(z);
   if (!w || !inWorldY(iy) || !w->isLoaded(ix, iy, iz)) return json();
   return reg().block(w->getBlock(ix, iy, iz)).key;
+}
+json getAttachments(ModLoader& L, double x, double y, double z, int realm) {
+  if (!L.level) return json();
+  World* w = L.level->worldIfOpen(realm);
+  const int ix = ifloor(x), iy = ifloor(y), iz = ifloor(z);
+  if (!w || !inWorldY(iy) || !w->isLoaded(ix, iy, iz)) return json();
+  json l = json::array();
+  if (const auto* parts = w->attachments(ix, iy, iz)) for (const Attachment& a : *parts) l.push_back({{"key", reg().block(a.id).key}, {"meta", a.meta}});
+  return l;
+}
+bool addAttachment(ModLoader& L, double x, double y, double z, const std::string& key, int meta, int realm) {
+  if (!L.level) return false;
+  World* w = L.level->worldIfOpen(realm);
+  const BlockId id = reg().blockId(key);
+  const int ix = ifloor(x), iy = ifloor(y), iz = ifloor(z);
+  const u8 m = (u8)clampv(meta, 0, 255);
+  if (!w || !id || !attachable(id) || !inWorldY(iy) || !w->isLoaded(ix, iy, iz) || !w->getBlock(ix, iy, iz)) return false;
+  if (!attachSupported(*w, ix, iy, iz, id, m) || !attachRoomFree(*w, ix, iy, iz, id, m)) return false;
+  return w->addAttachment(ix, iy, iz, id, m, SetFlags::Urgent);
+}
+bool removeAttachment(ModLoader& L, double x, double y, double z, int index, int realm) {
+  if (!L.level) return false;
+  World* w = L.level->worldIfOpen(realm);
+  return w && w->removeAttachment(ifloor(x), ifloor(y), ifloor(z), index, SetFlags::Urgent);
 }
 bool setBlock(ModLoader& L, double x, double y, double z, const std::string& key, int meta, int realm) {
   if (!L.level) return false;

@@ -13,7 +13,8 @@ struct _ENetHost;
 namespace dq { class Player; class Entity; }
 namespace dq::net {
 
-constexpr int PROTO = 2;                 // 2: timed, unreliable movement on its own channel; more of the players' state
+constexpr int PROTO = 3;                 // 3: attachments (blk entries [x,y,z,"a",parts]; chunk records carry them)
+// was 2                 // 2: timed, unreliable movement on its own channel; more of the players' state
 constexpr int DEFAULT_PORT = 25580;      // like the original LAN server's first port
 constexpr int DISCOVERY_PORT = 25581;    // LAN announcements (launcher/desktop/lan.js)
 // 0: reliable, ordered (world, chat, control)  1: reliable entity news (new ones, their data, gone), the time, effects

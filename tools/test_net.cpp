@@ -3,6 +3,7 @@
 // block-entity sync, entities as ghosts, chat, mod and plugin commands/events, server console commands
 // (give, tp, kick), movement checks, saved players and the server going away.
 //   test_net [--userdir DIR] [--port N]       exit code 0 = everything passed
+#include "sim/attach_play.h"
 #include "sim/attack_moves.h"
 #include <set>
 #include "core/init.h"
@@ -49,6 +50,9 @@ static StationProbe g_st;
 // a slider the host moves (the moving-parts sync checks): 1 = build it and start it, then 2
 static std::atomic<bool> g_freeze{false};   // the server's next tick stalls 8 s (a busy host: start-up, an autosave)
 static struct { std::atomic<int> stage{0}; int x = 0, y = 0, z = 0; std::atomic<bool> started{false}; } g_mv;
+// attachments on the host (read and changed on the server thread): parts = what the host has in the cell (-1 not watched),
+// main = its main block; cmd 1 puts a torch there, 2 breaks the wall holding it
+static struct { std::atomic<bool> on{false}; int x = 0, y = 0, z = 0; std::atomic<int> parts{-1}, main{0}, cmd{0}; } g_at;
 struct Client {
   std::string name;
   EventBus bus;
@@ -460,6 +464,13 @@ int main(int argc, char** argv) {
   static std::atomic<int> hostKind{0}; static std::atomic<float> hostWind{0};
   srv.onTick = [](Level& lv) {
     if (g_freeze.exchange(false)) std::this_thread::sleep_for(std::chrono::seconds(8));
+    if (g_at.on) {
+      World& w = lv.world(REALM_MAIN);
+      if (const int c = g_at.cmd.exchange(0); c == 1) w.addAttachment(g_at.x, g_at.y, g_at.z, reg().blockId("torch"), 2, SetFlags::Urgent);
+      else if (c == 2) w.setBlock(g_at.x + 1, g_at.y, g_at.z, AIR, 0, SetFlags::Urgent);
+      const auto* p = w.attachments(g_at.x, g_at.y, g_at.z);
+      g_at.parts = p ? (int)p->size() : 0; g_at.main = w.getBlock(g_at.x, g_at.y, g_at.z);
+    }
     if (g_mv.stage == 1) {
       World& w = lv.world(REALM_MAIN);
       const int x = g_mv.x, y = g_mv.y, z = g_mv.z;
@@ -639,6 +650,28 @@ int main(int argc, char** argv) {
   pumpFor(0.3);
   A.lv->world().setBlockEntity(bx, by, bz + 1, {{"type", "chest"}, {"items", json::array({{{"id", "apple"}, {"n", 3}}})}});
   check(pump(4, [&] { json* e = B.lv->world().blockEntity(bx, by, bz + 1); return e && e->value("type", "") == "chest"; }), "a block entity (chest contents) syncs");
+
+  // ---- attachments (world/attach.h): Alice puts a torch on the wall of a ladder's cell; the host and Bob see it ----
+  {
+    World& wa = A.lv->world();
+    const BlockId ladder = reg().blockId("ladder"), torch = reg().blockId("torch");
+    const int ax = bx + 3, ay = by, az = bz;
+    wa.setBlock(ax, ay, az - 1, stone, 0, SetFlags::Urgent); wa.setBlock(ax + 1, ay, az, stone, 0, SetFlags::Urgent);
+    wa.setBlock(ax, ay, az, ladder, 0, SetFlags::Urgent);
+    g_at.x = ax; g_at.y = ay; g_at.z = az; g_at.on = true;
+    check(pump(4, [&] { return B.lv->world().getBlock(ax, ay, az) == ladder && g_at.main == ladder; }), "a ladder Alice puts on a wall shows up");
+    check(placeAttachment(*A.lv, A.me, wa, ax, ay, az, torch, 2) == 1, "Alice puts a torch on the east wall of the ladder's cell");
+    auto hasTorch = [&](World& w) { const auto* p = w.attachments(ax, ay, az); return p && p->size() == 1 && (*p)[0].id == torch && (*p)[0].meta == 2 && w.getBlock(ax, ay, az) == ladder; };
+    check(pump(4, [&] { return g_at.parts == 1 && hasTorch(B.lv->world()); }), "the host and Bob see the torch beside the ladder");
+    breakAttachment(*A.lv, A.me, wa, ax, ay, az, 0, false);
+    check(pump(4, [&] { return g_at.parts == 0 && g_at.main == ladder && !B.lv->world().hasAttachments(ax, ay, az) && B.lv->world().getBlock(ax, ay, az) == ladder; }),
+          "Alice breaks the torch: it's gone for everyone, the ladder stays");
+    g_at.cmd = 1;
+    check(pump(4, [&] { return hasTorch(wa) && hasTorch(B.lv->world()); }), "one the host puts there reaches both guests");
+    g_at.cmd = 2;
+    check(pump(4, [&] { return !wa.hasAttachments(ax, ay, az) && !B.lv->world().hasAttachments(ax, ay, az); }), "its wall broken on the host, it pops off for everyone");
+    g_at.on = false;
+  }
 
   // ---- moving parts: the host moves a piece; a guest sees it move, then set down ----
   {

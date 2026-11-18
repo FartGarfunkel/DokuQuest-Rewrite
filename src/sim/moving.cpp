@@ -1,4 +1,5 @@
 // sim/moving.cpp — see moving.h.
+#include "sim/attach_play.h"
 #include "sim/moving.h"
 #include "sim/glue.h"
 #include "sim/blockinfo.h"
@@ -157,6 +158,7 @@ public:
     for (const ivec3& b : breakable) w.setBlock(b.x, b.y, b.z, AIR);
     Body body; body.id = nextId++; body.realm = realm; body.m = m; body.spin = spin; body.lift = isLift;
     body.dur = (m.kind == 1 ? std::abs(m.distance) / 2.f : std::abs(m.quarters) * 1.f) / std::clamp(speed, 0.25f, 2.f);
+    for (const ivec3& c : p.cells) if (w.hasAttachments(c.x, c.y, c.z)) dropAllAttachments(lv, w, c.x, c.y, c.z, true);   // (parts sharing a lifted cell come off: sim/attach_play.h)
     for (const ivec3& c : p.cells) {
       const json* e = w.blockEntity(c.x, c.y, c.z);
       body.blocks.push_back({c - machine, w.getBlock(c.x, c.y, c.z), w.getMeta(c.x, c.y, c.z), e ? *e : json(), w.getCarve(c.x, c.y, c.z)});

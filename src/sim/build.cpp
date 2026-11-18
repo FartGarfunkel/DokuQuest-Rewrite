@@ -14,6 +14,8 @@
 #include "sim/brewing.h"
 #include "sim/hands.h"
 #include "sim/mob_carry.h"
+#include "sim/attach_play.h"
+#include "world/attach.h"
 #include <random>
 
 namespace dq {
@@ -270,7 +272,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   int nx = hit.normal.x, ny = hit.normal.y, nz = hit.normal.z;
   if (R.tRender[bid] == (u8)Render::Torch) {
     BlockId cur = w.getBlock(x, y, z);
-    if (!R.tReplaceable[cur] && cur != AIR) return;
+    if (!R.tReplaceable[cur] && cur != AIR && !attachable(bid)) return;   // (an occupied cell: maybe an attachment, below)
     BlockId below = w.getBlock(x, y - 1, z);
     u8 bcv = w.getCarve(x, y - 1, z);
     int bdp = carveFaceDepth(bcv, 0, 1, 0);
@@ -332,7 +334,17 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     }
   }
   BlockId cur = w.getBlock(x, y, z);
-  if (cur != AIR && !R.tReplaceable[cur]) return;
+  bool stepAside = false;
+  if ((cur != AIR && !R.tReplaceable[cur]) || w.hasAttachments(x, y, z)) {   // an occupied cell: a part sharing it (sim/attach_play.h)
+    const int r = placeAttachment(lv, &p, w, x, y, z, bid, meta);
+    if (r == 1) {
+      consumeHeld(); swingArm();
+      if (bhas(bid, BF::Sign)) if (const auto* parts = w.attachments(x, y, z)) openScreen(lv, p, "sign", {{"pos", {x, y, z}}, {"slot", (int)parts->size() - 1}});
+      return;
+    }
+    if (r != 2) return;
+    stepAside = true;
+  }
   bool door = bhas(bid, BF::Door);
   if (bhas(bid, BF::NeedsSupport) && !bhas(bid, BF::Crop) && !bhas(bid, BF::AlwaysWet) && R.tRender[bid] != (u8)Render::Torch && !traits(bid).lantern && bid != B.sugar_cane && !door) {
     if (!supportOK(bid, x, y, z, meta)) return;
@@ -348,6 +360,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   }
   if (lv.events && !lv.events->emit("blockPlace", json::array({p.name, x, y, z, bdef.key}))) return;
   ItemStack placed = held;   // (contents travel with chests and barrels)
+  if (stepAside) { attachStepAside(w, x, y, z); seat = 0; }
   w.setBlock(x, y, z, bid, meta, SetFlags::Urgent);
   if (seat) w.setCarve(x, y, z, seat, SetFlags::Urgent);
   for (auto& a : also) w.setBlock(a[0], a[1], a[2], (BlockId)a[3], (u8)a[4], SetFlags::Urgent);
@@ -806,6 +819,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (bhas(id, BF::Trapdoor) || R.tShape[id] == ShapeKind::Gate) {
     u8 m = meta ^ 4;
     if (R.tShape[id] == ShapeKind::Gate && (m & 4)) { int f = lookDir(p); if ((((m & 3) + 2) & 3) == f) m = (u8)((m & ~3) | f); }   // gates swing away from you
+    if (partBlocked(w, x, y, z, -1, id, m)) { toastMsg("It's blocked"); return true; }   // (a part sharing the cell is in its way: sim/attach_play.h)
     w.setBlock(x, y, z, id, m, SetFlags::Urgent); sfxAt(lv, doorSound(id, m & 4), c); swingArm(); return true;
   }
   if (bhas(id, BF::Bed)) { sleep(x, y, z, meta); return true; }

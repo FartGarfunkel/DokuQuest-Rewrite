@@ -1,5 +1,6 @@
 // sim/redstone_parts.cpp — pistons and sticky pistons (game/redstone.js), what falls off when its support
 // goes, lit TNT and explosions (game/blockfx.js), targets (game/rsplace.js).
+#include "sim/attach_play.h"
 #include "sim/villagers.h"
 #include "sim/redstone.h"
 #include "sim/redstone_entities.h"
@@ -159,9 +160,11 @@ void Redstone::carry(const Plan& plan, int mv, const std::function<void()>& then
   Guard g(this);
   for (auto& b : plan.breaks) {
     if (!reg().tLiquid[b[3]]) dropBlockItems(lv, w.realm, b[0], b[1], b[2], (BlockId)b[3]);
+    if (w.hasAttachments(b[0], b[1], b[2])) dropAllAttachments(lv, w, b[0], b[1], b[2], true);
     w.setBlock(b[0], b[1], b[2], AIR, 0);
   }
-  for (auto& m : plan.move) w.setBlock(m[0], m[1], m[2], AIR, 0);
+  // a pushed cell's attachments come off as items (never carried: sim/attach_play.h)
+  for (auto& m : plan.move) { if (w.hasAttachments(m[0], m[1], m[2])) dropAllAttachments(lv, w, m[0], m[1], m[2], true); w.setBlock(m[0], m[1], m[2], AIR, 0); }
   auto a = std::make_unique<PistonAnim>();
   a->realm = w.realm; a->mv = mv;
   for (auto& m : plan.move) {
@@ -334,6 +337,7 @@ void explode(Level& lv, int realm, vec3 at, float power, bool noBlocks) {
       if (json* ent = !kept ? w.blockEntity(bx, by, bz) : nullptr) {   // spill what it held
         if ((*ent)["items"].is_array()) for (auto& it : (*ent)["items"]) { ItemStack s = ItemStack::fromJson(it); if (!s.empty()) dropStack(lv, realm, s, vec3(bx + 0.5f, by + 0.5f, bz + 0.5f), vec3((rnd() - 0.5f) * 3, 3, (rnd() - 0.5f) * 3)); }
       }
+      if (w.hasAttachments(bx, by, bz)) dropAllAttachments(lv, w, bx, by, bz, rnd() < 0.3f);   // the parts sharing the cell go too
       w.setBlock(bx, by, bz, AIR, 0, SetFlags::Urgent);
       if (rnd() < 0.3f) dropBlockItems(lv, realm, bx, by, bz, id);
     }
