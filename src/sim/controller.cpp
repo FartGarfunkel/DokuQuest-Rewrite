@@ -257,6 +257,7 @@ void PlayerController::tickSurvival(float dt, const MoveInfo& mv) {
     float soft = (bhas(landId, BF::Bed) || bhas(landId, BF::Bouncy) || bhas(landId, BF::Sticky) || R.block(landId).has("cloud") ||
                   R.block(w.getBlock(ifloor(p.pos.x), ifloor(p.pos.y + 0.1f), ifloor(p.pos.z))).has("softLanding") ? 0.f : startsWith(R.block(landId).key, "hay") ? 0.2f : 1.f) * (1 - charmBonus(p, "fall"));
     if (R.block(landId).has("sunCloud")) giveEffect(lv, p, "slowfall", 10);   // a golden cloud: float down from it
+    if (fall > 1.1f && landId == KB().farmland && landId && !lv.isRemote()) trampleFarmland(lv, w, ifloor(p.pos.x), ifloor(p.pos.y - 0.2f), ifloor(p.pos.z));   // jumped on: back to dirt
     int dmg = (int)std::floor((fall - 3) * soft);
     if (fall > 3.4f && !p.creative() && dmg > 0) { DamageSource s; s.type = "fall"; s.bypassArmor = true; hurt((float)dmg, s); sfxUi(lv, p, "thud"); }
   }

@@ -12,6 +12,8 @@
 #include "sim/minecart.h"
 #include "sim/vehicles.h"
 #include "sim/machines.h"
+#include "sim/crafting.h"
+#include "sim/gameplay.h"
 #include "gen/structures_api.h"
 #include <thread>
 #include <cstdio>
@@ -22,7 +24,8 @@ static int fails = 0, passes = 0;
 static void check(bool ok, const std::string& what) { if (ok) passes++; else fails++; printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str()); }
 
 int main(int argc, char** argv) {
-  std::string ud = argc > 1 ? argv[1] : (fs::temp_directory_path() / "dq_test_redstone").string();
+  std::string ud = (fs::temp_directory_path() / "dq_test_redstone").string();
+  for (int i = 1; i < argc; i++) { if (std::string(argv[i]) == "--userdir" && i + 1 < argc) ud = argv[++i]; else if (argv[i][0] != '-') ud = argv[i]; }
   fs::remove_all(ud);
   CoreOptions co; co.server = true; co.userDirOverride = ud;
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
@@ -341,6 +344,95 @@ int main(int argc, char** argv) {
     use("string", cx, Y, cz, FACE_PY);
     check(key(cx, Y + 1, cz) == "tripwire", "sneaking, string is laid on the chest");
     p.sneaking = false;
+  }
+
+
+  printf("[farms: pistons, the crafter, bone meal, hoppers, sculk sensors, streams]\n");
+  {
+    const int FX = X - 26, FZ = Z - 92;
+    clearArea(FX - 2, FX + 16, FZ - 2, FZ + 22, 10);
+    run(2);
+    auto itemsNear = [&](vec3 at, float r, const std::string& id) {
+      int n = 0;
+      for (auto& e : lv->entities()) if (!e->removed && e->type == "item" && glm::distance(e->pos, at) < r) { ItemStack st = droppedStack(*e); if (st.id == id) n += st.n; }
+      return n;
+    };
+    // a piston breaking a ripe crop gives what breaking it by hand gives: the produce and seeds
+    set(FX + 1, Y - 1, FZ, "farmland", 7); set(FX + 1, Y, FZ, "wheat_crop", 7);
+    set(FX, Y, FZ, "piston", 5); set(FX - 1, Y, FZ, "redstone_block");
+    run(10);
+    const vec3 at(FX + 1.5f, Y + 0.5f, FZ + 0.5f);
+    check(key(FX + 1, Y, FZ) == "piston_head" && itemsNear(at, 3, "wheat") >= 1 && itemsNear(at, 3, "wheat_seeds") >= 1,
+          "a piston breaking ripe wheat drops wheat (" + std::to_string(itemsNear(at, 3, "wheat")) + ") and seeds (" + std::to_string(itemsNear(at, 3, "wheat_seeds")) + ")");
+    set(FX + 1, Y, FZ + 2, "melon"); set(FX, Y, FZ + 2, "piston", 5); set(FX - 1, Y, FZ + 2, "redstone_block");
+    run(10);
+    const int slices = itemsNear(vec3(FX + 1.5f, Y + 0.5f, FZ + 2.5f), 3, "melon_slice");
+    check(slices >= 3 && slices <= 7, "a piston breaking a melon drops its slices (" + std::to_string(slices) + ")");
+    // the crafter: a rising edge crafts the grid into the chest in front
+    set(FX, Y, FZ + 4, "crafter", 5); set(FX + 1, Y, FZ + 4, "chest");
+    { Container c = rs->inv(FX, Y, FZ + 4); c.set(0, ItemStack(planks, 1)); c.set(1, ItemStack(planks, 1)); c.set(3, ItemStack(planks, 1)); c.set(4, ItemStack(planks, 1)); }
+    std::vector<ItemStack> g(9); g[0] = g[1] = g[3] = g[4] = ItemStack(planks, 1);
+    const CraftMatch want = matchGrid(g, 3);
+    set(FX - 1, Y, FZ + 4, "redstone_block"); run(10);
+    { Container out = rs->inv(FX + 1, Y, FZ + 4), cr = rs->inv(FX, Y, FZ + 4);
+      check(want && out.get(0).id == want.out && cr.get(0).empty() && cr.get(4).empty(), "the crafter crafts its grid (" + want.out + ") into the chest in front (" + out.get(0).id + ")"); }
+    run(4);
+    { Container out = rs->inv(FX + 1, Y, FZ + 4); check(out.get(1).empty() && out.get(0).n == want.n, "...once per rising edge, not while the power stays on"); }
+    // switched-off slots: hoppers leave them empty, the rest fill evenly; a comparator counts filled and switched-off slots
+    if (json* be = w.blockEntity(FX, Y, FZ + 4)) (*be)["locked"] = (1 << 2) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8);
+    { Container cr = rs->inv(FX, Y, FZ + 4);
+      for (int k = 0; k < 8; k++) rs->insertOne(cr, 1, ItemStack(planks, 1));
+      bool even = true; for (int i : {0, 1, 3, 4}) even &= cr.get(i).n == 2;
+      bool gaps = true; for (int i : {2, 5, 6, 7, 8}) gaps &= cr.get(i).empty();
+      check(even && gaps, "items fed in fill the crafter's open slots evenly and leave the switched-off ones empty"); }
+    set(FX - 1, Y, FZ + 4, "stone"); run(4);
+    set(FX, Y, FZ + 5, "comparator", 2); set(FX, Y, FZ + 6, "redstone_wire"); run(8);   // (facing south: reads the crafter north of it)
+    check(((w.getMeta(FX, Y, FZ + 5) >> 4) & 15) == 9, "a comparator reads the crafter: 4 filled + 5 switched off = " + std::to_string((w.getMeta(FX, Y, FZ + 5) >> 4) & 15));
+    // a dispenser's bone meal does what a hand's does: a sapling grows into a tree
+    set(FX + 1, Y - 1, FZ + 8, "dirt"); set(FX + 1, Y, FZ + 8, "sapling", 0);
+    set(FX, Y, FZ + 8, "dispenser", 5);
+    { Container d = rs->inv(FX, Y, FZ + 8); d.set(0, ItemStack("bone_meal", 64)); }
+    for (int k = 0; k < 12 && key(FX + 1, Y, FZ + 8) == "sapling"; k++) { set(FX, Y + 1, FZ + 8, "redstone_block"); run(6); w.setBlock(FX, Y + 1, FZ + 8, AIR); run(6); }
+    check(key(FX + 1, Y, FZ + 8) != "sapling" && key(FX + 1, Y + 1, FZ + 8) != "air", "a dispenser's bone meal grows a sapling into a tree (" + key(FX + 1, Y, FZ + 8) + ")");
+    // ...and makes grass sprout
+    for (int x = FX + 5; x <= FX + 9; x++) for (int z = FZ + 6; z <= FZ + 10; z++) set(x, Y - 1, z, "grass");
+    set(FX + 7, Y + 1, FZ + 8, "dispenser", 0);   // facing down at the grass under it... through the air cell
+    set(FX + 7, Y, FZ + 8, "air");
+    w.setBlock(FX + 7, Y, FZ + 8, B("grass"));
+    { Container d = rs->inv(FX + 7, Y + 1, FZ + 8); d.set(0, ItemStack("bone_meal", 4)); }
+    set(FX + 8, Y + 1, FZ + 8, "redstone_block"); run(8);
+    { int plants = 0; for (int x = FX + 4; x <= FX + 10; x++) for (int z = FZ + 5; z <= FZ + 11; z++) { const std::string k = key(x, Y, z); if (k != "air" && k != "grass") plants++; }
+      check(plants >= 3, "a dispenser's bone meal on grass sprouts grass and flowers round it (" + std::to_string(plants) + ")"); }
+    // a hopper takes a whole stack lying on it
+    set(FX + 12, Y, FZ, "hopper", 0);
+    rs::dropStack(*lv, REALM_MAIN, ItemStack("cobblestone", 20), vec3(FX + 12.5f, Y + 1.05f, FZ + 0.5f), vec3(0), 0);
+    rs::dropStack(*lv, REALM_MAIN, ItemStack("dirt", 5), vec3(FX + 12.98f, Y + 1.05f, FZ + 0.9f), vec3(0), 0);   // (lying over the edge)
+    run(20);
+    { Container h = rs->inv(FX + 12, Y, FZ); int cob = 0, dirt = 0; for (int i = 0; i < h.size(); i++) { if (h.get(i).id == "cobblestone") cob += h.get(i).n; if (h.get(i).id == "dirt") dirt += h.get(i).n; }
+      check(cob == 20 && dirt == 5 && itemsNear(vec3(FX + 12.5f, Y + 1, FZ + 0.5f), 2, "cobblestone") == 0, "a hopper takes whole stacks lying on it, one by the edge too (" + std::to_string(cob) + ", " + std::to_string(dirt) + ")"); }
+    // a sculk sensor gives a signal when something happens near, stronger the nearer
+    set(FX + 12, Y, FZ + 14, "sculk_sensor"); set(FX + 13, Y, FZ + 14, "redstone_lamp");
+    run(4);
+    check((w.getMeta(FX + 12, Y, FZ + 14) & 15) == 0 && key(FX + 13, Y, FZ + 14) == "redstone_lamp", "a quiet sculk sensor gives nothing");
+    set(FX + 12, Y, FZ + 18, "stone");   // a block set down 4 away
+    const int sig = w.getMeta(FX + 12, Y, FZ + 14) & 15;
+    run(2);
+    check(sig > 0 && sig < 15 && key(FX + 13, Y, FZ + 14) == "redstone_lamp_on", "a block set down four blocks off: the sensor gives " + std::to_string(sig) + " and the lamp lights");
+    run(60);
+    check((w.getMeta(FX + 12, Y, FZ + 14) & 15) == 0, "...for a moment, then it's quiet again");
+    set(FX + 12, Y, FZ + 16, "stone");
+    const int sig2 = w.getMeta(FX + 12, Y, FZ + 14) & 15;
+    check(sig2 > sig, "nearer is stronger (" + std::to_string(sig2) + " at 2 blocks, " + std::to_string(sig) + " at 4)");
+    // running water carries items and creatures along
+    for (int x = FX; x <= FX + 10; x++) { set(x, Y - 1, FZ + 20, "stone"); set(x, Y, FZ + 19, "stone"); set(x, Y, FZ + 21, "stone"); }
+    set(FX - 1, Y, FZ + 20, "stone");
+    w.setBlock(FX, Y, FZ + 20, B("water"), 0);
+    run(140);
+    check(R.tLiquid[w.getBlock(FX + 5, Y, FZ + 20)] == 1, "(the stream runs down the channel)");
+    Entity* it = rs::dropStack(*lv, REALM_MAIN, ItemStack("wheat", 3), vec3(FX + 1.5f, Y + 0.3f, FZ + 20.5f), vec3(0), 2);
+    const float x0 = it ? it->pos.x : 0;
+    run(60);
+    check(it && !it->removed && it->pos.x - x0 > 2.5f, "an item in a stream drifts along it (" + std::to_string(it ? it->pos.x - x0 : 0.f) + " blocks in 3 s)");
   }
 
 

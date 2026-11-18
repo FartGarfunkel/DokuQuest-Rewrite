@@ -47,6 +47,13 @@ int facingMeta(const Player& p);            // the meta for a block with a front
 int giveItem(Level& lv, Player& p, ItemStack s);       // LocalPlayer.give: pop sound + pickup event; returns leftover
 // Spawn a dropped item ("item" entity, data["stack"]). scatter: random spread; vel overrides.
 Entity* dropItem(Level& lv, int realm, ItemStack s, vec3 pos, bool scatter, float speed = 0, const vec3* vel = nullptr, float delay = 0);
+// bone meal on (x,y,z) (the player's hand, a dispenser): crops ripen, saplings grow, grass sprouts flowers. true = used
+bool applyBonemeal(Level& lv, World& w, int x, int y, int z);
+// a dropped item's stack (a hopper took some of it): the entity keeps its own copy, so change it through here; empty removes it
+ItemStack droppedStack(Entity& e);
+void setDroppedStack(Entity& e, const ItemStack& s);
+// which way the liquid in (x,y,z) runs, from its levels (a unit vector across, or down where it falls; 0 for still water)
+vec3 flowAt(const World& w, int x, int y, int z);
 // What a broken block drops (crops, leaves, grass seeds, slabs, candles...). tool may be null.
 std::vector<ItemStack> blockDrops(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta, const ToolInfo* tool, bool washed);
 void dropBlockItems(Level& lv, World& w, int x, int y, int z, BlockId id, bool washed, u8 meta = 0, const ToolInfo* tool = nullptr);

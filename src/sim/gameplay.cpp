@@ -4,6 +4,7 @@
 #include "sim/felled.h"
 #include "sim/rules.h"
 #include "sim/worldsys.h"
+#include "sim/catchup.h"
 #include "sim/blockfx.h"
 #include "sim/combat.h"
 #include "sim/controller.h"
@@ -139,6 +140,9 @@ public:
       vel.y += (under ? 14.f : -6.f) * dt;
       vel.y *= std::max(0.f, 1 - dt * 3);
       vel.x *= std::max(0.f, 1 - dt * 1.5f); vel.z *= std::max(0.f, 1 - dt * 1.5f);
+      // running water carries it along (a stream of water leads drops to a collecting point)
+      const vec3 fl = flowAt(w, bx, ifloor(pos.y + 0.05f), bz);
+      vel.x += fl.x * 4.f * dt; vel.z += fl.z * 4.f * dt;
       floating = true;
     } else { vel.y -= 18 * dt; floating = false; }
     inWater = c.water;
@@ -259,6 +263,38 @@ std::vector<ItemStack> blockDrops(Level& lv, World& w, int x, int y, int z, Bloc
   return out;
 }
 
+ItemStack droppedStack(Entity& e) {
+  if (auto* it = dynamic_cast<ItemEntity*>(&e)) { if (it->stack.empty()) it->readStack(); return it->stack; }
+  return ItemStack::fromJson(e.data.value("stack", json()));
+}
+void setDroppedStack(Entity& e, const ItemStack& s) {
+  if (s.empty() || s.n <= 0) { e.removed = true; return; }
+  if (auto* it = dynamic_cast<ItemEntity*>(&e)) { it->stack = s; it->sync(); }
+  else e.data["stack"] = s.toJson();
+}
+vec3 flowAt(const World& w, int x, int y, int z) {
+  const Registry& R = reg();
+  const BlockId id = w.getBlock(x, y, z);
+  const int kind = R.tLiquid[id];
+  if (!kind) return vec3(0);
+  const u8 m = w.getMeta(x, y, z);
+  if (m & 8) return vec3(0, -1, 0);   // falling
+  // the level as a height: a source 0, each step out one lower; the flow runs down that slope (an open cell beside it,
+  // where the water is about to go or drops away, counts as lower still)
+  const int lvl = m & 7;
+  vec3 f(0);
+  for (int d = 0; d < 4; d++) {
+    const int nx = x + DIRX[d], nz = z + DIRZ[d];
+    const BlockId n = w.getBlock(nx, y, nz);
+    float diff = 0;
+    if (R.tLiquid[n] == kind) { const u8 nm = w.getMeta(nx, y, nz); diff = (nm & 8) ? 1.f : (float)((nm & 7) - lvl); }
+    else if (!R.tSolid[n] && !R.tLiquid[n]) { const BlockId b = w.getBlock(nx, y - 1, nz); diff = (!R.tSolid[b] || R.tLiquid[b]) ? 2.f : (lvl > 0 && lvl < 7 ? 1.f : 0.f); }
+    f.x += DIRX[d] * diff; f.z += DIRZ[d] * diff;
+  }
+  const float l = std::sqrt(f.x * f.x + f.z * f.z);
+  return l > 1e-3f ? f / l : vec3(0);
+}
+
 void dropBlockItems(Level& lv, World& w, int x, int y, int z, BlockId id, bool washed, u8 meta, const ToolInfo* tool) {
   for (auto& s : blockDrops(lv, w, x, y, z, id, meta, tool, washed)) dropItem(lv, w.realm, s, vec3(x + 0.5f, y + 0.4f, z + 0.5f), true);
 }
@@ -343,6 +379,7 @@ public:
       }
       if (randT > 1) { randT -= 1; randSlice = 0; }
     }
+    catchUpTick(lv, dt);   // time passes where nobody is (sim/catchup.h)
     tickFurnaces(lv, dt);
     tickSleep(lv, dt);
     crowdPush(lv, (float)dt);

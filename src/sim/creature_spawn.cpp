@@ -788,6 +788,20 @@ public:
     if (frand() < (deep ? 0.45f : 0.2f)) {
       ivec2 xz = ring(24, 48); int x = xz.x, z = xz.y;
       int y0 = ifloor(p.pos.y) + (int)(frand() * 24) - 12;
+      // half the tries look up and down the whole column (as high as anything is built in it) for the dark floors in it and
+      // take one of them: a dark room far over the player's head, or a cave far below, gets its share too (a tower built
+      // to gather what spawns works); the caps still count every monster in the band
+      const int pd = dimOfY(clampv(ifloor(p.pos.y), 0, WORLD_H - 1));
+      if (frand() < 0.5f) if (const Chunk* col = w.chunk(pd, x >> 4, z >> 4); col && col->lightReady) {
+        const int lo = deep ? std::max(2, dimBase(pd) + 2) : dimBase(DIM_OVERWORLD) + 2, hi = dimBase(pd) + std::min(DIM_H - 2, col->maxY + 1);
+        int spots[64], ns = 0;
+        for (int y = hi; y > lo && ns < 64; y--) {
+          if (!R.tSolid[w.getBlock(x, y - 1, z)] || w.getBlock(x, y, z) != AIR || w.getBlock(x, y + 1, z) != AIR) continue;
+          const u8 l = w.getLight(x, y, z);
+          if ((l >> 4) * day < 6 && (l & 15) == 0 && (l >> 4) < 12) spots[ns++] = y;
+        }
+        if (ns) y0 = spots[(int)(frand() * ns) % ns];
+      }
       if (w.isLoaded(x, y0, z)) for (int y = y0; y > y0 - 8 && y > (deep ? 2 : dimBase(DIM_OVERWORLD) + 2); y--) {
         if (R.tSolid[w.getBlock(x, y - 1, z)] && w.getBlock(x, y, z) == AIR && w.getBlock(x, y + 1, z) == AIR) {
           u8 l = w.getLight(x, y, z);

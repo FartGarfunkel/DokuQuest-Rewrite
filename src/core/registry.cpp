@@ -146,7 +146,7 @@ void Registry::finalize() {
   // shaped blocks inherit textures from what they are made of
   for (auto& b : blocks) if (b.tex.empty() && b.has("base")) { BlockId p = blockId(b.str("base")); if (p) b.tex = blocks[p].tex; }
   static const char* tickKeys[] = {"berry_bush_empty", "sugar_cane", "cactus", "kelp", "bamboo", "twisting_vines", "weeping_vines", "cave_vines",
-                                   "budding_amethyst", "redstone_ore_lit", "moving_block", "puddle", "snow_layer", "ice"};
+                                   "budding_amethyst", "redstone_ore_lit", "moving_block", "puddle", "snow_layer", "ice", "farmland"};
   for (auto& b : blocks) {
     u16 i = b.id;
     tOpaque[i] = b.opaque; tSolid[i] = b.solid; tRender[i] = (u8)b.render; tLight[i] = b.light; tAtt[i] = b.lightAtt;

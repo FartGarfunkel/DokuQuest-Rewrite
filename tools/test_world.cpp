@@ -278,6 +278,31 @@ int main(int argc, char** argv) {
     printf("    (in the generated land: %d of the new bushes, %d fruit leaves)\n", newBush, fruit);
   }
 
+  printf("[farmland]\n");
+  {   // moisture: water near keeps it moist, away from water it dries and goes back to dirt; landing hard on it tramples it
+    const BlockId FL = reg().blockId("farmland"), DI = reg().blockId("dirt"), WA = reg().blockId("water"), WH = reg().blockId("wheat_crop"), ST = reg().blockId("stone");
+    const int y = rg.Y + 1;
+    for (int x = 1; x <= 12; x++) for (int z = 1; z <= 3; z++) { w.setBlock(x, y, z, ST); w.setBlock(x, y + 1, z, AIR); w.setBlock(x, y + 2, z, AIR); }
+    w.setBlock(1, y, 2, WA); w.setBlock(2, y, 2, FL, 0); w.setBlock(11, y, 2, FL, 3); w.setBlock(12, y, 2, FL, 0);
+    farmlandTick(*rg.lv, w, 2, y, 2, w.getMeta(2, y, 2));
+    check(w.getBlock(2, y, 2) == FL && (w.getMeta(2, y, 2) & 7) == 7, "farmland by water turns moist");
+    check(farmlandMoist(w, 2, y, 2) && !farmlandMoist(w, 12, y, 2), "moist by the water, dry far from it");
+    farmlandTick(*rg.lv, w, 11, y, 2, w.getMeta(11, y, 2));
+    check((w.getMeta(11, y, 2) & 7) == 2, "away from water it dries a step at a time");
+    farmlandTick(*rg.lv, w, 12, y, 2, w.getMeta(12, y, 2));
+    check(w.getBlock(12, y, 2) == DI, "dry farmland with nothing planted goes back to dirt");
+    w.setBlock(11, y, 2, FL, 0); w.setBlock(11, y + 1, 2, WH, 3);
+    farmlandTick(*rg.lv, w, 11, y, 2, 0);
+    check(w.getBlock(11, y, 2) == FL, "...but not while something grows on it");
+    trampleFarmland(*rg.lv, w, 11, y, 2);
+    check(w.getBlock(11, y, 2) == DI && w.getBlock(11, y + 1, 2) == AIR, "trampled: back to dirt, the crop knocked off");
+    w.setBlock(2, y + 1, 2, WH, 0);
+    Creature* cow = spawnCreature(*rg.lv, 0, "cow", vec3(2.5f, y + 3.5f, 2.5f));
+    rg.tick(1.5);
+    check(cow && w.getBlock(2, y, 2) == DI, "a cow dropping onto farmland from a few blocks up tramples it");
+    if (cow) cow->removed = true;
+  }
+
   printf("[husbandry]\n");
   {
     Creature* a = spawnCreature(*rg.lv, 0, "cow", vec3(4.5f, rg.Y + 1, 4.5f));

@@ -4,6 +4,8 @@
 #include "sim/world_life.h"
 #include "sim/attach_play.h"
 #include "sim/redstone.h"
+#include "sim/catchup.h"
+#include "sim/crafting.h"
 #include "sim/moving.h"
 #include "sim/minecart.h"
 #include "sim/vehicles.h"
@@ -17,6 +19,9 @@ bool isMob(const Entity& e);   // sim/gameplay.cpp
 class Creature; Creature* spawnCreature(Level& lv, int realm, const std::string& type, vec3 p);   // sim/creature.h
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so it never linked on Windows)
 std::vector<ItemStack> blockDrops(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta, const ToolInfo* tool, bool washed);   // sim/gameplay.h
+ItemStack droppedStack(Entity& e); void setDroppedStack(Entity& e, const ItemStack& s);   // sim/gameplay.h
+bool applyBonemeal(Level& lv, World& w, int x, int y, int z);   // sim/gameplay.h
+void dropBlockItems(Level& lv, World& w, int x, int y, int z, BlockId id, bool washed, u8 meta, const ToolInfo* tool);   // sim/gameplay.h
 }
 #include <random>
 
@@ -39,13 +44,14 @@ const Tables& T() {
   static const std::unordered_map<std::string, u8> ROLE = {{"wire", WIRE}, {"torch", TORCH}, {"torch_off", TORCH_OFF}, {"block", BLOCK},
     {"lever", LEVER}, {"button", BUTTON}, {"plate", PLATE}, {"repeater", REPEATER}, {"comparator", COMPARATOR}, {"observer", OBSERVER},
     {"lamp", LAMP}, {"piston", PISTON}, {"dispenser", DISPENSER}, {"dropper", DROPPER}, {"hopper", HOPPER}, {"daylight", DAYLIGHT},
-    {"target", TARGET}, {"prail", PRAIL}, {"drail", DRAIL}, {"bulb", BULB}, {"hook", HOOK}, {"conduit", CONDUIT}, {"matcher", MATCHER}, {"timer", TIMER}};
+    {"target", TARGET}, {"prail", PRAIL}, {"drail", DRAIL}, {"bulb", BULB}, {"hook", HOOK}, {"conduit", CONDUIT}, {"matcher", MATCHER}, {"timer", TIMER}, {"crafter", CRAFTER}};
   for (size_t i = 0; i < R.blocks.size() && i < MAX_BLOCKS; i++) {
     const BlockDef& b = R.blocks[i];
     u8 r = 0;
     std::string rr = b.str("rs");
     if (!rr.empty()) { auto it = ROLE.find(rr); if (it != ROLE.end()) r = it->second; }
     if (b.key == "redstone_block" || b.has("rsBlock")) r = BLOCK;   // (the redstone pumpkin powers like a redstone block)
+    else if (b.key == "sculk_sensor") r = TARGET;   // (it gives a signal like a struck target: the vibration's, by distance)
     else if (b.has("noteBlock")) r = NOTE;
     else if (b.has("tnt")) r = TNT;
     else if (b.has("door")) r = DOOR;
@@ -62,7 +68,7 @@ const Tables& T() {
     t.mech[i] = b.has("mech") ? 1 : 0;
   }
   auto id = [&](const char* k) { return R.blockId(k); };
-  t.wire = id("redstone_wire"); t.torch = id("redstone_torch"); t.torchOff = id("redstone_torch_off");
+  t.wire = id("redstone_wire"); t.torch = id("redstone_torch"); t.torchOff = id("redstone_torch_off"); t.sensor = id("sculk_sensor");
   t.lamp = id("redstone_lamp"); t.lampOn = id("redstone_lamp_on");
   // lamps pair up by data: "lampOn" names the lit form of a dark lamp; "inverted" lamps shine while unpowered
   for (size_t i = 0; i < R.blocks.size() && i < MAX_BLOCKS; i++) {
@@ -191,6 +197,12 @@ void Redstone::onBlockChanged(World&, int x, int y, int z, BlockId oldId, BlockI
   const Registry& R = reg();
   if (t.role[newId]) queue(x, y, z);
   if (t.ticker[newId]) noteTicker(x, y, z);
+  if (t.sensor && (newId == t.sensor || oldId == t.sensor) && oldId != newId) {
+    auto& set = sensors[{dimOfY(y), x >> 4, z >> 4}];
+    if (newId == t.sensor) set.insert(colIdx(x & 15, y & 255, z & 15)); else set.erase(colIdx(x & 15, y & 255, z & 15));
+  }
+  // a change near a sculk sensor is a vibration (not the circuit's own parts changing, or a signal would feed itself)
+  if (!sensors.empty() && !t.role[newId] && !t.role[oldId] && !(oldId == newId && R.tLiquid[newId])) vibration(vec3(x + 0.5f, y + 0.5f, z + 0.5f));
   // a pressed button lets go by itself, lit redstone ore fades (also when the press came over the network)
   if (t.role[newId] == BUTTON && (w.getMeta(x, y, z) & 8)) schedule(x, y, z, R.block(newId).has("wooden") ? 30 : 20, "button");
   if (newId == t.oreLit && oldId != newId) schedule(x, y, z, 100 + (int)(rnd() * 300), "ore");
@@ -248,6 +260,7 @@ void Redstone::step() {
   if (lv.isRemote()) return;
   now++;
   entsBuilt = false;
+  if (!sensors.empty() && now % 6 == 0) sensorSteps();
   if (!sched.empty()) {
     std::vector<Sched> due;
     for (auto& [k, s] : sched) if (s.t <= now) due.push_back(s);
@@ -441,6 +454,12 @@ void Redstone::update(int x, int y, int z) {
       else if (!on && trig) w.setBlock(x, y, z, id, m & ~8);
       break;
     }
+    case CRAFTER: {   // a rising edge crafts (bit 8 remembers it's powered, as a dispenser's does)
+      bool on = powerAt(x, y, z) > 0, trig = !!(m & 8);
+      if (on && !trig) { w.setBlock(x, y, z, id, m | 8); schedule(x, y, z, 4, "craft"); }
+      else if (!on && trig) w.setBlock(x, y, z, id, m & ~8);
+      break;
+    }
     case HOPPER: {
       bool on = powerAt(x, y, z) > 0;
       if (on != !!(m & 8)) w.setBlock(x, y, z, id, on ? m | 8 : m & ~8);
@@ -550,6 +569,8 @@ void Redstone::fire(const Sched& s) {
     if (r == PISTON) pistonMove(x, y, z);
   } else if (k == "dispense") {
     if (r == DISPENSER || r == DROPPER) dispense(x, y, z);
+  } else if (k == "craft") {
+    if (r == CRAFTER) craft(x, y, z);
   } else if (k == "matcher") {
     if (r == MATCHER) matcherTick(x, y, z, id, m);
   } else if (k == "ore") {
@@ -677,6 +698,12 @@ int Redstone::measure(int x, int y, int z) {
   BlockId id = w.getBlock(x, y, z);
   const BlockDef& b = R.block(id);
   int m = w.getMeta(x, y, z);
+  if (T().role[id] == CRAFTER) {   // a crafter: its slots filled or switched off, one each
+    Container c = inv(x, y, z);
+    int n = 0;
+    for (int i = 0; i < c.size(); i++) if (!c.get(i).empty() || (c.locked > 0 && (c.locked & (1 << i)))) n++;
+    return n;
+  }
   if (b.has("container") || b.has("furnace")) { Container c = inv(x, y, z); return c.items ? fillSignal(*c.items) : 0; }
   if (b.has("composter")) return std::min(8, m & 15);
   if (T().role[id] == MACHINE) return machineSignal(w, ivec3(x, y, z));
@@ -722,14 +749,64 @@ void Redstone::scanTickers(Chunk& c) {
   auto& set = tickers[c.key()];
   set.clear();
   const Tables& t = T();
+  std::unordered_set<int> sens;
   for (int sy = 0; sy < SECS; sy++) {
     const Section* s = c.section(sy);
     if (!s) continue;
-    for (int i = 0; i < 4096; i++) if (t.ticker[s->blocks[i]]) set.insert(((sy * 16 + (i >> 8)) << 8) | (i & 255));
+    for (int i = 0; i < 4096; i++) {
+      const BlockId b = s->blocks[i];
+      if (t.ticker[b]) set.insert(((sy * 16 + (i >> 8)) << 8) | (i & 255));
+      if (b && b == t.sensor) sens.insert(((sy * 16 + (i >> 8)) << 8) | (i & 255));
+    }
   }
+  if (!sens.empty()) sensors[c.key()] = std::move(sens); else sensors.erase(c.key());
 }
 void Redstone::onChunkLoaded(World&, Chunk& c) { if (!lv.isRemote()) scanTickers(c); }
-void Redstone::onChunkUnloading(World&, Chunk& c) { tickers.erase(c.key()); }
+void Redstone::onChunkUnloading(World&, Chunk& c) { tickers.erase(c.key()); sensors.erase(c.key()); }
+
+void Redstone::vibration(vec3 at) {
+  const Tables& t = T();
+  if (!t.sensor) return;
+  const float R8 = 8;
+  for (int cz = ifloor(at.z - R8) >> 4; cz <= ifloor(at.z + R8) >> 4; cz++) for (int cx = ifloor(at.x - R8) >> 4; cx <= ifloor(at.x + R8) >> 4; cx++) {
+    auto it = sensors.find({dimOfY(clampv(ifloor(at.y), 0, WORLD_H - 1)), cx, cz});
+    if (it == sensors.end()) continue;
+    Chunk* c = w.chunk(it->first.dim, cx, cz);
+    if (!c) continue;
+    std::vector<int> cells(it->second.begin(), it->second.end());
+    for (int i : cells) {
+      const int x = cx * 16 + (i & 15), y = c->baseY() + (i >> 8), z = cz * 16 + ((i >> 4) & 15);
+      if (w.getBlock(x, y, z) != t.sensor) { it->second.erase(i); continue; }
+      const float d = glm::distance(at, vec3(x + 0.5f, y + 0.5f, z + 0.5f));
+      if (d > R8 || d < 0.3f) continue;   // (not its own cell: the sensor changing is no vibration)
+      const u64 k = posKey(x, y, z);
+      auto rest = sensorRest.find(k);
+      if (rest != sensorRest.end() && rest->second > now) continue;
+      const int m = w.getMeta(x, y, z);
+      if (m & 15) continue;
+      const int p = clampv(15 - (int)std::floor(d * 14 / R8), 1, 15);
+      w.setBlock(x, y, z, t.sensor, (m & ~15) | p);
+      unschedule(x, y, z);
+      schedule(x, y, z, 30, "target");   // (a second and a half on, then quiet: sim/redstone.cpp fire "target")
+      sensorRest[k] = now + 40;
+      lv.fx->sound("sculk_click", vec3(x + 0.5f, y + 0.6f, z + 0.5f), 16);
+    }
+  }
+}
+void Redstone::sensorSteps() {
+  for (auto& e : lv.entities()) {
+    if (e->removed || e->realm != w.realm || e->ghost) continue;
+    const bool walker = e->isPlayer() || (reg().mobs.is_object() && reg().mobs.contains(e->type) && e->hp > 0);
+    if (!walker && e->type != "item" && e->type != "arrow") continue;
+    if (e->isPlayer()) { auto* p = static_cast<Player*>(e.get()); if (p->sneaking || p->crawling || p->dead) continue; }
+    // moving (a step, a fall, an item tumbling): a vibration where it is
+    if (std::hypot(e->vel.x, e->vel.z) < 1.0f && std::fabs(e->vel.y) < 2.0f) continue;
+    const int cx = ifloor(e->pos.x) >> 4, cz = ifloor(e->pos.z) >> 4, d = dimOfY(clampv(ifloor(e->pos.y), 0, WORLD_H - 1));
+    bool near = false;
+    for (int dz = -1; dz <= 1 && !near; dz++) for (int dx = -1; dx <= 1; dx++) if (sensors.count({d, cx + dx, cz + dz})) { near = true; break; }
+    if (near) vibration(e->pos + vec3(0, 0.1f, 0));
+  }
+}
 void Redstone::noteTicker(int x, int y, int z) {
   Chunk* c = w.chunkAtBlock(x, y, z);
   if (!c) return;
@@ -764,12 +841,13 @@ void Redstone::runTickers() {
   std::vector<ivec2> centers;
   for (auto& e : lv.entities()) if (!e->removed && e->isPlayer() && e->realm == w.realm) centers.push_back({ifloor(e->pos.x) >> 4, ifloor(e->pos.z) >> 4});
   if (centers.empty()) return;
+  const int simR = simDistance(lv);   // (the one simulation distance; hoppers beyond it are caught up: sim/catchup.h)
   const Tables& t = T();
   std::vector<std::array<int, 6>> work;   // x, y, z, id, meta, kind
   for (auto& [key, set] : tickers) {
     if (set.empty()) continue;
     bool near = false;
-    for (auto& p : centers) if (std::abs(key.cx - p.x) <= 6 && std::abs(key.cz - p.y) <= 6) { near = true; break; }
+    for (auto& p : centers) if (std::abs(key.cx - p.x) <= simR && std::abs(key.cz - p.y) <= simR) { near = true; break; }
     if (!near) continue;
     Chunk* c = w.chunk(key.dim, key.cx, key.cz);
     if (!c) continue;
@@ -935,6 +1013,7 @@ Container Redstone::inv(int x, int y, int z) {
     if (!it.is_array()) it = json::array();
     while ((int)it.size() < n) it.push_back(nullptr);
     c.kind = Container::Box; c.items = &it;
+    if (T().role[id] == CRAFTER) c.locked = crafterLocked(e);
     return c;
   }
   if (b.has("furnace")) {
@@ -959,6 +1038,18 @@ std::vector<int> Redstone::insertSlots(Container& c, int from, const ItemStack& 
     return v;
   }
   if (c.kind == Container::Machine) { if (from != 0 && c.table && c.table->contains(s.id)) v = {0}; return v; }
+  if (c.locked >= 0) {   // a crafter: the open slots, the emptiest of those that can take it first (a recipe fills evenly)
+    std::vector<std::pair<int, int>> open;
+    for (int i = 0; i < c.size(); i++) {
+      if (c.locked & (1 << i)) continue;
+      const ItemStack t = c.get(i);
+      if (t.empty()) open.push_back({0, i});
+      else if (t.canMerge(s) && t.n < t.maxStack()) open.push_back({t.n, i});
+    }
+    std::stable_sort(open.begin(), open.end(), [](const std::pair<int, int>& a, const std::pair<int, int>& b) { return a.first < b.first; });
+    for (auto& o : open) v.push_back(o.second);
+    return v;
+  }
   for (int i = 0; i < c.size(); i++) v.push_back(i);
   return v;
 }
@@ -981,6 +1072,10 @@ bool Redstone::insertOne(Container& c, int from, const ItemStack& s) {
   if (!c.items) return false;
   std::vector<int> slots = insertSlots(c, from, s);
   ItemStack one = s; one.n = 1;
+  if (c.locked >= 0) {   // a crafter: straight into the slot chosen (an empty one may come before a fuller stack)
+    for (int i : slots) { ItemStack t = c.get(i); if (t.empty()) { c.set(i, one); return true; } if (t.canMerge(one) && t.n < t.maxStack()) { t.n++; c.set(i, t); return true; } }
+    return false;
+  }
   for (int i : slots) { ItemStack t = c.get(i); if (!t.empty() && (t.canMerge(one) || (t.id == one.id && t.tag == one.tag && t.d == one.d && t.maxStack() > 1)) && t.n < t.maxStack()) { t.n++; c.set(i, t); return true; } }
   for (int i : slots) if (c.get(i).empty()) { c.set(i, one); return true; }
   return false;
@@ -1012,11 +1107,16 @@ bool Redstone::moveSlot(Container& a, int slot, Container& b, int from) {
   s.n--; a.set(slot, s);
   return true;
 }
-void Redstone::hopperTick(int x, int y, int z, BlockId, int m) {
-  if (m & 8) return;   // locked by redstone
+bool Redstone::hopperOnce(int x, int y, int z) {
+  const BlockId id = w.getBlock(x, y, z);
+  if (T().ticker[id] != 1) return false;
+  return hopperTick(x, y, z, id, w.getMeta(x, y, z));
+}
+bool Redstone::hopperTick(int x, int y, int z, BlockId, int m) {
+  if (m & 8) return false;   // locked by redstone
   const Registry& R = reg();
   Container me = inv(x, y, z);
-  if (!me || !me.items) return;
+  if (!me || !me.items) return false;
   bool changed = false;
   // push out of the spout
   int sp = m & 7, out = sp == 1 ? 0 : sp % 6;
@@ -1030,16 +1130,61 @@ void Redstone::hopperTick(int x, int y, int z, BlockId, int m) {
   else {
     BlockId above = w.getBlock(x, y + 1, z);
     if (!R.tSolid[above] || R.tShape[above]) {
+      // anything lying in the bowl or on top of it: the item's own box reaching into the hopper's top or the cell over it
+      // (one just over the edge counts too), taken as a whole stack, as much of it as fits
       for (auto& e : lv.entities()) {
         if (e->removed || e->type != "item" || e->realm != w.realm) continue;
-        if (e->pos.x < x || e->pos.x > x + 1 || e->pos.z < z || e->pos.z > z + 1 || e->pos.y < y + 0.5f || e->pos.y > y + 2) continue;
-        ItemStack st = ItemStack::fromJson(e->data["stack"]);
+        const float r = std::max(0.1f, e->w);
+        if (e->pos.x + r <= x || e->pos.x - r >= x + 1 || e->pos.z + r <= z || e->pos.z - r >= z + 1 || e->pos.y + std::max(0.2f, e->h) <= y + 0.6f || e->pos.y >= y + 2) continue;
+        ItemStack st = droppedStack(*e);
         if (st.empty()) continue;
-        if (insertOne(me, 1, st)) { st.n--; if (st.n <= 0) e->removed = true; else e->data["stack"] = st.toJson(); changed = true; break; }
+        int took = 0;
+        while (st.n > 0 && insertOne(me, 1, st)) { st.n--; took++; }
+        if (took) { setDroppedStack(*e, st); changed = true; break; }
       }
     }
   }
   if (changed) changedInv(me);
+  return changed;
+}
+
+// ------------------------------------------------------------------------------------------ the crafter
+bool isCrafter(BlockId id) { return id && T().role[id] == CRAFTER; }
+int crafterLocked(const json* be) {
+  if (!be || !be->is_object()) return 0;
+  auto it = be->find("locked");
+  return it != be->end() && it->is_number_integer() ? (it->get<int>() & 511) : 0;
+}
+void Redstone::craft(int x, int y, int z) {
+  const BlockId id = w.getBlock(x, y, z);
+  const int m = w.getMeta(x, y, z), dir = (m & 7) % 6;
+  const vec3 c = vec3(x, y, z) + vec3(0.5f);
+  Container me = inv(x, y, z);
+  if (!me || !me.items || me.size() < 9) return;
+  std::vector<ItemStack> grid(9);
+  for (int i = 0; i < 9; i++) grid[i] = me.get(i);
+  recipeGate().immersive = w.immersive;
+  const CraftMatch mt = matchGrid(grid, 3);
+  if (!mt) { lv.fx->sound("dispense_fail", c, 20); return; }
+  ItemStack out = mt.result();
+  std::vector<ItemStack> back;   // what a recipe gives back (a bucket from a cake) goes out with the result
+  consumeCraft(grid, mt, [&](const ItemStack& s) { if (!s.empty()) back.push_back(s); });
+  for (int i = 0; i < 9; i++) me.set(i, grid[i]);
+  changedInv(me);
+  // out of its face: into a container there if one takes it, else onto the ground
+  Container dst = inv(x + D6X[dir], y + D6Y[dir], z + D6Z[dir]);
+  back.insert(back.begin(), out);
+  for (ItemStack s : back) {
+    if (dst && dst.kind != Container::Composter) {
+      bool any = false;
+      while (s.n > 0 && insertOne(dst, OPP6[dir], s)) { s.n--; any = true; }
+      if (any) changedInv(dst);
+    }
+    if (s.n > 0) spit(x, y, z, dir, s);
+  }
+  lv.fx->sound("craft", c, 16);
+  lv.fx->particles("smoke", c + vec3(D6X[dir], D6Y[dir], D6Z[dir]) * 0.6f, 4);
+  (void)id;
 }
 
 // ------------------------------------------------------------------------------------------ dispensers & droppers
@@ -1199,17 +1344,9 @@ void Redstone::dispense(int x, int y, int z) {
     return;
   }
   if (s.id == "bone_meal" && cur) {
-    // (bone meal on a dispenser's behalf) crops grow a few stages; a mushroom grows huge, a vine longer (sim/world_life.h)
-    if (lifeBonemeal(lv, w, fx, fy, fz, cur)) { lv.fx->particles("bonemeal", fc, 8); take(); return; }
-    const BlockDef& cb = R.block(cur);
-    if (cb.props.contains("crop") && cb.props["crop"].is_object()) {
-      int stages = cb.props["crop"].value("stages", 8), cm = w.getMeta(fx, fy, fz);
-      if (cm < stages - 1) {
-        w.setBlock(fx, fy, fz, cur, std::min(stages - 1, cm + 2 + (int)(rnd() * 3)));
-        lv.fx->particles("bonemeal", fc, 8);
-        take(); return;
-      }
-    }
+    // bone meal on a dispenser's behalf does what it does in a hand (sim/build.cpp): crops ripen, a sapling grows, grass
+    // sprouts flowers, a mushroom grows huge, a vine longer
+    if (applyBonemeal(lv, w, fx, fy, fz)) { lv.fx->particles("bonemeal", fc, 8); take(); return; }
     lv.fx->sound("dispense_fail", c, 20); return;
   }
   if (s.id == "tnt" && freeCell) { take(); primeTnt(fx, fy, fz, 4); ok(); return; }

@@ -11,6 +11,7 @@ const json& ruleDefaults() {
     {"fireSpread", true}, {"blockDrops", true}, {"fallDamage", true}, {"drowning", true}, {"fireDamage", true}, {"naturalRegen", true},
     {"grassSpread", true}, {"randomTickSpeed", 1}, {"hardcore", false}, {"nightmares", true}, {"seasons", false}, {"startInWild", true}, {"treeFelling", true}, {"dynamicTrees", true}, {"saplingsPlant", true}, {"showCoords", false}, {"commands", false}, {"downed", true}, {"haunting", true}, {"allowSprinting", true}, {"allowSleeping", true}, {"weatherCycle", true},
     {"hostileSpawns", true}, {"passiveSpawns", true},
+    {"catchUp", true}, {"simulationDistance", 6},   // time passes everywhere (sim/catchup.h); chunks round a player that tick
     {"immersive", false},   // opt-in (Create World → Immersive Progression); off, the classic crafting
   };
   return d;
@@ -34,6 +35,7 @@ const std::vector<std::array<std::string, 3>>& ruleToggles() {
     {"fireDamage", "Fire and lava damage", ""},
     {"naturalRegen", "Slow natural healing", "Heal half a heart every few seconds when not hurt for a while"},
     {"grassSpread", "Grass spreads", "Grass slowly grows onto nearby bare dirt"},
+    {"catchUp", "Time passes everywhere", "Farms and machines keep working while nobody is near: what grew and what was made is there when you come back"},
     {"saplingsPlant", "Saplings plant themselves", "A sapling left lying on soil takes root"},
     {"showCoords", "Show coordinates", "Your position, shown in the corner"},
     {"commands", "Allow commands", "Chat commands and world editing (press T or /)"},

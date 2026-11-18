@@ -24,6 +24,14 @@ bool quietEdits();
 // the ticks of that second instead of all landing in one (10-20 ms every second on a desktop processor)
 void randomTicks(Level& lv, World& w, float px, float pz, int slice = 0, int slices = 1);
 bool growTree(Level& lv, World& w, int x, int y, int z, double r);
+// the pieces of a random tick the catch-up (sim/catchup.h) shares with it
+bool saplingStep(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta);   // a sapling's next stage (then its tree)
+bool stemFruit(World& w, int x, int y, int z, const BlockDef& stem);               // a ripe stem sets its fruit beside it (true = one grew)
+bool waterNear(World& w, int x, int y, int z, int r);
+float bandDaylight(Level& lv, int y);
+bool farmlandMoist(World& w, int x, int y, int z);              // moist farmland at (x,y,z): crops on it grow twice as fast
+bool farmlandTick(Level& lv, World& w, int x, int y, int z, u8 meta);   // wetting, drying, back to dirt (true = it changed)
+void trampleFarmland(Level& lv, World& w, int x, int y, int z); // landed on hard: back to dirt (what grew on it drops)
 void tickFurnaces(Level& lv, double dt);
 bool tickFurnace(json& e, double dt, const std::string& kind);   // true when something visible changed
 float fuelValue(const std::string& itemKey);
