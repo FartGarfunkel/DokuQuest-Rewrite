@@ -388,6 +388,18 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       };
       drawHeld(held, held.rfind("bow", 0) == 0 && m->aiming ? "foreL" : "foreR");
       drawHeld(m->offItem, "foreL");
+      // the block an enderman carries (sim/world_life.h): between its two hands, square to its body
+      if (m->data.is_object() && m->data.contains("carry") && m->data["carry"].is_string()) {
+        const int hr = RM->find("foreR"), hl = RM->find("foreL"), bi = RM->find("body");
+        const VoxelModel& im = itemModel(m->data["carry"].get<std::string>());
+        if (hr >= 0 && hl >= 0 && bi >= 0 && im.ready() && rigPartPosed(*m, hr) && rigPartPosed(*m, hl) && rigPartPosed(*m, bi)) {
+          auto tip = [&](int i) { const RigPart& hp = RM->parts[i]; return vec3(m->mats[i] * vec4(0, hp.min.y * 0.85f, 0, 1)); };
+          vec3 c = (tip(hr) + tip(hl)) * 0.5f;
+          mat3 rot(m->mats[bi]); for (int k = 0; k < 3; k++) rot[k] = glm::normalize(rot[k]);
+          mat4 bm = T0 * glm::translate(mat4(1), c + rot[1] * 0.1f + rot[2] * 0.14f) * mat4(rot);
+          D.draw(im.gl, glm::scale(bm, vec3(0.62f)) * im.matrix(), L, tint);
+        }
+      }
       // Halloween: a carved pumpkin or jack-o'-lantern on its head (rolled in sim/creature.cpp tick); the jack glows
       if (m->data.contains("hat") && m->data["hat"].is_string() && !m->lost.count("head")) {
         const std::string hat = m->data["hat"].get<std::string>();
@@ -665,6 +677,23 @@ void CreatureLayer::drawTranslucent(GameSession& s, const FrameCtx& f) {
       if (p.alpha >= 1 || CM->parts[i]->hidden || !rigPartPosed(*m, (int)i) || !rigPartShown(*m, p)) continue;
       // (glowing see-through parts are drawn full bright: the pumpkin creature's faint face, the ghost's eyes; the ghost fades with data["hw"].fa)
       D.draw(CM->parts[i]->gl, glm::translate(mat4(1), rel) * m->mats[i] * CM->parts[i]->local, p.glow ? VoxelLight{1, 1} : L, tint, p.alpha * (m->T->phase ? hwGet(*m, "fa", 1.f) : 1.f));
+    }
+    // a charged fuseling (struck by lightning, sim/world_life.h): a shell of crackling blue light round every part, each
+    // a little larger than the part, flickering part by part
+    if (m->data.is_object() && m->data.value("charged", false) && m->deathTime == 0) {
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      const float t = (float)m->age;
+      for (size_t i = 0; i < RM->parts.size(); i++) {
+        const RigPart& p = RM->parts[i];
+        if (CM->parts[i]->hidden || !rigPartPosed(*m, (int)i) || !rigPartShown(*m, p)) continue;
+        const vec3 ctr = (p.min + p.max) * 0.5f, ext = glm::max(p.max - p.min, vec3(0.02f));
+        const vec3 grow = (ext + vec3(0.09f)) / ext;   // the shell stands ~1.5 px off every face
+        const float fl = 0.5f + 0.5f * std::sin(t * 17.f + i * 2.3f) * std::sin(t * 7.3f + i * 0.9f);
+        const float a = 0.22f + 0.3f * fl * fl + (std::fmod(t * 3.1f + i * 0.37f, 1.f) < 0.08f ? 0.35f : 0.f);   // now and then a spark runs over it
+        mat4 sm = glm::translate(mat4(1), rel) * m->mats[i] * glm::translate(mat4(1), ctr) * glm::scale(mat4(1), grow) * glm::translate(mat4(1), -ctr) * CM->parts[i]->local;
+        D.draw(CM->parts[i]->gl, sm, {1, 1}, vec4(0.3f, 0.6f, 1.f, 1.f), a);
+      }
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
     // a soft round shadow on the ground under it
     if (!m->T->flyer || m->onGround) {

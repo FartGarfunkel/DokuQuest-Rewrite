@@ -77,6 +77,9 @@ public:
   // takes its place; a full solid block set over them buries them (they're gone). KeepAttach skips both.
   // These do no gameplay checks (room, support): sim/attach_play.h does.
   const std::vector<Attachment>* attachments(int x, int y, int z) const;   // null = none
+  // ---- player-placed cells (Chunk::placed; saved with the chunk) ----
+  bool placedAt(int x, int y, int z) const;
+  void setPlacedAt(int x, int y, int z, bool on);
   bool hasAttachments(int x, int y, int z) const { return attachments(x, y, z) != nullptr; }
   bool addAttachment(int x, int y, int z, BlockId id, u8 meta, u32 flags = 0, json be = json());
   bool setAttachmentMeta(int x, int y, int z, int slot, u8 meta, u32 flags = 0);

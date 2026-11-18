@@ -21,7 +21,7 @@ const std::vector<std::array<std::string, 3>>& ruleToggles() {
     {"keepInventory", "Keep inventory on death", "You respawn with everything you had"},
     {"graves", "Graves", "Your body stays where you fell, holding everything you carried, with a compass that points to it"},
     {"mobSpawning", "Creatures spawn", "Animals and monsters appear on their own"},
-    {"mobGriefing", "Creatures break blocks", "Explosions from creatures and boss attacks damage the land"},
+    {"mobGriefing", "Creatures break blocks", "Explosions from creatures and boss attacks damage the land, and endermen carry blocks off"},
     {"tntExplodes", "TNT explodes", "Turn off and TNT just fizzles"},
     {"fireSpread", "Fire spreads", "Fire can spread to wood and leaves nearby"},
     {"blockDrops", "Blocks drop items", "Broken blocks drop what they're made of"},

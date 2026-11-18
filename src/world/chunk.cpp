@@ -84,6 +84,12 @@ std::vector<u8> encodeChunk(const Chunk& c) {
     if (!at.empty()) { head["at"] = at; head["atv"] = 1; }
   }
   if (!c.extra.is_null()) head["x"] = c.extra;
+  if (!c.placed.empty()) {   // the player-placed cells: sorted, as [start, length] runs (v1)
+    std::vector<u16> v(c.placed.begin(), c.placed.end()); std::sort(v.begin(), v.end());
+    json r = json::array();
+    for (size_t i = 0; i < v.size();) { size_t j = i + 1; while (j < v.size() && v[j] == v[j - 1] + 1) j++; r.push_back(v[i]); r.push_back(j - i); i = j; }
+    head["pl"] = {{"v", 1}, {"r", r}};
+  }
   std::string hs = head.dump();
   putVar(raw, (u32)hs.size()); raw.insert(raw.end(), hs.begin(), hs.end());
   bool wide = palette.size() > 255;
@@ -170,6 +176,11 @@ bool decodeChunk(Chunk& c, const u8* data, size_t n) {
     if (!v.empty()) c.attach[colIdx(std::stoi(parts[0]), std::stoi(parts[1]), std::stoi(parts[2]))] = std::move(v);
   }
   if (head.contains("x")) c.extra = head["x"];
+  if (auto pl = head.find("pl"); pl != head.end() && pl->is_object() && pl->value("v", 0) == 1 && (*pl)["r"].is_array()) {   // (older saves have none)
+    const json& r = (*pl)["r"];
+    for (size_t i = 0; i + 1 < r.size(); i += 2) if (r[i].is_number_integer() && r[i + 1].is_number_integer())
+      for (int k = r[i].get<int>(), n = r[i + 1].get<int>(), e = std::min(65536, k + n); k < e && k >= 0; k++) c.placed.insert((u16)k);
+  }
   c.savedAt = head.value("t", (i64)0);
   c.modified = true;
   c.recomputeMaxY();

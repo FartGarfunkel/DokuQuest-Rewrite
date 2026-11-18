@@ -190,6 +190,10 @@ add_test(NAME materials COMMAND test_materials)
 add_executable(test_world tools/test_world.cpp)
 target_link_libraries(test_world PRIVATE dqcore)
 add_test(NAME world COMMAND test_world)
+# The living world (headless: lightning changing creatures, the enderman carrying blocks, mushrooms and vines). Run: build/test_life
+add_executable(test_life tools/test_life.cpp)
+target_link_libraries(test_life PRIVATE dqcore)
+add_test(NAME life COMMAND test_life)
 # The deep world (headless: the layouts, the Underworld under the Overworld, its floor, light, water and bodies across
 # the seams, saving; an old world keeping its four bands). Run: build/test_deep
 add_executable(test_deep tools/test_deep.cpp)
@@ -231,7 +235,7 @@ add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
 
 # every program finds data/ and assets/ next to it
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_attachments test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_mesher test_weather test_balance test_npc_paths test_shapes)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_attachments test_piles test_immersive test_fire test_metal test_materials test_world test_life test_progression test_anim test_mesher test_weather test_balance test_npc_paths test_shapes)
   if(TARGET ${t})
     add_dependencies(${t} dq_runtime_data)
   endif()

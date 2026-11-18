@@ -528,6 +528,11 @@ void runStep(App& a, const json& st) {
     s->viewMode = std::clamp(st.value("mode", 0), 0, 3);
   } else if (op == "data" && p) {   // set Player::data[key] = value (hideGear, cape ...)
     p->data[st.value("key", "")] = st.contains("value") ? st["value"] : json();
+  } else if (op == "mobData" && p && s) {   // mobData{entity,key,value,calm?,yaw? (degrees)}: set data[key] on the nearest creature of that type (a charged fuseling, an enderman's carried block)
+    Creature* best = nullptr; float bd = 1e9f;
+    for (auto& e : s->level->entities()) if (auto* c = dynamic_cast<Creature*>(e.get()); c && !c->removed && c->type == st.value("entity", "")) { float d = glm::distance(c->pos, p->pos); if (d < bd) { bd = d; best = c; } }
+    if (best) { best->data[st.value("key", "")] = st.contains("value") ? st["value"] : json(); if (st.contains("calm")) best->calm = st.value("calm", false); if (st.contains("yaw")) best->yaw = best->prevYaw = st.value("yaw", 0.f) * PI / 180; }
+    else result(false, "mobData: no " + st.value("entity", std::string()) + " near");
   } else if (op == "explode" && s) {   // a blast there ("power", default 3; "at": "rug" the first rug "find" found)
     ivec3 b = at(st); if (st.value("at", std::string()) == "found" || st.value("at", std::string()) == "rug") b = R.lastFound;
     explode(*s->level, REALM_MAIN, vec3(b) + vec3(0.5f, 0.5f, 0.5f), st.value("power", 3.f));

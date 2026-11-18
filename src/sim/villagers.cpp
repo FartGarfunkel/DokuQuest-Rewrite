@@ -506,6 +506,28 @@ static void hookAfterHurt(Level& lv, Creature& c, float dealt, const DamageSrc& 
   // paths.js Cleaving Arc
   if (who && src.weapon && src.type != "cleave" && src.tool != "arrow") pathCleave(lv, *who, c, dealt);
 }
+void villagerLost(Level& lv, Creature& c) {
+  if (lv.isRemote()) return;
+  const json* N = npcOf(c);
+  if (!N) return;
+  const std::string vid = N->value("v", std::string()); const int i = N->value("i", -1);
+  if (vid.empty() || i < 0) return;
+  json& rec = villageRec(lv, vid);
+  const std::string k = std::to_string(i);
+  if (i < 300) rec["dead"][k] = npcDay(lv);   // gone as if dead: the village fills the place again by its usual rule
+  // a child born there: off the family tree (or the village would bring them back)
+  if (rec.contains("kids") && rec["kids"].is_array()) { json& K = rec["kids"]; for (size_t n = 0; n < K.size(); n++) if (K[n].value("i", -2) == i) { K.erase(n); break; } }
+  // a couple no longer
+  if (rec.contains("couples") && rec["couples"].is_object()) {
+    json& C = rec["couples"];
+    for (auto it = C.begin(); it != C.end();) { if (it.key() == k || (it->is_number_integer() && it->get<int>() == i)) it = C.erase(it); else ++it; }
+  }
+  // its claims: the mind (its goal, seat, work in hand, the station it held) and its place among the village's folk out and about
+  if (VillagerSystem* S = vsys(lv)) {
+    S->minds.erase(c.id);
+    if (auto a = S->active.find(vid); a != S->active.end()) a->second.ents.erase(std::remove(a->second.ents.begin(), a->second.ents.end(), c.id), a->second.ents.end());
+  }
+}
 static void hookDied(Level& lv, Creature& c, const DamageSrc& src) {
   if (lv.isRemote()) return;
   if (const json* N = npcOf(c)) {

@@ -1,4 +1,5 @@
 // sim/worldsys.cpp — fluids, random ticks, plant growth, furnaces, crowding.
+#include "sim/world_life.h"
 #include "sim/dyntree.h"
 #include "sim/crafting.h"
 #include "core/metals.h"
@@ -444,6 +445,7 @@ static void grassTick(Level& lv, World& w, int x, int y, int z, BlockId id) {
 static void growExtra(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta) {
   const Registry& R = reg(); const KnownBlocks& B = KB();
   const BlockDef& d = R.block(id);
+  if (lifeRandomTick(lv, w, x, y, z, id, meta)) return;   // mushrooms, vines (sim/world_life.h)
   if (R.tGrassy[id]) { grassTick(lv, w, x, y, z, id); return; }
   if (d.has("crop") && d.props["crop"].contains("fruit")) { if ((meta & 15) >= d.props["crop"].value("stages", 1) - 1 && rnd() < 1.0 / 340) stemFruit(w, x, y, z, d); return; }
   if (id == B.bamboo) {

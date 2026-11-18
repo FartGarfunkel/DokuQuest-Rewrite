@@ -3,6 +3,7 @@
 // the Ender Dragon (circling, strafing with void breath, charging, perching on the exit portal's pillar), the fight
 // (crystals set out, the dragon roused, the exit portal, the egg and a gateway when it falls), the gateways round
 // the main island, thrown ender pearls and eyes, chorus fruit, snowballs, and chorus plants coming down when cut.
+#include "sim/world_life.h"
 #include "sim/endstory_int.h"
 #include "sim/explosion.h"
 #include "sim/creature_entities.h"
@@ -71,6 +72,7 @@ static OptMove endermanAI(Level& lv, Creature& m, Entity* p, float dist, float d
     return m.chase(lv, *p, dist, toPlayer, dt, 1.7f);
   }
   if (dist > 80 && !m.kept) { m.removed = true; return Move{0, m.yaw}; }
+  enderCarryTick(lv, m, dt);   // a block lifted, carried, set down (sim/world_life.h)
   // otherwise: an aimless amble, now and then a blink
   if ((m.wanderT -= dt) <= 0) {
     m.wanderT = 3 + rnd() * 6; m.wanderDir = rnd() * TAU; m.wanderOn = rnd() < 0.55f;

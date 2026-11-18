@@ -85,6 +85,18 @@ int World::surfaceY(int x, int z, int dim) const {
   return dimBase(dim) + ly;
 }
 
+bool World::placedAt(int x, int y, int z) const {
+  if (!inWorldY(y)) return false;
+  const Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
+  return c && !c->placed.empty() && c->placed.count((u16)colIdx(x & 15, y & 255, z & 15));
+}
+void World::setPlacedAt(int x, int y, int z, bool on) {
+  if (!inWorldY(y)) return;
+  Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
+  if (!c) return;
+  const u16 i = (u16)colIdx(x & 15, y & 255, z & 15);
+  if (on ? c->placed.insert(i).second : c->placed.erase(i) > 0) { c->modified = true; c->dirty = true; }
+}
 bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   if (!inWorldY(y)) return false;
   Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
@@ -100,6 +112,7 @@ bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   // carve-bit trace is now off: the layout moved to a full carve byte (meta&0x7F) on plain blocks,
   // which share bits with facing states on shape blocks, so an unconditional gate would be noisy.
   c->set(lx, ly, lz, id, meta);
+  if (old != id && !c->placed.empty() && (id == AIR || reg().tLiquid[id])) c->placed.erase((u16)colIdx(lx, ly, lz));   // broken: no longer a player's block
   if (setCarveTo) c->setCarve(lx, ly, lz, setCarveTo);
   else if (old == id && oldCarve) c->setCarve(lx, ly, lz, oldCarve);   // same block (waterlog, a seat): keep its octants
   if (old == id && oldCoat) c->setCoat(lx, ly, lz, oldCoat);
