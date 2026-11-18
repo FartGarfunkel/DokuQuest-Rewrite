@@ -5,6 +5,7 @@
 #include "sim/gameplay.h"
 #include "sim/player.h"
 #include "sim/events.h"
+#include "sim/combat.h"
 
 namespace dq {
 
@@ -42,8 +43,10 @@ int placeAttachment(Level& lv, Player* p, World& w, int x, int y, int z, BlockId
     sfxMaterial(lv, R.block(bid).sound, "place", partCentre(w, x, y, z, (int)w.attachments(x, y, z)->size() - 1));
     return 1;
   }
-  // the cell's main block is a small part (a trapdoor flipped up against the wall): it steps aside for this one
-  if (attachable(cur) && !bigBlock(bid) && R.tSolid[bid]) {
+  // the cell's main block is a small part (a trapdoor flipped up against the wall, a torch on the wall of a tunnel): it
+  // steps aside for this one. Rails too: track laid under the tunnel's torches (the rail stays the cell's main block, so
+  // carts and the redstone find it where they always do)
+  if (attachable(cur) && !bigBlock(bid) && (R.tSolid[bid] || traits(bid).rail)) {
     if (parts && (int)parts->size() >= MAX_ATTACH) { say("There's no room for it there"); return 0; }
     std::vector<PixBox> mine, other;
     const bool fullMine = !partRoom(w, x, y, z, bid, meta, true, mine);
@@ -102,6 +105,20 @@ bool useAttachment(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack*
     return true;
   }
   if (bhas(a.id, BF::Sign)) { openScreen(lv, p, "sign", {{"pos", {x, y, z}}, {"slot", slot}}); return true; }
+  if (k == ShapeKind::Candle) {   // (build.cpp useBlock: another of the same candle joins them, flint lights them, a bare hand puts them out)
+    const ItemDef* hd = held && !held->empty() ? R.item(held->id) : nullptr;
+    if (hd && hd->block == d.key) {
+      if ((a.meta & 3) < 3 && !partBlocked(w, x, y, z, slot, a.id, (u8)(a.meta + 1))) {
+        w.setAttachmentMeta(x, y, z, slot, (u8)(a.meta + 1), SetFlags::Urgent);
+        if (!p.creative() && --held->n <= 0) held->clear();
+        sfxMaterial(lv, d.sound, "place", c);
+      }
+      return true;   // (four already: nothing, never the cell's main block)
+    }
+    if (hd && hd->str("igniter") == "flint" && !(a.meta & 4)) { w.setAttachmentMeta(x, y, z, slot, a.meta | 4, SetFlags::Urgent); lv.fx->sound("ignite", c, 16); wearHeld(lv, p, 1); return true; }
+    if (!held && (a.meta & 4)) { w.setAttachmentMeta(x, y, z, slot, a.meta & ~4, SetFlags::Urgent); lv.fx->sound("fizz", c, 16); return true; }
+    return false;
+  }
   if (d.has("frame")) {
     json* e = w.attachmentEntity(x, y, z, slot);
     if (!e) return false;
@@ -132,7 +149,8 @@ void breakAttachment(Level& lv, Player* p, World& w, int x, int y, int z, int sl
   if (!drops) return;
   if (a.be.is_object() && a.be.contains("item")) { ItemStack s = ItemStack::fromJson(a.be["item"]); if (!s.empty()) dropItem(lv, w.realm, s, c, true); }
   const std::string drop = d.drop.empty() ? d.key : d.drop;   // (the block's own drop: a lit redstone torch's is a torch)
-  if (drop != "air" && drop != "none" && reg().item(drop)) dropItem(lv, w.realm, ItemStack(drop, 1), c, true);
+  const int n = reg().tShape[a.id] == ShapeKind::Candle ? (a.meta & 3) + 1 : 1;   // (candles: each of them)
+  if (drop != "air" && drop != "none" && reg().item(drop)) dropItem(lv, w.realm, ItemStack(drop, n), c, true);
   (void)tool;
 }
 

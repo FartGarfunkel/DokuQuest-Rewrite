@@ -240,11 +240,13 @@ static int placeRedstone(Level& lv, Player& p, World& w, ivec3 hit, int face, Bl
   }
   // the cell must be free, and not inside someone (or a lever, a button, a plate shares it: sim/attach_play.h)
   BlockId cur = w.getBlock(x, y, z);
+  bool stepAside = false;
   if ((cur != AIR && !R.tReplaceable[cur]) || w.hasAttachments(x, y, z)) {
-    if (!attachable(bid)) return 0;
+    if (!attachable(bid) && !isRail) return 0;
     const int ar = placeAttachment(lv, &p, w, x, y, z, bid, (u8)meta);
     if (ar == 1) { consume(p, held); return 1; }
-    return 0;
+    if (ar != 2 || !isRail) return 0;
+    stepAside = true;   // a rail laid under a torch on the wall: the torch steps aside
   }
   if (R.tSolid[bid]) {
     AABB cell{vec3(x, y, z), vec3(x + 1, y + 1, z + 1)};
@@ -274,6 +276,7 @@ static int placeRedstone(Level& lv, Player& p, World& w, ivec3 hit, int face, Bl
     if (seat == 0xFF) { vehToast(lv, p, "Look at the part of the block you want it on"); return 0; }
   }
   if (lv.events && !lv.events->emit("blockPlace", json::array({p.name, x, y, z, d.key}))) return 0;
+  if (stepAside) { attachStepAside(w, x, y, z); seat = 0; }
   w.setBlock(x, y, z, bid, (u8)meta, SetFlags::Urgent);
   if (seat) w.setCarve(x, y, z, seat, SetFlags::Urgent);
   consume(p, held);

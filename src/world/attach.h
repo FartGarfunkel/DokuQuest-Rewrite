@@ -1,5 +1,5 @@
 // world/attach.h — the rules for attachments: small parts (torches, ladders, trapdoors, levers, buttons, signs, item
-// frames, wall covers, pressure plates, lanterns) that share a cell with its main block, each fixed to a face of a
+// frames, wall covers, pressure plates, lanterns, candles, chains) that share a cell with its main block, each fixed to a face of a
 // neighbouring cell. Storage and the raw API are on Chunk / World (World::attachments...); this file says which blocks may
 // be one, what holds each up, and each part's own boxes (pixels, the same shapes as the block would have alone), so
 // placing, picking, breaking, collision and the outline use every part's real shape, not the whole cell.
