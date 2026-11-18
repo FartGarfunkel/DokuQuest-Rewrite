@@ -2,6 +2,7 @@
 // (game/entities.js DroppedItem / Projectile / FallingTree, game/blocks2.js Arrow, game/monsters.js HexFlask,
 // game/bestiary.js llama spit, game/dismember.js Gib, game/theend.js snowballs' landing puff).
 #include "sim/creature_entities.h"
+#include "sim/deeds.h"
 #include "sim/combat_rpg.h"
 #include "sim/creature_rig.h"
 #include "sim/slime_goo.h"
@@ -343,7 +344,10 @@ public:
     else if (kind == "egg") {   // an egg breaks, and one in eight hatches a chick (one in 32 of those, four)
       mobBurst(lv, pos, "white", 8, 1.2f); lv.fx->sound("pop", pos, 16);
       if (frand() < 0.125f) for (int i = 0, n = frand() < 1.f / 32 ? 4 : 1; i < n; i++)
-        if (Creature* c = spawnCreature(lv, realm, "chicken", pos - vec3(vel.x, 0, vel.z) * 0.02f + vec3(0, 0.1f, 0))) { c->baby = true; c->growT = 0; }
+        if (Creature* c = spawnCreature(lv, realm, "chicken", pos - vec3(vel.x, 0, vel.z) * 0.02f + vec3(0, 0.1f, 0))) {
+          c->baby = true; c->growT = 0;
+          if (auto* th = dynamic_cast<Player*>(lv.entity(data.value("owner", 0u)))) workXp(lv, *th, "taming", workxp::HATCH_CHICK);   // whoever threw it (sim/deeds.h)
+        }
     } else if (kind == "slime") slimeGooAt(lv, realm, pos - glm::normalize(vel + vec3(1e-4f)) * 0.15f, 0.5f);   // a splat and a sticky puddle
     else mobBurst(lv, pos, "white", 10, 0.8f);
   }

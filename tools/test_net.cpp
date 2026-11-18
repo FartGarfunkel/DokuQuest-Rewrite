@@ -17,6 +17,9 @@
 #include "sim/creature.h"
 #include "sim/gameplay.h"
 #include "sim/controller.h"
+#include "sim/deeds.h"
+#include "sim/skills.h"
+#include "sim/skilltree.h"
 #include <map>
 #include <array>
 #include "sim/weather.h"
@@ -53,6 +56,8 @@ static struct { std::atomic<int> stage{0}; int x = 0, y = 0, z = 0; std::atomic<
 // attachments on the host (read and changed on the server thread): parts = what the host has in the cell (-1 not watched),
 // main = its main block; cmd 1 puts a torch there, 2 breaks the wall holding it
 static struct { std::atomic<bool> on{false}; int x = 0, y = 0, z = 0; std::atomic<int> parts{-1}, main{0}, cmd{0}; } g_at;
+// a deed and some work the host grants a guest (sim/deeds.h): stage 1 asks, the server thread grants, 2 done
+static struct { std::atomic<int> stage{0}; } g_dd;
 struct Client {
   std::string name;
   EventBus bus;
@@ -495,6 +500,12 @@ int main(int argc, char** argv) {
       g_st.pump = b && b->is_object() ? b->value("pump", 0.0) : 0.0;
     }
     if (WeatherSystem* W = weatherOf(lv)) { const std::string k = W->stormKind(); hostKind = k == "thunder" ? 2 : k == "rain" ? 1 : 0; hostWind = W->windDir; }
+    if (g_dd.stage == 1) for (auto& e : lv.entities()) if (e->isPlayer() && !e->removed && static_cast<Player*>(e.get())->name == "Bob") {
+      Player& b = *static_cast<Player*>(e.get());
+      deedGrant(lv, b, "test:net", 1, 1, "A deed done on the host");
+      workXp(lv, b, "smithing", 77);
+      g_dd.stage = 2;
+    }
   };
   std::string err;
   net::netSkinHook() = [](const std::string& ref, const json&) { g_skinsSeen.insert(ref); };
@@ -780,6 +791,13 @@ int main(int argc, char** argv) {
   // ---- the server's console ----
   srv.command("give Bob dirt 5");
   check(pump(4, [&] { for (auto& s : B.me->inv) if (s.id == "dirt" && s.n >= 5) return true; return false; }), "console give reaches Bob's bags");
+  // ---- a deed's points and the work's experience the host gives a guest reach their own game (sim/deeds.h) ----
+  { const int tp0 = treePointsEarned(*B.me); const double sx0 = skillXp(*B.me, "smithing");
+    g_dd.stage = 1;
+    check(pump(4, [&] { return g_dd.stage == 2 && deedTalentPoints(*B.me) == 1 && deedStatPoints(*B.me) == 1; }), "a deed granted on the host: Bob's game has its points");
+    check(treePointsEarned(*B.me) == tp0 + 1, "  ...and his skill book counts them");
+    check(pump(4, [&] { return skillXp(*B.me, "smithing") >= sx0 + 77; }), "work done on the host grows Bob's own skill (Smithing +77)");
+    check(pump(4, [&] { return B.heard("A deed done on the host"); }), "  ...and the toast says why"); }
   float ty = A.me->pos.y + 3;
   srv.command(strFormat("tp Alice %d %.1f %d", bx + 5, ty, bz + 5));
   check(pump(4, [&] { return std::abs(A.me->pos.x - (bx + 5)) < 0.01f; }), "console tp moves Alice");

@@ -5,6 +5,7 @@
 #include "sim/villagers_internal.h"
 #include "sim/skills.h"
 #include "sim/rpg.h"
+#include "sim/balance.h"
 #include "sim/commands.h"
 #include "sim/crafting.h"
 #include "gen/overworld.h"
@@ -16,6 +17,7 @@
 #include <regex>
 
 namespace dq {
+void poisonCreature(Entity& e, float secs);   // sim/mob_combat.cpp
 
 // ------------------------------------------------------------------ data
 const json& VD() {
@@ -484,6 +486,8 @@ static bool hookBeforeHurt(Level& lv, Creature& c, float& amount, const DamageSr
   }
   // paths.js Beast Friend (a ranger's creatures take less, strike harder)
   amount *= pathPetFactor(lv, c, lv.entity(src.attacker));
+  // the Rogue's Backstab: a sneaking melee blow
+  if (Player* a = attackerPlayer(lv, src); a && src.weapon && src.tool != "arrow" && src.type != "cleave") amount *= pathBackstabFactor(*a);
   return true;
 }
 static void hookAfterHurt(Level& lv, Creature& c, float dealt, const DamageSrc& src) {
@@ -505,6 +509,8 @@ static void hookAfterHurt(Level& lv, Creature& c, float dealt, const DamageSrc& 
   }
   // paths.js Cleaving Arc
   if (who && src.weapon && src.type != "cleave" && src.tool != "arrow") pathCleave(lv, *who, c, dealt);
+  // the Rogue's Envenomed Edge: what a melee blow lands on is poisoned
+  if (who && src.weapon && src.tool != "arrow" && dealt > 0 && c.alive() && hasTal(*who, "venom")) poisonCreature(c, bal::ROGUE_VENOM);
 }
 void villagerLost(Level& lv, Creature& c) {
   if (lv.isRemote()) return;

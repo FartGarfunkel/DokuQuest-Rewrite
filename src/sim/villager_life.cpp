@@ -813,10 +813,10 @@ void playerLifeTick(Level& lv, VillagerSystem& S, Player& p, double dt) {
     json& st = p.stats;
     if (!st.value("pathTold", 0) && combatLevel(p) >= VD().value("pathAt", 20) && !(st.contains("path") && st["path"].is_object())) {
       st["pathTold"] = 1;
-      toast(lv, p, "You could walk a path now: Knight, Ranger or Mage. Any village guard, fletcher, librarian or elder can train you.", "epic");
+      toast(lv, p, "You could walk a path now: Knight, Ranger, Mage or Rogue. Any village guard, fletcher, librarian, innkeeper or elder can train you.", "epic");
     }
     int want = pathMaxHealthBonus(p), had = st.value("pathHp", 0);
-    if (want != had) { p.maxHp += (float)(want - had); if (p.hp > p.maxHp) p.hp = p.maxHp; st["pathHp"] = want; }
+    if (want != had) { st["pathHp"] = want; p.recalcMax(); }   // (Player::recalcMax counts it: a skill tree's change kept dropping it)
     if (st.contains("path") && st["path"].is_object()) {
       int pts = pathPoints(p);
       if (st.value("pathPts", 0) < pts) { if (st.contains("pathPts") && pts > st["pathPts"].get<int>()) toast(lv, p, "A new talent point for your path (talk to a village trainer)", "good"); st["pathPts"] = pts; }

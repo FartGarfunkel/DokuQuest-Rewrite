@@ -671,6 +671,7 @@ void NetClient::applySelf(const json& m) {
   if (m.contains("fl")) p.flying = m["fl"].get<bool>();
   if (m.contains("rd")) { p.riding = m["rd"].get<u32>(); p.vel = vec3(0); }   // the host put us on a mount (or took us off)
   if (m.contains("xp")) { p.xp = m.value("xp", p.xp); p.level = m.value("lv", p.level); }
+  if (m.contains("dd")) { if (!p.data.is_object()) p.data = json::object(); if (m["dd"].is_object()) p.data["deeds"] = m["dd"]; else p.data.erase("deeds"); }   // the host's count of our deeds' points (sim/deeds.h)
 }
 
 void NetClient::applyEnv(const json& m) {

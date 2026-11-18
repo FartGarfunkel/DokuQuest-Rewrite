@@ -135,7 +135,7 @@ void talkHold(Level& lv, Player& p, Talk& t);                   // each frame: t
 bool talkStillOk(Level& lv, Player& p, const Talk& t);           // false = they're gone / too far: close it
 void talkClosed(Level& lv, Player& p, Talk& t);
 
-// ---- paths.js: Knight, Ranger, Mage chosen at a village guard, fletcher, librarian or elder ----
+// ---- paths.js: Knight, Ranger, Mage chosen at a village guard, fletcher, librarian or elder; the Rogue at an innkeeper ----
 int combatLevel(const Player& p);
 int pathPoints(const Player& p);
 int pathSpent(const Player& p);
@@ -151,6 +151,9 @@ bool pathQuiverSaves(const Player& p);                          // Quiver Master
 float pathSpeedFactor(const Player& p);                         // Fleet Foot
 bool pathCheatDeath(Level& lv, Player& p);                      // Unbreakable: true = stood on half a heart instead
 void pathCleave(Level& lv, Player& p, Creature& hit, float dealt);   // Cleaving Arc (call after a weapon blow)
+// the Rogue's: Backstab (a sneaking melee blow, sim/balance.h ROGUE_BACKSTAB) and Envenomed Edge (melee blows poison);
+// Nimble and its crit chance are in sim/balance.cpp, Light Fingers in sim/village_theft.cpp
+float pathBackstabFactor(const Player& p);
 float pathPetFactor(Level& lv, const Creature& victim, const Entity* attacker);   // Beast Friend (both ways)
 
 // ---- the quest board block, gates, levers (itemUse) ----

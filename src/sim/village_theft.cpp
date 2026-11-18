@@ -7,6 +7,7 @@
 #include "sim/villagers_internal.h"
 #include "sim/creature.h"
 #include "sim/events.h"
+#include "sim/rpg.h"
 #include "core/registry.h"
 #include <cmath>
 #include <map>
@@ -214,7 +215,8 @@ int theftFine(Player& p, const std::string& vid) {
   if (!hasRec(p, vid)) return 0;
   json& r = recOf(p, vid);
   if (r["owed"].empty() && !r.value("wanted", false)) return 0;
-  return std::max(5, (int)std::ceil(r.value("value", 0.0) * 2));
+  const int fine = std::max(5, (int)std::ceil(r.value("value", 0.0) * 2));
+  return hasTal(p, "lightfingers") ? std::max(3, fine / 2) : fine;   // the Rogue's Light Fingers
 }
 bool theftWanted(Player& p, const std::string& vid) { return hasRec(p, vid) && recOf(p, vid).value("wanted", false); }
 std::string theftWhat(Player& p, const std::string& vid) {

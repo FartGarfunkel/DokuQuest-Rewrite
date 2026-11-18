@@ -6,6 +6,7 @@
 #include "sim/creature.h"
 #include "sim/magic.h"
 #include "sim/villagers.h"
+#include "sim/deeds.h"
 #include "core/registry.h"
 #include <cstring>
 #include <functional>
@@ -57,6 +58,7 @@ void grant(Level& lv, Player& p, const char* id) {
   DQ_LOG("achievement %s: %s", p.name.c_str(), id);
   for (auto& d : achievementList()) if (std::string(d.id) == id) { lv.fx->message(p.id, std::string("Achievement: ") + d.title, "achievement"); break; }
   lv.fx->soundUi(p.id, "levelup");
+  deedsOnAchievement(lv, p, id);   // the harder ones: a talent point (sim/deeds.h)
 }
 Player* byName(Level& lv, const json& n) {
   if (!n.is_string()) return nullptr;

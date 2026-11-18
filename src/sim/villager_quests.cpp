@@ -6,6 +6,9 @@
 #include "sim/villagers_internal.h"
 #include "sim/village_theft.h"
 #include "sim/skills.h"
+#include "sim/deeds.h"
+#include "sim/balance.h"
+#include "sim/skilltree.h"
 #include "sim/rpg.h"
 #include "sim/endstory.h"
 #include "sim/magic_data.h"
@@ -364,8 +367,13 @@ bool pathPick(Level& lv, Player& p, const std::string& k) {
   const json& PD = magicData().paths;
   if (!PD.contains(k) || pathOf(p) || combatLevel(p) < VD().value("pathAt", 20)) return false;
   p.stats["path"] = {{"k", k}, {"t", json::object()}};
+  // who showed you (the trainer you were talking to: their name on the skill tree's tab, sim/deeds.h)
+  if (p.stats.contains("pathBy") && p.stats["pathBy"].is_object() && p.stats["pathBy"].value("k", std::string()) == k)
+    p.stats["path"]["by"] = p.stats["pathBy"].value("n", std::string());
+  p.stats.erase("pathBy");
   toast(lv, p, "You walk the " + PD[k].value("name", k) + "'s path. " + PD[k].value("base", std::string()), "epic");
   sfxUi(lv, p, "levelup");
+  pathTreeOnPick(lv, p, k);   // its skill tree's first node, free
   return true;
 }
 bool pathLearn(Level& lv, Player& p, const std::string& id) {
@@ -383,9 +391,12 @@ bool pathForget(Level& lv, Player& p) {
   if (!pathOf(p)) return false;
   if (!payCoins(lv, p, 20)) { toast(lv, p, "That takes 20 gold coins", "warn"); return false; } p.stats["path"] = nullptr;
   toast(lv, p, "You set your path aside. Choose again when you're ready.");
+  // the free first node of its tree is a node like any other now: more learnt than there are points, the tree starts over
+  if (treePointsSpent(p) > treePointsEarned(p)) { treeReset(p); toast(lv, p, "Your skill tree starts over: its points are yours to spend again", ""); }
   return true;
 }
 float pathMeleeFactor(const Player& p) { return hasTal(p, "heavy") ? 1.1f : 1.f; }
+float pathBackstabFactor(const Player& p) { return p.sneaking && hasTal(p, "backstab") ? bal::ROGUE_BACKSTAB : 1.f; }
 float pathArrowFactor(const Player& p, float distance) {
   float k = 1;
   if (onPath(p, "ranger")) { k *= 1.1f; if (hasTal(p, "eagle")) k *= 1.15f; if (hasTal(p, "deadeye") && distance > 20) k *= 1.5f; }
@@ -512,8 +523,11 @@ static void home(Level& lv, Player& p, Talk& t, const std::string& text0 = "") {
     std::string want = TR[t.job].is_string() ? TR[t.job].get<std::string>() : "";
     int left = P ? pathPoints(p) - pathSpent(p) : 0;
     const json& PD = magicData().paths;
+    // already on the tree this path belongs to (its start learnt: sim/deeds.h): they say so
+    bool treeOn = false;
+    if (!P && !want.empty()) for (const SkillTree& st : skillTrees()) if (st.key == treeOfPath(want)) for (const TreeNode& n : st.nodes) if (n.start && treeHas(p, n.id)) treeOn = true;
     std::string lbl = P ? "My path" + (left > 0 ? " (" + std::to_string(left) + " to spend)" : std::string()) + "\xE2\x80\xA6"
-                        : !want.empty() ? "Teach me the " + PD[want].value("name", want) + "'s ways\xE2\x80\xA6" : "About the paths\xE2\x80\xA6";
+                        : !want.empty() ? "Teach me the " + PD[want].value("name", want) + "'s ways" + (treeOn ? std::string(" (my skill tree's way)") : std::string()) + "\xE2\x80\xA6" : "About the paths\xE2\x80\xA6";
     O.push_back({lbl, "\xE2\x9A\x94", "path", want});
   }
   O.push_back({"Goodbye", "", "close", nullptr});
@@ -747,10 +761,11 @@ void talkChoose(Level& lv, Player& p, Talk& t, int i) {
     if (!pathOf(p) && cl < at) {
       const json& PD = magicData().paths;
       say(lv, p, t, "Come back when you've seen more fighting. (Paths open at combat level " + std::to_string(at) + "; you're " + std::to_string(cl) + ".) " +
-                    (!want.empty() ? "When you do, I'll show you the " + PD[want].value("name", want) + "'s ways." : std::string("Our guards, fletchers and librarians train Knights, Rangers and Mages.")));
+                    (!want.empty() ? "When you do, I'll show you the " + PD[want].value("name", want) + "'s ways." : std::string("Our guards, fletchers, librarians and innkeepers train Knights, Rangers, Mages and Rogues.")));
       t.opts.erase(t.opts.begin() + i);
       return;
     }
+    if (!want.empty() && !pathOf(p)) p.stats["pathBy"] = {{"k", want}, {"n", t.name}};   // (pathPick: who showed you)
     t.pathHint = want; t.openScreen = "path"; t.closeNow = true;
     return;
   }

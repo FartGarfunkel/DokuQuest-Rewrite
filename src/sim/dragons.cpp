@@ -4,6 +4,7 @@
 // yours), drakes growing up and flying them; the wing-beating dragon rig (RIG_ANIM.dragon) and the end crystal's
 // spin (RIG_ANIM.crystal). The Ender Dragon's own brain is in sim/end_fight.cpp; it shares the breath and rig.
 #include "sim/endstory_int.h"
+#include "sim/deeds.h"
 #include "sim/creature_rig.h"
 #include "sim/physics.h"
 
@@ -313,7 +314,7 @@ static void eggTick(Level& lv, EndStory& S, double dt) {
       m->makeBaby(); m->growT = 1200;
       Player* owner = ownerName.empty() ? nullptr : findPlayer(lv, ownerName);
       if (!owner || owner->dead) owner = nearestPlayer(lv, realm, at, 1e9f);
-      if (owner) { m->owner = owner->name; m->tamed = true; m->kept = true; }
+      if (owner) { m->owner = owner->name; m->tamed = true; m->kept = true; workXp(lv, *owner, "taming", workxp::HATCH_DRAKE); }   // (sim/deeds.h)
       sfx::burst(lv, at + vec3(0, 0.1f, 0), kindOf(kind).fx, 30, 3, json{{"life", 0.9f}, {"size", 0.08f}});
       lv.fx->sound("dragon_roar", at + vec3(0, 0.5f, 0), 20);
       std::string nm = kindOf(kind).name; for (auto& c : nm) c = (char)std::tolower((unsigned char)c);

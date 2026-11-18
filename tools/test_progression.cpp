@@ -30,6 +30,12 @@
 #include "sim/immersive.h"
 #include "sim/combat.h"
 #include "sim/gameplay.h"
+#include "sim/deeds.h"
+#include "sim/skills.h"
+#include "sim/skilltree.h"
+#include "sim/balance.h"
+#include "sim/rpg.h"
+#include "sim/achievements.h"
 #include "common/threadpool.h"
 #include "world/world.h"
 #include "world/dims.h"
@@ -186,7 +192,7 @@ struct Play {
     if (!m || m->out != out) { why = "the carved grid doesn't match"; return false; }
     if (count(item) < knapCost(mat)) { why = "not enough " + item; return false; }
     take(item, knapCost(mat));
-    give(ItemStack(m->out, m->n)); return true;
+    give(ItemStack(m->out, m->n)); onKnapped(*lv, *P, mat); return true;
   }
   // ---- the firestarter: held use for a second (luck fixed with setFirestarterRoll(0), the test hook) ----
   bool spark(int x, int y, int z) {
@@ -392,7 +398,7 @@ struct Imm : Play {
     ItemStack out = anvilOutput(*r, P->offhand[0], anvilQuality(wk));
     if (out.empty()) { why = "that can't be made of this"; putBack(); return false; }
     P->offhand[0].n -= r->n; if (P->offhand[0].n <= 0) P->offhand[0] = ItemStack();
-    putBack(); give(out); return true;
+    putBack(); give(out); onAnvilWorked(*lv, *P, anvilQuality(wk)); return true;
   }
   // casting: ore into the vessel (use with the ore in the other hand), on the firepit, then poured into molds
   int PX = 14, PZ = 4;
@@ -489,7 +495,10 @@ static void immersivePlay() {
   CHECK(got["pebble"] == 4, "loose rocks by hand: " + Play::list(got));
   got = g.mine("twigs", 6);
   CHECK(got["stick"] == 6, "twigs by hand: " + Play::list(got));
+  double sx = skillXp(*g.P, "smithing");
+  auto smithGrew = [&](double atLeast, const std::string& what) { const double now = skillXp(*g.P, "smithing"); check(now - sx >= atLeast, what + " teaches Smithing (+" + S((int)(now - sx)) + ")"); sx = now; };
   CHECK(g.knap("pebble", "stone_axe_head"), "knap a stone axe head " + g.why);
+  smithGrew(workxp::KNAP_STONE, "knapping a head");
   CHECK(g.craftAt({{0, "stone_axe_head"}, {2, "stick"}}, 2, "stone_axe"), "stone axe head + stick: a stone axe " + g.why);
   g.hold("stone_axe"); got = g.mine("log", 4);
   CHECK(got["log"] == 4, "the stone axe fells logs: " + Play::list(got) + " " + g.lastMine);
@@ -530,9 +539,11 @@ static void immersivePlay() {
   g.logs(8);
   for (int i = 0; i < 8; i++) { g.hold("straw"); g.aim(KX, Y1, KZ); g.use(); }
   for (int i = 0; i < 8; i++) { g.hold("log"); g.aim(KX, Y1, KZ); g.use(); }
+  sx = skillXp(*g.P, "smithing");
   g.spark(KX, Y1, KZ);
   json* ke = w.blockEntity(KX, Y1, KZ);
   CHECK(ke && ke->value("lit", false), "eight straw, eight logs, lit with the firestarter");
+  smithGrew(workxp::KILN_LIT, "firing the pit kiln");
   g.tick(gameHourSecs(*g.lv) * KILN_HOURS + 10);
   if (getenv("DQ_DEBUG")) printf("    kiln: %s\n", w.blockEntity(KX, Y1, KZ) ? w.blockEntity(KX, Y1, KZ)->dump().c_str() : "-");
   g.holdNothing();
@@ -553,7 +564,9 @@ static void immersivePlay() {
     g.give(l);
   }
   CHECK(piles == CN * CN, "36 log piles of 16 logs (" + S(piles) + "), chopped with stone axes");
+  sx = skillXp(*g.P, "smithing");
   g.spark(CX0, Y1, CZ0);
+  smithGrew(workxp::CHARCOAL_LIT, "lighting the charcoal pit");
   w.setBlock(CX0, Y1 + 1, CZ0, DIRT);
   json* pe = w.blockEntity(CX0 + 2, Y1, CZ0 + 2);
   CHECK(pe && pe->value("lit", false), "the firestarter on the one open pile lights the pit, then it's covered");
@@ -568,7 +581,9 @@ static void immersivePlay() {
   for (const char* o : {"tin", "zinc", "bismuth"}) { g.pick(); got = g.mine(std::string(o) + "_ore", 1); CHECK(got[std::string(o) + "_ore_piece"] >= 1, std::string("  ...and ") + o + " ore: " + Play::list(got) + " " + g.lastMine); }
   g.ore("copper_ore", "copper_ore_piece", 4);
   CHECK(g.fill({{"copper_ore_piece", 4}}) && g.melt(), "4 copper pieces in the vessel, molten on a charcoal firepit " + g.why);
+  sx = skillXp(*g.P, "smithing");
   CHECK(g.pour("ceramic_pickaxe_mold", 1) && g.breakMolds() == 1, "poured into the pickaxe mold, cooled and broken open " + g.why);
+  smithGrew(workxp::CAST_POUR + workxp::CAST_OPEN, "casting (the pour and the piece broken out)");
   const int ch = g.slotOf("metal_pickaxe_head");
   g.sticks(2);
   CHECK(ch >= 0 && namedAlloy(compOfStack(g.P->inv[ch])) == "copper" && g.craftAt({{0, "metal_pickaxe_head"}, {2, "stick"}}, 2, "mixed_pickaxe"), "a copper pickaxe head + stick: a copper pickaxe " + g.why);
@@ -603,7 +618,9 @@ static void immersivePlay() {
   for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (dx || dz) w.setBlock(g.FX + dx, Y1, g.FZ + dz, reg().blockId("stone"));
   g.hold("charcoal"); g.aim(g.FX, g.Y, g.FZ); g.use(true);
   CHECK(w.getBlock(g.FX, Y1, g.FZ) == reg().blockId("forge"), "sneak + use charcoal into a stone-ringed pit: a forge");
+  sx = skillXp(*g.P, "smithing");
   CHECK(g.forgeFuel(), "fuelled and lit with the firestarter");
+  smithGrew(workxp::FORGE_LIT, "lighting the forge");
   CHECK(g.hammer() && (g.aim(2, g.Y, 14), g.use(), w.getBlock(2, g.Y, 14) == reg().blockId("stone_anvil")), "a stone hammer on raw stone: a stone anvil " + g.why);
   auto isIngot = [](const std::string& alloy, float hot) { return [alloy, hot](const ItemStack& s) { return s.id.find("_ingot") != std::string::npos && s.id.find("double") == std::string::npos && namedAlloy(compOfStack(s)) == alloy && itemHeat(s) >= hot; }; };
   auto isPiece = [](const std::string& id, const std::string& alloy, float hot) { return [id, alloy, hot](const ItemStack& s) { return s.id == id && (alloy.empty() || namedAlloy(compOfStack(s)) == alloy) && itemHeat(s) >= hot; }; };
@@ -611,6 +628,7 @@ static void immersivePlay() {
   g.cool(); int dbl = 0;
   for (int i = 0; i < 5; i++) if (g.heat(isIngot("copper", 0), 2, cuMelt * 0.8f) && g.smith(2, g.Y, 14, "double_ingot", isIngot("copper", cuMelt * 0.8f))) dbl++; else printf("    weld %d: %s\n", i, g.why.c_str());
   CHECK(dbl == 5, "copper ingots welded in pairs on the stone anvil (with flux): " + S(dbl) + " double ingots " + g.why);
+  smithGrew(5 * workxp::ANVIL_WORK, "five pieces worked on the anvil");
   bool sheet = g.heat(isPiece("metal_double_ingot", "copper", 0), 1, cuMelt * 0.6f) && g.smith(2, g.Y, 14, "sheet", isPiece("metal_double_ingot", "copper", cuMelt * 0.6f));
   CHECK(sheet && g.count("metal_sheet") == 1, "a copper sheet " + g.why);
   g.cool(); bool canv = g.heat(isPiece("metal_double_ingot", "copper", 0), 4, cuMelt * 0.6f) && g.smith(2, g.Y, 14, "anvil", isPiece("metal_double_ingot", "copper", cuMelt * 0.6f));
@@ -645,7 +663,9 @@ static void immersivePlay() {
     g.ore("iron_ore", "iron_ore_piece", 24);
     if (g.count("charcoal") < 24) { printf("    (charcoal short: %d)\n", g.count("charcoal")); }
     for (int i = 0; i < 24; i++) { g.hold("iron_ore_piece"); g.aim(20, Y1, 4); g.use(); g.hold("charcoal"); g.use(); }
+    sx = skillXp(*g.P, "smithing");
     g.spark(20, Y1, 4);
+    if (run == 0) smithGrew(workxp::BLOOMERY_LIT, "firing the bloomery");
     { json* be = w.blockEntity(20, Y1, 4); printf("    (bloomery run %d: %s)\n", run + 1, be ? be->dump().substr(0, 200).c_str() : "-"); }
     g.tick(gameHourSecs(*g.lv) * BLOOMERY_HOURS + 10);
     for (int i = 0; i < 8; i++) { g.holdNothing(); g.aim(20, Y1, 4); g.use(); }
@@ -680,6 +700,73 @@ static void immersivePlay() {
   printf("  (granted: %d)\n", g.granted);
 }
 
+// ---- deeds and work (sim/deeds.h): the story, bosses and achievements give points; the crafts teach their skills ----
+static void deedsPlay() {
+  printf("\n[DEEDS]\n");
+  Play g("ProgDeeds", false);
+  Player& p = *g.P;
+  std::vector<std::string> said;
+  struct RecFx : LevelFx { std::vector<std::string>* out; void message(u32, const std::string& t, const std::string&) override { out->push_back(t); } };
+  auto rec = std::make_unique<RecFx>(); rec->out = &said; LevelFx* fx0 = g.lv->fx; g.lv->fx = rec.get();
+  auto heard = [&](const std::string& s) { for (auto& m : said) if (m.find(s) != std::string::npos) return true; return false; };
+  // the skills' own points (a point every 3 / 5 total levels: they grow as the test goes); the deeds' come on top
+  auto baseT = [&] { return std::min(200, totalLevel(p) / 3); };
+  auto baseS = [&] { return totalLevel(p) / bal::STAT_EVERY; };
+  CHECK(deedTalentPoints(p) == 0 && deedStatPoints(p) == 0, "a new player has no deeds' points");
+  // a chapter of the story
+  p.stats["vseen"] = {{"t1", 1}};
+  g.tick(3);
+  int keep = g.slotOf([](const ItemStack& s) { return s.tag.is_object() && s.tag.value("keepsake", std::string()) == "village"; });
+  CHECK(deedDone(p, "ch:village") && deedTalentPoints(p) == 1 && treePointsEarned(p) == baseT() + 1, "a chapter done (A Village at the Edge): a talent point (" + S(treePointsEarned(p) - baseT()) + " over the skills')");
+  CHECK(keep >= 0 && g.P->inv[keep].id == "emerald", "and a keepsake of it: " + (keep >= 0 ? stackName(g.P->inv[keep]) : std::string("none")));
+  CHECK(heard("Chapter done: A Village at the Edge") && heard("talent point"), "a toast says what and why");
+  g.tick(3);
+  CHECK(deedTalentPoints(p) == 1 && g.count("emerald") == 1, "only once");
+  // a side branch: the deep dark
+  p.stats["sseen"] = {{"a", json::array({0, 0, "Ancient City"})}};
+  g.tick(3);
+  CHECK(deedDone(p, "ch:deepdark") && deedTalentPoints(p) == 2 && g.count("echo_shard") == 1, "a side branch (The Deep Dark): a point and an echo shard");
+  // a boss, the first time
+  std::string boss; for (auto& [k, v] : reg().mobs.items()) if (v.is_object() && v.value("boss", false) && k != "herobrine") { boss = k; break; }
+  CHECK(!boss.empty(), "there are bosses (" + boss + ")");
+  auto death = [&](const json& who) { g.bus.emit("mobDeath", json::array({json{{"type", boss}, {"x", p.pos.x}, {"y", p.pos.y}, {"z", p.pos.z}, {"id", 0}}, who})); };
+  death(p.name);
+  CHECK(deedStatPoints(p) == 1 && statPointsEarned(p) == baseS() + 1 && heard("First time beating"), "the first " + boss + " beaten: a stat point (deeds " + S(deedStatPoints(p)) +
+        ", over the skills' " + S(statPointsEarned(p) - baseS()) + ", toast " + S(heard("First time beating")) + ")");
+  death(p.name); death(nullptr);
+  CHECK(deedStatPoints(p) == 1, "the second: nothing more");
+  { json a = json::array({json{{"type", "zombie"}, {"x", p.pos.x}, {"y", p.pos.y}, {"z", p.pos.z}, {"id", 0}}, p.name}); g.bus.emit("mobDeath", a); }
+  CHECK(deedStatPoints(p) == 1, "a zombie is no boss");
+  // achievements: the harder ones
+  p.data["found"]["bread"] = 1; g.tick(2);
+  CHECK(deedTalentPoints(p) == 2, "an easy achievement (bread): no point");
+  p.data["found"]["diamond"] = 1; g.tick(2);
+  CHECK(deedTalentPoints(p) == 3 && deedDone(p, "ach:diamond") && heard("Achievement: Diamonds!"), "a harder one (diamonds): a talent point");
+  // saved with the player; an old save has none
+  { json j = p.save(); Player q; q.load(j);
+    CHECK(deedTalentPoints(q) == 3 && deedStatPoints(q) == 1 && deedDone(q, "boss:" + boss), "the deeds are saved with the player");
+    j["data"].erase("deeds"); Player o; o.load(j);
+    CHECK(deedTalentPoints(o) == 0 && deedStatPoints(o) == 0, "an older save loads with none"); }
+  // ---- work experience ----
+  auto grew = [&](const char* sk, std::function<void()> f) { const double a = skillXp(p, sk); f(); return skillXp(p, sk) - a; };
+  double d = grew("smithing", [&] { g.bus.emit("craft", json::array({p.name, "iron_pickaxe", 1})); });
+  CHECK(d >= workxp::TABLE_METAL, "an iron pickaxe made at the crafting table: Smithing +" + S((int)d));
+  d = grew("smithing", [&] { g.bus.emit("craft", json::array({p.name, "wood_pickaxe", 1})); });
+  CHECK(d == 0, "a wooden one: none");
+  d = grew("cooking", [&] { g.bus.emit("craft", json::array({p.name, "bread", 1})); });
+  CHECK(d >= workxp::TABLE_FOOD, "bread put together: Cooking +" + S((int)d));
+  // the campfire
+  { World& w = g.w(); const int cx = 3, cy = g.Y + 1, cz = 3;
+    std::string raw; for (auto& [in, out] : reg().smelting) { const ItemDef* od = reg().item(out); const ItemDef* id = reg().item(in); if (od && id && od->has("food") && id->has("food")) { raw = in; break; } }
+    w.setBlock(cx, cy, cz, reg().blockId("campfire"));
+    json* e = w.blockEntity(cx, cy, cz, true); *e = {{"type", "campfire"}, {"items", json::array({ItemStack(raw, 1).toJson(), nullptr, nullptr, nullptr})}, {"t", json::array({0, 0, 0, 0})}};
+    w.blockEntityChanged(cx, cy, cz);
+    p.pos = vec3(cx + 2.5f, cy, cz + 0.5f);
+    d = grew("cooking", [&] { g.tick(26); });   // (sim/camping.h CAMP_COOK: 24 s)
+    CHECK(d >= workxp::CAMPFIRE, "food cooked on a campfire (" + raw + "): Cooking +" + S((int)d)); }
+  g.lv->fx = fx0;
+}
+
 int main(int argc, char** argv) {
   std::string ud = (fs::temp_directory_path() / "dq-test-progression").string();
   for (int i = 1; i < argc; i++) if (std::string(argv[i]) == "--userdir" && i + 1 < argc) ud = argv[++i];
@@ -687,9 +774,12 @@ int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = ud;
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
   bool doC = true, doI = true;
-  for (int i = 1; i < argc; i++) { if (std::string(argv[i]) == "--classic") doI = false; if (std::string(argv[i]) == "--immersive") doC = false; }
+  for (int i = 1; i < argc; i++) { if (std::string(argv[i]) == "--classic") doI = false; if (std::string(argv[i]) == "--immersive") doC = false; if (std::string(argv[i]) == "--deeds") doC = doI = false; }
   if (doC) classic();
   if (doI) immersivePlay();
+  bool doD = doC && doI;
+  for (int i = 1; i < argc; i++) if (std::string(argv[i]) == "--deeds") doD = true;
+  if (doD) deedsPlay();
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails;
 }

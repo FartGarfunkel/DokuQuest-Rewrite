@@ -12,6 +12,10 @@
 #include "sim/combat_rpg.h"
 #include "sim/villagers_internal.h"
 #include "sim/village_theft.h"
+#include "sim/skilltree.h"
+#include "sim/deeds.h"
+#include "sim/balance.h"
+#include "sim/creature.h"
 #include "gen/overworld.h"
 #include "gen/structures.h"
 #include "gen/structures_api.h"
@@ -434,13 +438,88 @@ int main(int argc, char** argv) {
     float hp0 = P->maxHp;
     check(pathPick(*L, *P, "knight") && onPath(*P, "knight"), "walking the Knight's path");
     tick(6);
-    check(P->maxHp == hp0 + 4, "a Knight has two more hearts");
+    check(P->maxHp >= hp0 + 4, "a Knight has two more hearts");   // (and the Warrior tree's free first node may add its own)
     check(pathPoints(*P) == 1 && pathLearn(*L, *P, "heavy") && pathMeleeFactor(*P) > 1.09f, "a talent point: Heavy Blows");
     check(!pathLearn(*L, *P, "ironwill"), "the second tier opens after two talents");
     P->give(ItemStack("emerald", 20));
     check(pathForget(*L, *P) && !onPath(*P, "knight"), "forgetting it all for 20 emeralds");
+    treeReset(*P);   // (the Warrior node it gave)
     tick(6);
-    check(P->maxHp == hp0, "and the hearts go with it");
+    check(P->maxHp == hp0, "and the hearts go with it (" + std::to_string((int)P->maxHp) + " of " + std::to_string((int)hp0) + ")");
+  }
+
+  // ------------------------------------------------------------ the Paths and the skill trees (sim/deeds.h); the Rogue's trainer
+  if (skillTrees().empty()) printf("(no skill trees here: the Path <-> tree checks are skipped)\n");
+  else {
+    auto talkPath = [&](Creature& who) -> int { talkOpen(*L, *P, who, t); for (int i = 0; i < (int)t.opts.size(); i++) if (t.opts[i].act == "path") return i; return -1; };
+    const std::string guardName = npcOf(*guard)->value("n", std::string());
+    // a Knight chosen at the guard: the Warrior tree's first node comes free, and the tree's tab names the guard
+    treeReset(*P); P->stats.erase("path");
+    int pi = talkPath(*guard);
+    if (pi >= 0) talkChoose(*L, *P, t, pi);
+    check(t.openScreen == "path", "the guard opens the paths");
+    const int spent0 = treePointsSpent(*P);
+    check(pathPick(*L, *P, "knight") && treeHas(*P, "warrior") && treePointsSpent(*P) == spent0, "a Knight's path: the Warrior tree's first node learnt, free (" + std::to_string(treePointsSpent(*P)) + " spent)");
+    check(pathTrainerName(*P) == guardName && treeTrainerLine(*P, "warrior").find(guardName) != std::string::npos, "the Warrior tree's tab names the guard who taught it: " + treeTrainerLine(*P, "warrior"));
+    check(treeTrainerLine(*P, "rogue").find("innkeeper") != std::string::npos, "and the Rogue tree's says who teaches the Rogue: " + treeTrainerLine(*P, "rogue"));
+    P->give(ItemStack("emerald", 20));
+    check(pathForget(*L, *P) && treePointsSpent(*P) <= treePointsEarned(*P), "the path set aside: the tree still within its points");
+    // the tree's start first: who teaches its path, the talk says so, and walking it gives the point back
+    treeReset(*P); fx.msgs.clear();
+    check(treeLearn(*P, "warrior", "warrior") && treePointsSpent(*P) == 1, "the Warrior tree's start, for a point");
+    pathTreeOnStart(*L, *P, "warrior");
+    check(fx.heard("guard teaches the Knight"), "taking it says a village guard teaches the Knight's path");
+    pi = talkPath(*guard);
+    check(pi >= 0 && t.opts[pi].label.find("my skill tree") != std::string::npos, "and the guard offers it as the tree's way: " + (pi >= 0 ? t.opts[pi].label : std::string("-")));
+    if (pi >= 0) talkChoose(*L, *P, t, pi);
+    check(pathPick(*L, *P, "knight") && treePointsSpent(*P) == 0 && fx.heard("costs no point now"), "walking it gives the point back (" + std::to_string(treePointsSpent(*P)) + " spent)");
+    P->give(ItemStack("emerald", 20)); pathForget(*L, *P); treeReset(*P);
+    // the Rogue: the innkeeper teaches it (the farmer stands in for one here)
+    const std::string job0 = npcOf(*farmer)->value("j", std::string()), innName = npcOf(*farmer)->value("n", std::string());
+    farmer->data["npc"]["j"] = "innkeeper";
+    pi = talkPath(*farmer);
+    check(pi >= 0 && t.opts[pi].label.find("Rogue") != std::string::npos, "an innkeeper teaches the Rogue's ways");
+    if (pi >= 0) talkChoose(*L, *P, t, pi);
+    farmer->data["npc"]["j"] = job0;
+    const float crit0 = critChance(*P), roll0 = dodgeCost(*P);
+    check(pathPick(*L, *P, "rogue") && onPath(*P, "rogue") && treeHas(*P, "rogue_1") && treePointsSpent(*P) == 0 && pathTrainerName(*P) == innName, "a Rogue: the Rogue tree's first node free, taught by " + pathTrainerName(*P) + " (" + innName + ")");
+    check(critChance(*P) > crit0 + 0.04f, "a Rogue lands critical hits more often");
+    for (const char* k : {"melee", "defence", "archery"}) P->stats["skills"][k] = skillXpFor(50);
+    check(pathPoints(*P) >= 4 && pathLearn(*L, *P, "backstab") && pathLearn(*L, *P, "nimble") && pathLearn(*L, *P, "venom") && pathLearn(*L, *P, "lightfingers"), "the Rogue's four talents");
+    P->sneaking = true; const float bs = pathBackstabFactor(*P); P->sneaking = false;
+    check(bs > 1.25f && pathBackstabFactor(*P) == 1.f, "Backstab: a sneaking melee blow strikes harder");
+    check(dodgeCost(*P) < roll0 * 0.8f, "Nimble: rolls cost less stamina");
+    P->stats["theft"]["t5000_5000"] = {{"owed", {{"bread", 3}}}, {"value", 10.0}, {"wanted", false}, {"count", 1}, {"day", 0}};
+    check(theftFine(*P, "t5000_5000") == 10, "Light Fingers: the fine halved (" + std::to_string(theftFine(*P, "t5000_5000")) + " of 20)");
+    P->stats.erase("theft");
+    { Creature* z = spawnCreature(*L, P->realm, "spider", P->pos + vec3(1.5f, 0, 0));   // (not undead: poison takes)
+      if (z) { DamageSrc s; s.attacker = P->id; s.weapon = true; s.tool = "sword"; s.type = "player"; z->hurt(*L, 1, s); }
+      check(z && z->poisonT > 0, "Envenomed Edge: a melee blow poisons");
+      if (z) z->removed = true; }
+    P->give(ItemStack("emerald", 20)); pathForget(*L, *P); treeReset(*P);
+    for (const char* k : {"melee", "defence", "archery"}) P->stats["skills"][k] = skillXpFor(20);
+  }
+
+  // ------------------------------------------------------------ creatures teach Taming (sim/deeds.h): riding, taming
+  {
+    const vec3 home = P->pos;
+    Creature* h = spawnCreature(*L, P->realm, "horse", P->pos + vec3(0, 0, 6));
+    if (h) { h->owner = P->name; h->tamed = true; h->saddled = true; }
+    double x0 = skillXp(*P, "taming");
+    for (int i = 0; i < 400 && h; i++) { h->pos.x += (i / 50) % 2 ? -0.4f : 0.4f; h->pos.z = home.z + 6; h->riddenBy = P->id; P->riding = h->id; P->pos = h->pos; L->tick(TICK_DT); }
+    const double rode = skillXp(*P, "taming") - x0;
+    check(h && rode >= 2 * workxp::RIDE_XP, "riding 160 blocks teaches Taming (+" + std::to_string((int)rode) + ")");
+    if (h) { P->riding = 0; h->riddenBy = 0; h->removed = true; }
+    P->pos = home;
+    std::string kind;
+    for (auto& [k, v] : reg().mobs.items()) if (const CreatureType* ct = creatureType(k); ct && ct->tameable() && !ct->boss && !ct->hostile && k.find("slime") == std::string::npos && ct->tameChance >= 0.3f && reg().item(ct->tameFoods[0])) { kind = k; break; }
+    Creature* c = kind.empty() ? nullptr : spawnCreature(*L, P->realm, kind, P->pos + vec3(1.5f, 0, 0));
+    x0 = skillXp(*P, "taming");
+    for (int i = 0; i < 40 && c && c->owner.empty(); i++) { P->inv[P->selected] = ItemStack(c->T->tameFoods[0], 1); useOnCreature(*L, *P, *c, true); }
+    const double tamed = skillXp(*P, "taming") - x0;
+    check(c && c->owner == P->name && tamed >= workxp::TAME, "a wild " + kind + " tamed teaches Taming (+" + std::to_string((int)tamed) + ")");
+    if (c) c->removed = true;
+    P->inv[P->selected] = ItemStack();
   }
 
   // ------------------------------------------------------------ the missing villager

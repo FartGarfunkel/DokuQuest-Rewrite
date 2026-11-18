@@ -523,9 +523,9 @@ public:
     };
     if (!P) {
       headRow("Choose your path", col::rgb(0xffd88a), "Combat level " + std::to_string(cl) + (cl < AT ? " \xC2\xB7 paths open at " + std::to_string(AT) : std::string()));
-      const float colW = (cw - pad * 2 - 16 * z) / 3;
+      const float colW = (cw - pad * 2 - 24 * z) / 4;
       float top = ImGui::GetCursorPosY(), maxH = 0; int k = 0;
-      for (const char* key : {"knight", "ranger", "mage"}) {
+      for (const char* key : {"knight", "ranger", "mage", "rogue"}) {
         if (!PD.contains(key)) continue;
         const json& D = PD[key];
         ImGui::SetCursorPos(ImVec2(pad + k * (colW + 8 * z), top));

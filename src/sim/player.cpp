@@ -8,7 +8,7 @@
 #include "sim/blockinfo.h"
 #include "world/shapes.h"
 
-namespace dq { float pathSpeedFactor(const Player& p); }   // Fleet Foot (sim/villager_quests.cpp)
+namespace dq { float pathSpeedFactor(const Player& p); int pathMaxHealthBonus(const Player& p); }   // Fleet Foot, the Knight's hearts (sim/villager_quests.cpp)
 
 namespace dq {
 
@@ -21,7 +21,7 @@ Player::Player() {
 
 float Player::heal(float n) { float before = hp; hp = std::min(maxHp, hp + n); return hp - before; }
 void Player::recalcMax() {
-  float m = 20 + 2 * std::min(10, heartCrystals) + 2 * charmBonus(*this, "hearts");
+  float m = 20 + 2 * std::min(10, heartCrystals) + 2 * charmBonus(*this, "hearts") + pathMaxHealthBonus(*this);   // (+ a Knight's two hearts)
   m = std::round((m + conHealth(*this) + treeAttr(*this, "health")) * (1 + talent(*this, "health")));   // (Constitution; the skill tree, sim/skilltree.h)
   if (m != maxHp) { maxHp = m; if (hp > m) hp = m; }
 }
