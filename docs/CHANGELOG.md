@@ -5,6 +5,18 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.35 (November 2026)
+
+**Sitting down:**
+- **Your arms no longer come up in front of your face** when you sit on a chair, stairs or a carved step. Your hands rest on your lap, as they do in a minecart, so you can see where you're looking, in first person and in third (everyone else sees you sit the same way).
+
+**Creatures where they belong:**
+- **The guster keeps to the deserts and the badlands** instead of turning up on any night's land.
+- The crimson mosquito, warped toad and soul vulture keep to their own woods and valleys in the Nether; the laviathan rises in lava, not on the ground.
+- **The farseer is taken out of the game.**
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.34 (November 2026)
 
 **Multiplayer, smooth as playing side by side:**

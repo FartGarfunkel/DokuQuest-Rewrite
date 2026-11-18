@@ -1,6 +1,14 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.35 | November 2026
+**Sitting down:**
+- **Your arms no longer come up in front of your face** when you sit on a chair, stairs or a carved step. Your hands rest on your lap, as they do in a minecart, so you can see where you're looking, in first person and in third (everyone else sees you sit the same way).
+**Creatures where they belong:**
+- **The guster keeps to the deserts and the badlands** instead of turning up on any night's land.
+- The crimson mosquito, warped toad and soul vulture keep to their own woods and valleys in the Nether; the laviathan rises in lava, not on the ground.
+- **The farseer is taken out of the game.**
+- Removed Herobrine.
 ## Alpha 1.0.0.34 | November 2026
 **Multiplayer, smooth as playing side by side:**
 - **Other players move smoothly over the internet.** Their positions are now smoothed with the time each one was true, a lost packet no longer holds everyone up, and the network library no longer throws movement away on a bumpy connection. Tested on a simulated bad link (50–150 ms of jitter, lost packets) over UDP and TCP: steady walking speed, no jumps backwards.

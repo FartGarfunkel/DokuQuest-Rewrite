@@ -8,6 +8,7 @@
 namespace dq {
 
 PlayerController* localController(GameSession& s);   // the local player's controller (null before spawn)
+bool localSitOn(GameSession& s, int x, int y, int z);  // sat on that seat as the use does (client/test_script.cpp)
 void clientTickLocalPlayer(GameSession& s, double dt);
 void clientPlayerCamera(GameSession& s, Camera& cam, double dt);
 // a screen leans your eyes in toward a point, this frame (first person only; ui/lectern_screen.cpp): up to 0.85 of a

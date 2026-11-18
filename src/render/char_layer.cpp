@@ -853,7 +853,9 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     if (auto* b = dynamic_cast<Boat*>(v); b && !b->riders.empty() && b->riders[0] == p.id && boatOarGrips(*b, f.cam.rel(glm::dvec3(b->pos)), g)) {
       ps.reach = true; ps.reachR = g[0]; ps.reachL = g[1];
     } else if (v) {
-      const bool beast = !dynamic_cast<Vehicle*>(v);
+      // (a seat, a chair or stairs or a carved step, is no beast: the hands rest on the knees as in a cart; taken for one, they
+      // held reins up at the seated face)
+      const bool beast = !dynamic_cast<Vehicle*>(v) && v->type != "seat";
       const vec3 c = p.pos + (beast ? fwd * RIDE_HANDS[2] + vec3(0, RIDE_HANDS[3], 0) : fwd * RIDE_HANDS[0] + vec3(0, RIDE_HANDS[1], 0));
       const float apart = beast ? 0.1f : 0.2f;
       ps.reach = true; ps.reachR = f.cam.rel(glm::dvec3(c + right * apart)); ps.reachL = f.cam.rel(glm::dvec3(c - right * apart));

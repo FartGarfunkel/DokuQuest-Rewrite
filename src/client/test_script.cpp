@@ -60,6 +60,8 @@
 extern "C" void SDL_SetKeyboardFocus(SDL_Window* window);
 
 namespace dq {
+bool localSitOn(GameSession& s, int x, int y, int z);   // client/play.cpp (its header brings the sim's controller: a clash here)
+
 std::unique_ptr<Screen> makeGuideScreen(const std::string& item);
 void primeFormidi(Level& lv, World& w, int x, int y, int z, const std::string& key);   // sim/wither_storm.cpp
 
@@ -261,6 +263,10 @@ void runStep(App& a, const json& st) {
   } else if (op == "be" && s) {   // set a block entity (a monster cage: {"type":"spawner","mob":"zombie"})
     ivec3 b = at(st);
     if (json* e = s->world().blockEntity(b.x, b.y, b.z, true)) *e = st.value("data", json::object());
+  } else if (op == "sit" && s && p) {   // sit{x,y,z (rel)}: sat on that seat (a chair, stairs, a carved step), as the use does
+    const ivec3 b = at(st);
+    const bool ok = localSitOn(*s, b.x, b.y, b.z);
+    DQ_LOG("test: sit at %d %d %d -> %s (riding %u)", b.x, b.y, b.z, ok ? "sat" : "no seat", p->riding);
   } else if (op == "ride" && s && p) {   // ride{kind:"boat"|"cart", x,y,z (rel: a water cell / a rail)}: one put there and you in it
     const ivec3 b = at(st);
     Vehicle* v = nullptr;
