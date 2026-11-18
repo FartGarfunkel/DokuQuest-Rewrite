@@ -260,6 +260,7 @@ void Paged::begin(App& a, const char* id, const std::string& title, const std::v
   pageChanged = false; tipText.clear(); tipAtMouse = false; rowSeq = 0;
   pendCat.clear(); curCat.clear(); catOpen = true; catShown = false;
   const int n = (int)pages.size();
+  if (n > 1) padHint(4, 5, "Pages");   // (the controller hints bar)
   if (n) {
     page = clampv(page, 0, n - 1);
     if (ImGui::IsKeyPressed(ImGuiKey_GamepadL1, false)) { page = (page + n - 1) % n; pageChanged = true; playClick(); }
@@ -309,7 +310,7 @@ void Paged::begin(App& a, const char* id, const std::string& title, const std::v
       ImGui::SetCursorPos(ImVec2(4 * U, y0 + rowH * i));
       ImVec2 p = ImGui::GetCursorScreenPos();
       ImGui::PushID(i);
-      bool hit = ImGui::InvisibleButton("##page", ImVec2(std::max(8.f, leftW - 8 * U - (listH > regionH ? 6 * U : 0)), rowH), ImGuiButtonFlags_EnableNav);
+      bool hit = ImGui::InvisibleButton((pages[i].name + "##page").c_str(), ImVec2(std::max(8.f, leftW - 8 * U - (listH > regionH ? 6 * U : 0)), rowH), ImGuiButtonFlags_EnableNav);
       bool hot = hotItem();
       ImGui::PopID();
       if (hit && page != i) { page = i; pageChanged = true; focusFirst_ = true; playClick(); }
@@ -368,7 +369,9 @@ bool Paged::fieldAt(const char* id, std::string* s, ImVec2 pos, float wU, const 
 void Paged::takeFocus() {
   if (!focusFirst_) return;
   focusFirst_ = false;
-  if (navVisible()) ImGui::SetKeyboardFocusHere();
+  // a controller in hand (or the keys' highlight showing): the first setting gets the highlight, so the pad has
+  // something to move from the moment the screen opens (it used to start on nothing)
+  if (navVisible() || app().input.usingPad()) { ImGui::SetKeyboardFocusHere(); ImGui::SetNavCursorVisible(true); }
 }
 
 void Paged::drawBands(App& app) {
@@ -462,7 +465,7 @@ void Paged::flushCategory() {
   const float U = unit;
   ImVec2 p = ImGui::GetCursorScreenPos();
   ImGui::PushID(("cat/" + pendCat).c_str());
-  bool clicked = ImGui::InvisibleButton("##cat", ImVec2(cw, 24 * U), ImGuiButtonFlags_EnableNav);
+  bool clicked = ImGui::InvisibleButton((pendCat + "##cat").c_str(), ImVec2(cw, 24 * U), ImGuiButtonFlags_EnableNav);
   bool hot = hotItem();
   ImGui::PopID();
   const std::string key = std::to_string(page) + "/" + pendCat;

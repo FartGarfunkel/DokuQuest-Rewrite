@@ -23,6 +23,7 @@
 #include "ui/screen.h"
 #include "ui/ui.h"
 #include "ui/osk.h"
+#include "ui/theme.h"
 #include "audio/audio.h"
 #include "client/client_fx.h"
 #include "mod/modloader.h"
@@ -260,8 +261,11 @@ void App::applyTextureFiltering() {
   glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
 }
 
-void App::pushScreen(std::unique_ptr<Screen> s) { Screen* raw = s.get(); screens.push_back(std::move(s)); raw->onOpen(*this); }
-void App::popScreen() { if (screens.empty()) return; screens.back()->onClose(*this); screens.pop_back(); }
+void App::pushScreen(std::unique_ptr<Screen> s) {
+  if (!screens.empty()) uiScreenCovered(*this, screens.back().get());   // (its pad highlight, put back when it is on top again)
+  Screen* raw = s.get(); raw->openedFrame = frame; screens.push_back(std::move(s)); raw->onOpen(*this);
+}
+void App::popScreen() { if (screens.empty()) return; screens.back()->onClose(*this); screens.pop_back(); if (!screens.empty()) uiScreenUncovered(*this, screens.back().get()); }
 void App::setScreen(std::unique_ptr<Screen> s) { while (!screens.empty()) popScreen(); if (s) pushScreen(std::move(s)); }
 
 bool App::openWorld(const fs::path& folder) {
@@ -431,6 +435,7 @@ void App::frameLoop() {
       if (bookUiStationOn(*this)) { bookUiRender(*this, true); bookUiDrawScreenTip(); bookUiDebugQuad(ImGui::GetForegroundDrawList()); }   // at a station: your bag in the journal in your off hand
     }
     ui::oskGame(*this);      // the on-screen keyboard while a controller player edits a text box (ui/osk.cpp)
+    ui::drawPadHints(*this);   // the controller's button hints along the bottom of a menu (ui/theme.cpp)
     if (session && session->split()) {
       // split screen: a shared menu (pause...) answers to everybody; otherwise each person's Back / Pause closes their own menu, or pauses
       if (session->joinedFrame + 1 < frame) {   // (the joiner's own Start press is still an edge in their new input frame the frame after they joined)

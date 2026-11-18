@@ -92,7 +92,7 @@ public:
     if (bk) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::Begin("Character creator##cc", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings | (bk ? ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground : 0));
     if (bk) ImGui::PopStyleVar();
-    if (bk) ImGui::BeginChild("L##cc", ImVec2(pageW, H), 0, ImGuiWindowFlags_NoBackground);   // (in the journal: the top bar and the options on the left page, the model and the foot on the right)
+    if (bk) ImGui::BeginChild("L##cc", ImVec2(pageW, H), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground);   // (in the journal: the top bar and the options on the left page, the model and the foot on the right)
     // ---- top bar (wraps when the window is narrow) ----
     ImGui::SetNextItemWidth(std::min(200.f * ui::Z(), W * 0.3f)); ImGui::InputText("Name", &name);
     flow::Row top; top.first = false;
@@ -120,16 +120,16 @@ public:
     int botRows = flow::rowsNeeded({{"Save & wear", 150}, {"Save", 100}, {"Export skin PNG", 150}, {"Paint by hand...", 150}, {"Cape editor...", 150}, {"Back", 100}}, bk ? pageW : ImGui::GetContentRegionAvail().x);
     float botH = ImGui::GetTextLineHeightWithSpacing() + botRows * (ImGui::GetFrameHeight() + sty.ItemSpacing.y) + sty.WindowPadding.y;
     float bodyH = std::max(120.f, ImGui::GetContentRegionAvail().y - (bk ? 0 : botH));
-    ImGui::BeginChild("opts##cc", ImVec2(left, bodyH), ImGuiChildFlags_Borders);
+    ImGui::BeginChild("opts##cc", ImVec2(left, bodyH), ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened);
     options();
     ImGui::EndChild();
     if (bk) {
       ImGui::EndChild(); ImGui::SameLine(0, gutter);
-      ImGui::BeginChild("R##cc", ImVec2(pageW, H), 0, ImGuiWindowFlags_NoBackground); inR = true;
+      ImGui::BeginChild("R##cc", ImVec2(pageW, H), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground); inR = true;
       bodyH = H - botH;
     } else
     ImGui::SameLine();
-    ImGui::BeginChild("view##cc", ImVec2(0, bodyH), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollbar);
+    ImGui::BeginChild("view##cc", ImVec2(0, bodyH), ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoScrollbar);
     ImVec2 avail = ImGui::GetContentRegionAvail();
     float ph = std::max(40.f, avail.y - ImGui::GetFrameHeightWithSpacing() - 4);
     CharPreviewOpts o; o.yaw = yaw; o.elev = elev; o.dist = dist; o.time = t; o.walk = walk;

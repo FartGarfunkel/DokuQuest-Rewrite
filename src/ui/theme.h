@@ -132,6 +132,12 @@ void setTooltip(const char* fmt, ...) IM_FMTARGS(1);   // ImGui::SetTooltip, pla
 // the last tooltip placed (playtests): the frame, whether it went by an item (the pad) and that item's box, where it went
 struct LastTip { u64 frame = 0; bool byItem = false; ImVec2 a, b, pos, size; };
 const LastTip& lastTooltip();
+// ---- the controller's button hints along the bottom of a menu ----
+// a pad button's name as printed on the controller used last (A / Cross / ..., LB / L1 / L ...): standard index 0..15
+std::string padHintName(int k);
+void padHint(int k1, int k2, const char* what);   // a hint for this frame beside the usual A / B (k2 -1: one button)
+void drawPadHints(App& a);                        // the bar, while a menu is up and the controller was used last
+std::vector<std::string> navLabels(bool withRect = false);   // the labels the pad's highlight sat on last frame, every context (ui/nav_probe.cpp)
 
 } // namespace ui
 } // namespace dq

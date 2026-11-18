@@ -3,6 +3,8 @@
 #include "core/tool_parts.h"
 #include "common/ui_scale.h"
 #include "ui/theme.h"
+#include "ui/osk.h"
+#include "ui/screen.h"
 #include "ui/paged.h"
 #include "ui/book.h"
 #include "client/app.h"
@@ -15,6 +17,7 @@
 #include "render/instruments.h"
 #include "core/item_glint.h"
 #include <imgui_internal.h>
+#include "imgui_hooks/nav_hooks.h"
 #include <imgui_stdlib.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl2.h>
@@ -176,6 +179,52 @@ void playClick() { if (app().audio) app().audio->play("click"); }
 
 // ---- tooltips -----------------------------------------------------------------------------------------------
 static LastTip g_lastTip;
+
+// ---- the controller's button hints --------------------------------------------------------------------------
+std::string padHintName(int k) {
+  const std::string st = app().input.padStyle();
+  static const char* const XB[16] = {"A", "B", "X", "Y", "LB", "RB", "LT", "RT", "View", "Menu", "L3", "R3", "D-pad", "D-pad", "D-pad", "D-pad"};
+  static const char* const PS[16] = {"Cross", "Circle", "Square", "Triangle", "L1", "R1", "L2", "R2", "Create", "Options", "L3", "R3", "D-pad", "D-pad", "D-pad", "D-pad"};
+  // (Nintendo layout: the swap is already applied, so the confirm button is the one printed A)
+  static const char* const NI[16] = {"A", "B", "X", "Y", "L", "R", "ZL", "ZR", "-", "+", "L3", "R3", "D-pad", "D-pad", "D-pad", "D-pad"};
+  if (k < 0 || k > 15) return "";
+  return st == "playstation" ? PS[k] : st == "nintendo" ? NI[k] : XB[k];
+}
+namespace { struct Hint { int k1, k2; std::string what; }; std::vector<Hint> g_hints; unsigned long long g_hintFrame = 0; }
+void padHint(int k1, int k2, const char* what) {
+  if (g_hintFrame != app().frame) { g_hints.clear(); g_hintFrame = app().frame; }
+  for (auto& h : g_hints) if (h.k1 == k1 && h.k2 == k2) return;
+  g_hints.push_back({k1, k2, what});
+}
+void drawPadHints(App& a) {
+  Screen* s = a.topScreen();
+  if (!s || !a.input.usingPad() || a.input.setupActive || oskTextActive()) return;
+  if (s->id() == std::string("photo_mode") || s->id() == std::string("chat")) return;   // (their own lines)
+  std::vector<Hint> hs = {{0, -1, "Select"}, {1, -1, s->id() == std::string("title") || s->id() == std::string("death") ? "" : "Back"}};
+  if (g_hintFrame + 1 >= a.frame) for (auto& h : g_hints) hs.push_back(h);
+  ImDrawList* dl = ImGui::GetForegroundDrawList();
+  const float z = baseZoom(), padX = 6 * z, gap = 14 * z, h = textSize(F_SMALL, "Ag").y + 6 * z;
+  std::vector<std::pair<std::string, std::string>> items;
+  float total = 0;
+  for (auto& x : hs) {
+    if (x.what.empty()) continue;
+    std::string b = padHintName(x.k1) + (x.k2 >= 0 ? "/" + padHintName(x.k2) : "");
+    total += textSize(F_SMALL, b.c_str()).x + padX * 2 + 4 * z + textSize(F_SMALL, x.what.c_str()).x + gap;
+    items.push_back({b, x.what});
+  }
+  if (items.empty()) return;
+  // (bottom right, in the corner: the screens keep their own buttons along the bottom middle)
+  float x = std::round(a.width - (total - gap) - 18 * z), y = std::round(a.height - h - 8 * z);
+  dl->AddRectFilled(ImVec2(x - 10 * z, y - 4 * z), ImVec2(x + total - gap + 10 * z, y + h + 4 * z), IM_COL32(0, 0, 0, 150), 6 * z);
+  for (auto& [b, what] : items) {
+    const float bw = textSize(F_SMALL, b.c_str()).x + padX * 2;
+    dl->AddRectFilled(ImVec2(x, y), ImVec2(x + bw, y + h), col::rgb(0xe0e0e0), 4 * z);
+    text(dl, F_SMALL, ImVec2(x + padX, y + 3 * z), col::ink, b.c_str());
+    x += bw + 4 * z;
+    text(dl, F_SMALL, ImVec2(x, y + 3 * z), col::white, what.c_str());
+    x += textSize(F_SMALL, what.c_str()).x + gap;
+  }
+}
 bool tipsFollowPad() { return app().input.usingPad(); }
 bool navItemRect(ImVec2& a, ImVec2& b) {
   ImGuiContext& g = *GImGui;
@@ -210,6 +259,11 @@ ImVec2 tipPlace(ImVec2 size, const ImVec2* ra, const ImVec2* rb) {
   return p;
 }
 const LastTip& lastTooltip() { return g_lastTip; }
+std::vector<std::string> navLabels(bool withRect) {
+  std::vector<std::string> out;
+  for (auto& [c, s] : dqNavSeen()) if (s.frame >= 0 && s.frame + 1 >= (long long)app().frame && s.shown) out.push_back(withRect && s.rectFrame + 1 >= (long long)app().frame ? s.label + " @" + std::to_string((int)s.minX) + "," + std::to_string((int)s.minY) : s.label);
+  return out;
+}
 void tipNextAt(const ImVec2* ra, const ImVec2* rb) {
   if (!tipsFollowPad()) return;   // (the mouse: ImGui's own placement)
   ImVec2 a, b;
@@ -218,8 +272,11 @@ void tipNextAt(const ImVec2* ra, const ImVec2* rb) {
   // aligned when it is low down)
   const ImVec2 ds = ImGui::GetIO().DisplaySize;
   const bool left = (a.x + b.x) * 0.5f > ds.x * 0.62f, up = (a.y + b.y) * 0.5f > ds.y * 0.62f;
-  g_lastTip = {app().frame, true, a, b, ImVec2(left ? a.x - 8 * Z() : b.x + 8 * Z(), up ? b.y : a.y), ImVec2(0, 0)};
-  ImGui::SetNextWindowPos(ImVec2(left ? a.x - 8 * Z() : b.x + 8 * Z(), up ? b.y : a.y), ImGuiCond_Always, ImVec2(left ? 1.f : 0.f, up ? 1.f : 0.f));
+  // on the right of the display there's no room beside it: under it (over it when low down), right edges lined up, so
+  // the row it belongs to stays readable (put on its left, it covered the row's own label)
+  const ImVec2 at = left ? ImVec2(b.x, up ? a.y - 4 * Z() : b.y + 4 * Z()) : ImVec2(b.x + 8 * Z(), up ? b.y : a.y);
+  g_lastTip = {app().frame, true, a, b, at, ImVec2(0, 0)};
+  ImGui::SetNextWindowPos(at, ImGuiCond_Always, ImVec2(left ? 1.f : 0.f, up ? 1.f : 0.f));
 }
 void setTooltip(const char* fmt, ...) {
   va_list args; va_start(args, fmt);
@@ -256,6 +313,7 @@ void init(App& a) {
 
 void feedNav(App& a) {
   ImGuiIO& io = ImGui::GetIO();
+  GImGui->TestEngineHookItems = true; dqNavFrame() = (long long)a.frame;   // (the item hooks: which item the highlight is on, imgui_hooks/nav_hooks.cpp)
   Input& in = a.input;
   if (in.padCount() == 0 || in.setupActive) { if (in.padCount() == 0) io.BackendFlags &= ~ImGuiBackendFlags_HasGamepad; return; }
   io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
@@ -275,6 +333,19 @@ void feedNav(App& a) {
   }
   auto ana = [&](ImGuiKey k, float v) { io.AddKeyAnalogEvent(k, v > 0.35f, std::max(0.f, v)); };
   ana(ImGuiKey_GamepadLStickLeft, -l.x); ana(ImGuiKey_GamepadLStickRight, l.x); ana(ImGuiKey_GamepadLStickUp, -l.y); ana(ImGuiKey_GamepadLStickDown, l.y);
+  // the highlight's repeat while a direction is held, as Input::endFrame steps the game's own grids: the first step at
+  // once, the next after 0.35 s, then ten a second quickening to twenty (ImGui moves at 0.72 x the delay and 0.8 x the
+  // rate it is given). The keyboard keeps ImGui's quicker typing repeat.
+  static unsigned long long heldFrame = 0; static float held = 0;
+  if (heldFrame != a.frame) {   // (once a frame, whichever context asks first)
+    heldFrame = a.frame;
+    const bool dir = in.padButtonDown(12) || in.padButtonDown(13) || in.padButtonDown(14) || in.padButtonDown(15) || std::max(std::fabs(l.x), std::fabs(l.y)) > 0.35f;
+    held = dir ? held + (float)a.dt : 0;
+  }
+  if (in.usingPad()) {
+    io.KeyRepeatDelay = 0.35f / 0.72f;
+    io.KeyRepeatRate = (held < 1.2f ? 0.1f : held < 2.4f ? 0.07f : 0.05f) / 0.8f;
+  } else { io.KeyRepeatDelay = 0.275f; io.KeyRepeatRate = 0.05f; }
 }
 
 static float g_baseZoom = 1;
