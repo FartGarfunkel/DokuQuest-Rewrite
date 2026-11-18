@@ -295,7 +295,9 @@ int main(int argc, char** argv) {
       Creature* by = nullptr; for (Creature* c : folk) if (!c->T->j.value("golem", false)) { by = c; break; }
       const vec3 sq = vec3(v->bell) + vec3(0.5f, 0, 1.5f);
       int none = 0; std::string which;
-      for (const Errand& e : pts) {
+      std::vector<Errand> all = pts;   // (and the stops on each trade's round, which nobody is sent to here but they work at)
+      for (const VFolk& f : v->folk) for (const VTask& k : f.tasks) all.push_back({vec3(k.at) + vec3(0.5f, 0, 0.5f), "task"});
+      for (const Errand& e : all) {
         if (!by) break;
         bool part = true; const auto way = npcPath(w, sq, e.to, by->w, by->h, &part, 12000);
         if (!part) continue;
@@ -309,7 +311,7 @@ int main(int argc, char** argv) {
           printf("      (the spot:)\n"); mapAround(ifloor(e.to.x), ifloor(e.to.y + 0.45f), ifloor(e.to.z), by->w, by->h);
         }
       }
-      printf("  (%d of %zu points with no way to them from the square on foot%s%s)\n", none, pts.size(), none ? ":" : "", which.c_str());
+      printf("  (%d of %zu points and stops on a round with no way to them from the square on foot%s%s)\n", none, all.size(), none ? ":" : "", which.c_str());
     }
     Mulberry32 rng((u32)v->seed);
     VillagerSystem* S = vsys(*L);
