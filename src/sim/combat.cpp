@@ -76,6 +76,7 @@ bool wearHeld(Level& lv, Player& p, int n) {
   return false;
 }
 void wearArmor(Player& p) {
+  if (armourSavesWear(p)) return;   // Unbreakable: half the blows leave it be (sim/skills.h)
   for (int i = 0; i < 4; i++) {
     ItemStack& s = p.armor[i];
     if (s.empty()) continue;
@@ -245,6 +246,16 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
   if (setCd) p.attackCd = (tool && tool->type == "sword" ? 0.45f : 0.6f) / attackSpeedFactor(p);   // (Agility, attack-speed talents)
   if (dealt > 0 && !e.isPlayer() && !e.ghost) onPlayerHitMob(lv, p, e, "melee", dealt, hpBefore);   // (Melee grows with the blows that land)
   if (dealt > 0 && !e.isPlayer() && !e.ghost) talentOnHit(lv, p, e, dealt);   // (the trees: bleeding, poison, slowness, fire, life drawn: sim/talent_fx.h)
+  if (dealt > 0 && !e.isPlayer()) {   // the Melee perks (sim/skills.h): Cleave's foe beside it, Bloodthirst's health back
+    if (Entity* o = cleaveTarget(lv, p, e)) {
+      const float part = dealt * bal::PERK_CLEAVE;
+      DamageSource cs; cs.attacker = p.id; cs.element = src.element; cs.knock = src.knock * 0.5f; cs.tool = src.tool; cs.weapon = src.weapon; cs.pierce = src.pierce;
+      if (o->ghost && lv.net && lv.net->isClient()) lv.net->hitEntity(p, o->id, part, {{"element", cs.element}, {"knock", cs.knock}, {"tool", cs.tool}, {"weapon", cs.weapon}});   // (a joined world: the host's creature)
+      else damageEntity(lv, *o, part, cs);
+      lv.fx->particles("crit", o->pos + vec3(0, o->h * 0.6f, 0), 4);
+    }
+    p.heal(bloodthirstHeal(p, dealt));
+  }
   if (dealt > 0) {
     sfxUi(lv, p, crit ? "crit" : "hit");
     if (crit) lv.fx->particles("crit", e.pos + vec3(0, e.h * 0.6f, 0), 10);   // a burst of stars on a critical blow

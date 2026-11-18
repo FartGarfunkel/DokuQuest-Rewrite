@@ -30,7 +30,7 @@ public:
 };
 
 struct FishCatch { std::string id, kind; int cm = 0; };   // kind: fish | junk | treasure
-FishCatch fishingCatch(Level& lv, int realm, vec3 at, float luck = 0);   // luck: fishing luck, 0..0.5
+FishCatch fishingCatch(Level& lv, int realm, vec3 at, float luck = 0, float treasure = 1);   // luck: fishing luck, 0..0.5; treasure: x its chance (Sea's Favour)
 Bobber* fishingOf(Level& lv, const Player& p);            // the player's float, if out
 float castWindOf(const Player& p);                        // 0..1 while winding back to cast (pose.castWind)
 void endFishing(Level& lv, Player& p, bool reel);

@@ -186,7 +186,7 @@ float combatRpgOutgoing(Level& lv, Player& p, Entity& e, float dmg, bool& finish
   dmg *= strDamageFactor(p);
   dmg = (dmg + treeAttr(p, "damage")) * (1 + talent(p, "damage"));   // (the skill tree)
   dmg *= rageFactor(p);                                                // (the Berserker's rage: more as your health runs out)
-  const float crit = critChance(p);
+  const float crit = critChance(p) + meleeCritBonus(p);   // (Keen Edge, on top of the stats' cap: sim/skills.h)
   if (crit > 0 && rnd() < crit) dmg = std::ceil(dmg * critMultiplier(p));
   e.maxPosture = (MOB_POSTURE_BASE + mobEffLevel(e.mobLevel) * MOB_POSTURE_PER_LEVEL) * (mobIsElite(e.data) ? ELITE_POSTURE : 1.f);
   e.posture = std::min(e.maxPosture, e.posture + dmg * POSTURE_PER_DMG * postureFactor(p));

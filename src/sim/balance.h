@@ -124,6 +124,28 @@ constexpr int GEAR_LEVELS_PER_TIER = 6;                                  // copp
 inline constexpr const char* GEAR_TIERS[] = {"copper", "bronze", "iron", "steel", "diamond", "mithril", "adamantite"};
 inline constexpr const char* GEAR_PIECES[] = {"sword", "axe", "helmet", "chestplate", "leggings", "boots"};
 constexpr float GEAR_WORN_MIN = 0.2f, GEAR_WORN_MAX = 0.6f;              // dropped gear comes this worn
+
+// ---- skill perks (data/magic.json "perks": each description says what its number here does; sim/skills.h) -------------------
+constexpr float PERK_LUMBERJACK = 0.2f;          // Woodcutting 60: a fifth more logs (a felled tree's, and a log chopped alone)
+constexpr float PERK_HEARTWOOD = 0.5f;           // Woodcutting 90: an axe's wear from felling x this
+constexpr float PERK_PATIENT_ANGLER = 1.5f;      // Fishing 30: a bite stays on the hook this much longer
+constexpr float PERK_DOUBLE_CATCH = 0.2f;        // Fishing 60: the chance a fish comes up with a second
+constexpr float PERK_SEAS_FAVOUR = 3.f;          // Fishing 90: treasure this many times as often
+constexpr float PERK_KEEN_EDGE = 1.f / 16;       // Melee 30: added to a melee blow's crit chance (past the stats' cap)
+constexpr float PERK_CLEAVE = 1.f / 3;           // Melee 60: the share of a blow the foe beside its target takes...
+constexpr float PERK_CLEAVE_REACH = 2.5f;        // ...a foe this near the target (blocks)
+constexpr float PERK_BLOODTHIRST = 0.05f;        // Melee 90: the share of melee damage dealt that heals you
+constexpr float PERK_STEADY_AIM = 1.1f;          // Archery 30: arrow speed x this (an arrow's damage follows its speed)
+constexpr float PERK_RETRIEVAL = 1.f / 3;        // Archery 60: the chance a shot doesn't use up its arrow
+constexpr float PERK_EAGLE_EYE = 1.25f;          // Archery 90: an arrow's damage x this...
+constexpr float PERK_EAGLE_EYE_RANGE = 20;       // ...from this far off (blocks)
+constexpr float PERK_BONDED = 0.75f;             // Taming 30: harm your creatures take x this
+constexpr float PERK_PACK_LEADER = 4.f / 3;      // Taming 60: your creatures' blows x this
+constexpr float PERK_QUICK_BITE = 0.6f;          // Cooking 60: the wait between bites x this
+constexpr float PERK_FEAST_REGEN = 6;            // Cooking 90: seconds of Regeneration I after eating
+constexpr float PERK_UNBREAKABLE = 0.5f;         // Defence 90: the chance a blow doesn't wear a piece of armour
+constexpr float PERK_PATHFINDER = 0.05f;         // Exploring 30: walking and running faster (past the stats' cap)
+constexpr float PERK_WAYFARER = 0.05f;           // Exploring 90: another this much
 } // namespace bal
 
 // ---- helpers (sim/balance.cpp) --------------------------------------------------------------------------------------------

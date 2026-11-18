@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include "sim/magic_data.h"
 #include "sim/effects.h"
+#include "sim/creature.h"
 
 namespace dq {
 
@@ -128,6 +129,7 @@ void onBlockBroken(Level& lv, Player& p, int x, int y, int z, const BlockDef& b,
     if (hasPerk(p, "mining", 90) && rnd() < 0.05) drop(b.drop, 2);
     else if (hasPerk(p, "mining", 30) && rnd() < 0.1) drop(b.drop, 1);
   }
+  if (has && harvest && b.has("isLog") && woodcuttingExtraLog(p)) drop(b.drop.empty() ? b.key : b.drop);   // Lumberjack (a felled tree's: sim/controller.cpp)
   if (has && sk.skill == "excavation" && harvest) {
     if (hasPerk(p, "excavation", 60) && rnd() < 0.012) drop(rnd() < 0.5 ? "emerald" : "bone");
     else if (hasPerk(p, "excavation", 30) && rnd() < 0.04) { static const char* k[] = {"flint", "clay_ball", "gold_nugget"}; drop(k[(int)(rnd() * 3) % 3]); }
@@ -205,5 +207,59 @@ bool skillTakePlaced(Level& lv, int realm, int x, int y, int z) {
 bool skillWasPlaced(Level& lv, int realm, int x, int y, int z) { return lv.world(realm).placedAt(x, y, z); }
 float cookingHealFactor(const Player& p) { return (1 + skillBonus(p, "cooking", 0.25f)) * (hasPerk(p, "cooking", 30) ? 1.1f : 1.f); }
 bool smithSavesWear(const Player& p) { return rnd() < skillBonus(p, "smithing", 0.3f); }
+
+// ---- the perks the gameplay code asks about (rpg.js perks; their numbers: sim/balance.h) -----------------------------
+void woodcuttingFelled(const Player& p, std::map<std::string, int>& logs, std::map<std::string, int>& extras, const std::string& sapling) {
+  if (hasPerk(p, "woodcutting", 60))   // Lumberjack: a fifth more of each kind (the odd part of one by chance)
+    for (auto& [k, n] : logs) { const double more = n * bal::PERK_LUMBERJACK; n += (int)more + (rnd() < more - std::floor(more) ? 1 : 0); }
+  if (hasPerk(p, "woodcutting", 30) && !sapling.empty() && reg().item(sapling)) {   // Forester: always a sapling
+    bool any = false;
+    for (auto& [k, n] : extras) if (n > 0 && endsWith(k, "sapling")) any = true;
+    if (!any) extras[sapling] = 1;
+  }
+}
+bool woodcuttingExtraLog(const Player& p) { return hasPerk(p, "woodcutting", 60) && rnd() < bal::PERK_LUMBERJACK; }
+int woodcuttingFellWear(const Player& p, int logs) {
+  const double w = logs / 2.0;
+  return (int)std::ceil(hasPerk(p, "woodcutting", 90) ? w * bal::PERK_HEARTWOOD : w);
+}
+bool woodcuttingSavesWear(const Player& p) { return hasPerk(p, "woodcutting", 90) && rnd() < 1 - bal::PERK_HEARTWOOD; }
+float fishingBiteFactor(const Player& p) { return hasPerk(p, "fishing", 30) ? bal::PERK_PATIENT_ANGLER : 1.f; }
+int fishingCatchCount(const Player& p, const std::string& kind) { return kind == "fish" && hasPerk(p, "fishing", 60) && rnd() < bal::PERK_DOUBLE_CATCH ? 2 : 1; }
+float fishingTreasureFactor(const Player& p) { return hasPerk(p, "fishing", 90) ? bal::PERK_SEAS_FAVOUR : 1.f; }
+float meleeCritBonus(const Player& p) { return hasPerk(p, "melee", 30) ? bal::PERK_KEEN_EDGE : 0.f; }
+Entity* cleaveTarget(Level& lv, const Player& p, const Entity& target) {
+  if (!hasPerk(p, "melee", 60) || target.isPlayer()) return nullptr;
+  Entity* best = nullptr;
+  float bestD = bal::PERK_CLEAVE_REACH;
+  for (auto& up : lv.entities()) {
+    Entity* e = up.get();
+    if (e == &target || e->removed || e->realm != target.realm || e->hp <= 0 || e->isPlayer() || !isMob(*e)) continue;
+    // a foe: a hostile creature, or one that's after you; never a creature someone keeps (yours or a friend's)
+    const auto* c = dynamic_cast<const Creature*>(e);
+    if (!c || !c->T || !c->owner.empty() || c->T->npc || !(c->T->hostile || (c->angryT > 0 && c->foe == p.id))) continue;
+    const float d = glm::distance(e->pos, target.pos);
+    if (d < bestD && glm::distance(e->pos, p.pos) < bal::PERK_CLEAVE_REACH + 3) { bestD = d; best = e; }
+  }
+  return best;
+}
+float bloodthirstHeal(const Player& p, float dealt) { return dealt > 0 && hasPerk(p, "melee", 90) ? dealt * bal::PERK_BLOODTHIRST : 0.f; }
+float archerySpeedFactor(const Player& p) { return hasPerk(p, "archery", 30) ? bal::PERK_STEADY_AIM : 1.f; }
+bool archeryKeepsArrow(const Player& p) { return hasPerk(p, "archery", 60) && rnd() < bal::PERK_RETRIEVAL; }
+float archeryRangeFactor(const Player& p, float dist) { return dist >= bal::PERK_EAGLE_EYE_RANGE && hasPerk(p, "archery", 90) ? bal::PERK_EAGLE_EYE : 1.f; }
+float tameChanceOf(const Player& p, float chance) { return hasPerk(p, "taming", 90) ? 1.f : chance; }
+// the creature's keeper by name: in a joined world the host has the guest's mirror (their skills sent with it)
+float petHarmFactor(Level& lv, const std::string& owner) {
+  const Player* o = owner.empty() ? nullptr : playerNamed(lv, owner);
+  return o && hasPerk(*o, "taming", 30) ? bal::PERK_BONDED : 1.f;
+}
+float petHitFactor(Level& lv, const std::string& owner) {
+  const Player* o = owner.empty() ? nullptr : playerNamed(lv, owner);
+  return o && hasPerk(*o, "taming", 60) ? bal::PERK_PACK_LEADER : 1.f;
+}
+float foodWaitFactor(const Player& p) { return hasPerk(p, "cooking", 60) ? bal::PERK_QUICK_BITE : 1.f; }
+float feastRegenSecs(const Player& p) { return hasPerk(p, "cooking", 90) ? bal::PERK_FEAST_REGEN : 0.f; }
+bool armourSavesWear(const Player& p) { return hasPerk(p, "defence", 90) && rnd() < bal::PERK_UNBREAKABLE; }
+float exploringSpeedFactor(const Player& p) { return 1 + (hasPerk(p, "exploring", 30) ? bal::PERK_PATHFINDER : 0.f) + (hasPerk(p, "exploring", 90) ? bal::PERK_WAYFARER : 0.f); }
 
 } // namespace dq
