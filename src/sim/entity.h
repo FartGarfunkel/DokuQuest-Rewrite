@@ -36,12 +36,15 @@ public:
   std::vector<NetSample> netHist;
   double netDelay = 0.12, netAgeMean = -1, netAgeDev = 0.02, netGap = 0.1, netViewAt = -1, netLastRt = -1;   // (how late they come: their mean and spread)
   vec3 netCorr{0}; float netCorrYaw = 0;
-  double netShownT = -1;   // the time (our clock) of the newest state put on it: older news of its state is let go
+  double netShownT = -1;   // the time (the sender's clock) of the newest state put on it: older news of its state is let go
+  // the sender's clock against ours (theirs - ours): the samples keep the sender's own times, and are drawn by this offset,
+  // eased (netOffTarget is the newest estimate): a better estimate coming in never shifts or reorders what was heard
+  double netOff = 0, netOffTarget = 0; bool netOffKnown = false;
   // the drawn state (netUpdateView): on a joined world it becomes the ghost's pos itself (glide); on the host a guest's
   // body keeps its newest pos for the game's rules and is only DRAWN at the view (client/session.cpp swaps it in)
   bool hasView = false;
   vec3 viewPos{0}, viewVel{0}; float viewYaw = 0, viewPitch = 0, viewBody = 0;
-  void netSample(double t, double now, vec3 p, float yaw, float pitch, float body);
+  void netSample(double t, double now, double off, vec3 p, float yaw, float pitch, float body);   // t: sender's clock; off: theirs - ours
   bool netEval(double rt, vec3& p, float& yaw, float& pitch, float& body, vec3* vel = nullptr) const;
   void netUpdateView(double now);
   void netReset() { netHist.clear(); netCorr = vec3(0); netCorrYaw = 0; hasView = false; netViewAt = netLastRt = -1; }

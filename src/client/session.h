@@ -75,6 +75,7 @@ public:
   std::vector<std::pair<Entity*, std::array<float, 6>>> shownAt;
   struct Gear { Player* p = nullptr; int sel = 0; ItemStack held, off; std::vector<ItemStack> armor; };
   std::vector<Gear> shownGear;
+  std::vector<std::pair<Player*, std::shared_ptr<Player>>> shownViews;   // (a guest swapped with their drawing copy, Player::netView)
   void save();
 
   // camera / view
