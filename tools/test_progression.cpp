@@ -731,7 +731,9 @@ static void guidePlay() {
   skillGain(L, P, "mining", skillXpFor(30) - skillXp(P, "mining") + 1);
   g.tick(2);
   CHECK(hintSeen(P, "perk"), "the first perk brings its hint once");
-  // stat points: one is waiting (the levels above) and its hint has come; the page says to spend them
+  // stat points: one is waiting (the levels above); its hint comes once the world's been played a couple of minutes
+  CHECK(!hintSeen(P, "stat"), "no stat point hint in the first minutes");
+  g.tick(121);
   CHECK(P.statPoints > 0 && hintSeen(P, "stat") && has(whatNext(L, P), "stat"), "unspent stat points: a hint, and a goal on the page (" + S(P.statPoints) + ")");
   CHECK(!hintOnce(L, P, "stat"), "a hint seen is not shown again");
   // standing with a village, the quest board, a tamed creature

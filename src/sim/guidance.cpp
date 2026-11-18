@@ -44,8 +44,10 @@ bool hintOnce(Level& lv, Player& p, const std::string& k) {
 }
 void hintsCheck(Level& lv, Player& p) {
   if (p.mode == "spectator") return;
-  if (p.statPoints > 0) hintOnce(lv, p, "stat");
-  if (treeLeft(p) > 0) hintOnce(lv, p, "talent");
+  // (the points a new player starts with wait a couple of minutes: two tips in the first second of a world were noise)
+  const bool settled = playTime(lv) >= 120;
+  if (settled && p.statPoints > 0) hintOnce(lv, p, "stat");
+  if (settled && treeLeft(p) > 0) hintOnce(lv, p, "talent");
   if (pathReady(p)) hintOnce(lv, p, "path");
   if (anyRep(p)) hintOnce(lv, p, "rep");
   if (anyPerk(p)) hintOnce(lv, p, "perk");
