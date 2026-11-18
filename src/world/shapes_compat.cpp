@@ -56,7 +56,7 @@ bool worldBoxes(const World& w, int x, int y, int z, BlockId id, int purpose, st
   }
   return true;
 }
-bool hasShapeBoxes(BlockId id) { return reg().tShape[id] || !reg().block(id).str("shape").empty(); }
+bool hasShapeBoxes(BlockId id) { float sb[6]; return reg().tShape[id] || !reg().block(id).str("shape").empty() || stationBounds(id, 0, sb); }
 float liquidHeight(BlockId id, u8 meta, BlockId above) {
   if (above == id) return 1;
   if (reg().tPortal[id]) return 1;

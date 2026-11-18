@@ -119,8 +119,26 @@ def main(d):
     def ringZY(y0, y1):   # the next, a quarter turn round
         x0, x1 = 7.5, 8.5
         return [[x0, y0 + 1, 6, x1, y1 - 1, 7], [x0, y0 + 1, 9, x1, y1 - 1, 10], [x0, y0, 6.5, x1, y0 + 1, 9.5], [x0, y1 - 1, 6.5, x1, y1, 9.5]]
-    for b in ringXY(0, 9) + ringZY(7, 16): link.append({'b': b, 'side': 'iron_block'})
+    for b in ringXY(0, 9) + ringZY(7, 16): link.append({'b': b, 'side': 'iron_block', 'link': True})
     S['chain'] = link
+
+    # a hanging light's chain (lanterns, soul lanterns...: every "<model>_hang") is the same interlocking links, scaled down
+    # to fit between its cap and the ceiling: two links, the lower hooked into the cap, the upper into the ceiling (or the
+    # chain above, which the mesher adds in full-size links: render/mesh_shapes.cpp emitModel). "link" marks them.
+    def ring(y0, y1, hw, t, zy):   # an oval of four bars in the middle of the block, facing front-back (zy: a quarter turn round)
+        c0, c1 = 8 - t / 2, 8 + t / 2
+        bars = [[8 - hw, y0 + t, 8 - hw + t, y1 - t], [8 + hw - t, y0 + t, 8 + hw, y1 - t], [8 - hw + t / 2, y0, 8 + hw - t / 2, y0 + t], [8 - hw + t / 2, y1 - t, 8 + hw - t / 2, y1]]
+        r3 = lambda v: round(v, 4)
+        return [[r3(c0), r3(a1), r3(a0), r3(c1), r3(b1), r3(b0)] if zy else [r3(a0), r3(a1), r3(c0), r3(b0), r3(b1), r3(c1)] for a0, a1, b0, b1 in bars]
+    for name in [n for n in S if n.endswith('_hang')]:
+        boxes = S[name]
+        old = [x for x in boxes if x.get('side') == 'chain' or x.get('link')]
+        if not old: continue
+        bot = min(x['b'][1] for x in old); top = max(x['b'][4] for x in old)   # (the old strip: from the cap's top to the ceiling)
+        keep = [x for x in boxes if not (x.get('side') == 'chain' or x.get('link'))]
+        span = top - bot; h = span * 0.65; t = 0.75; hw = 1.5
+        links = ring(bot - t, bot - t + h, hw, t, True) + ring(top - h, top, hw, t, False)
+        S[name] = keep + [{'b': b, 'side': 'iron_block', 'link': True} for b in links]
     import math
     rope = []
     for k in range(8):

@@ -516,6 +516,20 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
     if ((R.tShape[up] == ShapeKind::Slab && (c.metaAt(x, y + 1, z) & 7) == 1) || (fullSolid(up) && carveFaceDepth(c.carveAt(x, y + 1, z), 0, -1, 0) == 8)) extra = 1;
   }
   static int chainTile = -2; if (chainTile == -2) chainTile = R.tile("chain");
+  // a chain of 3D links (the chain block, a hanging light's chain: data/shapes.json "link"): the rest of it up to a ceiling
+  // further up, or an upper underside, in more links, each turned from the one under it (no stretched bars)
+  {
+    const ShapeBox* topL = nullptr;
+    for (auto& b0 : *boxes) if (b0.link && (!topL || b0.b[4] > topL->b[4])) topL = &b0;
+    const int n = topL ? extra + (stretchTop ? 1 : 0) : 0;
+    if (n > 0) {
+      ShapeBox t = *topL; if (rf) rotBox(t, rf);
+      const bool topZY = t.b[3] - t.b[0] < t.b[5] - t.b[2];   // (thin across x: it faces sideways)
+      thread_local std::vector<ShapeBox> more; more.clear();
+      chainLinks(16, n, !topZY, more);
+      for (auto& s : more) addShapeBox(c, d, s, o, 1 / 16.f, sk, bl, lift, rf, mat, nullptr);
+    }
+  }
   for (auto& b0 : *boxes) {
     if (!b0.only || b0.spin) continue;   // a box that collides and picks but a render layer draws (or turns: the stonecutter's blade) (a placed mob head: its stone box
                               // fought the head's own faces, the flicker round placed skulls)

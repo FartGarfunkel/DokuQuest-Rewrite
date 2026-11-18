@@ -828,7 +828,7 @@ void Creature::update(Level& lv, float dt) {
     // still falls and slides to a stop (a body killed in mid-air doesn't hang there)
     vel.x *= std::max(0.f, 1 - dt * 6); vel.z *= std::max(0.f, 1 - dt * 6);
     if (!noGravity) vel.y -= 28 * dt;
-    MoveResult r = moveBox(wd, pos, w, h, vel * dt, 0);
+    MoveResult r = moveBox(wd, pos, w, h, vel * dt, 0, !T->flyer);
     if (r.hitY) vel.y = 0;
     if (r.hitX) vel.x = 0;
     if (r.hitZ) vel.z = 0;
@@ -1005,7 +1005,7 @@ void Creature::update(Level& lv, float dt) {
   {
     vec3 before = pos;
     // a creature hiding inside a block (the October pumpkin creature) stays put: no move, no push out of the block
-    MoveResult r = data.value("inBlock", false) ? MoveResult{} : type == "wither_storm" ? (pos += vel * dt, MoveResult{}) : T->phase ? phaseMove(wd, pos, w, h, vel * dt) : moveBox(wd, pos, w, h, vel * dt, onGround || wasGround ? (riddenBy ? 1.05f : 0.6f) : 0.f);   // (ridden: up stairs and slabs at a run, as ridden pigs keep their momentum)
+    MoveResult r = data.value("inBlock", false) ? MoveResult{} : type == "wither_storm" ? (pos += vel * dt, MoveResult{}) : T->phase ? phaseMove(wd, pos, w, h, vel * dt) : moveBox(wd, pos, w, h, vel * dt, onGround || wasGround ? (riddenBy ? 1.05f : 0.6f) : 0.f, !T->flyer);   // (ridden: up stairs and slabs at a run, as ridden pigs keep their momentum)
     hitWall = r.hitX || r.hitZ; hitCeiling = r.hitY && vel.y > 0;
     if (r.hitX) vel.x = 0;
     if (r.hitZ) vel.z = 0;

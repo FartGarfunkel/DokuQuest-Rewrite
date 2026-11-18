@@ -210,6 +210,10 @@ add_test(NAME endstory COMMAND test_endstory)
 add_executable(test_villagers tools/test_villagers.cpp)
 target_link_libraries(test_villagers PRIVATE dqcore)
 add_test(NAME villagers COMMAND test_villagers)
+# Hitbox audit (headless): drawn vs collision vs selection bounds of every shaped block. Run: build/test_shapes [--all]
+add_executable(test_shapes tools/test_shapes.cpp)
+target_link_libraries(test_shapes PRIVATE dqcore)
+add_test(NAME shapes COMMAND test_shapes)
 # Townsfolk way-finding audit (headless): errands about generated towns, arrival rate and time. Run: build/test_npc_paths
 add_executable(test_npc_paths tools/test_npc_paths.cpp)
 target_link_libraries(test_npc_paths PRIVATE dqcore)
@@ -219,7 +223,7 @@ add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
 
 # every program finds data/ and assets/ next to it
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_weather test_balance test_npc_paths)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_weather test_balance test_npc_paths test_shapes)
   if(TARGET ${t})
     add_dependencies(${t} dq_runtime_data)
   endif()

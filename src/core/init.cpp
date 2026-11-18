@@ -29,6 +29,7 @@ bool initCore(const CoreOptions& o) {
   registerVillageTheft();   // stealing in villages (sim/village_theft.cpp)
   registerTreasureMaps();   // a treasure map's X and the chest buried there (sim/treasure_maps.cpp)
   registerStrung();         // chains and ropes strung between blocks (sim/strung.cpp)
+  registerFallen();         // the fallen adventurers: their bones are their hitboxes (sim/fallen.h)
   return true;
 }
 void shutdownCore() {}

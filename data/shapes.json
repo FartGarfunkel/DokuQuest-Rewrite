@@ -156,7 +156,8 @@
      8,
      8.5
     ],
-    "side": "iron_block"
+    "side": "iron_block",
+    "link": true
    },
    {
     "b": [
@@ -167,7 +168,8 @@
      8,
      8.5
     ],
-    "side": "iron_block"
+    "side": "iron_block",
+    "link": true
    },
    {
     "b": [
@@ -178,7 +180,8 @@
      1,
      8.5
     ],
-    "side": "iron_block"
+    "side": "iron_block",
+    "link": true
    },
    {
     "b": [
@@ -189,7 +192,8 @@
      9,
      8.5
     ],
-    "side": "iron_block"
+    "side": "iron_block",
+    "link": true
    },
    {
     "b": [
@@ -200,7 +204,8 @@
      15,
      7
     ],
-    "side": "iron_block"
+    "side": "iron_block",
+    "link": true
    },
    {
     "b": [
@@ -211,7 +216,8 @@
      15,
      10
     ],
-    "side": "iron_block"
+    "side": "iron_block",
+    "link": true
    },
    {
     "b": [
@@ -222,7 +228,8 @@
      8,
      9.5
     ],
-    "side": "iron_block"
+    "side": "iron_block",
+    "link": true
    },
    {
     "b": [
@@ -233,7 +240,8 @@
      16,
      9.5
     ],
-    "side": "iron_block"
+    "side": "iron_block",
+    "link": true
    }
   ],
   "flower_pot": [
@@ -682,14 +690,99 @@
    },
    {
     "b": [
-     7.5,
-     10,
-     7,
-     8.5,
-     16,
-     9
+     7.625,
+     9.25,
+     6.5,
+     8.375,
+     12.1375,
+     7.25
     ],
-    "side": "chain"
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     7.625,
+     9.25,
+     8.75,
+     8.375,
+     12.1375,
+     9.5
+    ],
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     7.625,
+     8.5,
+     6.875,
+     8.375,
+     9.25,
+     9.125
+    ],
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     7.625,
+     12.1375,
+     6.875,
+     8.375,
+     12.8875,
+     9.125
+    ],
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     6.5,
+     12.3625,
+     7.625,
+     7.25,
+     15.25,
+     8.375
+    ],
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     8.75,
+     12.3625,
+     7.625,
+     9.5,
+     15.25,
+     8.375
+    ],
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     6.875,
+     11.6125,
+     7.625,
+     9.125,
+     12.3625,
+     8.375
+    ],
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     6.875,
+     15.25,
+     7.625,
+     9.125,
+     16,
+     8.375
+    ],
+    "side": "iron_block",
+    "link": true
    }
   ],
   "soul_lantern_hang": [
@@ -718,14 +811,99 @@
    },
    {
     "b": [
-     7.5,
-     10,
-     7,
-     8.5,
-     16,
-     9
+     7.625,
+     9.25,
+     6.5,
+     8.375,
+     12.1375,
+     7.25
     ],
-    "side": "chain"
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     7.625,
+     9.25,
+     8.75,
+     8.375,
+     12.1375,
+     9.5
+    ],
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     7.625,
+     8.5,
+     6.875,
+     8.375,
+     9.25,
+     9.125
+    ],
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     7.625,
+     12.1375,
+     6.875,
+     8.375,
+     12.8875,
+     9.125
+    ],
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     6.5,
+     12.3625,
+     7.625,
+     7.25,
+     15.25,
+     8.375
+    ],
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     8.75,
+     12.3625,
+     7.625,
+     9.5,
+     15.25,
+     8.375
+    ],
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     6.875,
+     11.6125,
+     7.625,
+     9.125,
+     12.3625,
+     8.375
+    ],
+    "side": "iron_block",
+    "link": true
+   },
+   {
+    "b": [
+     6.875,
+     15.25,
+     7.625,
+     9.125,
+     16,
+     8.375
+    ],
+    "side": "iron_block",
+    "link": true
    }
   ],
   "bamboo": [

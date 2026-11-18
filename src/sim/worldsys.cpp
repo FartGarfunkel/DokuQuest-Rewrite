@@ -745,8 +745,8 @@ void crowdPush(Level& lv, float dt) {
       if (e->data.value("pinned", false)) return;
       e->vel.x += ux * v; e->vel.z += uz * v;
       if (!bb.player && amt > 0) {
-        float x = e->pos.x + ux * amt, z = e->pos.z + uz * amt, r = bb.r * 0.9f;
-        if (!collides(w, x - r, e->pos.y + 0.02, z - r, x + r, e->pos.y + std::min(bb.h, 1.8f) - 0.02, z + r)) { e->pos.x = x; e->pos.z = z; }
+        float x = e->pos.x + ux * amt, z = e->pos.z + uz * amt, r = bb.r;   // (its whole width: shoved a tenth into a fence post it had climbed it)
+        if (!collides(w, x - r, e->pos.y + 0.02, z - r, x + r, e->pos.y + std::min(bb.h, 1.8f) - 0.02, z + r, true)) { e->pos.x = x; e->pos.z = z; }   // (a creature never shoved over a pen's posts)
       }
     };
     nudge(b, -nx, -nz, shift * sa, dv * sa * (b.player ? 0.6f : 1));

@@ -19,6 +19,7 @@
 #include "gen/nether_painted.h"
 #include "sim/dyntree.h"
 #include "sim/blockinfo.h"
+#include "sim/physics.h"
 #include "sim/worldsys.h"
 #include "world/chunk.h"
 #include <thread>
@@ -91,6 +92,53 @@ int main(int argc, char** argv) {
     }
     check(!hung && onTop >= 0 && onTop < 0.5f, "a one-block step is jumped onto, not hung from (" + std::string(hung ? "hung" : "no hang") + ", on top at " + std::to_string(onTop) + " s)");
     for (int x = 6; x <= 10; x++) w.setBlock(x, rg.Y + 1, 7, AIR);
+  }
+  {   // fences and walls: you stand on the top you see (not half a block over it), and jump up onto them; a creature can't
+    const BlockId fence = reg().blockId("oak_fence"), wall = reg().blockId("cobblestone_wall");
+    for (BlockId b : {fence, wall}) {
+      w.setBlock(8, rg.Y + 1, 4, b);
+      rg.P->pos = vec3(8.5f, rg.Y + 2.4f, 4.5f); rg.P->vel = vec3(0); rg.fall(1.0);
+      check(rg.P->onGround && std::fabs(rg.P->pos.y - (rg.Y + 2)) < 0.01f, "standing on a " + reg().block(b).key + ": feet on its top (+" + std::to_string(rg.P->pos.y - (rg.Y + 1)) + ")");
+      rg.P->pos = vec3(8.5f, rg.Y + 1, 5.0f + rg.P->w + 0.05f); rg.P->vel = vec3(0); rg.fall(0.3);
+      PlayerInput fw; fw.mz = -1; PlayerInput fj = fw; fj.jump = true;
+      float onTop = -1;
+      for (int i = 0; i < 60 && onTop < 0; i++) { rg.P->move(w, i < 20 ? fj : fw, 1 / 60.f, MoveOpts{}); if (rg.P->onGround && rg.P->pos.y > rg.Y + 1.99f) onTop = i / 60.f; }
+      check(onTop >= 0, "a jump gets you up onto a " + reg().block(b).key);
+      w.setBlock(8, rg.Y + 1, 4, AIR);
+    }
+    {   // a creature meets a fence a block taller than it is drawn: moving into it over its top, it is stopped
+      w.setBlock(8, rg.Y + 1, 4, fence);
+      vec3 p(8.5f, rg.Y + 2.1f, 3.3f); MoveResult r = moveBox(w, p, 0.3f, 0.9f, vec3(0, 0, 1.0f), 0.f, true);
+      vec3 q(8.5f, rg.Y + 2.1f, 3.3f); moveBox(w, q, 0.3f, 0.9f, vec3(0, 0, 1.0f), 0.f, false);
+      check(r.hitZ && p.z < 4.375f - 0.3f + 0.01f && q.z > 4.2f, strFormat("over a fence's top a creature is stopped (z %.3f), a player is not (z %.3f)", p.z, q.z));
+      w.setBlock(8, rg.Y + 1, 4, AIR);
+    }
+    // pens: a ring of fence with a shut gate, and a ring of wall. Their creatures, running and jumping at the sides again and
+    // again, never get up onto a post (a player can) and never out
+    const BlockId gate = reg().blockId("oak_fence_gate");
+    for (BlockId ring : {fence, wall}) {
+      for (int x = 1; x <= 9; x++) for (int z = 1; z <= 9; z++) if (x == 1 || x == 9 || z == 1 || z == 9) w.setBlock(x, rg.Y + 1, z, ring);
+      if (gate && ring == fence) w.setBlock(5, rg.Y + 1, 1, gate, 0);
+      rg.P->pos = vec3(14.5f, rg.Y + 1, 14.5f);
+      std::vector<Creature*> pen;
+      for (const char* k : {"cow", "sheep", "pig", "chicken", "goat", "horse", "rabbit", "llama", "wolf"})
+        if (reg().mobs.contains(k)) if (Creature* c = spawnCreature(*rg.lv, 0, k, vec3(5.5f, rg.Y + 1, 5.5f))) pen.push_back(c);
+      std::set<std::string> up, out;
+      for (int t = 0; t < 60 * 30; t++) {
+        for (size_t i = 0; i < pen.size(); i++) {   // each runs at a side of the pen, jumping
+          Creature* c = pen[i];
+          const float a = (float)i * 0.7f + t * 0.002f;
+          c->vel.x = std::cos(a) * 4; c->vel.z = std::sin(a) * 4; c->wantJump = true;
+        }
+        rg.lv->tick(TICK_DT);
+      }
+      for (Creature* c : pen) if (c->pos.x < 1.6f || c->pos.x > 9.4f || c->pos.z < 1.6f || c->pos.z > 9.4f) out.insert(c->type + strFormat("@%.2f,%.2f,%.2f", c->pos.x, c->pos.y - rg.Y, c->pos.z));
+      std::string bad; for (auto& k : up) bad += " " + k + " (on top)"; for (auto& k : out) bad += " " + k + " (out)";
+      check(!pen.empty() && bad.empty(), std::to_string(pen.size()) + " creatures jumping at a " + reg().block(ring).key + " pen for 30 s stay in it" + bad);
+      for (Creature* c : pen) c->removed = true;
+      rg.lv->tick(TICK_DT);
+      for (int x = 1; x <= 9; x++) for (int z = 1; z <= 9; z++) w.setBlock(x, rg.Y + 1, z, AIR);
+    }
   }
   {   // the view keeps up with a jump (the steady climb is for steps on the ground: the "slow, sticky" jump)
     float y = 0, cam = 0, vy = JUMP_V, lag = 0;
