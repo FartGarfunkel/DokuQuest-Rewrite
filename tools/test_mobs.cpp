@@ -175,6 +175,17 @@ int main(int argc, char** argv) {
     }
     clearCreatures(*lv);
     CHECK(empty == 0, "every creature but the special ones has a drop table");
+    // where the creatures with places of their own come out (sim/creature_spawn.cpp: spawnDim's sixth field)
+    {
+      auto livesIn = [&](const char* k) { std::string s; const json& m = reg().mobs.value(k, json());
+        if (m.is_object() && m.contains("spawnDim")) for (auto& e : m["spawnDim"]) if (e.size() >= 6) for (auto& p : e[5]) s += p.get<std::string>() + " ";
+        return s; };
+      CHECK(!reg().mobs.contains("farseer") && !creatureType("farseer"), "the farseer is not in the game");
+      CHECK(livesIn("guster").find("desert") != std::string::npos && livesIn("guster").find("forest") == std::string::npos, "the guster comes out only in deserts and the badlands (%s)", livesIn("guster").c_str());
+      CHECK(livesIn("crimson_mosquito") == "crimson " && livesIn("warped_toad") == "warped " && livesIn("soul_vulture") == "soul ", "the Ember Depths' creatures each in their own woods and valleys");
+      const json& lv = reg().mobs.value("laviathan", json());
+      CHECK(lv.is_object() && lv["spawnDim"][0][4] == "l", "the laviathan comes up in lava, not on the ground");
+    }
     std::string nl; for (auto& k : none) nl += " " + k;
     CHECK(none.empty(), "%d of %d killed creatures dropped something%s%s", gave, killed, none.empty() ? "" : ": none from", nl.c_str());
     // a tamed companion leaves nothing; a kept farm animal still gives its meat

@@ -266,4 +266,6 @@ void clientPlayerCamera(GameSession& s, Camera& cam, double dtd) {
   } else st.hasTp = false;
 }
 
+bool localSitOn(GameSession& s, int x, int y, int z) { PlayerController* c = localController(s); return c && c->sitOn(x, y, z); }
+
 } // namespace dq
