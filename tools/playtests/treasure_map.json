@@ -1,0 +1,18 @@
+{
+"steps": [
+{ "wait": 200, "do": "anchor" },
+{ "do": "give", "item": "treasure_map", "n": 1 },
+{ "do": "select", "slot": 0 },
+{ "do": "look", "yaw": 0, "pitch": 70 },
+{ "wait": 30, "do": "mouse", "button": "right" },
+{ "wait": 60, "do": "expect", "screen": "treasure_map" },
+{ "do": "look", "yaw": 0, "pitch": 0 },
+{ "wait": 60, "do": "shot", "path": "/tmp/dq_treasure_map.png" },
+{ "do": "pad", "button": "x" },
+{ "wait": 20, "do": "shot", "path": "/tmp/dq_treasure_map_zoomed.png" },
+{ "do": "key", "key": "Escape" },
+{ "wait": 30, "do": "look", "yaw": 0, "pitch": -45 },
+{ "wait": 60, "do": "shot", "path": "/tmp/dq_treasure_map_held.png" },
+{ "do": "quit" }
+]
+}

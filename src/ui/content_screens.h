@@ -10,6 +10,8 @@ namespace dq {
 
 // slot: the inventory slot of the map to look at (-2 = the off hand, -1 = the best one you carry)
 std::unique_ptr<Screen> makeMapScreen(int slot = -1);
+// a treasure map opened (sim/treasure_maps.h): the land round its X at (tx, tz), the X, the way there (ui/treasure_map_screen.cpp)
+std::unique_ptr<Screen> makeTreasureMapScreen(int slot, int tx, int tz);
 std::unique_ptr<Screen> makeWaystoneScreen(const std::string& hereId);
 std::unique_ptr<Screen> makeStableScreen();
 std::unique_ptr<Screen> makePlacesScreen();

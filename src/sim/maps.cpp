@@ -1,6 +1,7 @@
 // sim/maps.cpp — paper maps: records, exploring, markers, pins, using, crafting (game/maps.js).
 #include "sim/maps.h"
 #include "sim/atlas.h"
+#include "gen/generator.h"
 
 namespace dq {
 
@@ -141,7 +142,7 @@ std::vector<PaperMap*> MapStore::sameScale(const PaperMap& m) {
     if (!maps.count(id) && !missing.count(id)) get(id);
   }
   std::vector<PaperMap*> out;
-  for (auto& [k, mm] : maps) if (mm.get() != &m && mm->dim == m.dim && mm->scale == m.scale) out.push_back(mm.get());
+  for (auto& [k, mm] : maps) if (mm.get() != &m && k.rfind("treasure~", 0) != 0 && mm->dim == m.dim && mm->scale == m.scale) out.push_back(mm.get());
   std::sort(out.begin(), out.end(), [](PaperMap* a, PaperMap* b) { return a->explored() < b->explored(); });
   return out;
 }
@@ -233,6 +234,18 @@ int mapPaintLoaded(Level& lv, PaperMap& m, int& cursor, int budget) {
   }
   if (m.ver != v0) mapStore(lv).dirty.insert(m.id);
   return painted;
+}
+void mapGeneratedPixels(const DimGenerator& g, const PaperMap& at, PaperMap& out) {
+  const int s = 1 << at.scale;
+  for (int i = 0; i < MAP_PIX; i++) {
+    const int bx = at.x0 + (i % MAP_N) * s + (s >> 1), bz = at.z0 + (i / MAP_N) * s + (s >> 1);
+    ColumnSample c; g.sample(bx, bz, c);
+    if (c.height < 0) continue;
+    const u8 cl = (u8)((c.temp >> 4) << 4);
+    if (c.water >= c.height && c.fluid != AIR) out.setPixel(i, c.fluid, (u8)std::min(255, c.water + 1), (u8)(cl | std::min(15, c.water - c.height + 1)));
+    else if (c.tree && c.leaves != AIR && c.treeTop > c.height) out.setPixel(i, c.leaves, (u8)std::min(255, c.treeTop + 1), (u8)(cl | (c.humid >> 4)));
+    else out.setPixel(i, c.top, (u8)std::min(255, c.height + 1), (u8)(cl | (c.humid >> 4)));
+  }
 }
 void mapsTick(Level& lv, double dt) {
   MapStore& st = mapStore(lv);
