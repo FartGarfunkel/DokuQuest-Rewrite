@@ -39,6 +39,7 @@
 #include <regex>
 #include <set>
 using namespace dq;
+static const char* const ARMOR_PIECE[4] = {"helmet", "chestplate", "leggings", "boots"};   // (no compound literals: MSVC)
 
 // ---- every item has a use: what an item can be put to (placed, worn, eaten, an ingredient, a station's input, a
 // creature's food, melted down, or named by the sim code that handles it). Selling or a transmute value is not a use.
@@ -944,7 +945,7 @@ int main(int argc, char** argv) {
     check(!stationResult("smithing", ItemStack("dragonscale_chestplate", 1), ItemStack("frost_dragon_scale", 3)).ok, "...three are not enough");
     bool back = false; for (auto& rc : reg().recipes) if (rc.out == "dragon_scale" && rc.items.size() == 1 && rc.items[0] == "tide_dragon_scale") back = true;
     check(back, "a dragon's own scale still crafts into a plain Dragon Scale (the old recipes)");
-    for (int i = 0; i < 4; i++) P->armor[i] = ItemStack(std::string("frostscale_") + (const char*[]){"helmet", "chestplate", "leggings", "boots"}[i], 1);
+    for (int i = 0; i < 4; i++) P->armor[i] = ItemStack(std::string("frostscale_") + ARMOR_PIECE[i], 1);
     DamageSource frost; frost.element = "frost";
     check(gearSet(*P) == "frostscale" && gearHarmFactor(*P, frost) < 0.25f, "the whole Frost Scale set: frost hurts a fifth");
     Entity* z = spawnCreature(*L, "zombie", P->realm, P->pos + vec3(1.5f, 0, 0));
@@ -955,7 +956,7 @@ int main(int argc, char** argv) {
     if (z) z->removed = true;
     P->armor[3] = ItemStack("dragonscale_boots", 1);
     check(gearSet(*P).empty(), "a mixed set has no set bonus");
-    for (int i = 0; i < 4; i++) P->armor[i] = ItemStack(std::string("tidescale_") + (const char*[]){"helmet", "chestplate", "leggings", "boots"}[i], 1);
+    for (int i = 0; i < 4; i++) P->armor[i] = ItemStack(std::string("tidescale_") + ARMOR_PIECE[i], 1);
     P->air = 1; tick(0.2);
     check(P->air >= P->maxAir - 0.01f, "the Tide Scale set: your breath never runs out");
     for (auto& a : P->armor) a = ItemStack();

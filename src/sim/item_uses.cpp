@@ -64,7 +64,7 @@ void gearOnHurt(Level& lv, Player& p, const DamageSource& src, float dealt) {
   else if (set == "stormscale") {
     combatHurt(lv, *a, 2, json{{"type", "magic"}, {"element", "lightning"}, {"knock", 0}}, &p);
     combatKnock(lv, *a, p.pos, 7);
-    if (lv.fx) { lv.fx->particles("spark", a->pos + vec3(0, a->h * 0.6f, 0), 10); lv.fx->sound("zap", a->pos, 16); }
+    if (lv.fx) { lv.fx->particles("spark", a->pos + vec3(0, a->h * 0.6f, 0), 10); lv.fx->sound("fizz", a->pos, 16); }   // (a jolt: no sound of its own)
   }
 }
 
