@@ -26,6 +26,8 @@ void registerVillageTheft();     // sim/village_theft.cpp
 void registerTreasureMaps();     // sim/treasure_maps.cpp
 void registerStrung();           // sim/strung.cpp
 void registerFallen();           // sim/fallen.cpp (the remains' posed bones as their shapes)
+void registerItemUses();         // sim/item_uses.cpp (the War Horn, the dragons' armour sets, the capes)
+void registerGuidance();         // sim/guidance.cpp (the first-time hints)
 void registerMovingBodies();     // sim/moving.cpp (hinges and sliders)
 void registerAttachments();      // sim/attach_play.cpp (parts sharing a cell)
 void registerGlue();             // sim/glue.cpp (moving structures: glue between faces)

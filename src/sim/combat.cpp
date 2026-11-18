@@ -2,6 +2,7 @@
 // entities.js Mob.hurt/die, fairplay.js raw-blow floor).
 #include "core/tool_parts.h"
 #include "sim/rpg.h"
+#include "sim/item_uses.h"
 #include "sim/skilltree.h"
 #include "sim/balance.h"
 #include "sim/skills.h"
@@ -94,6 +95,7 @@ static float playerHurtRaw(Player& p, float amount, const DamageSource& src) {
   if (src.type == "magic") dmg *= 1 - std::min(0.6f, treeAttrPct(p, "spell_resist") + treeAttr(p, "spell_resist"));
   if (src.raw > 0 && !src.bypassArmor) dmg = std::max(dmg, src.raw * 0.2f);
   if (src.element == "fire" || src.type == "lava" || src.type == "burn") dmg *= 1 - fireResist(p);
+  dmg *= gearHarmFactor(p, src);   // a dragon set's bonus, a cape (sim/item_uses.h)
   dmg = std::max(0.5f, std::round(dmg * 2) / 2);
   p.hp = std::max(0.f, p.hp - dmg);
   p.invuln = src.type == "burn" || src.type == "lava" ? 0.45f : 0.6f;
@@ -123,6 +125,7 @@ float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
   float dealt = playerHurtRaw(p, amount, src);
   if (!dealt) return 0;
   afterPlayerHurt(lv, p, dealt, mj);
+  gearOnHurt(lv, p, src, dealt);   // a dragon set strikes back (sim/item_uses.h)
   if (dealt >= 5) DQ_LOG("%s took %.1f (%s)", p.name.c_str(), dealt, src.type.c_str());   // big hits, for playtests and the bridge's log
   sfxUi(lv, p, "hurt");
   if (lv.events) lv.events->emit("rumble", json::array({p.name, std::min(1.f, 0.25f + dealt * 0.08f), 140}));

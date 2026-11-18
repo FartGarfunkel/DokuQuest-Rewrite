@@ -11,6 +11,7 @@
 #include "sim/effects.h"
 #include "sim/skills.h"
 #include "sim/rpg.h"
+#include "sim/guidance.h"
 #include "core/item_glint.h"
 #include "ui/theme.h"
 #include "ui/glyphs.h"
@@ -668,10 +669,11 @@ public:
     if (a.input.pressed(Act::Skills) && frames > 1) { want = true; swapTo = 1; }
     Story s = storyOf(*lv, *p);
     playerName = p->name;
-    book.begin(a, "##journal", {{"Your story", "book"}, {"Compendium", "spawn_egg"}, {"Records", "clock"}});
+    book.begin(a, "##journal", {{"Your story", "book"}, {"What next", "compass"}, {"Compendium", "spawn_egg"}, {"Records", "clock"}});
     const float z = ui::Z();
-    // the controller: on the story, up / down walks the chapters found and A reads closer; in the Compendium's index up /
-    // down walks it and A opens that creature's spread
+    // the controller: on the story, up / down walks the chapters found and A reads closer; on What next up / down picks a
+    // goal and A follows it (points to spend: your skills); in the Compendium's index up / down walks it and A opens that
+    // creature's spread
     Input& in = a.input;
     if (book.tab() == 0) {
       std::vector<std::string> ids; for (auto& c : s.ch) if (c.shown) ids.push_back(c.id);
@@ -683,10 +685,21 @@ public:
     ui::BookRows st, rec;
     storyRows(a, s, st, z);
     std::vector<ui::BookRows> secs; secs.push_back(std::move(st));
+    ui::BookRows nx; nextRows(a, *lv, *p, nx, z);
+    secs.push_back(std::move(nx));
+    if (book.tab() == 1 && !goals.empty()) {
+      if (in.pressed(Act::MenuDown)) nextCur = (nextCur + 1) % (int)goals.size();
+      if (in.pressed(Act::MenuUp)) nextCur = (nextCur + (int)goals.size() - 1) % (int)goals.size();
+      if (in.pressed(Act::MenuOk) && nextCur >= 0) nextGo = nextCur;
+    }
+    if (nextGo >= 0 && nextGo < (int)goals.size()) {   // following a goal: the points' and perks' ones open your skills
+      const std::string k = goals[nextGo].key; nextGo = -1;
+      if (k == "stat" || k == "talent" || k == "perk") { want = true; swapTo = 1; }
+    }
     if (portraits.size() > 8) portraits.clear();   // (the pictures of the pages open: a few at most)
     ui::BookRows dex; dexRows(a, *p, dex, z);
     secs.push_back(std::move(dex));
-    if (book.tab() == 1 && !dexTypes.empty()) {
+    if (book.tab() == 2 && !dexTypes.empty()) {
       if (in.pressed(Act::MenuDown)) dexCur = (dexCur + 1) % (int)dexTypes.size();
       if (in.pressed(Act::MenuUp)) dexCur = (dexCur + (int)dexTypes.size() - 1) % (int)dexTypes.size();
       if (in.pressed(Act::MenuOk) && dexCur >= 0) dexGo = dexCur;
@@ -702,9 +715,40 @@ public:
     book.draw(secs);
     if (dexGo >= 0) { book.showSel(2000 + dexGo); dexCur = dexGo; dexGo = -1; }
     if (a.input.usingPad()) ui::padHint(14, -1, "Turn pages");
-    book.hint("J: close \xC2\xB7 K: your skills and perks \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 or the wheel: turn the pages \xC2\xB7 click a leaf on the tree");
+    book.hint(a.input.usingPad() ? "D-pad \xE2\x86\x90 \xE2\x86\x92: turn the pages \xC2\xB7 \xE2\x86\x91 \xE2\x86\x93: choose \xC2\xB7 A: read closer, follow a goal, open a creature \xC2\xB7 X: next bookmark \xC2\xB7 B: close"
+                                 : "J: close \xC2\xB7 K: your skills and perks \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 or the wheel: turn the pages \xC2\xB7 click a leaf on the tree, or a goal to follow it");
     book.end();
   }
+  // ---- What next: a few goals from where you are (sim/guidance.h), each with why; one with points to spend opens your
+  // skills when followed
+  void nextRows(App& a, Level& lv, Player& p, ui::BookRows& R, float z) {
+    goals = whatNext(lv, p);
+    if (nextCur >= (int)goals.size()) nextCur = goals.empty() ? -1 : 0;
+    book.heading(R, "What next");
+    book.para(R, "A few things you could do now, the most pressing first.", ui::ink::muted, ui::F_SMALL);
+    book.gap(R, 6 * z);
+    for (size_t i = 0; i < goals.size(); i++) {
+      const NextGoal g = goals[i];
+      const bool opens = g.key == "stat" || g.key == "talent" || g.key == "perk";
+      const float h = std::max(ui::textSize(ui::F_BODY, "Ag").y + 6 * z, 26 * z);
+      ui::BookRow row; row.h = h; row.sel = 3000 + (int)i;
+      row.draw = [this, g, i, h, z, opens](ImDrawList* dl, ImVec2 q, float w) {
+        const ImVec2 mp = ImGui::GetIO().MousePos;
+        const bool hot = mp.x >= q.x && mp.x <= q.x + w && mp.y >= q.y && mp.y < q.y + h;
+        if (hot || nextCur == (int)i) dl->AddRectFilled(ImVec2(q.x - 3 * z, q.y), ImVec2(q.x + w, q.y + h), ui::ink::hilite, 3 * z);
+        ui::drawIcon(dl, g.icon, ImVec2(q.x, q.y + 1 * z), h - 2 * z, 1.f);
+        ui::text(dl, ui::F_BODY, ImVec2(q.x + h + 4 * z, q.y + (h - ui::textSize(ui::F_BODY, "Ag").y) * 0.5f), ui::ink::head, g.title.c_str(), w - h - 6 * z);
+        if (opens) { const char* t = "\xE2\x86\x92"; ui::text(dl, ui::F_BODY, ImVec2(q.x + w - ui::textSize(ui::F_BODY, t).x - 2 * z, q.y + 3 * z), ui::ink::muted, t); }
+        if (hot && ImGui::IsMouseClicked(0)) { nextCur = (int)i; nextGo = (int)i; }
+      };
+      R.push_back(std::move(row));
+      book.para(R, g.why, ui::ink::text, ui::F_SMALL, 8 * z);
+      book.gap(R, 7 * z);
+    }
+    (void)a;
+  }
+  std::vector<NextGoal> goals;
+  int nextCur = 0, nextGo = -1;
   void update(App& a, double dt) override {
     if (want && swapTo == 1) { want = false; swapTo = 0; a.popScreen(); a.pushScreen(makeSkillsScreen()); return; }
     MagicScreenBase::update(a, dt);

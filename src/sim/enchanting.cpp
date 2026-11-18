@@ -83,7 +83,7 @@ int enchantability(const std::string& id) {
   if (std::regex_search(id, m, re)) mat = m[1];
   const ItemDef* d = reg().item(id);
   bool armor = d && d->has("armor");
-  static const std::unordered_map<std::string, int> A = {{"leather", 15}, {"chainmail", 12}, {"iron", 9}, {"gold", 25}, {"diamond", 10}, {"copper", 11}, {"bronze", 12}, {"silver", 18}, {"steel", 10}, {"mithril", 20}, {"adamantite", 12}, {"cinderite", 15}, {"dragonscale", 18}, {"mage", 22}, {"archmage", 24}, {"frost", 14}};
+  static const std::unordered_map<std::string, int> A = {{"leather", 15}, {"chainmail", 12}, {"iron", 9}, {"gold", 25}, {"diamond", 10}, {"copper", 11}, {"bronze", 12}, {"silver", 18}, {"steel", 10}, {"mithril", 20}, {"adamantite", 12}, {"cinderite", 15}, {"dragonscale", 18}, {"verdantscale", 18}, {"sandscale", 18}, {"frostscale", 18}, {"bogscale", 18}, {"emberscale", 18}, {"stormscale", 18}, {"tidescale", 18}, {"mage", 22}, {"archmage", 24}, {"frost", 14}};
   static const std::unordered_map<std::string, int> T = {{"wooden", 15}, {"wood", 15}, {"stone", 5}, {"iron", 14}, {"gold", 22}, {"golden", 22}, {"diamond", 10}, {"copper", 12}, {"bronze", 13}, {"silver", 20}, {"steel", 11}, {"mithril", 22}, {"adamantite", 13}, {"cinderite", 16}};
   const auto& tab = armor ? A : T;
   auto f = tab.find(mat);

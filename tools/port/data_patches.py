@@ -517,3 +517,7 @@ for _n in ('new_materials', 'forging', 'tool_parts', 'armor_art', 'elytra_art', 
 
 # ---- everything stacks unless stacking would break it (tools/port/stacking.py) ----
 _s22 = _u.spec_from_file_location('stacking', pathlib.Path(__file__).with_name('stacking.py')); _m22 = _u.module_from_spec(_s22); _s22.loader.exec_module(_m22); _m22.main(d)
+
+# ---- every drop has a use: the War Horn, each dragon's own scales and armour, grain foods and feed, the capes' words
+#      (tools/port/item_uses.py; checked by tools/test_content.cpp) ----
+_s23 = _u.spec_from_file_location('item_uses', pathlib.Path(__file__).with_name('item_uses.py')); _m23 = _u.module_from_spec(_s23); _s23.loader.exec_module(_m23); _m23.main(d)
