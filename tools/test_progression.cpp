@@ -117,7 +117,10 @@ struct Play {
   void cool(double secs = 300) { holdNothing(); tick(secs); tidy(); }
   std::map<std::string, int> collect() {   // pick up what lies about (the drops of what was just broken)
     std::map<std::string, int> got;
-    for (auto& e : lv->entities()) if (!e->removed && e->type == "item") { ItemStack s = ItemStack::fromJson(e->data["stack"]); got[s.id] += s.n; give(s); e->removed = true; }
+    for (auto& e : lv->entities()) if (!e->removed && e->type == "item") {
+      ItemStack s = ItemStack::fromJson(e->data["stack"]); got[s.id] += s.n; give(s); e->removed = true;
+      if (getenv("DQ_COLLECT")) printf("    [collect %d %s at %.1f %.1f %.1f age %.2f]\n", s.n, s.id.c_str(), e->pos.x, e->pos.y, e->pos.z, e->age);
+    }
     return got;
   }
   void aim(int x, int y, int z, ivec3 n = ivec3(0, 1, 0), vec3 frac = vec3(0.5f, 1.f, 0.5f)) {
@@ -218,6 +221,7 @@ struct Play {
     for (double t = 0; t < maxSecs; t += 5) { tick(5); e = containerEntity(w(), x, y, z); if ((*e)["items"][0].is_null()) break; }
     e = containerEntity(w(), x, y, z);
     ItemStack o = ItemStack::fromJson((*e)["items"][2]); const int got = o.empty() ? 0 : o.n;
+    if (getenv("DQ_COLLECT") && !got) printf("    [smelt %s x%d: furnace now %s, bag has %d of it, %d free slots]\n", in.c_str(), n, e->dump().substr(0, 400).c_str(), count(in), (int)std::count_if(P->inv.begin(), P->inv.end(), [](const ItemStack& s) { return s.empty(); }));
     for (int i = 0; i < 3; i++) { give(ItemStack::fromJson((*e)["items"][i])); (*e)["items"][i] = nullptr; }
     why = "smelt result: " + (smeltResult(in, kind).empty() ? std::string("none in a ") + kind : smeltResult(in, kind));
     return got;
@@ -241,8 +245,8 @@ static void classic() {
   CHECK(got["cobblestone"] == 20, "the wooden pickaxe mines stone: " + Play::list(got));
   got = g.mine("gneiss", 1);
   CHECK(got["cobbled_gneiss"] == 1, "a layer rock (gneiss) drops cobbled gneiss: " + Play::list(got) + " " + g.lastMine);
-  got = g.mine("coal_ore", 6);
-  CHECK(got["coal"] >= 6, "coal from coal ore: " + Play::list(got));
+  got = g.mine("coal_ore", 16);   // (enough for all the smelting below, bonus ore and all: with 6 the last smelts ran out now and then)
+  CHECK(got["coal"] >= 16, "coal from coal ore: " + Play::list(got));
   got = g.mine("iron_ore", 1);
   CHECK(got.empty(), "the wooden pickaxe gets nothing from iron ore (tier): " + Play::list(got));
   CHECK(g.craft("stone_pickaxe") && g.craft("stone_pickaxe"), "stone pickaxes " + g.why);
@@ -253,7 +257,8 @@ static void classic() {
     if (!g.hold("stone_pickaxe")) g.craft("stone_pickaxe"), g.hold("stone_pickaxe");
     const int n = std::string(o) == "iron_ore" ? 6 : std::string(o) == "copper_ore" ? 10 : 2;
     got = g.mine(o, n);
-    CHECK(got[std::string(o) + "_piece"] == n, std::string("the stone pickaxe mines ") + o + " (its ore, not the block): " + Play::list(got) + " " + g.lastMine);
+    // (at least one a block; now and then one more: the skill's and the pick's own bonus ore, sim/skills.cpp onBlockBroken)
+    CHECK(got[std::string(o) + "_piece"] >= n && got[std::string(o) + "_piece"] <= n + n / 2 + 1, std::string("the stone pickaxe mines ") + o + " (its ore, not the block): " + Play::list(got) + " " + g.lastMine);
   }
   for (const char* o : {"gold_ore", "silver_ore", "diamond_ore", "redstone_ore"}) {
     g.hold("stone_pickaxe"); got = g.mine(o, 1);

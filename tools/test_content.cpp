@@ -384,7 +384,7 @@ int main(int argc, char** argv) {
       cow->loveT = 0; cow->breedCd = 0;
       tick(8);
       check(cow->loveT > 0 || cow->breedCd > 0, "a grown cow walks to the trough, eats and is in the mood");
-      check(troughStack(w, TX, Y + 1, TZ).n == 19 && (!calf || calf->loveT <= 0), "...one bite of it (a calf leaves it be)");
+      check(troughStack(w, TX, Y + 1, TZ).n == 19 && (!calf || calf->loveT <= 0), "...one bite of it (a calf leaves it be): " + std::to_string(troughStack(w, TX, Y + 1, TZ).n) + " left, calf love " + std::to_string(calf ? calf->loveT : 0.f));
       ItemStack empty;
       int got0 = 0; for (auto& s : P->inv) if (s.id == food) got0 += s.n;
       check(troughUse(*L, *P, w, h, empty) && troughStack(w, TX, Y + 1, TZ).empty(), "an empty hand takes what's left back");
