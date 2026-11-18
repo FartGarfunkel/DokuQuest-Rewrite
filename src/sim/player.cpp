@@ -144,6 +144,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   if (atkMove && atkT < attackMove(atkMove).recovery) speed *= 0.35f;
   speed *= pathSpeedFactor(*this);   // Fleet Foot (sim/villager_quests.cpp)
   if (!flying) speed *= moveFactor(*this);   // Agility, speed talents, load (sim/balance.h)
+  if (!flying && (bowPull > 0 || blockT > 0)) speed *= useMoveFactor(*this);   // (the trees: on the move with a bow drawn or a shield up)
   speed *= opts.slow;
   BlockId under = wd.getBlock(ifloor(pos.x), ifloor(pos.y - 0.1f), ifloor(pos.z));
   if (onGround && !flying) speed *= binfo(under).slow;   // soul sand and honey drag at your feet
@@ -200,7 +201,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
     if (vel.y < -60) vel.y = -60;
     if (c.web) vel.y = std::max(vel.y, -1.f);
     if (c.leaves) { vel.y = std::max(vel.y, -5.f); hasFallStart = false; }   // the branches break your fall
-    if (inp.jump && onGround) { vel.y = JUMP_V * (bhas(under, BF::Sticky) ? 0.55f : 1.f); if (sprinting) { vel.x *= 1.15f; vel.z *= 1.15f; } }
+    if (inp.jump && onGround) { vel.y = JUMP_V * jumpFactor(*this) * (bhas(under, BF::Sticky) ? 0.55f : 1.f); if (sprinting) { vel.x *= 1.15f; vel.z *= 1.15f; } }
   }
   if (mode == "spectator") flying = true;   // a spectator always flies, through anything
   if (flying) { vel.y = (inp.jump ? 7.5f : 0.f) - (inp.sneak ? 7.5f : 0.f); hasFallStart = false; }
@@ -300,12 +301,12 @@ MoveInfo Player::move(const World& wd, const PlayerInput& inp, float dt, const M
   else if (jumpBuf > 0) jumpBuf -= dt;
   const Contacts& c = contacts;
   bool free = !flying && !c.water && !c.lava && !c.ladder && !hang && !climb && !swimming;
-  if (free && !onGround && jumpEdge && airT < 0.13f && !jumped && vel.y <= 0.5f) { vel.y = JUMP_V; jumped = true; jumpBuf = 0; }
+  if (free && !onGround && jumpEdge && airT < 0.13f && !jumped && vel.y <= 0.5f) { vel.y = JUMP_V * jumpFactor(*this); jumped = true; jumpBuf = 0; }
   bool wasGround = onGround;
   MoveInfo r = baseMove(wd, inp, dt, opts);
   if (onGround) {
     airT = 0; jumped = false;
-    if (!wasGround && free && jumpBuf > 0 && !inp.jump && !sneaking) { vel.y = JUMP_V; onGround = false; jumped = true; jumpBuf = 0; }
+    if (!wasGround && free && jumpBuf > 0 && !inp.jump && !sneaking) { vel.y = JUMP_V * jumpFactor(*this); onGround = false; jumped = true; jumpBuf = 0; }
   } else {
     airT += dt;
     if (vel.y > 1 && wasGround) jumped = true;

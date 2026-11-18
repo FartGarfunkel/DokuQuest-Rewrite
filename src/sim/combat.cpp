@@ -4,6 +4,7 @@
 #include "sim/rpg.h"
 #include "sim/item_uses.h"
 #include "sim/skilltree.h"
+#include "sim/talent_fx.h"
 #include "sim/balance.h"
 #include "sim/skills.h"
 #include "sim/combat.h"
@@ -141,7 +142,8 @@ void mobDeath(Level& lv, Entity& m, const DamageSource& src) {
   bool baby = m.data.value("baby", false);
   Entity* by = src.attacker ? lv.entity(src.attacker) : nullptr;
   const MobLoot L = mobLoot(m.mobLevel, mobIsElite(m.data), by && by->isPlayer() ? static_cast<Player*>(by) : nullptr);   // (its level, an elite, your luck: sim/balance.h)
-  for (int roll = 0; roll < L.rolls; roll++)
+  const int rolls = L.rolls + (L.twice > 0 && rnd() < L.twice ? 1 : 0);   // (the trees' loot_double: the table once more)
+  for (int roll = 0; roll < rolls; roll++)
   if (!baby && T.contains("drops") && T["drops"].is_array()) for (auto& d : T["drops"]) {
     if (!d.is_array() || d.size() < 4) continue;
     if (rnd() < d[3].get<double>() * L.chanceMul) { int a = d[1], b = d[2]; int n = a + (int)(rnd() * (b - a + 1)) + (rnd() < L.extra ? 1 : 0); if (n > 0) dropItem(lv, m.realm, ItemStack(d[0], n), m.pos + vec3(0, 0.5f, 0), true); }
@@ -242,6 +244,7 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
   } else dealt = damageEntity(lv, e, dmg, src);
   if (setCd) p.attackCd = (tool && tool->type == "sword" ? 0.45f : 0.6f) / attackSpeedFactor(p);   // (Agility, attack-speed talents)
   if (dealt > 0 && !e.isPlayer() && !e.ghost) onPlayerHitMob(lv, p, e, "melee", dealt, hpBefore);   // (Melee grows with the blows that land)
+  if (dealt > 0 && !e.isPlayer() && !e.ghost) talentOnHit(lv, p, e, dealt);   // (the trees: bleeding, poison, slowness, fire, life drawn: sim/talent_fx.h)
   if (dealt > 0) {
     sfxUi(lv, p, crit ? "crit" : "hit");
     if (crit) lv.fx->particles("crit", e.pos + vec3(0, e.h * 0.6f, 0), 10);   // a burst of stars on a critical blow

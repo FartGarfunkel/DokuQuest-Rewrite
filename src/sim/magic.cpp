@@ -113,6 +113,8 @@ const std::vector<std::string>& knownSpells(const Player& p) {
   if (p.stats.contains("spells") && p.stats["spells"].is_array()) for (auto& k : p.stats["spells"]) if (k.is_string()) v.push_back(k);
   // a spellbook in the off hand: its spells too (cast at the rank written in it: docs/MAGIC_MERGE.md)
   if (!p.offhand.empty()) for (auto& [k, r] : bookSpells(p.offhand[0])) if (std::find(v.begin(), v.end(), k) == v.end()) v.push_back(k);
+  // the skill trees' granted spells (no tome, no Magic level: sim/skilltree.h)
+  for (const std::string& k : treeGrants(p, "grant_spell.")) if (magicData().spell(k) && std::find(v.begin(), v.end(), k) == v.end()) v.push_back(k);
   return v;
 }
 std::string activeSpell(Player& p) {

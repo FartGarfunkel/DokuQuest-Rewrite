@@ -52,7 +52,7 @@ constexpr float DRAW_SPEED_MIN = -0.4f, DRAW_SPEED_MAX = 0.6f;
 // ---- talent attributes (skill tree nodes and gems) ----------------------------------------------------------------------
 // value = flat x flatScale + pct, clamped to [lo, hi]. flatScale 0: the flat part is used elsewhere as it is (health, armour,
 // mana, stamina, damage add their flat amount directly) and only the percentage is capped here.
-struct TalentRule { const char* attr; float flatScale, lo, hi; const char* what; };
+struct TalentRule { const char* attr; float flatScale, lo, hi; const char* what; bool flag = false; };   // flag: on (any amount) or off
 inline constexpr TalentRule TALENTS[] = {
     {"damage", 0, -0.5f, 1.0f, "melee damage %"},
     {"health", 0, -0.5f, 1.0f, "max health %"},
@@ -79,7 +79,31 @@ inline constexpr TalentRule TALENTS[] = {
     {"summon_damage", 0, 0, 0.5f, "summoned allies' damage"},
     {"luck", 0.05f, 0, 0.3f, "loot luck (a flat point = 5%)"},
     {"fishing", 0.1f, 0, 0.5f, "fishing luck (a flat point = 10%)"},
+    // what the trees' notables and keystones do besides the numbers above (sim/talent_fx.h)
+    {"stealth", 0, 0, 0.6f, "sneaking: creatures notice you only this much nearer"},
+    {"bleed_chance", 0, 0, 0.6f, "chance a blow or arrow that lands makes the foe bleed"},
+    {"poison_chance", 0, 0, 0.6f, "chance a blow or arrow that lands poisons the foe"},
+    {"slow_chance", 0, 0, 0.6f, "chance a blow or arrow that lands slows the foe"},
+    {"burn_chance", 0, 0, 0.75f, "chance a blow or arrow that lands sets the foe alight"},
+    {"loot_double", 0, 0, 0.5f, "chance a creature you kill drops its loot twice"},
+    {"arrow_return", 0, 0, 0.6f, "chance an arrow you loose isn't used up"},
+    {"multishot", 0, 0, 0.5f, "chance a second arrow flies with the first"},
+    {"heal_received", 0, -0.5f, 0.5f, "healing received"},
+    {"effect_duration", 0, 0, 0.6f, "how much longer good potion and spell effects last on you"},
+    {"xp_gain", 0, 0, 0.5f, "experience gained"},
+    {"damage_reduction", 0, -0.3f, 0.25f, "less harm taken from everything but the void"},
+    {"jump", 0, 0, 0.15f, "jump strength"},
+    {"use_move", 0, 0, 0.4f, "movement speed while drawing a bow or holding a shield up"},
+    {"lifesteal", 0, 0, 0.15f, "share of the harm your blows and arrows deal that heals you"},
+    {"rage", 0, 0, 0.6f, "melee damage as your health runs out (all of it at the last heart)"},
+    {"venom_undead", 1, 0, 1, "your poison takes hold even on the undead", true},
+    {"venom_lethal", 1, 0, 1, "your poison can kill (it doesn't stop at the last half heart)", true},
 };
+// the statuses a talent's blow leaves (bleed_chance ... burn_chance): how long each lasts
+constexpr float HIT_BLEED_SECS = 4, HIT_BLEED_TICK = 1.0f;   // a heart's half each tick, through armour
+constexpr float HIT_POISON_SECS = 6, HIT_SLOW_SECS = 3, HIT_BURN_SECS = 4;
+constexpr float MULTISHOT_SPREAD = 0.06f;                    // the second arrow's angle off the first (radians)
+constexpr float SNEAK_NOTICE_MIN = 2.5f;                     // however stealthy, a creature this near notices you
 
 // ---- creature levels and elites ---------------------------------------------------------------------------------------------
 constexpr float MOB_HP_PER_LEVEL = 0.08f, MOB_DMG_PER_LEVEL = 0.05f, MOB_XP_PER_LEVEL = 0.06f;
@@ -136,6 +160,14 @@ float overhealShare(const Player& p);
 float summonDamageFactor(const Player& p);
 float lootLuck(const Player& p);
 float fishingLuck(const Player& p);
+float noticeRange(const Player& p, float range);   // how far a creature notices `p` (sneaking: less, by stealth)
+float healReceivedFactor(const Player& p);
+float effectDurationFactor(const Player& p);       // good effects on you: their seconds x this
+float xpGainFactor(const Player& p);
+float damageTakenFactor(const Player& p);          // 1 - damage reduction
+float jumpFactor(const Player& p);                 // the jump's speed x this
+float useMoveFactor(const Player& p);              // drawing a bow / shield up: speed x this
+float rageFactor(const Player& p);                 // melee damage x this (more as your health runs out)
 
 // creature levels
 float mobEffLevel(int lvl);   // the level its health, damage and posture scale by (soft past MOB_SOFT_LEVEL)
@@ -143,7 +175,7 @@ float mobLevelHp(int lvl);
 float mobLevelDmg(int lvl);
 // what a creature's death adds to its drop table: rolls of the table, each entry's chance multiplier, the chance of one
 // more of an entry that drops, and a chance at a piece of gear of a tier fitting its level
-struct MobLoot { int rolls = 1; float chanceMul = 1, extra = 0, gearChance = 0; int gearTier = 0; };
+struct MobLoot { int rolls = 1; float chanceMul = 1, extra = 0, gearChance = 0, twice = 0; int gearTier = 0; };   // twice: the chance of one more roll (loot_double)
 MobLoot mobLoot(int level, bool elite, const Player* killer);
 ItemStack mobGearRoll(const MobLoot& l, double r1, double r2, double r3);   // r* in [0,1): which piece, its tier, its wear
 } // namespace dq

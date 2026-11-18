@@ -42,6 +42,7 @@
 #include <cstdio>
 #include <cmath>
 #include <queue>
+#include <set>
 
 using namespace dq;
 namespace dq { void npcRep(Level& lv, Player& p, const std::string& vid, double n, const std::string& why); }   // sim/villagers.h (its sim/content.h clashes with sim/gameplay.h here)
@@ -726,17 +727,91 @@ static void guidePlay() {
   CHECK(wolf && !rallied(L, *wolf), "...for " + S((int)HORN_SECS) + " s");
 }
 
+// the skill trees' talents that work through the controller (sim/balance.h TALENTS): arrows kept, a second arrow, a higher
+// jump, walking on with a bow drawn. Given through stats "attrBonus" as a learnt node would give them.
+static void talentsPlay() {
+  printf("\n=== TALENTS (bow, jump, movement) ===\n");
+  Play g("Talents", false);
+  Player& P = *g.P;
+  auto run = [&](double secs, PlayerInput in) {
+    PlayerInput first = in;
+    for (double t = 0; t < secs - 1e-9; t += TICK_DT) {
+      g.pc->update((float)TICK_DT, first);
+      first.usePressed = first.attackPressed = false;
+      g.lv->tick(TICK_DT);
+    }
+  };
+  auto place = [&] { P.pos = vec3(8.5f, g.Y + 1, 8.5f); P.vel = vec3(0); P.yaw = 0; P.pitch = 0.35f; P.onGround = true; P.hasFallStart = false; };
+  auto bonus = [&](json a) { P.stats["attrBonus"] = a; };
+  // shots: n draws and looses; what came out of the bag, how many arrows flew
+  auto volley = [&](int n, int& used, int& flew) {
+    for (auto& s : P.inv) s = ItemStack();
+    P.selected = 0; P.inv[0] = ItemStack("bow", 1); P.inv[1] = ItemStack("arrow", 64); P.inv[2] = ItemStack("arrow", 64);
+    std::set<u32> seen; for (auto& e : g.lv->entities()) if (e->type == "arrow") seen.insert(e->id);
+    flew = 0;
+    for (int i = 0; i < n; i++) {
+      place();
+      PlayerInput draw; draw.use = true; draw.usePressed = true;
+      run(0.6, draw); run(0.1, PlayerInput());
+      for (auto& e : g.lv->entities()) if (e->type == "arrow" && seen.insert(e->id).second) flew++;
+      for (auto& e : g.lv->entities()) if (e->type == "arrow") e->removed = true;   // (none to walk over and pick up)
+      P.inv[0] = ItemStack("bow", 1);   // (unworn: the test is about the arrows)
+    }
+    used = 128 - g.count("arrow");
+  };
+  int used0 = 0, flew0 = 0, used1 = 0, flew1 = 0;
+  bonus(json::object()); volley(40, used0, flew0);
+  bonus(json{{"arrow_return", {0.f, 1.f}}, {"multishot", {0.f, 1.f}}}); volley(40, used1, flew1);
+  CHECK(used0 == 40 && flew0 == 40, "no talents: 40 shots use 40 arrows, 40 fly (" + S(used0) + " used, " + S(flew0) + " flew)");
+  CHECK(used1 < 32 && used1 > 4, "arrow_return (capped at 60%): 40 shots use " + S(used1) + " arrows");
+  CHECK(flew1 > 48 && flew1 < 80, "multishot (capped at 50%): 40 shots loose " + S(flew1) + " arrows");
+  // the jump: how high from a standing start
+  auto jumpHeight = [&] {
+    for (auto& s : P.inv) s = ItemStack();
+    place(); P.pitch = 0; run(0.3, PlayerInput());
+    const float y0 = P.pos.y; float top = y0;
+    PlayerInput j; j.jump = true; run(TICK_DT, j);
+    for (int i = 0; i < 40; i++) { run(TICK_DT, PlayerInput()); top = std::max(top, P.pos.y); }
+    return top - y0;
+  };
+  bonus(json::object()); const float h0 = jumpHeight();
+  bonus(json{{"jump", {0.f, 0.15f}}}); const float h1 = jumpHeight();
+  CHECK(h0 > 0.8f && h1 > h0 * 1.2f, "jump +15%: a standing jump " + std::to_string(h0).substr(0, 4) + " -> " + std::to_string(h1).substr(0, 4) + " blocks");
+  // walking with a bow drawn: how far in a second
+  auto drawnWalk = [&] {
+    for (auto& s : P.inv) s = ItemStack();
+    P.selected = 0; P.inv[0] = ItemStack("bow", 1); P.inv[1] = ItemStack("arrow", 64);
+    place(); P.pitch = 0; run(0.2, PlayerInput());
+    const vec3 a = P.pos;
+    PlayerInput w; w.mz = -1; w.use = true; w.usePressed = true; run(1.0, w);
+    const float d = glm::length(vec2(P.pos.x - a.x, P.pos.z - a.z));
+    run(0.1, PlayerInput());
+    return d;
+  };
+  bonus(json::object()); const float d0 = drawnWalk();
+  bonus(json{{"use_move", {0.f, 0.3f}}}); const float d1 = drawnWalk();
+  CHECK(d1 > d0 * 1.15f, "use_move +30%: a second's walk with the bow drawn " + std::to_string(d0).substr(0, 4) + " -> " + std::to_string(d1).substr(0, 4) + " blocks");
+  P.stats.erase("attrBonus");
+}
+
 int main(int argc, char** argv) {
   std::string ud = (fs::temp_directory_path() / "dq-test-progression").string();
   for (int i = 1; i < argc; i++) if (std::string(argv[i]) == "--userdir" && i + 1 < argc) ud = argv[++i];
   std::error_code ec; fs::remove_all(ud, ec);
   CoreOptions co; co.server = true; co.userDirOverride = ud;
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
-  bool doC = true, doI = true, doG = true;
-  for (int i = 1; i < argc; i++) { const std::string a = argv[i]; if (a == "--classic") doI = doG = false; if (a == "--immersive") doC = doG = false; if (a == "--guide") doC = doI = false; }
+  bool doC = true, doI = true, doG = true, doT = true;
+  for (int i = 1; i < argc; i++) {
+    const std::string a = argv[i];
+    if (a == "--classic") doI = doG = doT = false;
+    if (a == "--immersive") doC = doG = doT = false;
+    if (a == "--guide") doC = doI = doT = false;
+    if (a == "--talents") doC = doI = doG = false;
+  }
   if (doC) classic();
   if (doI) immersivePlay();
   if (doG) guidePlay();
+  if (doT) talentsPlay();
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails;
 }

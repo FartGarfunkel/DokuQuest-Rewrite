@@ -17,8 +17,10 @@
 #include "sim/skilltree.h"
 #include "sim/balance.h"
 #include "sim/skills.h"
+#include "sim/magic.h"
 #include "common/noise.h"
 #include <imgui.h>
+#include <algorithm>
 #include <cmath>
 
 namespace dq {
@@ -233,14 +235,16 @@ public:
       ImGui::Text("%s %s%s", sh[1], f ? ("+" + std::to_string((int)std::round(f))).c_str() : "", pc ? (" +" + std::to_string((int)std::round(pc * 100)) + "%").c_str() : "");
     }
     for (const bal::TalentRule& r : bal::TALENTS) {   // the rest, capped as they work in play (sim/balance.h)
-      if (r.flatScale == 0) continue;
       bool shown = false; for (auto& sh : SHOW) shown |= r.attr == std::string(sh[0]);
       if (shown || (treeAttr(*p, r.attr) == 0 && treeAttrPct(*p, r.attr) == 0)) continue;
       any++;
       const float v = talent(*p, r.attr);
-      ImGui::Text("%s %s%s", r.attr, std::string(r.attr) == "step" ? strFormat("+%.2f", v).c_str() : ((v >= 0 ? "+" : "") + std::to_string((int)std::lround(v * 100)) + "%").c_str(), v >= r.hi || v <= r.lo ? " (capped)" : "");
+      std::string name = r.attr; std::replace(name.begin(), name.end(), '_', ' ');
+      if (r.flag) ImGui::Text("%s%s", name.c_str(), v > 0 ? "" : " (none)");
+      else ImGui::Text("%s %s%s", name.c_str(), std::string(r.attr) == "step" ? strFormat("+%.2f", v).c_str() : ((v >= 0 ? "+" : "") + std::to_string((int)std::lround(v * 100)) + "%").c_str(), v >= r.hi || v <= r.lo ? " (capped)" : "");
       if (ImGui::IsItemHovered()) ui::setTooltip("%s", r.what);
     }
+    for (const std::string& k : treeGrants(*p, "grant_spell.")) if (const SpellDef* S = magicData().spell(k)) { any++; ImGui::Text("spell: %s", S->name.c_str()); }
     if (!any) ImGui::TextDisabled("Nothing yet");
     ImGui::PopItemFlag();
     ui::bookPagesEnd();

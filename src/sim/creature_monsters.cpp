@@ -11,6 +11,7 @@
 #include "sim/physics.h"
 #include "sim/player.h"
 #include "sim/effects.h"
+#include "sim/balance.h"
 #include "sim/magic_fx.h"
 #include "core/registry.h"
 
@@ -81,6 +82,7 @@ bool Creature::notices(Level& lv, const Entity& p, float dist) const {
 }
 Creature::Senses Creature::senses(Level& lv, Entity* p, float dist, float dyp, float dt, float range) {
   Senses s;
+  if (p && p->isPlayer()) range = noticeRange(static_cast<const Player&>(*p), range);   // (sneaking with the trees' stealth: noticed nearer)
   s.near = p && dist < range && std::fabs(dyp) < 12;
   losT -= dt;
   if (losT <= 0) { losT = 0.2f + frand() * 0.12f; sees = s.near && lineOfSight(lv, *p) && notices(lv, *p, dist); }
