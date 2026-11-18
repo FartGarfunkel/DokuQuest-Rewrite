@@ -796,6 +796,22 @@ void Redstone::runTickers() {
     else if (kind == 4) hookTick(x, y, z, id, m);
     else if (kind == 5) detectorTick(x, y, z, id, m);
   }
+  // plates sharing a cell as attachments (world/attach.h): the tickers above know only main blocks
+  std::vector<std::array<int, 5>> parts;   // x, y, z, id, slot
+  for (auto& [key, c] : w.chunks()) {
+    if (!c || c->attach.empty()) continue;
+    bool near = false;
+    for (auto& p : centers) if (std::abs(key.cx - p.x) <= 6 && std::abs(key.cz - p.y) <= 6) { near = true; break; }
+    if (!near) continue;
+    for (auto& [ci, v] : c->attach)
+      for (int s = 0; s < (int)v.size(); s++)
+        if (t.ticker[v[s].id] == 3) parts.push_back({c->worldX() + (ci & 15), c->baseY() + (ci >> 8), c->worldZ() + ((ci >> 4) & 15), (int)v[s].id, s});
+  }
+  for (auto& a : parts) {
+    const auto* v = w.attachments(a[0], a[1], a[2]);
+    if (!v || a[4] >= (int)v->size() || (*v)[a[4]].id != (BlockId)a[3]) continue;
+    plateTick(a[0], a[1], a[2], (BlockId)a[3], (*v)[a[4]].meta, a[4]);
+  }
 }
 void Redstone::timerTick(int x, int y, int z, BlockId id, int m) {
   int interval = 2 * (1 + ((m >> 2) & 3));
@@ -808,8 +824,9 @@ void Redstone::timerTick(int x, int y, int z, BlockId id, int m) {
   if (m & 1) { queue(x - 1, y, z); queue(x + 1, y, z); }
   else { queue(x, y, z - 1); queue(x, y, z + 1); }
 }
-void Redstone::plateTick(int x, int y, int z, BlockId id, int m) {
+void Redstone::plateTick(int x, int y, int z, BlockId id, int m, int slot) {
   std::string kind = reg().block(id).str("plate");
+  auto set = [&](int nm) { if (slot < 0) w.setBlock(x, y, z, id, nm); else w.setAttachmentMeta(x, y, z, slot, (u8)nm); };
   if (kind == "motion") {   // a facing beam: glass in front stretches it, any other solid cuts it, anything alive in it turns it on
     int dir = (m >> 4) & 7;
     if (dir > 5) dir = 2;
@@ -838,7 +855,7 @@ void Redstone::plateTick(int x, int y, int z, BlockId id, int m) {
     }
     int p = hit ? 15 : 0, cur = m & 15;
     if (p != cur) {
-      w.setBlock(x, y, z, id, (m & ~15) | p);
+      set((m & ~15) | p);
       lv.fx->sound(p ? "click" : "click_off", vec3(x, y, z) + vec3(0.5f), 12);
     }
     return;
@@ -853,7 +870,7 @@ void Redstone::plateTick(int x, int y, int z, BlockId id, int m) {
   auto it = plateSeen.find(k);
   i64 seen = it == plateSeen.end() ? 0 : it->second;
   if (p > cur || (p < cur && now - seen >= 10)) {
-    w.setBlock(x, y, z, id, (m & ~15) | p);
+    set((m & ~15) | p);
     lv.fx->sound(p > cur ? "click" : "click_off", vec3(x, y, z) + vec3(0.5f), 16);
   }
 }

@@ -240,6 +240,26 @@ int main(int argc, char** argv) {
     check(qp && !((*qp)[0].meta & 4), "and shut again when it's off");
   }
 
+  printf("[a pressure plate attachment is pressed]\n");
+  {   // a plate on the floor of a wall torch's cell: stood on, it lights the lamp beside it; stepped off, the lamp goes out
+    const ivec3 Q(26, Y + 1, 4);
+    w.setBlock(Q.x, Q.y, Q.z - 1, stone);
+    w.setBlock(Q.x, Q.y, Q.z, torch, 3);   // (on the wall to the north)
+    w.setBlock(Q.x + 1, Q.y, Q.z, lamp);
+    check(placeAttachment(*L, P, w, Q.x, Q.y, Q.z, B("stone_pressure_plate"), 0) == 1, "a pressure plate shares a wall torch's cell");
+    tick(4);
+    check(w.getBlock(Q.x + 1, Q.y, Q.z) == lamp, "the lamp beside it is dark");
+    P->flying = false; P->pos = vec3(Q.x + 0.5f, Q.y, Q.z + 0.5f); P->vel = vec3(0);
+    for (int i = 0; i < 8; i++) { P->pos = vec3(Q.x + 0.5f, Q.y, Q.z + 0.5f); tick(1); }
+    const auto* qp = w.attachments(Q.x, Q.y, Q.z);
+    check(qp && !qp->empty() && ((*qp)[0].meta & 15) > 0, "stood on, the plate part is pressed");
+    check(R.block(w.getBlock(Q.x + 1, Q.y, Q.z)).key == "redstone_lamp_on", "and the lamp beside it lights (" + R.block(w.getBlock(Q.x + 1, Q.y, Q.z)).key + ")");
+    P->flying = true; P->pos = vec3(Q.x + 0.5f, Y + 1, Q.z + 6.5f);
+    tick(40);
+    qp = w.attachments(Q.x, Q.y, Q.z);
+    check(qp && !qp->empty() && ((*qp)[0].meta & 15) == 0 && w.getBlock(Q.x + 1, Q.y, Q.z) == lamp, "stepped off, it lets go and the lamp goes out");
+  }
+
   printf("[candles share a cell]\n");
   const BlockId candle = B("candle"), chain = B("chain"), rail = B("rail"), prail = B("powered_rail"), plate = B("stone_pressure_plate");
   check(attachable(candle) && attachable(B("white_candle")) && attachable(B("soul_wax_candle")), "candles may be attachments");

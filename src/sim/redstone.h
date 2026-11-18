@@ -156,7 +156,7 @@ private:
   void runTickers();
   void buildEnts();
   int countIn(vec3 lo, vec3 hi, int onlyKind);
-  void plateTick(int x, int y, int z, BlockId id, int m);
+  void plateTick(int x, int y, int z, BlockId id, int m, int slot = -1);   // slot: a plate sharing the cell as an attachment (-1: the main block)
   void hookTick(int x, int y, int z, BlockId id, int m);
   void detectorTick(int x, int y, int z, BlockId id, int m);
   void queueAround(int x, int y, int z);
