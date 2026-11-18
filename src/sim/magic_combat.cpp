@@ -85,6 +85,8 @@ float combatHurt(Level& lv, Entity& t, float amount, const json& src0, Player* b
 
 float combatHeal(Level& lv, Entity& t, float amount) {
   if (amount <= 0 || t.removed) return 0;
+  if (t.isPlayer()) amount *= healReceivedFactor(static_cast<Player&>(t));   // (the trees' healing received)
+  if (amount <= 0) return 0;
   float before = t.hp;
   t.hp = std::min(t.maxHp, t.hp + amount);
   // overheal talents: what heals past full is kept as a ward, up to a share of your health (sim/balance.h)
@@ -126,6 +128,7 @@ int addXP(Player& p, int n) {
 }
 void grantXP(Level& lv, Player& p, int n, const vec3* at) {
   bool mended = false;
+  if (n > 0) n = (int)std::lround(n * xpGainFactor(p));   // (the trees' experience gained)
   n = enchXpGain(p, n, &mended);
   if (n <= 0) { if (mended && at) lv.fx->particles("text", *at, 1, json{{"text", "Mended"}, {"col", "#c9a6ff"}}); return; }
   int ups = addXP(p, n);

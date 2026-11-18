@@ -34,6 +34,7 @@ void giveEffect(Level& lv, Player& p, const std::string& eff, float secs, int le
   const EffectDef* E = md.effect(eff);
   // rpg.js Steeped: the good ones last a fifth longer
   if (eff != "heal" && eff != "mana" && eff != "harm" && !(E && E->bad) && hasPerk(p, "alchemy", 30)) secs *= 1.2f;
+  if (eff != "heal" && eff != "mana" && eff != "harm" && E && !E->bad) secs *= effectDurationFactor(p);   // (the trees' effect duration)
   // paths.js Iron Will: slowness can't touch you
   if (eff == "slow" && hasTal(p, "ironwill")) return;
   if (eff == "slow" || eff == "chill") secs *= 1 - stunResist(p);   // (stagger-resistance talents: sim/balance.h)

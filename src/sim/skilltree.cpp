@@ -99,6 +99,17 @@ static float sumAttr(const Player& p, const std::string& attr, bool pct) {
   return s;
 }
 float treeAttr(const Player& p, const std::string& attr) { return sumAttr(p, attr, false); }
+std::vector<std::string> treeGrants(const Player& p, const std::string& prefix) {
+  std::vector<std::string> out;
+  auto add = [&](const std::string& attr) { if (attr.size() > prefix.size() && attr.compare(0, prefix.size(), prefix) == 0) { std::string k = attr.substr(prefix.size()); if (std::find(out.begin(), out.end(), k) == out.end()) out.push_back(k); } };
+  if (auto it = p.stats.find("attrBonus"); it != p.stats.end() && it->is_object()) for (auto& [k, v] : it->items()) add(k);
+  if (learnt(p).empty()) return out;
+  for (const SkillTree& t : skillTrees()) for (const TreeNode& n : t.nodes) {
+    bool any = false; for (auto& b : n.bonus) if (b.attr.compare(0, prefix.size(), prefix) == 0) any = true;
+    if (any && treeHas(p, n.id)) for (auto& b : n.bonus) if (b.v > 0) add(b.attr);
+  }
+  return out;
+}
 float treeAttrPct(const Player& p, const std::string& attr) { return sumAttr(p, attr, true); }
 
 } // namespace dq

@@ -58,6 +58,21 @@ float overhealShare(const Player& p) { return talent(p, "overheal"); }
 float summonDamageFactor(const Player& p) { return 1 + talent(p, "summon_damage"); }
 float lootLuck(const Player& p) { return st(p.statLck) * LCK_LOOT + talent(p, "luck"); }
 float fishingLuck(const Player& p) { return talent(p, "fishing"); }
+float noticeRange(const Player& p, float range) {
+  if (!p.sneaking) return range;
+  return std::max(std::min(range, SNEAK_NOTICE_MIN), range * (1 - talent(p, "stealth")));
+}
+float healReceivedFactor(const Player& p) { return 1 + talent(p, "heal_received"); }
+float effectDurationFactor(const Player& p) { return 1 + talent(p, "effect_duration"); }
+float xpGainFactor(const Player& p) { return 1 + talent(p, "xp_gain"); }
+float damageTakenFactor(const Player& p) { return 1 - talent(p, "damage_reduction"); }
+float jumpFactor(const Player& p) { return 1 + talent(p, "jump"); }
+float useMoveFactor(const Player& p) { return 1 + talent(p, "use_move"); }
+float rageFactor(const Player& p) {
+  const float r = talent(p, "rage");
+  if (r <= 0 || p.maxHp <= 0) return 1;
+  return 1 + r * std::clamp(1 - (p.hp - 1) / std::max(1.f, p.maxHp - 1), 0.f, 1.f);   // (none at full health, all of it at the last heart)
+}
 
 float mobEffLevel(int lvl) { lvl = std::max(1, lvl); return lvl <= MOB_SOFT_LEVEL ? (float)lvl : MOB_SOFT_LEVEL + (lvl - MOB_SOFT_LEVEL) * MOB_SOFT_SLOPE; }
 float mobLevelHp(int lvl) { return 1.f + MOB_HP_PER_LEVEL * (mobEffLevel(lvl) - 1); }
@@ -71,6 +86,7 @@ MobLoot mobLoot(int level, bool elite, const Player* killer) {
   l.rolls = elite ? ELITE_ROLLS : 1;
   l.chanceMul = std::min(LOOT_CHANCE_MAX, 1 + up * LOOT_CHANCE_PER_LEVEL + luck);
   l.extra = std::min(LOOT_EXTRA_MAX, up * LOOT_EXTRA_PER_LEVEL + luck * 0.5f);
+  l.twice = talent(*killer, "loot_double");
   if (elite) l.gearChance = std::min(ELITE_GEAR_MAX, ELITE_GEAR + up * ELITE_GEAR_PER_LEVEL);
   else if (level >= GEAR_FROM) l.gearChance = std::min(GEAR_CHANCE_MAX, (level - GEAR_FROM + 1) * GEAR_CHANCE_PER_LEVEL);
   if (l.gearChance > 0) l.gearChance = std::min(1.f, l.gearChance * (1 + luck));

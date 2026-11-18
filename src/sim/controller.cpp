@@ -6,6 +6,7 @@
 #include "sim/weather.h"
 #include "sim/controller.h"
 #include "sim/balance.h"
+#include "sim/talent_fx.h"
 #include "sim/skills.h"
 #include "sim/station_work.h"
 #include "sim/hands.h"
@@ -1317,6 +1318,7 @@ public:
           }
           if (dealt > 0 && o && o->isPlayer() && !e->isPlayer() && !e->ghost) onPlayerHitMob(lv, *static_cast<Player*>(o), *e, "archery", dealt, hp0);   // (Archery grows with the arrows that land)
           if (dealt > 0 && o && o->isPlayer() && !e->isPlayer() && pathArrowPoisons(*static_cast<Player*>(o))) poisonCreature(*e, 4);
+          if (dealt > 0 && o && o->isPlayer() && !e->isPlayer() && !e->ghost) talentOnHit(lv, *static_cast<Player*>(o), *e, dealt);   // (the trees: sim/talent_fx.h)
           if ((data.value("flame", false) || data.value("fire", false)) && !e->isPlayer()) igniteEntity(*e, data.value("fire", false) ? 8 : 5);
           if (dealt > 0 && o && o->isPlayer()) { char buf[16]; snprintf(buf, sizeof buf, "%g", std::round(dealt * 10) / 10); floatText(lv, *static_cast<Player*>(o), e->pos + vec3(0, e->h + 0.2f, 0), buf, "#ffffff"); }
           sfxAt(lv, "hit", e->pos);
@@ -1380,10 +1382,12 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
         const ItemDef* ad = reg().item(kind);
         const json arrowProps = ad && ad->props.contains("arrow") && ad->props["arrow"].is_object() ? ad->props["arrow"] : json::object();
         vec3 L = lookVector(p.yaw, p.pitch); float sp = (8 + power * 30) * arrowProps.value("speed", 1.0f) * arrowSpeedFactor(p);
+        // the trees' arrow_return: now and then the arrow isn't used up (back to you at once, so the one loosed can't be picked up as well)
+        const bool kept = !p.creative() && !goldShot && !enchInfinity(held) && rnd() < talent(p, "arrow_return");
         auto a = std::make_unique<ArrowEntity>();
         a->realm = p.realm; a->pos = p.pos + vec3(L.x * 0.4f, p.eye - 0.1f + L.y * 0.4f, L.z * 0.4f); a->vel = L * sp;
         a->data = {{"owner", p.id}, {"damage", (3 + power * 6) * enchArrowDamageFactor(held) * (goldShot ? 0.8f : 1.f) * arrowProps.value("damage", 4.0f) / 4.f * arrowDamageFactor(p)},
-                   {"pickup", !p.creative() && !enchInfinity(held) && !goldShot && !arrowProps.value("breaks", false)}, {"item", kind}};
+                   {"pickup", !kept && !p.creative() && !enchInfinity(held) && !goldShot && !arrowProps.value("breaks", false)}, {"item", kind}};
         if (arrowProps.value("gravity", 1.0f) != 1.0f) a->data["grav"] = arrowProps.value("gravity", 1.0f);
         if (arrowProps.value("fire", false)) a->data["fire"] = true;
         if (arrowProps.value("breaks", false)) a->data["breaks"] = true;
@@ -1398,8 +1402,17 @@ void PlayerController::updateHeldTools(float dt, const PlayerInput& in) {
           if (lv_) a->data["ench"] = lv_;
         }
         a->aim();
+        if (rnd() < talent(p, "multishot")) {   // the trees' multishot: a second arrow alongside, a little off the line (it can't be picked up)
+          auto b = std::make_unique<ArrowEntity>();
+          b->realm = a->realm; b->data = a->data; b->data["pickup"] = false;
+          const float off = (rnd() < 0.5 ? -1.f : 1.f) * bal::MULTISHOT_SPREAD, cs = std::cos(off), sn = std::sin(off);
+          b->vel = vec3(a->vel.x * cs - a->vel.z * sn, a->vel.y, a->vel.x * sn + a->vel.z * cs);
+          b->pos = a->pos; b->aim();
+          lv.spawn(std::move(b));
+        }
         lv.spawn(std::move(a));
-        if (enchInfinity(held) && !p.creative()) p.give(ItemStack(kind, 1));   // Infinity: the arrow isn't used up
+        if (kept) p.give(ItemStack(kind, 1));
+        else if (enchInfinity(held) && !p.creative()) p.give(ItemStack(kind, 1));   // Infinity: the arrow isn't used up
         else if (!p.creative() && !goldShot && pathQuiverSaves(p)) p.give(ItemStack(kind, 1));   // Quiver Master
         sfxUi(lv, p, "bow");
         wearHeld(lv, p, 1);

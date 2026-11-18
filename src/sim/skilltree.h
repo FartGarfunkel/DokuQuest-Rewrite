@@ -32,4 +32,7 @@ bool treeLearn(Player& p, const std::string& tree, const std::string& id);
 void treeReset(Player& p);
 float treeAttr(const Player& p, const std::string& attr);      // flat
 float treeAttrPct(const Player& p, const std::string& attr);   // fraction
+// the keys of what you've learnt (and stats "attrBonus") that start with `prefix`, the prefix cut off: "grant_spell." -> the
+// spells the trees grant (sim/magic.cpp knownSpells)
+std::vector<std::string> treeGrants(const Player& p, const std::string& prefix);
 } // namespace dq

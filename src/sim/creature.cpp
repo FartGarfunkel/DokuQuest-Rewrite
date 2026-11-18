@@ -644,7 +644,8 @@ void Creature::die(Level& lv, const DamageSrc& src) {
   // its level, an elite, the killer's luck (sim/balance.h): more rolls, better odds, now and then a piece of gear
   Entity* killer = ent(lv, src.attacker);
   const MobLoot L = mobLoot(mobLevel, mobIsElite(data), killer && killer->isPlayer() ? static_cast<Player*>(killer) : nullptr);
-  if (!baby && !noDrops) for (int r = 0; r < L.rolls; r++) for (auto& d : T->drops) if (frand() < d.chance * L.chanceMul) {
+  const int rolls = L.rolls + (L.twice > 0 && frand() < L.twice ? 1 : 0);   // (the trees' loot_double: the table once more)
+  if (!baby && !noDrops) for (int r = 0; r < rolls; r++) for (auto& d : T->drops) if (frand() < d.chance * L.chanceMul) {
     int n = roll(d.lo, d.hi) + (frand() < L.extra ? 1 : 0);
     if (n > 0) dropItem(lv, realm, proceduralOf(hideFor(d.id, imm), n), at, true);   // (metal gear procedural; immersive: raw hide for leather, sim/barrel.h)
   }
@@ -769,7 +770,20 @@ void Creature::tick(Level& lv, double dtd) {
   // monsters.js: venom works on creatures too
   if (poisonT > 0 && alive()) {
     poisonT -= dt; poisonTick += dt;
-    if (poisonTick >= 1.25f) { poisonTick = 0; if (hp > 1) { DamageSrc s; s.type = "poison"; s.knock = 0; hurt(lv, 1, s); } }
+    const bool kills = data.value("venomKills", false);   // (the trees' venom_lethal: it doesn't stop at the last half heart)
+    if (poisonTick >= 1.25f) { poisonTick = 0; if (hp > 1 || kills) { DamageSrc s; s.type = "poison"; s.knock = 0; hurt(lv, 1, s); } }
+    if (poisonT <= 0 && kills) data.erase("venomKills");
+  }
+  // bleeding (a talent's blow, sim/talent_fx.h): half a heart a tick through armour, and a kill is the bleeder's
+  if (data.contains("bleedT") && alive()) {
+    const float left = data.value("bleedT", 0.f) - dt, tick = data.value("bleedTick", 0.f) + dt;
+    if (tick >= bal::HIT_BLEED_TICK) {
+      data["bleedTick"] = 0.f;
+      DamageSrc s; s.type = "bleed"; s.knock = 0; s.bypassArmor = true; s.attacker = data.value("bleedBy", 0u);
+      hurt(lv, 1, s);
+      if (!alive()) return;
+    } else data["bleedTick"] = tick;
+    if (left <= 0) { data.erase("bleedT"); data.erase("bleedTick"); data.erase("bleedBy"); } else data["bleedT"] = left;
   }
   // a Wither's skull (Wither II): a heart a second, and unlike venom it kills
   if (witherT > 0 && alive()) {
