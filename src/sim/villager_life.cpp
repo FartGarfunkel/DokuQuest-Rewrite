@@ -7,6 +7,7 @@
 #include "sim/moving.h"
 #include "sim/combat_rpg.h"
 #include "sim/villagers_internal.h"
+#include "sim/village_life.h"
 #include "sim/places.h"
 #include "sim/skills.h"
 #include "sim/rpg.h"
@@ -401,9 +402,11 @@ void lostTick(Level& lv, VillagerSystem& S, double dt) {
   }
 }
 bool lostTake(Level& lv, Creature& e, Player& p, std::string* said) {
-  if (!e.data.contains("lostQ") || !npcOf(e) || !e.alive()) return false;
+  const bool escort = e.data.contains("escortQ");   // (one the watch asked you to see to the next village: sim/village_life.cpp)
+  if ((!e.data.contains("lostQ") && !escort) || !npcOf(e) || !e.alive()) return false;
   VillagerSystem* S = vsys(lv); if (!S) return false;
   S->mind(e.id).follow = p.id;
+  if (escort) { if (said) *said = npcOf(e)->value("n", std::string("They")) + ": \"Lead on. I'll stay close.\""; return true; }
   VillageRef v = villageById(lv, npcOf(e)->value("v", ""));
   if (said) *said = npcOf(e)->value("n", std::string("They")) + ": \"Oh, thank the stars! Take me home" + (v ? " to " + v->name : std::string()) + ", please. I'll stay close.\"";
   return true;
@@ -745,9 +748,20 @@ bool homeAsk(Level& lv, Player& p, const Village& v, std::string& sayText) {
   }
   VillagerSystem* S = vsys(lv); if (!S) return false;
   for (auto& P : S->homePending) if (P.vid == v.id && P.player == p.name) { sayText = "The builders are on it. Give them a little while."; return true; }
-  sayText = "Hero of " + v.name + "\xE2\x80\xA6 you've done more for us than we can repay. But we can give you a home. The builders will raise you a house at the edge of the village, right away.";
+  const bool hero = isHero(p, v.id);
+  // (sim/village_life.h) Honoured is enough now; a house of the village's that nobody lives in first, else the builders
+  HeroHouse claimed;
+  if (homeClaim(lv, p, v, claimed)) {
+    sayText = (hero ? "Hero of " + v.name + "\xE2\x80\xA6 you've done more for us than we can repay." : "You're one of us now, " + (p.name.empty() ? std::string("friend") : p.name) + ".") +
+              " There's a house in the village that nobody lives in. It's yours: the bed is made, and the chest is for your things alone.";
+    homeSettle(lv, p, v.id, claimed.bed, claimed.door, claimed.name);
+    homeOwn(lv, p, v, claimed.bed);
+    return true;
+  }
+  sayText = (hero ? "Hero of " + v.name + "\xE2\x80\xA6 you've done more for us than we can repay." : "You're one of us now, " + (p.name.empty() ? std::string("friend") : p.name) + ".") +
+            " We can give you a home. The builders will raise you a house at the edge of the village, right away.";
   HeroHouse h = homeGive(lv, v, p);
-  if (h.ok) homeSettle(lv, p, v.id, h.bed, h.door, h.name);
+  if (h.ok) { homeSettle(lv, p, v.id, h.bed, h.door, h.name); homeOwn(lv, p, v, h.bed); }
   else { S->homePending.push_back({v.id, p.name, 0}); toast(lv, p, "The builders are looking for good ground. Your house will be ready soon."); }
   return true;
 }
@@ -764,6 +778,7 @@ void homeTick(Level& lv, VillagerSystem& S, double dt) {
       i++; continue;
     }
     homeSettle(lv, *p, v->id, h.bed, h.door, h.name);
+    homeOwn(lv, *p, *v, h.bed);
     S.homePending.erase(S.homePending.begin() + i);
   }
 }
@@ -822,6 +837,8 @@ void playerLifeTick(Level& lv, VillagerSystem& S, Player& p, double dt) {
       if (st.value("pathPts", 0) < pts) { if (st.contains("pathPts") && pts > st["pathPts"].get<int>()) toast(lv, p, "A new talent point for your path (talk to a village trainer)", "good"); st["pathPts"] = pts; }
     }
   }
+  // what the villages give back: the watch's jobs, a Hero's statue and waystone, perks lost with standing (sim/village_life.h)
+  villageLifeTick(lv, p, dt);
 }
 
 } // namespace dq

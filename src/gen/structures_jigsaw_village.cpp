@@ -575,6 +575,10 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
     }
     if (J->board) v.board = {J->bx, J->by + 2, J->bz};
     else v.board = {v.x, cy + 2, v.z};
+    if (J->board && v.genV >= 25) {   // (terrain 25) the Shrine of Renewal past the board's far lantern, on its levelled ground
+      const int lx = -DZJ[J->bf], lz = DXJ[J->bf];
+      v.hasShrine = true; v.shrine = {J->bx + lx * 3, J->by + 1, J->bz + lz * 3};
+    }
   }
   // the baker, the merchant and (with no windmill) the miller: the imported pieces have no house for them, so they take a
   // plain house with an oven, a counter or a bench (indoors first, nearest the centre); else a place by the hall door.
@@ -1086,6 +1090,10 @@ void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
       const int x = J.bx + lx * a, z = J.bz + lz * a;
       if (!P.in(x, z)) continue;
       P.put(x, y0 + 1, z, st.fence); P.put(x, y0 + 2, z, "lantern");
+    }
+    if (v.hasShrine && hasBlock("respec_shrine") && P.in(v.shrine[0], v.shrine[2])) {   // (terrain 25)
+      for (int y = v.shrine[1] + 1; y <= v.shrine[1] + 3; y++) P.put(v.shrine[0], y, v.shrine[2], "air");
+      P.put(v.shrine[0], v.shrine[1], v.shrine[2], "respec_shrine");
     }
   }
   // the garden bridge's brook carried out of its piece into the land: from each end a stream (3 wide, at the brook's own

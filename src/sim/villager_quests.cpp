@@ -5,6 +5,7 @@
 #include "core/tool_parts.h"
 #include "sim/villagers_internal.h"
 #include "sim/village_theft.h"
+#include "sim/village_life.h"
 #include "sim/skills.h"
 #include "sim/rpg.h"
 #include "sim/endstory.h"
@@ -62,7 +63,7 @@ json npcQuestFor(Level& lv, const Village& v, int i) {
 static int structIndexByKey(const char* key) { const auto& T = structureTypes(); for (int i = 0; i < (int)T.size(); i++) if (T[i].key == key) return i; return -1; }
 static const StructureIndex* owIdx(Level& lv) { auto* o = lv.gen ? dynamic_cast<const OverworldGen*>(lv.gen->forDim(DIM_OVERWORLD)) : nullptr; return o ? &o->structures : nullptr; }
 
-json boardQuests(Level& lv, const Village& v) {
+json boardQuests(Level& lv, const Village& v, Player* reader) {
   const i64 day = npcDay(lv);
   json out = json::array();
   const json& HN = VD()["huntNames"];
@@ -185,6 +186,8 @@ json boardQuests(Level& lv, const Village& v) {
                      {"reward", {{"em", 8}, {"xp", 100}, {"rep", 15}, {"skill", json::array({"exploring", 600})}}}});
     }
   }
+  // the trades' requests (sim/village_life.cpp), sized for whoever reads the board
+  if (reader) for (auto& q : tradeRequests(lv, v, *reader)) out.push_back(q);
   return out;
 }
 
@@ -211,7 +214,7 @@ int questHave(Level& lv, Player& p, json& q) {
     std::string did = q.value("did", std::string());
     if (D.is_object() && D.contains(did) && jflag(D[did], "cleared")) q["have"] = 1;
   }
-  if (k == "hunt" || k == "elite" || k == "rescue" || k == "dungeon") return q.value("have", 0);
+  if (k == "hunt" || k == "elite" || k == "rescue" || k == "dungeon" || k == "patrol" || k == "escort") return q.value("have", 0);
   if (k == "scout") { const json& s = p.stats.value("sseen", json::object()); return s.is_object() && s.contains(q.value("sid", "")) ? 1 : 0; }
   if (k == "word") {
     if (!q.value("have", 0)) if (VillageRef v = villageById(lv, q.value("vid", ""))) if (p.realm == REALM_MAIN && dimOfY(ifloor(p.pos.y)) == DIM_OVERWORLD && std::hypot(p.pos.x - v->x, p.pos.z - v->z) < 40) q["have"] = 1;
@@ -286,7 +289,7 @@ void questKill(Level& lv, Player& p, const std::string& type, bool party) {
 void questLapse(Level& lv, Player& p) {
   const i64 day = npcDay(lv);
   std::vector<std::string> old;
-  for (auto& q : npcStats(p)["quests"]) if (q.value("giver", 0) == -1 && q.value("kind", "") != "dungeon" && q.contains("taken") && day - q["taken"].get<i64>() >= 7 && !questReady(lv, p, q)) old.push_back(q.value("id", ""));
+  for (auto& q : npcStats(p)["quests"]) if ((q.value("giver", 0) == -1 || jflag(q, "trade")) && q.value("kind", "") != "dungeon" && q.contains("taken") && day - q["taken"].get<i64>() >= 7 && !questReady(lv, p, q)) old.push_back(q.value("id", ""));
   for (auto& id : old) { json* q = findQuest(p, id); std::string t = q ? q->value("title", std::string()) : id; questDrop(lv, p, id); toast(lv, p, "The bounty \"" + t + "\" has lapsed"); }
 }
 
@@ -357,7 +360,7 @@ static const json* pathOf(const Player& p) {
   const json& P = p.stats["path"];
   return magicData().paths.contains(P.value("k", "")) ? &P : nullptr;
 }
-int pathPoints(const Player& p) { int cl = combatLevel(p); int at = VD().value("pathAt", 20); return cl < at ? 0 : std::min(6, 1 + (cl - at) / 6); }
+int pathPoints(const Player& p) { int cl = combatLevel(p); int at = VD().value("pathAt", 20); return cl < at ? 0 : std::min(6, 1 + (cl - at) / 6 + pathLessons(p)); }   // (+ a Friend's lessons: sim/village_life.h)
 int pathSpent(const Player& p) { const json* P = pathOf(p); return P && P->contains("t") && (*P)["t"].is_object() ? (int)(*P)["t"].size() : 0; }
 int pathMaxHealthBonus(const Player& p) { return onPath(p, "knight") ? 4 : 0; }
 bool pathPick(Level& lv, Player& p, const std::string& k) {
@@ -381,7 +384,8 @@ bool pathLearn(Level& lv, Player& p, const std::string& id) {
 }
 bool pathForget(Level& lv, Player& p) {
   if (!pathOf(p)) return false;
-  if (!payCoins(lv, p, 20)) { toast(lv, p, "That takes 20 gold coins", "warn"); return false; } p.stats["path"] = nullptr;
+  const int price = pathForgetPrice(lv, p);   // (less at a village's trainer that thinks well of you: sim/village_life.h)
+  if (!payCoins(lv, p, price)) { toast(lv, p, "That takes " + std::to_string(price) + " gold coins", "warn"); return false; } p.stats["path"] = nullptr;
   toast(lv, p, "You set your path aside. Choose again when you're ready.");
   return true;
 }
@@ -485,14 +489,23 @@ static void home(Level& lv, Player& p, Talk& t, const std::string& text0 = "") {
   auto& O = t.opts; O.clear();
   if (hasShop(t.job)) O.push_back({"Let me see your wares", "", "shop", nullptr});
   json& S = npcStats(p);
-  json* mine = nullptr;
-  if (v) for (auto& q : S["quests"]) if (q.value("vid", "") == v->id && q.value("giver", -9) == t.idx) { mine = &q; break; }
+  std::vector<json*> mine;   // their errand and their trade's request (sim/village_life.h), each its own
+  if (v) for (auto& q : S["quests"]) if (q.value("vid", "") == v->id && q.value("giver", -9) == t.idx) mine.push_back(&q);
   json offer = v && t.idx < 100 ? npcQuestFor(lv, *v, t.idx) : json(nullptr);
+  json treq = v && t.idx < 100 ? tradeRequestFor(lv, *v, t.idx, p) : json(nullptr);
   int boardDone = 0;
   if (v) for (auto& q : S["quests"]) if (q.value("vid", "") == v->id && q.value("giver", 0) == -1 && questReady(lv, p, q)) boardDone++;
-  if (mine) O.push_back({questReady(lv, p, *mine) ? "Here's what you asked for (" + mine->value("title", std::string()) + ")" : "About your errand\xE2\x80\xA6", "", "errand", (*mine)["id"]});
-  else if (offer.is_object() && !S["qdone"].contains(offer.value("id", ""))) O.push_back({"Any work for me?", "", "offer", offer});
+  bool errandMine = false, tradeMine = false;
+  for (json* m : mine) {
+    const bool tr = jflag(*m, "trade"); (tr ? tradeMine : errandMine) = true;
+    O.push_back({questReady(lv, p, *m) ? "Here's what you asked for (" + m->value("title", std::string()) + ")" : tr ? "About your request\xE2\x80\xA6" : "About your errand\xE2\x80\xA6", "", "errand", (*m)["id"]});
+  }
+  if (!errandMine && offer.is_object() && !S["qdone"].contains(offer.value("id", ""))) O.push_back({"Any work for me?", "", "offer", offer});
+  if (!tradeMine && treq.is_object() && !S["qdone"].contains(treq.value("id", "")) && !findQuest(p, treq.value("id", ""))) O.push_back({"Anything needed for your trade?", "", "trade", treq});
   if ((t.job == "guard" || t.job == "elder") && boardDone) O.push_back({"I've done a bounty (" + std::to_string(boardDone) + ")", "", "bounties", nullptr});
+  // an Honoured guest: the watch's work (sim/village_life.h)
+  if (t.job == "guard" && v) { bool any = false; for (auto& q : watchJobs(lv, p, *v)) if (!findQuest(p, q.value("id", "")) && !S["qdone"].contains(q.value("id", ""))) any = true;
+    if (any) O.push_back({"Any work for the watch?", "\xE2\x9A\x94", "watch", nullptr}); }
   O.push_back({"What news?", "", "news", nullptr});
   if (t.idx < 100 || t.idx >= 500) O.push_back({"Tell me about your family and friends", "\xE2\x99\xA5", "family", nullptr});   // (sim/villager_family.cpp)
   if (t.job == "elder") O.push_back({"Tell me about this place", "", "about", nullptr});
@@ -503,7 +516,7 @@ static void home(Level& lv, Player& p, Talk& t, const std::string& text0 = "") {
   // riftlore.js: seen anything strange?
   if (tier >= 0) O.push_back({tier == 0 ? "Seen anything strange lately?" : tier >= 5 ? "About what happened\xE2\x80\xA6" : "What do you make of the rift?", "?", "rift", nullptr});
   // hearth.js: the elder and a Hero's house
-  if (t.job == "elder" && v && (homeOf(p, v->id) || isHero(p, v->id))) O.push_back({homeOf(p, v->id) ? "About my house\xE2\x80\xA6" : "You wanted a word?", "\xE2\x8C\x82", "house", nullptr});
+  if (t.job == "elder" && v && (homeOf(p, v->id) || homeOffered(p, v->id))) O.push_back({homeOf(p, v->id) ? "About my house\xE2\x80\xA6" : "You wanted a word?", "\xE2\x8C\x82", "house", nullptr});
   if (t.job == "elder" && v && !houseUpOffers(lv, p, *v).empty()) O.push_back({"Improve my house\xE2\x80\xA6", "\xE2\x8C\x82", "houseups", nullptr});
   // paths.js: training
   const json& TR = VD()["trains"];
@@ -515,7 +528,11 @@ static void home(Level& lv, Player& p, Talk& t, const std::string& text0 = "") {
     std::string lbl = P ? "My path" + (left > 0 ? " (" + std::to_string(left) + " to spend)" : std::string()) + "\xE2\x80\xA6"
                         : !want.empty() ? "Teach me the " + PD[want].value("name", want) + "'s ways\xE2\x80\xA6" : "About the paths\xE2\x80\xA6";
     O.push_back({lbl, "\xE2\x9A\x94", "path", want});
+    int price = 0;   // a Friend's advanced lesson (sim/village_life.h)
+    if (v && pathLessonOffered(lv, p, *v, t.job, &price)) O.push_back({"An advanced lesson (" + std::to_string(price) + " gold coins)\xE2\x80\xA6", "\xE2\x98\x85", "lesson", nullptr});
   }
+  // the Shrine of Renewal's work, at the elder's word
+  if (t.job == "elder" && respecPoints(p) > 0) O.push_back({"Take back my talents and stats\xE2\x80\xA6", "\xE2\x86\xBA", "respec", nullptr});
   O.push_back({"Goodbye", "", "close", nullptr});
 }
 
@@ -684,7 +701,37 @@ void talkChoose(Level& lv, Player& p, Talk& t, int i) {
     t.opts = {{"I'll do it", "", "take", q}, {"Not right now", "", "home", "Maybe another time, then."}};
     return;
   }
+  if (a == "trade") {   // their trade's request (sim/village_life.h)
+    const json& q = o.arg; int em = q["reward"].value("em", 0);
+    say(lv, p, t, q.value("text", std::string()) + " I can pay " + plural(em, "gold coin") + ", and show you a thing or two of the trade.");
+    t.opts = {{"I'll do it", "", "take", q}, {"Not right now", "", "home", "Another time, then."}};
+    return;
+  }
   if (a == "take") { if (questTake(lv, p, o.arg)) home(lv, p, t, "Thank you! Come back when you have it."); return; }
+  if (a == "lesson" && v) { std::string s; pathLessonTake(lv, p, *v, t.job, s); home(lv, p, t, s); return; }
+  if (a == "watch" && v) {   // the guard's: a patrol, an escort (an Honoured guest's)
+    t.opts.clear();
+    for (auto& q : watchJobs(lv, p, *v)) {
+      const std::string id = q.value("id", "");
+      if (findQuest(p, id) || npcStats(p)["qdone"].contains(id)) continue;
+      t.opts.push_back({q.value("kind", "") == "patrol" ? "I'll walk the rounds (" + plural(q["reward"].value("em", 0), "gold coin") + ")"
+                                                        : "I'll see " + q.value("lname", std::string("them")) + " safely to " + q.value("toName", std::string("the next village")) + " (" + plural(q["reward"].value("em", 0), "gold coin") + ")", "\xE2\x9A\x94", "watchTake", q});
+    }
+    say(lv, p, t, t.opts.empty() ? "Nothing more today. The watch thanks you." : "The watch could use someone the village trusts. Walk the rounds with us, or see a traveller safe to the next village.");
+    t.opts.push_back({"Not now", "", "home", "Another time."});
+    return;
+  }
+  if (a == "watchTake") {
+    if (questTake(lv, p, o.arg)) home(lv, p, t, o.arg.value("kind", "") == "escort" ? "Good. They'll meet you here; keep them close, and keep them safe." : "Good. Walk the posts in turn, then report back.");
+    return;
+  }
+  if (a == "respec") {
+    const int cost = respecCost(p, t.vid);
+    say(lv, p, t, "The Shrine of Renewal can take back every talent you've learnt and every stat point you've spent, to choose again. For you, " + plural(cost, "gold coin") + ".");
+    t.opts = {{"Do it (" + plural(cost, "gold coin") + ")", "\xE2\x86\xBA", "respecDo", nullptr}, {"Not now", "", "home", "Whenever you're ready."}};
+    return;
+  }
+  if (a == "respecDo") { std::string s; respecDo(lv, p, t.vid, s); home(lv, p, t, s); return; }
   if (a == "home") { home(lv, p, t, o.arg.is_string() ? o.arg.get<std::string>() : ""); return; }
   if (a == "errand") {
     json* q = findQuest(p, o.arg.get<std::string>()); if (!q) { home(lv, p, t); return; }

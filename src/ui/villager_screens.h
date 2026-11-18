@@ -11,5 +11,6 @@ namespace dq {
 std::unique_ptr<Screen> makeVillagerTalkScreen(u32 npcId, bool confront = false, const std::string& victim = "", bool startInShop = false);
 std::unique_ptr<Screen> makeQuestBoardScreen(ivec3 boardAt);
 std::unique_ptr<Screen> makePathScreen(const std::string& hint);
+std::unique_ptr<Screen> makeShrineScreen(ivec3 at, const std::string& villageId);   // the Shrine of Renewal (sim/village_life.h)
 
 } // namespace dq

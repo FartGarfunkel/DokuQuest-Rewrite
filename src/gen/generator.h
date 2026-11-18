@@ -48,7 +48,7 @@ public:
 
 struct WorldGenOptions {
   i32 seed = 0;
-  int genVersion = 24;                 // 4: bigger biomes, 5: heightfield Nether, 6: cave Nether (climate, sea, spawns), 7: the classic Nether, exact, 8: the classic Nether on the open land of 5,
+  int genVersion = 25;                 // 4: bigger biomes, 5: heightfield Nether, 6: cave Nether (climate, sea, spawns), 7: the classic Nether, exact, 8: the classic Nether on the open land of 5,
                                        // 9: villages of jigsaw pieces (data/villages: ours, tools/port/village_builder.py),
                                        // 10: villages in every style, chosen by the land (gen/structures_villages.cpp villageStyle10),
                                        // 11: the village plan's fixes: real water for the streets' levels, the deep town mine
@@ -73,6 +73,7 @@ struct WorldGenOptions {
                                        // 23: no little scraps of land floating in the air: a piece of land that never reaches the ground and is under 48 blocks across is taken away; overhangs and arches stay (gen/floating_land.h)
                                        // 24: the towns' ways up: a corner tower's door on its town-side corner, its top room
                                        //     opening onto the wall walks; a lift up to every windmill's millstone floor
+                                       // 25: the Shrine of Renewal in every village square, by the quest board (sim/village_life.h)
   bool looseGround = false;            // immersive worlds (sim/immersive.h): loose rocks, flint and twigs on the ground
   std::string worldType = "default";   // default | flat | amplified | ... (from the create-world screen)
   json extra;                          // structures on/off, bonus chest, etc.

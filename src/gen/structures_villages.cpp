@@ -118,6 +118,7 @@ static void townPlanData(StructurePlan& S, const std::shared_ptr<TownExt>& e, in
             {"r", std::max({X1 - cx, cx - X0, Z1 - cz, cz - Z0})}, {"board", jat(v.board[0], v.board[1], v.board[2])}, {"bell", jat(v.bell[0], v.bell[1], v.bell[2])},
             {"stalls", stalls}, {"seats", seats}, {"folk", folk}, {"guards", (int)TT["guards"]}, {"golems", blds.size() >= 7 ? 1 : 0},   /* villages.js: a village of seven houses or more keeps an iron golem */ {"blds", blds}, {"roads", roads}, {"gates", gates}};
   if (hasWay) S.data["waySpot"] = json::array({waySpot[0], waySpot[1]});
+  if (v.hasShrine) S.data["shrine"] = jat(v.shrine[0], v.shrine[1], v.shrine[2]);
   if (v.hasWall) S.data["wall"] = {{"kind", v.wall.kind}, {"x0", v.wall.x0}, {"z0", v.wall.z0}, {"x1", v.wall.x1}, {"z1", v.wall.z1}, {"h", v.wall.h}};
   S.ext = e;
 }
@@ -372,6 +373,7 @@ static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int 
   // the market square's furniture
   v.board = {cx + 4, y0 + 2, cz - (P - 1)};
   v.bell = {cx - 4, y0 + 1, cz - (P - 2)};
+  if (v.genV >= 25) { v.hasShrine = true; v.shrine = {cx + 7, y0 + 1, cz - (P - 1)}; }   // (terrain 25) past the board's far lantern
   std::array<int, 2> waySpot{0, 0}; bool hasWay = false;
   if (fr) {
     for (int dz : {-1, 0, 1}) { v.seats.push_back({cx - (fr + 3), y0 + 1, cz + dz, 1}); v.seats.push_back({cx + fr + 3, y0 + 1, cz + dz, 3}); }
@@ -578,6 +580,7 @@ static void townBuild(ChunkWriter& w, const StructurePlan& S) {
   // the quest board under its little roof, the bell, the benches
   for (int k : {3, 4}) { const int x = v.x + k, z = v.board[2]; put(x, y0 + 1, z, st.log); put(x, y0 + 2, z, "quest_board", (2 + 2) & 3); put(x, y0 + 3, z, st.slab); }
   for (int k : {2, 5}) { put(v.x + k, y0 + 1, v.board[2], st.fence); put(v.x + k, y0 + 2, v.board[2], "lantern"); }
+  if (v.hasShrine && hasBlock("respec_shrine")) { put(v.shrine[0], v.shrine[1], v.shrine[2], "respec_shrine"); put(v.shrine[0], v.shrine[1] + 1, v.shrine[2], "air"); }   // (terrain 25)
   put(v.bell[0], y0 + 1, v.bell[2], st.log); put(v.bell[0], y0 + 2, v.bell[2], "bell");
   const std::string bench = PLK(st.fwood + "_bench", st.stairs);
   for (const VSeat& s : v.seats) if (!s.walk) put(s.x, y0 + 1, s.z, bench, (s.f + 2) & 3);
