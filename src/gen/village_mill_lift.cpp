@@ -53,19 +53,25 @@ std::optional<MillLift> millLiftOf(const VPPiece& p) {
     int gy = -1;
     for (int y = 1; y < my && gy < 0; y++) for (int z = 1; z + 1 < p.sz && gy < 0; z++) for (int x = 1; x + 1 < p.sx && gy < 0; x++)
       if (g.solid(x, y - 1, z) && g.open(x, y, z) && g.open(x, y + 1, z)) gy = y;
-    if (gy < 0 || my - gy < 3) return;   // (the stones on the ground floor: no upper floor to ride to)
+    // the floor the miller stands on to work the stones (they may sit up on a block of their own): the highest level by
+    // them with a floor under and room over
+    int sy = -1;
+    for (int y = my; y >= 1 && sy < 0; y--)
+      for (int dz = -2; dz <= 2 && sy < 0; dz++) for (int dx = -2; dx <= 2 && sy < 0; dx++)
+        if ((dx || dz) && g.solid(mx + dx, y - 1, mz + dz) && g.open(mx + dx, y, mz + dz) && g.open(mx + dx, y + 1, mz + dz)) sy = y;
+    if (gy < 0 || sy < 0 || sy - gy < 3) return;   // (the stones on the ground floor: no upper floor to ride to)
     static const int D[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
     int bestD = 1 << 30;
     for (int sz = 1; sz + 1 < p.sz; sz++) for (int sx = 1; sx + 1 < p.sx; sx++) {
       // the shaft: open on the ground floor, a plain floor under it for the slider, clear or through floors up to the top
       if (!g.open(sx, gy, sz) || !g.open(sx, gy + 1, sz) || !g.plain(sx, gy - 1, sz) || !g.solid(sx, gy - 1, sz)) continue;
-      const int topY = my - 1;   // (where the platform stops: its top half a block under the millstone's floor)
+      const int topY = sy - 1;   // (where the platform stops: in the stones' floor, its top half a block under it)
       bool clear = true;
-      for (int y = gy + 2; y <= my + 1 && clear; y++) if (!g.open(sx, y, sz) && !(y <= topY && g.floorAt(sx, y, sz))) clear = false;
-      if (!clear || !g.open(sx, my, sz) || !g.open(sx, my + 1, sz)) continue;
+      for (int y = gy + 2; y <= sy + 1 && clear; y++) if (!g.open(sx, y, sz) && !(y <= topY && g.floorAt(sx, y, sz))) clear = false;
+      if (!clear || !g.open(sx, sy, sz) || !g.open(sx, sy + 1, sz)) continue;
       // something to step off onto up there, near the stones
       bool step = false;
-      for (auto& d : D) { const int x = sx + d[0], z = sz + d[1]; if (g.solid(x, my - 1, z) && g.open(x, my, z) && g.open(x, my + 1, z)) step = true; }
+      for (auto& d : D) { const int x = sx + d[0], z = sz + d[1]; if (g.solid(x, topY, z) && g.open(x, sy, z) && g.open(x, sy + 1, z)) step = true; }
       if (!step) continue;
       for (auto& d : D) {
         const int rx = sx + d[0], rz = sz + d[1], tx = rx + d[0], tz = rz + d[1];
@@ -77,7 +83,8 @@ std::optional<MillLift> millLiftOf(const VPPiece& p) {
         // (not across the way in at the ground floor: a rail is no door)
         int openSides = 0; for (auto& e : D) if (g.open(rx + e[0], gy, rz + e[1]) && g.open(rx + e[0], gy + 1, rz + e[1])) openSides++;
         if (g.open(rx, gy, rz) && openSides >= 3) continue;
-        const int dist = std::abs(sx - mx) + std::abs(sz - mz) + (g.solid(rx, gy, rz) ? 0 : 3);
+        // (best: the stops set in a wall, the rail by it, the shaft near the stones)
+        const int dist = std::abs(sx - mx) + std::abs(sz - mz) + (g.solid(tx, gy, tz) && g.solid(tx, topY, tz) ? 0 : 6) + (g.solid(rx, gy, rz) ? 0 : 1);
         if (dist < bestD) { bestD = dist; MillLift L; L.shaft = {sx, gy - 1, sz}; L.rail = {rx, rz}; L.stop = {tx, tz}; L.top = topY; out = L; }
       }
     }

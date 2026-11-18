@@ -7,6 +7,7 @@
 #include "core/registry.h"
 #include "sim/villagers.h"
 #include "sim/villagers_internal.h"
+#include "gen/village_mill_lift.h"
 #include "sim/mob_combat.h"
 #include "gen/structures.h"
 #include "gen/structures_api.h"
@@ -49,6 +50,24 @@ int main(int argc, char** argv) {
   Player* P; { auto p = std::make_unique<Player>(); p->name = "Tester"; p->pos = vec3(0.5f, 700, 0.5f); P = static_cast<Player*>(L->spawn(std::move(p))); }
 
   Tally all; std::map<std::string, Tally> byKind; int millerFails = 0;
+  {   // the styles' own windmills: which have their stones up a floor, and which of those get a lift (gen/village_mill_lift.cpp)
+    int mills = 0, upper = 0, lifted = 0; std::string without;
+    const BlockId MS = reg().blockId("millstone");
+    if (const VillagePieces* VP = villagePieces()) for (const auto& [pool, list] : VP->pools) for (const VPPiece& pc : list) {
+      int my = -1; for (const VPBlock& k : pc.blocks) if (pc.states[k.s].id == MS) my = k.y;
+      if (my < 0) continue;
+      mills++;
+      if (std::getenv("DQ_MILL_DUMP") && pc.name == "plains_windmill_1") {
+        std::vector<char> g((size_t)pc.sx * pc.sy * pc.sz, '.');
+        for (const VPBlock& k : pc.blocks) { const BlockId b = pc.states[k.s].id; const std::string& key = reg().block(b).key;
+          g[((size_t)k.y * pc.sz + k.z) * pc.sx + k.x] = b == MS ? 'M' : reg().block(b).has("climb") ? 'L' : key.find("stairs") != std::string::npos ? 's' : key.find("slab") != std::string::npos ? '_' : reg().tSolid[b] ? '#' : '+'; }
+        for (int y = 0; y < pc.sy; y++) { printf("   y%d\n", y); for (int z = 0; z < pc.sz; z++) { printf("    "); for (int x = 0; x < pc.sx; x++) putchar(g[((size_t)y * pc.sz + z) * pc.sx + x]); printf("\n"); } }
+      }
+      if (my >= 4) { upper++; if (millLiftOf(pc)) lifted++; else without += " " + pc.name + "(" + std::to_string(my) + ")"; }
+    }
+    printf("  (windmill pieces: %d, %d with the stones up a floor, %d of those given a lift;%s%s)\n", mills, upper, lifted, without.empty() ? "" : " none for", without.c_str());
+    if (upper > 0 && lifted == 0) millerFails++;
+  }
   // a ladder, by hand in the sky: a floor, a ladder up a wall to a loft; a townsperson sent up it and back down
   {
     const int Y = dimBase(DIM_OVERWORLD) + 220;
@@ -194,10 +213,12 @@ int main(int argc, char** argv) {
       for (Creature* c : folk) {
         if (c->removed) continue;
         const bool golem = c->T->j.value("golem", false);
-        const size_t pick = (size_t)(rng() * pts.size()) % pts.size();
-        if (taken.count(pick)) continue;
+        size_t pick = (size_t)(rng() * pts.size()) % pts.size();
+        // (a golem, too broad for a house door: somewhere on the open ground, the streets and the square)
+        for (int tries = 0; golem && tries < 40 && pts[pick].kind != "street" && pts[pick].kind != "square"; tries++) pick = (size_t)(rng() * pts.size()) % pts.size();
+        if (taken.count(pick) || (golem && pts[pick].kind != "street" && pts[pick].kind != "square")) continue;
         Errand e = pts[pick];
-        if (golem) { if (e.kind != "street" && e.kind != "square") continue; e.kind = "golem"; }   // (too broad for a house door: the open ground)
+        if (golem) e.kind = "golem";
         if (std::hypot(e.to.x - c->pos.x, e.to.z - c->pos.z) < 3) continue;
         taken.insert(pick);
         NpcMind& M = S->mind(c->id);

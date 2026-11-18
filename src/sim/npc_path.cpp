@@ -156,7 +156,7 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
   // (a broad body's step is the corner its middle stands on: the cell to its north-west names it)
   const int off = F.wide ? 1 : 0;
   auto cellOf = [&](float v) { return F.wide ? ifloor(v + 0.5f) - 1 : ifloor(v); };
-  const int sx = cellOf(from.x), sz = cellOf(from.z);
+  int sx = cellOf(from.x), sz = cellOf(from.z);
   int tx = cellOf(to.x), tz = cellOf(to.z);
   (void)off;
   int sy = ifloor(from.y + 0.45f);
@@ -182,6 +182,13 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
   }
   bool c0; int w0;
   float f0 = stand(F, sx, sy, sz, &c0, &w0);
+  if (f0 == NONE && F.wide) {   // (a broad body off the grid of corners: the corner beside it that holds it)
+    for (int dz = -1; dz <= 1 && f0 == NONE; dz++) for (int dx = -1; dx <= 1 && f0 == NONE; dx++)
+      for (int dy : {0, 1, -1}) if ((f0 = stand(F, sx + dx, sy + dy, sz + dz, &c0, &w0)) != NONE) { sx += dx; sy += dy; sz += dz; break; }
+    // (wedged where no 2 x 2 holds it — among the stalls of a market: out the way a narrower body would go, it'll
+    // squeeze, and from the open ground on it walks as itself)
+    if (f0 == NONE) return npcPath(w, from, to, 0.45f, bodyH, partial, maxNodes, snapped);
+  }
   if (f0 == NONE) {   // (mid-step, mid-jump, on a ladder: the nearest step that will hold them)
     for (int dy : {1, -1, 2, -2}) if ((f0 = stand(F, sx, sy + dy, sz, &c0, &w0)) != NONE) { sy += dy; break; }
     if (f0 == NONE) f0 = (float)sy;
