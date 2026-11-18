@@ -71,7 +71,16 @@ int main(int argc, char** argv) {
     W->strike(*L, 21, Y + 1, 10);
     check(count("zombie_pigman") == pm0 + 1 && count("pig") == 0, "  ...and a second bolt changes nothing more");
     Creature* vil = spawnCreature(*L, REALM_MAIN, "villager", vec3(20.5f, Y + 1, 18.5f));
-    if (vil) { vil->calm = true; W->strike(*L, 21, Y + 1, 18); check(vil->removed && count("witch") == 1, "a bolt by a villager makes a witch"); }
+    if (vil) {
+      vil->calm = true;
+      vil->data["npc"] = {{"v", "tvx"}, {"i", 2}, {"n", "Ada"}, {"j", "farmer"}};
+      L->info.data["villages"]["tvx"] = {{"dead", json::object()}, {"couples", {{"2", 5}, {"5", 2}}}};
+      W->strike(*L, 21, Y + 1, 18);
+      Creature* wi = first("witch");
+      check(vil->removed && count("witch") == 1 && wi && wi->petName == "Ada", "a bolt by a villager makes a witch (its name kept)");
+      const json& rec = L->info.data["villages"]["tvx"];
+      check(rec["dead"].contains("2") && rec["couples"].empty() && !wi->data.contains("npc"), "  ...its village counts it gone, its partner single again");
+    }
   }
   // the charged blast is bigger: two fuselings go off by you, one charged; count the floor each takes
   {
@@ -108,6 +117,44 @@ int main(int argc, char** argv) {
     bool stole = false;
     for (int i = 0; i < 3000; i++) { e2->pos = vec3(12.5f, Y + 1, 22.5f); if (enderTryLift(*L, *e2) && carriedBlock(*e2) == "grass") stole = true; }
     check(!stole && countBox(w, grass, ivec3(10, Y, 20), ivec3(14, Y, 24)) == 25, "it never takes a block a player put down");
+    // the record is kept in the chunk and saved with it
+    {
+      Chunk* c = w.chunk(DIM_OVERWORLD, 0, 1);
+      std::vector<u8> bytes = c ? encodeChunk(*c) : std::vector<u8>();
+      Chunk back(DIM_OVERWORLD, 0, 1);
+      const bool ok = c && decodeChunk(back, bytes.data(), bytes.size());
+      bool all = ok; for (int x = 10; x <= 14; x++) for (int z = 20; z <= 24; z++) if (!back.placed.count((u16)colIdx(x & 15, Y & 255, z & 15))) all = false;
+      check(all && back.placed.size() == c->placed.size(), "the player-placed record survives saving and loading the chunk (" + std::to_string(back.placed.size()) + " cells)");
+      w.setBlock(14, Y, 24, AIR);
+      check(!w.placedAt(14, Y, 24) && w.placedAt(13, Y, 24), "  ...and forgets a placed block once it's broken");
+      w.setBlock(14, Y, 24, grass); skillNotePlaced(*L, REALM_MAIN, 14, Y, 24);
+      c->placed.clear();   // an old save: no record at all
+      Chunk old(DIM_OVERWORLD, 0, 1); std::vector<u8> ob = encodeChunk(*c);
+      check(decodeChunk(old, ob.data(), ob.size()) && old.placed.empty(), "  ...a chunk saved without one loads with none");
+      for (int x = 10; x <= 14; x++) for (int z = 20; z <= 24; z++) skillNotePlaced(*L, REALM_MAIN, x, Y, z);
+    }
+    // a world with no record: a block within two of anything made (planks) is left alone, one further off may go
+    {
+      const BlockId planks = B("planks") ? B("planks") : B("oak_planks");
+      for (int x = 18; x <= 26; x++) for (int z = 19; z <= 27; z++) w.setBlock(x, Y, z, grass);
+      w.setBlock(22, Y + 1, 25, planks);
+      Creature* e3 = spawnCreature(*L, REALM_MAIN, "enderman", vec3(22.5f, Y + 1, 23.5f));
+      e3->calm = true;
+      int near = 0, far = 0;
+      for (int i = 0; i < 4000; i++) {
+        e3->pos = vec3(22.5f, Y + 1, 23.5f);
+        const int before = countBox(w, grass, ivec3(18, Y, 19), ivec3(26, Y, 27));
+        if (!enderTryLift(*L, *e3)) continue;
+        for (int x = 18; x <= 26; x++) for (int z = 19; z <= 27; z++) if (w.getBlock(x, Y, z) == AIR) {
+          (std::max(std::abs(x - 22), std::abs(z - 25)) <= 2 ? near : far)++;
+          w.setBlock(x, Y, z, grass);
+        }
+        e3->data.erase("carry"); e3->data.erase("carryMeta");
+        (void)before;
+      }
+      check(planks && near == 0 && far > 0, "with no record, it leaves blocks next to planks alone (" + std::to_string(far) + " taken further off)");
+      e3->removed = true;
+    }
     L->info.rules["mobGriefing"] = false;
     bool grief = false; for (int i = 0; i < 2000; i++) { e->pos = vec3(2.5f, Y + 1, 22.5f); if (enderTryLift(*L, *e)) grief = true; }
     check(!grief, "with creatures breaking blocks turned off, it leaves them be");

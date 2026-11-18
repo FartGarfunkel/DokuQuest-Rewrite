@@ -23,6 +23,8 @@ float chargedBlastScale(const Entity& e);   // 2 for a charged fuseling, else 1
 
 // ---- the enderman's carried block ----
 bool blockCarriable(BlockId id);
+bool blockNatural(BlockId id);                         // data "natural" (tools/port/world_life.py), carriable, or air
+bool nearBuilt(World& w, int x, int y, int z);          // anything not natural within two blocks
 void enderCarryTick(Level& lv, Creature& m, float dt);   // from its brain while it isn't angry
 bool enderTryLift(Level& lv, Creature& m);               // one try at lifting a block near it (true = it took one)
 bool enderTrySetDown(Level& lv, Creature& m);            // one try at putting its block down nearby

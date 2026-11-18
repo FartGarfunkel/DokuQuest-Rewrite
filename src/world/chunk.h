@@ -7,6 +7,7 @@
 #include <array>
 #include <atomic>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace dq {
 
@@ -99,6 +100,9 @@ public:
   u32 sectionDirty = 0;           // bit per section needing a remesh
   std::atomic<int> refs{0};       // background readers (meshing gathers on the main thread, so rarely used)
   json extra;                     // per-chunk data for systems (structures placed, etc.)
+  // cells whose block a player put down (colIdx; World::placedAt): saved with the chunk ("pl", runs of indices), cleared
+  // when the block is broken (air or a liquid takes the cell). Host-side: endermen leave these be, breaking them teaches no skill
+  std::unordered_set<u16> placed;
 };
 
 // Save codec (palette of block keys + varint RLE, y-fastest) — same idea as the JS format v2.

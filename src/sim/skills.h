@@ -47,7 +47,7 @@ float cookingHealFactor(const Player& p);      // food heals more (Cooking + Hea
 // from places without a Level at hand (the inventory screen): taken from a furnace's output, awarded on the next skillsTick
 void skillQueueSmelt(Player& p, const std::string& id, int n);
 void skillsTick(Level& lv, Player& p);
-// blocks a player put down: breaking them again teaches nothing (kept per level, the last 8192)
+// blocks a player put down: breaking them again teaches nothing (kept in the chunks and saved with them, world/chunk.h)
 void skillNotePlaced(Level& lv, int realm, int x, int y, int z);
 bool skillTakePlaced(Level& lv, int realm, int x, int y, int z);   // was it placed? (and forget it)
 bool skillWasPlaced(Level& lv, int realm, int x, int y, int z);   // was it placed? (a look only: it stays remembered)

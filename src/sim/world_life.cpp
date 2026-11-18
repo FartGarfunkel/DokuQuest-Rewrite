@@ -5,6 +5,7 @@
 #include "sim/player.h"
 #include "sim/rules.h"
 #include "sim/skills.h"
+#include "sim/villagers.h"
 #include "core/registry.h"
 #include "world/world.h"
 #include "world/dirs.h"
@@ -61,6 +62,7 @@ static void convert(Level& lv, Creature& c, const std::string& to) {
   if (!name.empty()) { n->petName = name; n->persistent = true; }
   if (c.persistent || c.kept) n->persistent = true;
   if (c.baby) n->makeBaby();
+  if (isVillager(c)) villagerLost(lv, c);   // its village counts it gone, its claims dropped (sim/villagers.h)
   n->data["struck"] = true;   // (made by a bolt: drawn the same as any other, kept so a save shows where it came from)
   c.removed = true;
   say(lv, "smoke", c.pos + vec3(0, c.h * 0.5f, 0), 20);
@@ -91,6 +93,16 @@ bool blockCarriable(BlockId id) {
   if (T.empty()) { T.assign(R.blocks.size() + 1, 0); for (auto& b : R.blocks) if (b.id < T.size()) T[b.id] = b.has("carriable"); }
   return id && id < T.size() && T[id];
 }
+bool blockNatural(BlockId id) {
+  static std::vector<u8> T;
+  const Registry& R = reg();
+  if (T.empty()) { T.assign(R.blocks.size() + 1, 0); for (auto& b : R.blocks) if (b.id < T.size()) T[b.id] = b.has("natural") || b.has("carriable"); }
+  return id == AIR || (id < T.size() && T[id]);
+}
+bool nearBuilt(World& w, int x, int y, int z) {
+  for (int dy = -2; dy <= 2; dy++) for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) if (!blockNatural(w.getBlock(x + dx, y + dy, z + dz))) return true;
+  return false;
+}
 std::string carriedBlock(const Entity& e) {
   if (!e.data.is_object()) return "";
   auto it = e.data.find("carry");
@@ -109,6 +121,8 @@ bool enderTryLift(Level& lv, Creature& m) {
   for (int k = 0; k < 6; k++) if (skillWasPlaced(lv, m.realm, x + D6X[k], y + D6Y[k], z + D6Z[k])) return false;
   // nothing sits on it (a torch, a flower someone set there, the next block of sand)
   if (w.getBlock(x, y + 1, z) != AIR) return false;
+  // and nothing made lies near it: planks, bricks, glass, a torch, a station (a build from before the record was kept)
+  if (nearBuilt(w, x, y, z)) return false;
   const u8 meta = w.getMeta(x, y, z);
   w.setBlock(x, y, z, AIR, 0);
   m.data["carry"] = reg().block(id).key; m.data["carryMeta"] = meta;
