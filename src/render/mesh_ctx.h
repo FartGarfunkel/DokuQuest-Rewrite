@@ -1,6 +1,7 @@
 // render/mesh_ctx.h — internal to the mesher (mesher.cpp, mesh_shapes.cpp, mesh_plants.cpp).
 #pragma once
 #include "assets/local_models.h"
+#include "render/chest_layer.h"
 #include "render/mesher.h"
 #include "world/shapes.h"
 
@@ -42,6 +43,12 @@ struct MeshCtx {
   u8 skyAt(int x, int y, int z) const { return inside(y) ? in.light[I(x, y, z)] >> 4 : 15; }
   u8 blAt(int x, int y, int z) const { return inside(y) ? in.light[I(x, y, z)] & 15 : 0; }
   bool opaque(int x, int y, int z) const { const BlockId b = at(x, y, z); return R.tOpaque[b] && !stationModelOpen(b); }   // (a station drawn from its model doesn't fill its cell)
+  // an opaque cell drawn as a whole cube: a face against it can't be seen. Not a station drawn from its model (a chest, a
+  // furnace, an anvil leave their cell partly open), nor a chest the chest layer draws standing open
+  bool fillsCell(int x, int y, int z) const {
+    const BlockId b = at(x, y, z);
+    return R.tOpaque[b] && !stationModelOpen(b) && !chestHiddenAt(wx0 + x, wy0 + y, wz0 + z);
+  }
   // A chisel-carved neighbour does NOT fully cover the faces it shares: its meta high bits mark
   // carved corner octants, so any face shared with it must draw on both sides. Treat carved blocks
   // as non-opaque for culling (they get their own octant-box pass in the Cube case).
@@ -75,6 +82,7 @@ struct MeshShapeNb : ShapeNb {
   BlockId id(int dx, int dy, int dz) const override { return c.at(x + dx, y + dy, z + dz); }
   u8 meta(int dx, int dy, int dz) const override { return c.metaAt(x + dx, y + dy, z + dz); }
   u8 carve(int dx, int dy, int dz) const override { return c.carveAt(x + dx, y + dy, z + dz); }
+  bool fills(int dx, int dy, int dz) const override { return ShapeNb::fills(dx, dy, dz) && c.fillsCell(x + dx, y + dy, z + dz); }
 };
 
 // per-kind emitters
