@@ -17,6 +17,7 @@
 #include <map>
 #include <set>
 #include <unordered_set>
+#include <deque>
 #include <unordered_map>
 
 namespace dq {
@@ -453,14 +454,47 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
     std::set<long long> solid;
     auto key = [](int x, int y, int z) { return ((long long)x & 0xFFFFF) | (((long long)y & 0xFFF) << 20) | (((long long)z & 0xFFFFF) << 32); };
     std::set<long long> tableAt;   // (furniture: a station on one is worked standing beside it)
+    std::set<long long> passAt, climbAt, anyAt;   // (doors walked through; ladders and vines climbed; anything of the piece's)
     for (const VPBlock& k : p.blocks) {
       const VPState& s = p.states[k.s]; auto w = world(k);
+      anyAt.insert(key(w[0], w[1], w[2]));
       if (reg().tSolid[s.id]) solid.insert(key(w[0], w[1], w[2]));
       if (reg().block(s.id).has("furniture")) tableAt.insert(key(w[0], w[1], w[2]));
+      if (reg().block(s.id).has("door")) passAt.insert(key(w[0], w[1], w[2]));
+      if (reg().block(s.id).has("climb")) { passAt.insert(key(w[0], w[1], w[2])); climbAt.insert(key(w[0], w[1], w[2])); }
     }
     const VPJoint* ent = nullptr; for (auto& j : p.joints) if (j.front < 4 && j.name.find("building_entrance") != std::string::npos) { ent = &j; break; }
     std::array<int, 3> entW{(q.x0 + q.x1()) / 2, q.y0 + 1, (q.z0 + q.z1()) / 2};
     if (ent) { auto [x, z] = vpTurn(p, q.r, ent->x, ent->z); entW = {q.x0 + x, q.y0 + ent->y, q.z0 + z}; }
+    // the cells a body walks to from outside the piece, by its own blocks: a station's side shut in behind a stall's
+    // counter, past the keeper's chair across the aisle, isn't where its trade is worked (the jeweller stood there for
+    // good, with no way out on foot). Stairs and slabs are a step up, doors walked through, ladders climbed.
+    std::set<long long> reach;
+    {
+      auto inside = [&](int x, int z) { return x >= q.x0 && x <= q.x1() && z >= q.z0 && z <= q.z1(); };
+      auto pass = [&](int x, int y, int z) { const long long k = key(x, y, z); return !solid.count(k) || passAt.count(k); };
+      // (under the piece's bottom layer, or where it has nothing in that layer, the ground it stands on)
+      auto floorAt = [&](int x, int y, int z) { const long long k = key(x, y, z); return (solid.count(k) && !passAt.count(k)) || climbAt.count(k) || y < q.y0 || (y == q.y0 && !anyAt.count(k)) || !inside(x, z); };
+      auto stand = [&](int x, int y, int z) { return pass(x, y, z) && pass(x, y + 1, z) && (floorAt(x, y - 1, z) || climbAt.count(key(x, y, z))); };
+      const int Y0 = q.y0 - 1, Y1 = q.y0 + p.top + 1;
+      std::deque<std::array<int, 3>> open;
+      auto add = [&](int x, int y, int z) { if (y < Y0 || y > Y1 || x < q.x0 - 1 || x > q.x1() + 1 || z < q.z0 - 1 || z > q.z1() + 1) return; if (reach.insert(key(x, y, z)).second) open.push_back({x, y, z}); };
+      for (int x = q.x0 - 1; x <= q.x1() + 1; x++) for (int z = q.z0 - 1; z <= q.z1() + 1; z++)   // (the ground round it, about the entrance's height)
+        if (!inside(x, z)) for (int y : {entW[1] - 1, entW[1], entW[1] + 1, q.y0 + 1}) add(x, y, z);
+      while (!open.empty()) {
+        const auto [x, y, z] = open.front(); open.pop_front();
+        if (climbAt.count(key(x, y, z)) && stand(x, y + 1, z)) add(x, y + 1, z);
+        if (climbAt.count(key(x, y - 1, z)) && stand(x, y - 1, z)) add(x, y - 1, z);
+        for (int f = 0; f < 4; f++) {
+          const int nx = x + DXJ[f], nz = z + DZJ[f];
+          if (!inside(nx, nz)) { for (int ny = y - 1; ny <= y + 1; ny++) add(nx, ny, nz); continue; }
+          if (stand(nx, y, nz)) add(nx, y, nz);
+          else if (stand(nx, y + 1, nz) && pass(x, y + 2, z)) add(nx, y + 1, nz);   // (a step up)
+          else if (stand(nx, y - 1, nz) && pass(nx, y + 1, nz)) add(nx, y - 1, nz);   // (a step down)
+        }
+      }
+    }
+    auto reached = [&](int x, int y, int z) { return reach.count(key(x, y, z)) != 0; };
     std::array<int, 3> door = entW; int dd = 1 << 30; bool work = false, mill = false;
     // where the trade is worked: its own station first (the job block for it, or the smith's anvil), indoors
     // before out in the yard (the weaponsmith stood at the yard's sharpening wheel, the grindstone, not his anvil)
@@ -492,14 +526,26 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
       int pref = 9;
       if (auto it = PREF.find(job); it != PREF.end()) for (int i = 0; i < (int)it->second.size(); i++) if (it->second[i] == d.key) { pref = i; break; }
       bool roof = false; for (int up = 2; up <= 6 && !roof; up++) if (solid.count(key(w[0], w[1] + up, w[2]))) roof = true;
-      const int score = pref * 2 + (roof ? 0 : 1);
-      if (score >= bestScore) continue;
+      const int score0 = pref * 2 + (roof ? 0 : 1);
+      if (score0 >= bestScore) continue;
       const int wy = tableAt.count(key(w[0], w[1] - 1, w[2])) ? w[1] - 1 : w[1];   // on a table (the brewing stand): stand beside the table
-      for (int f = 0; f < 4; f++) {
-        const int sx = w[0] + DXJ[f], sz = w[2] + DZJ[f];
-        if (solid.count(key(sx, wy, sz)) || solid.count(key(sx, wy + 1, sz)) || !solid.count(key(sx, wy - 1, sz))) continue;
-        b.work = {sx, wy, sz, (f + 2) & 3}; b.hasWork = true; work = true; bestScore = score;
-        break;
+      // (a side they can walk to first; one shut in only when none is)
+      for (int pass = 0; pass < 2; pass++) {
+        const int score = score0 + pass * 100;
+        if (score >= bestScore) break;
+        bool found = false;
+        for (int f = 0; f < 4; f++) {
+          const int sx = w[0] + DXJ[f], sz = w[2] + DZJ[f];
+          if (solid.count(key(sx, wy, sz)) || solid.count(key(sx, wy + 1, sz))) continue;
+          // (on the piece's own floor; or, one they walk to, the ground it stands on, just outside it or in a gap in its
+          // bottom layer: a stall's wheel worked from its front when the aisle behind it is shut in)
+          const bool out = sx < q.x0 || sx > q.x1() || sz < q.z0 || sz > q.z1();
+          const bool ground = wy - 1 == q.y0 && !anyAt.count(key(sx, wy - 1, sz));
+          if (pass == 0 ? !reached(sx, wy, sz) || (!out && !ground && !solid.count(key(sx, wy - 1, sz))) : !solid.count(key(sx, wy - 1, sz))) continue;
+          b.work = {sx, wy, sz, (f + 2) & 3}; b.hasWork = true; work = true; bestScore = score; found = true;
+          break;
+        }
+        if (found) break;
       }
     }
     // the trade's round (sim/villager_ai.cpp villagerRound): each kind of station it works, in the order the work goes
@@ -515,7 +561,7 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
           for (int f = 0; f < 4; f++) for (int dy = 0; dy <= 2; dy++) {   // (a rack or a shelf up on a wall: the floor in front of it)
             const int sx = w[0] + DXJ[f], sy = wy - dy, sz = w[2] + DZJ[f];
             if (solid.count(key(sx, sy, sz)) || solid.count(key(sx, sy + 1, sz)) || !solid.count(key(sx, sy - 1, sz))) continue;
-            const int d = std::abs(sx - b.work.x) + std::abs(sz - b.work.z) + 2 * std::abs(sy - b.work.y);
+            const int d = std::abs(sx - b.work.x) + std::abs(sz - b.work.z) + 2 * std::abs(sy - b.work.y) + (reached(sx, sy, sz) ? 0 : 1000);
             if (d < bestD) { bestD = d; at = {sx, sy, sz, (f + 2) & 3}; }
             break;
           }
@@ -530,10 +576,11 @@ bool jigsawTownPlan(const TerrainQuery& t, const VillagePieces& pack, Town& v, M
       if (kind < 0) continue;
       const auto w = world(k);
       bool roof = false; for (int up = 2; up <= 6 && !roof; up++) if (solid.count(key(w[0], w[1] + up, w[2]))) roof = true;
-      for (int f = 0; f < 4; f++) {
+      for (int pass = 0, found = 0; pass < 2 && !found; pass++) for (int f = 0; f < 4; f++) {   // (a side they can walk to first)
         const int sx = w[0] + DXJ[f], sz = w[2] + DZJ[f];
         if (solid.count(key(sx, w[1], sz)) || solid.count(key(sx, w[1] + 1, sz)) || !solid.count(key(sx, w[1] - 1, sz))) continue;
-        stations.push_back({(int)v.blds.size(), kind, {sx, w[1], sz, (f + 2) & 3}, roof});
+        if (pass == 0 && !reached(sx, w[1], sz)) continue;
+        stations.push_back({(int)v.blds.size(), kind, {sx, w[1], sz, (f + 2) & 3}, roof}); found = 1;
         break;
       }
     }

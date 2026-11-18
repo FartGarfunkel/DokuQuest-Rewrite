@@ -128,6 +128,46 @@ int main(int argc, char** argv) {
       printf("%s a golem goes round by the gap broad enough for it (%.0f s)\n", there ? "ok  " : "FAIL", took);
       if (!there) millerFails++;
     }
+    // a walk round the inside corner of an L of floor out in the sky: the way doesn't cut the corner over the drop (a
+    // walker's guard at the edge stops them there, facing the void: guards stood on a cliff's lip for good)
+    {
+      for (int x = -1; x <= 8; x++) for (int z = 12; z <= 18; z++) for (int y = Y; y < Y + 4; y++) w.setBlock(x, y, z, AIR);
+      for (int x = 0; x <= 6; x++) w.setBlock(x, Y, 13, stone);
+      for (int z = 13; z <= 17; z++) w.setBlock(6, Y, z, stone);
+      bool part = true; const auto way = npcPath(w, vec3(0.5f, Y + 1, 13.5f), vec3(6.5f, Y + 1, 17.5f), 0.3f, 1.95f, &part);
+      bool cut = false; ivec3 prev(0, Y + 1, 13);
+      for (auto& s : way) { if (s.at.x != prev.x && s.at.z != prev.z && (sheerDrop(w, prev.x, Y + 1, s.at.z) || sheerDrop(w, s.at.x, Y + 1, prev.z))) cut = true; prev = s.at; }
+      printf("%s the way round an inside corner out in the sky keeps off the drop (%zu steps%s)\n", !part && !cut ? "ok  " : "FAIL", way.size(), part ? ", partial" : cut ? ", cut across it" : "");
+      Creature* c = spawnCreature(*L, REALM_MAIN, "villager", vec3(0.5f, Y + 1, 13.5f));
+      bool there = false, moved = false;
+      if (c) {
+        c->data["npc"] = json{{"v", "none"}, {"i", 0}, {"n", "Walker"}};
+        NpcMind& M = vsys(*L)->mind(c->id);
+        M.sent = true; M.sentTo = vec3(6.5f, Y + 1, 17.5f);
+        for (double t = 0; t < 30 && M.sent; t += 0.05) { const vec3 was = c->pos; L->tick(0.05); P->pos = vec3(4.5f, Y + 1, -6.5f); if (glm::distance(was, c->pos) > 2.f) moved = true; }
+        there = !moved && std::hypot(c->pos.x - 6.5f, c->pos.z - 17.5f) < 1 && std::fabs(c->pos.y - (Y + 1)) < 0.6f;
+        M.sent = false; c->removed = true;
+      }
+      printf("%s and a townsperson walks it round to the end\n", there ? "ok  " : "FAIL");
+      if (part || cut || !there) millerFails++;
+    }
+    // a ford: a strip of floor out in the sky with a dip a block deep full of water across it. Waded (the street's cells
+    // in a ford had no way to them: the water's top was taken for a swim and hid the bottom); two deep, not swum
+    {
+      const BlockId water = reg().blockId("water");
+      for (int x = -1; x <= 9; x++) for (int z = 12; z <= 18; z++) for (int y = Y - 3; y < Y + 4; y++) w.setBlock(x, y, z, AIR);
+      for (int x = 0; x <= 8; x++) w.setBlock(x, Y, 15, stone);
+      w.setBlock(4, Y - 1, 15, stone); w.setBlock(4, Y, 15, water); w.setBlock(4, Y, 14, stone); w.setBlock(4, Y, 16, stone);
+      bool part = true; auto way = npcPath(w, vec3(0.5f, Y + 1, 15.5f), vec3(8.5f, Y + 1, 15.5f), 0.3f, 1.95f, &part);
+      bool waded = false; for (auto& s : way) if (s.at.x == 4 && std::fabs(s.floor - Y) < 0.1f) waded = true;
+      const float f = npcStandAt(w, 4, Y, 15);
+      printf("%s a ford a block deep is waded, on its bottom (%zu steps%s; stands at %.2f)\n", !part && waded && std::fabs(f - Y) < 0.01f ? "ok  " : "FAIL", way.size(), part ? ", partial" : "", f - Y);
+      if (part || !waded) millerFails++;
+      w.setBlock(4, Y - 2, 15, stone); w.setBlock(4, Y - 1, 15, water); w.setBlock(3, Y - 1, 15, stone); w.setBlock(5, Y - 1, 15, stone); w.setBlock(4, Y - 1, 14, stone); w.setBlock(4, Y - 1, 16, stone);
+      way = npcPath(w, vec3(0.5f, Y + 1, 15.5f), vec3(8.5f, Y + 1, 15.5f), 0.3f, 1.95f, &part);
+      printf("%s two deep, it isn't swum (%s)\n", part && std::isnan(npcStandAt(w, 4, Y + 1, 15)) && std::isnan(npcStandAt(w, 4, Y - 1, 15)) ? "ok  " : "FAIL", part ? "no way" : "a way");
+      if (!part) millerFails++;
+    }
     fflush(stdout);
   }
   // terrain versions: a world made before terrain 24 keeps its towns as they were (no corner tower half old, half new);
@@ -195,9 +235,9 @@ int main(int argc, char** argv) {
     }
     L->info.time = 3600;   // (morning)
     for (int k = 0; k < 200; k++) { L->tick(0.05); if (k % 20 == 0) w.stream({{P->pos, rad, false}}, 40); }
-    std::vector<Creature*> folk;
+    std::vector<Creature*> folk; std::map<Creature*, u32> folkIds;
     for (auto& up : L->entities()) if (auto* c = dynamic_cast<Creature*>(up.get())) if (const json* N = npcOf(*c))
-      if (!c->removed && N->value("v", "") == v->id && N->value("i", 0) < 300) folk.push_back(c);
+      if (!c->removed && N->value("v", "") == v->id && N->value("i", 0) < 300) { folk.push_back(c); folkIds[c] = c->id; }
     // the errands: points the town was built to be walked to
     std::vector<Errand> pts;
     for (const VBld& b : v->blds) {
@@ -235,10 +275,48 @@ int main(int argc, char** argv) {
       printf("  (the golems' ground: %zu steps a body %.1f wide reaches from the square; golem on it: %d)\n", G ? G->cells.size() : (size_t)0, c->w * 2, G ? (int)G->near(c->pos) : -1);
       break;
     }
+    // (DQ_NAV_TRACE: the steps round a spot: '.' level, '^' up one, 'v' down one, '#' none, '@'
+    // the spot; and what's in each cell, under/feet/head(meta))
+    auto mapAround = [&](int x0, int y0, int z0, float bw, float bh) {
+      if (!std::getenv("DQ_NAV_TRACE")) return;
+      for (int dz = -3; dz <= 3; dz++) {
+        std::string m, k;
+        for (int dx = -3; dx <= 3; dx++) {
+          char ch = '#';
+          for (int dy : {0, 1, -1}) if (!std::isnan(npcStandAt(w, x0 + dx, y0 + dy, z0 + dz, bw, bh))) { ch = dy == 0 ? '.' : dy > 0 ? '^' : 'v'; break; }
+          m += !dx && !dz ? '@' : ch;
+          char buf[200]; snprintf(buf, sizeof buf, " %s/%s/%s(%d)", reg().block(w.getBlock(x0 + dx, y0 - 1, z0 + dz)).key.c_str(), reg().block(w.getBlock(x0 + dx, y0, z0 + dz)).key.c_str(),
+                                  reg().block(w.getBlock(x0 + dx, y0 + 1, z0 + dz)).key.c_str(), w.getMeta(x0 + dx, y0, z0 + dz)); k += buf;
+        }
+        printf("        %s  %s\n", m.c_str(), k.c_str());
+      }
+    };
+    {   // which points have no way to them on foot from the square at all (the way finder alone, nobody walking: quick)
+      Creature* by = nullptr; for (Creature* c : folk) if (!c->T->j.value("golem", false)) { by = c; break; }
+      const vec3 sq = vec3(v->bell) + vec3(0.5f, 0, 1.5f);
+      int none = 0; std::string which;
+      for (const Errand& e : pts) {
+        if (!by) break;
+        bool part = true; const auto way = npcPath(w, sq, e.to, by->w, by->h, &part, 12000);
+        if (!part) continue;
+        none++;
+        char buf[160]; snprintf(buf, sizeof buf, " %s(%.0f %.0f %.0f)", e.kind.c_str(), e.to.x - v->x, e.to.y - v->y, e.to.z - v->z); which += buf;
+        if (std::getenv("DQ_NAV_TRACE")) {
+          bool part2 = true; npcPath(w, sq, e.to, by->w, by->h, &part2, 200000);
+          printf("    (no way from the square to %s at %.0f %.0f %.0f%s%s)\n", e.kind.c_str(), e.to.x - v->x, e.to.y - v->y, e.to.z - v->z, part2 ? "" : " in 12000 steps of the search; there is in 200000",
+                 way.empty() ? "" : "; it gives out here:");
+          if (!way.empty()) mapAround(way.back().at.x, way.back().at.y, way.back().at.z, by->w, by->h);
+          printf("      (the spot:)\n"); mapAround(ifloor(e.to.x), ifloor(e.to.y + 0.45f), ifloor(e.to.z), by->w, by->h);
+        }
+      }
+      printf("  (%d of %zu points with no way to them from the square on foot%s%s)\n", none, pts.size(), none ? ":" : "", which.c_str());
+    }
     Mulberry32 rng((u32)v->seed);
     VillagerSystem* S = vsys(*L);
     Tally T;
     for (int round = 0; round < errands; round++) {
+      // (who's still about: a creature gone from the level is gone from memory with it, so they're looked up by id)
+      { std::vector<Creature*> still; for (Creature* c : folk) if (auto* q = dynamic_cast<Creature*>(L->entity(folkIds[c]))) if (q == c && !c->removed) still.push_back(c); folk = still; }
       struct Trip { Creature* c; Errand e; double limit = 0, t = 0, lastMove = 0; vec3 last; bool done = false, stuck = false, late = false, over = false; int rescued = 0; };
       std::vector<Trip> trips;
       std::set<size_t> taken;   // (one to a spot at a time: not a crowd round the same doorstep)
@@ -274,8 +352,8 @@ int main(int argc, char** argv) {
         if ((int)(t * 20) % 40 == 0) w.stream({{P->pos, rad, false}}, 40);
         for (auto& tr : trips) {
           if (tr.over) continue;
-          Creature* c = tr.c;
-          if (c->removed) { tr.over = true; tr.stuck = true; S->mind(c->id).sent = false; continue; }
+          Creature* c = L->entity(folkIds[tr.c]) == tr.c ? tr.c : nullptr;
+          if (!c || c->removed) { printf("      (%s gone from the level)\n", c ? c->type.c_str() : "someone"); tr.over = true; tr.stuck = true; S->mind(folkIds[tr.c]).sent = false; tr.c = nullptr; continue; }
           const float jump = glm::distance(c->pos, tr.last);
           if (jump > 2.0f) tr.rescued++;
           if (glm::distance(vec3(c->pos.x, 0, c->pos.z), vec3(tr.last.x, 0, tr.last.z)) > 0.02f || std::fabs(c->pos.y - tr.last.y) > 0.05f) tr.lastMove = t;
@@ -298,6 +376,13 @@ int main(int argc, char** argv) {
               std::string r;
               for (int f = 0; f < 4; f++) r += " " + reg().block(w.getBlock(x0 + DXL[f], y0, z0 + DZL[f])).key + "/" + reg().block(w.getBlock(x0 + DXL[f], y0 + 1, z0 + DZL[f])).key;
               printf("        round them (feet/head, 4 sides):%s; under %s; in %s\n", r.c_str(), reg().block(w.getBlock(x0, y0 - 1, z0)).key.c_str(), reg().block(w.getBlock(x0, y0, z0)).key.c_str());
+              mapAround(x0, y0, z0, c->w, c->h);
+            } else if (std::getenv("DQ_NAV_TRACE")) {   // (a way, and not on it: where they are, the next steps, who's by them)
+              printf("        at %.2f %.2f %.2f; next:", c->pos.x - v->x, c->pos.y - v->y, c->pos.z - v->z);
+              for (size_t k = M.pathI; k < M.path.size() && k < M.pathI + 4; k++) printf(" (%d %.2f %d%s)", M.path[k].at.x - v->x, M.path[k].floor - v->y, M.path[k].at.z - v->z, M.path[k].climb ? " climb" : "");
+              for (auto& up : L->entities()) if (up.get() != c && !up->removed && glm::distance(up->pos, c->pos) < 1.6f) printf("; %s by them at %.2f %.2f %.2f", up->type.c_str(), up->pos.x - v->x, up->pos.y - v->y, up->pos.z - v->z);
+              printf("\n");
+              mapAround(ifloor(c->pos.x), ifloor(c->pos.y + 0.45f), ifloor(c->pos.z), c->w, c->h);
             }
           }
           else if (t > tr.limit) tr.late = tr.over = true;
@@ -305,6 +390,7 @@ int main(int argc, char** argv) {
         }
       }
       for (auto& tr : trips) {
+        if (!tr.c) continue;
         S->mind(tr.c->id).sent = false;
         Tally& K = byKind[tr.e.kind];
         for (Tally* X : {&T, &K}) {
@@ -318,6 +404,10 @@ int main(int argc, char** argv) {
           bool part = false; const auto way = npcPath(w, p, tr.e.to, tr.c->w, tr.c->h, &part);
           if (!way.empty()) printf("      (a way from there now: %zu steps%s, ending %.0f %.0f %.0f)\n", way.size(), part ? " partial" : "", way.back().at.x - (float)v->x, way.back().floor - v->y, way.back().at.z - (float)v->z);
           else printf("      (no way from there now)\n");
+          if (part && std::getenv("DQ_NAV_TRACE")) {   // (where the way gives out, and the spot)
+            if (!way.empty()) { printf("      (where it gives out:)\n"); mapAround(way.back().at.x, way.back().at.y, way.back().at.z, tr.c->w, tr.c->h); }
+            printf("      (the spot:)\n"); mapAround(ifloor(tr.e.to.x), ifloor(tr.e.to.y + 0.45f), ifloor(tr.e.to.z), tr.c->w, tr.c->h);
+          }
           if (std::hypot(tr.e.to.x - p.x, tr.e.to.z - p.z) < 4) {   // (close and not there: what's about the spot)
             const int tx = ifloor(tr.e.to.x), ty = ifloor(tr.e.to.y + 0.45f), tz = ifloor(tr.e.to.z);
             std::string r;

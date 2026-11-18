@@ -99,6 +99,14 @@ bool collides(const World& w, double minX, double minY, double minZ, double maxX
   return false;
 }
 
+bool sheerDrop(const World& w, int x, int y, int z) {
+  const Registry& R = reg();
+  if (!w.isLoaded(x, std::max(y, 0), z) || R.tSolid[w.getBlock(x, y, z)]) return false;
+  int drop = 0;
+  while (drop < 5 && y - 1 - drop > 0 && !R.tSolid[w.getBlock(x, y - 1 - drop, z)] && !R.tLiquid[w.getBlock(x, y - 1 - drop, z)]) drop++;
+  return drop >= 4;
+}
+
 static void mainBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out);
 // a cell's collision as gatherBoxes meets it: its main block's boxes and its attachments' (world/attach.h)
 void blockBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out) {

@@ -111,6 +111,9 @@ struct Finder {
 };
 
 constexpr float NONE = -1e9f;
+// what a walker steps up without a jump: the 0.6 a creature on the ground steps (sim/creature.cpp moveBox). A bed's top
+// (9/16) is a step, as you find it, not a jump that wants a jump's headroom under a cottage's low ceiling
+constexpr float STEP = 0.61f;
 }
 
 // where a body stands at step (x, y, z): its feet's height, or NONE. *climb: on a ladder (or a vine, a rope...), not on
@@ -126,7 +129,12 @@ static float standAt(Finder& F, int x, int y, int z, bool* climb, int* wet) {
     if (a.hi <= 0.6f && a.lo < 0.3f && !(a.f & F_NOSTAND)) f = y + a.hi;
     else return NONE;
   } else if (b.any() && b.hi > 0.6f && !(b.f & (F_NOSTAND | F_DOOR))) f = (y - 1) + std::min(b.hi, 1.f);
-  else if (b.liquid == 1 || a.liquid == 1) { f = (float)y; *wet = 2; }   // (out of their depth: swimming)
+  else if (b.liquid == 1 || a.liquid == 1) {   // (out of their depth: swimming)
+    // (on top of water a block deep, with a floor under it: no place to swim, they stand on the bottom, wading. Taken for
+    // a swim it hid every ford and flooded street's cell below it: the highest step in a column is the one taken)
+    if (!a.liquid) { const Cell& u = F.cell(x, y - 2, z); if (u.loaded && u.any() && u.hi > 0.6f && !u.liquid) return NONE; }
+    f = (float)y; *wet = 2;
+  }
   else if ((a.f & F_CLIMB) || (b.f & F_CLIMB)) { f = (float)y; *climb = true; }
   if (f == NONE) return NONE;
   if (a.liquid == 1 && !*wet) *wet = F.cell(x, y + 1, z).liquid == 1 ? 2 : 1;   // (on the bottom: wading if it's below the waist)
@@ -146,7 +154,7 @@ static float stand(Finder& F, int x, int y, int z, bool* climb, int* wet) {
     if (g == NONE || cl) return NONE;
     f = std::max(f, g); lo = std::min(lo, g); wmax = std::max(wmax, wt);
   }
-  if (f - lo > 0.55f) return NONE;   // (not straddling a step)
+  if (f - lo > STEP) return NONE;   // (not straddling a step)
   for (int j = 0; j < 2; j++) for (int i = 0; i < 2; i++) if (!F.clearSpan(x + i, z + j, f + 0.02f, f + F.H)) return NONE;
   *climb = false; *wet = wmax;
   return f;
@@ -174,7 +182,7 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
   int ty = ifloor(to.y + 0.45f);
   {   // a goal nobody can stand at (out over the water, inside a block, up in the air): the nearest place by it they can
     bool cl; int wt; bool ok = false;
-    for (int dy : {0, 1, -1}) if (stand(F, tx, ty + dy, tz, &cl, &wt) != NONE) { ok = true; break; }
+    for (int dy : {0, 1, -1}) if (stand(F, tx, ty + dy, tz, &cl, &wt) != NONE && wt != 2) { ok = true; break; }   // (out of their depth isn't a place to stand: they never swim out to it)
     if (!ok) {
       float bd = 1e9f; int bx = tx, by = ty, bz = tz;
       for (int r = 1; r <= 3 && bd > 1e8f; r++)
@@ -250,14 +258,17 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
         const float rise = nf - c.floor;
         if (rise > 1.15f || rise < -3.2f) break;
         if (cl && rise < -0.6f) break;   // (not dropped onto a ladder from beside it: climbed down it from above)
-        if (diag && std::fabs(rise) > 0.55f) break;   // (no jumping or dropping across a corner)
+        if (diag && std::fabs(rise) > STEP) break;   // (no jumping or dropping across a corner)
         const bool nDoor = F.cell(nx, ny, nz).f & F_DOOR;
         if (diag && nDoor) break;
         // room on the way: a jump needs headroom where they jump from, a drop room in the column they drop down
         const float top = std::max(nf, c.floor);
-        if (rise > 0.55f && !clearCols(F, c.x, c.z, c.floor + 0.02f, nf + F.H)) break;
+        if (rise > STEP && !clearCols(F, c.x, c.z, c.floor + 0.02f, nf + F.H)) break;
         if (rise < -0.05f && !clearCols(F, nx, nz, nf + 0.02f, c.floor + F.H)) break;
         if (diag && !F.wide && (!F.emptySpan(c.x + dx, c.z, top + 0.02f, top + F.H) || !F.emptySpan(c.x, c.z + dz, top + 0.02f, top + F.H))) break;
+        // (nor across a corner over a sheer drop: the walker's own guard at an edge stops them there, facing the void, for
+        // good — guards stood on a cliff's lip by the town's wall that way)
+        if (diag && !F.wide && (sheerDrop(F.w, c.x + dx, ifloor(top), c.z) || sheerDrop(F.w, c.x, ifloor(top), c.z + dz))) break;
         if (diag && F.wide) {   // (a broad body across a corner: both the steps beside it hold it too)
           bool c1, c2; int w1, w2;
           if (stand(F, c.x + dx, c.y, c.z, &c1, &w1) == NONE || stand(F, c.x, c.y, c.z + dz, &c2, &w2) == NONE) break;
@@ -267,7 +278,7 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
         if (!F.wide && dx && (!F.crossClear(c.x, c.z, kx, top + 0.02f, top + F.H) || !F.crossClear(nx, nz, kx ^ 1, top + 0.02f, top + F.H))) break;
         if (!F.wide && dz && (!F.crossClear(c.x, c.z, kz, top + 0.02f, top + F.H) || !F.crossClear(nx, nz, kz ^ 1, top + 0.02f, top + F.H))) break;
         float cost = diag ? 1.414f : 1.f;
-        if (rise > 0.55f) cost += 0.8f;          // a jump
+        if (rise > STEP) cost += 0.8f;          // a jump
         else if (rise > 0.05f) cost += 0.15f;    // a half step
         if (rise < -0.55f) cost += 0.35f * -rise;
         if (F.cell(nx, ny - 1, nz).f & F_FARM) cost += 4;   // keep off the crops
@@ -303,7 +314,7 @@ float npcStandAt(const World& w, int x, int y, int z, float bodyW, float bodyH) 
   tables();
   Finder F(w, bodyW, bodyH); bool cl; int wt;
   const float f = stand(F, x, y, z, &cl, &wt);
-  return f == NONE || cl ? NAN : f;
+  return f == NONE || cl || wt == 2 ? NAN : f;   // (out of their depth: nowhere to stand)
 }
 
 bool npcOpenGround(const World& w, vec3 near, vec3 square, float bodyW, float bodyH, vec3& out, int maxR) {
@@ -361,8 +372,8 @@ std::shared_ptr<const NpcReach> npcBroadReach(const World& w, vec3 square, float
         if (nf == NONE) continue;
         const float rise = nf - c.f;
         if (rise > 1.15f || rise < -3.2f || wt == 2) break;
-        if (diag && std::fabs(rise) > 0.55f) break;
-        if (rise > 0.55f && !clearCols(F, c.x, c.z, c.f + 0.02f, nf + F.H)) break;
+        if (diag && std::fabs(rise) > STEP) break;
+        if (rise > STEP && !clearCols(F, c.x, c.z, c.f + 0.02f, nf + F.H)) break;
         if (rise < -0.05f && !clearCols(F, nx, nz, nf + 0.02f, c.f + F.H)) break;
         if (diag) { bool c1, c2; int w1, w2; if (stand(F, c.x + d[0], c.y, c.z, &c1, &w1) == NONE || stand(F, c.x, c.y, c.z + d[1], &c2, &w2) == NONE) break; }
         R->at[NpcReach::key(nx, nz)] = ny; q.push_back({nx, ny, nz, nf});
