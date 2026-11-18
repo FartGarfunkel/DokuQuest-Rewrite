@@ -1,5 +1,6 @@
 // sim/physics.cpp — port of game/physics.js (gatherBoxes, clipAxis, moveEntity, sampleContacts, raycastBlocks).
 #include "sim/physics.h"
+#include "world/attach.h"
 #include "world/shapes.h"
 #include "world/carve_faces.h"
 #include "sim/blockinfo.h"
@@ -351,6 +352,15 @@ RayHit raycastBlocks(const World& w, glm::dvec3 o, vec3 dirf, float maxDist, boo
   };
   for (int i = 0; i < 256 && t <= maxDist; i++) {
     BlockId id = w.getBlock(x, y, z);
+    if (id && w.hasAttachments(x, y, z)) {   // a cell shared with attachments: the nearest part's own boxes (world/attach.h)
+      int part = -1; double tt = 0; ivec3 nn(0);
+      if (attachRayCell(w, o, d, x, y, z, maxDist, part, tt, nn)) {
+        finish(x, y, z, part < 0 ? id : (*w.attachments(x, y, z))[part].id, nn, tt);
+        h.part = part;
+        return h;
+      }
+      id = 0;   // the ray passes through the cell's open part
+    }
     if (id) {
       Render r = (Render)R.tRender[id];
       bool liquid = r == Render::Liquid;

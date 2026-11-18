@@ -49,7 +49,7 @@ Contacts sampleContacts(const World& w, const Entity& e, float eye = -1);
 bool spikeOverlap(const World& w, const Entity& e);
 
 // Voxel DDA ray cast against the blocks' real shapes. pickLiquid: still liquid sources count.
-struct RayHit { bool hit = false; ivec3 block{0}; ivec3 normal{0}; float dist = 0; BlockId id = 0; vec3 point{0}; };
+struct RayHit { bool hit = false; ivec3 block{0}; ivec3 normal{0}; float dist = 0; BlockId id = 0; vec3 point{0}; int part = -1; };   // part: an attachment's slot in that cell (world/attach.h; id is its id), -1 the main block
 RayHit raycastBlocks(const World& w, glm::dvec3 origin, vec3 dir, float maxDist, bool pickLiquid = false);
 // Ray vs AABB (slab method): distance or -1.
 double rayAABB(glm::dvec3 o, glm::dvec3 d, glm::dvec3 lo, glm::dvec3 hi);

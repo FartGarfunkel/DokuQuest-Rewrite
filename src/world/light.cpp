@@ -139,6 +139,18 @@ void initialChunkLight(Chunk& c) {
       Q.push_back((u32)(x | (z << 4) | (y << 8)));
     }
   }
+  for (auto& [ci, parts] : c.attach) {   // attachments that give light (world/attach.h)
+    const int x = ci & 15, z = (ci >> 4) & 15, y = ci >> 8;
+    for (const Attachment& a : parts) {
+      const u8 level = R.metaLight(a.id, a.meta);
+      if (!level) continue;
+      u8 em[3] = {0, 0, 0};
+      blockLightRgb(a.id, level, em);
+      u8* dst = BL[idx(x, y, z)].c;
+      for (int i = 0; i < 3; i++) dst[i] = std::max(dst[i], em[i]);
+      Q.push_back((u32)(x | (z << 4) | (y << 8)));
+    }
+  }
   flood(BL, false);
   // 4. store. A uniform section stays unallocated and remembers its rgb (open sky is full sun, a nether cave is dark).
   for (int sy = 0; sy < SECS; sy++) {
@@ -215,6 +227,14 @@ LightEngine::R3 LightEngine::emission(int x, int y, int z, int ch, BlockId id, u
     return e;
   }
   blockLightRgb(id, R.metaLight(id, meta), e.c);
+  if (Chunk* c = chunkAt(x, y, z); c && !c->attach.empty()) {   // a torch sharing the cell lights it (world/attach.h)
+    auto it = c->attach.find(colIdx(x & 15, y & 255, z & 15));
+    if (it != c->attach.end()) for (const Attachment& a : it->second) {
+      u8 em[3] = {0, 0, 0};
+      blockLightRgb(a.id, R.metaLight(a.id, a.meta), em);
+      for (int i = 0; i < 3; i++) e.c[i] = std::max(e.c[i], em[i]);
+    }
+  }
   return e;
 }
 

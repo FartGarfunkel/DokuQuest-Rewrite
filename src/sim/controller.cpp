@@ -1,6 +1,7 @@
 // sim/controller.cpp — port of game/local.js (LocalPlayer.update/interact/use/mining/breaking/tree
 // felling/breath/fire/falls/drop/pick block), fairplay.js (food over time), itemfix.js (eating for
 // effect, the off hand), blocks2.js (bow and arrows) and blockfx.js (cracks that mend).
+#include "sim/attach_play.h"
 #include "sim/dyntree.h"
 #include "sim/weather.h"
 #include "sim/controller.h"
@@ -654,6 +655,16 @@ void PlayerController::breakBlock(int x, int y, int z) {
   World& w = world();
   BlockId id = w.getBlock(x, y, z);
   if (!id) return;
+  if (target.hit && target.part >= 0 && target.block == ivec3(x, y, z)) {   // an attachment aimed at: only that part (sim/attach_play.h)
+    const auto* parts = w.attachments(x, y, z);
+    if (parts && target.part < (int)parts->size() && (*parts)[target.part].id == target.id) {
+      const bool harvest = canHarvest(target.id);
+      breakAttachment(lv, &p, w, x, y, z, target.part, harvest && !p.creative(), heldTool(p));
+      wearHeld(lv, p, reg().block(target.id).hardness > 0 ? 1 : 0);
+      p.stats["blocksMined"] = p.stats.value("blocksMined", 0) + 1;
+      return;
+    }
+  }
   const BlockDef& b = reg().block(id);
   if (lv.events && !lv.events->emit("blockBreak", json::array({p.name, x, y, z, b.key}))) return;   // a mod said no
   if (const BlockId rug = rugBlockOf(w.getCoat(x, y, z))) {   // a rug on it comes up first (world/rug.h); the floor stays
@@ -813,6 +824,8 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     ivec3 tab;
     if (worktableResultAlong(w, eye, dir, maxT, p.yaw, tab) && worktableCraft(lv, p, w, tab)) { swingArm(); return; }
   }
+  // an attachment aimed at (a lever beside a ladder, a trapdoor behind a chest): it's the part that's used (sim/attach_play.h)
+  if (!fromOff && !repeat && hit && hit->part >= 0 && !te && !(p.sneaking && def && !def->block.empty()) && useAttachment(lv, p, w, *hit, held.empty() ? nullptr : &held)) { swingArm(); return; }
   // EventBus "itemUse" [player, item ("" = empty hand), x, y, z, face] for every use, before any default block or
   // item interaction (portals, redstone levers and buttons, minecarts, tables hook it); false = used up
   if (lv.events && (!repeat || (def && !def->block.empty()))) {
