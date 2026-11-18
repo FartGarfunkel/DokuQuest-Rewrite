@@ -93,6 +93,8 @@ bool Registry::loadBase(const fs::path& dir) {
   // apart from the import file, which its tool writes afresh; merged field by field over whatever kind is there
   if (auto t = readJson(dir / "mob_traits.json"); t && t->is_object() && mobs.is_object())
     for (auto& [k, v] : t->items()) if (mobs.contains(k) && v.is_object()) mobs[k].update(v);
+  // a creature the traits say is "removed" is not in the game at all (no spawning, no egg, no entry in the book)
+  if (mobs.is_object()) for (auto it = mobs.begin(); it != mobs.end();) { if (it->is_object() && it->value("removed", false)) it = mobs.erase(it); else ++it; }
   finalize();
   DQ_LOG("registry: %zu blocks, %zu items, %zu recipes, %zu tiles", blocks.size(), items.size(), recipes.size(), tileIndex.size());
   return true;

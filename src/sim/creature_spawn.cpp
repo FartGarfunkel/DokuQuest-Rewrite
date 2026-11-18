@@ -666,6 +666,15 @@ public:
         const std::string& t = pick->first; const json& e = pick->second;
         const CreatureType* ct = creatureType(t);
         const std::string where = e[4].get<std::string>();
+        // (a sixth field, the places it lives: a habitat ("desert", "redlands", "jungle"...) or a ground block's name ("crimson",
+        // "soul"); none named: anywhere in that place. Without it a desert's creatures came out on every night's land)
+        auto livesAt = [&](int x, int z, int y) {
+          if (e.size() < 6 || !e[5].is_array() || e[5].empty()) return true;
+          const BlockId g = w.getBlock(x, y - 1, z);
+          const std::string hab = dim == DIM_OVERWORLD ? habitatAt(w, x, z, g) : std::string(), gk = R.block(g).key;
+          for (auto& s : e[5]) if (s.is_string()) { const std::string v = s.get<std::string>(); if (v == hab || gk.find(v) != std::string::npos) return true; }
+          return false;
+        };
         if (ct && !(ct->hostile && peaceful) && count(t.c_str(), 64) < std::max(2, e[3].get<int>() + 1)) {
           const ivec2 xz = ringFar(20, 44);
           if (w.isLoaded(xz.x, py, xz.y)) {
@@ -674,6 +683,7 @@ public:
               for (int y = std::min(base + DIM_H - 3, py + 16); y > std::max(base + 2, py - 30); y--) {
                 const BlockId b = w.getBlock(xz.x, y, xz.y);
                 if (R.tLiquid[b] && R.tLiquid[w.getBlock(xz.x, y - 1, xz.y)] && (where == "l") == (R.block(b).key.find("lava") != std::string::npos)) {
+                  if (!livesAt(xz.x, xz.y, y)) break;
                   for (int i = 0; i < n; i++) add(t.c_str(), xz.x + 0.5f + i * 0.4f, (float)y - 0.5f, xz.y + 0.5f);
                   break;
                 }
@@ -681,7 +691,7 @@ public:
             } else {
               const int fy = floorAt(xz.x, xz.y, std::min(base + DIM_H - 4, py + (pl == "cave" ? 6 : 20)), 50);
               const bool dark = pl != "cave" || w.getLight(xz.x, fy, xz.y) == 0;   // (a cave's: no sky and no lamp)
-              if (fy > 0 && dark && !R.tLiquid[w.getBlock(xz.x, fy - 1, xz.y)])
+              if (fy > 0 && dark && !R.tLiquid[w.getBlock(xz.x, fy - 1, xz.y)] && livesAt(xz.x, xz.y, fy))
                 for (int i = 0; i < n; i++) add(t.c_str(), xz.x + 0.5f + i * 0.6f, (float)(fy + (where == "a" ? 2 + (int)(frand() * 5) : 0)), xz.y + 0.5f);
             }
           }

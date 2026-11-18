@@ -12,13 +12,13 @@
   "cockroach": {"carry": "basket", "drops": [["string", 0, 1, 0.3]]},
   "comb_jelly": {"aquatic": true, "drops": [["slime_ball", 0, 1, 0.6], ["glow_ink_sac", 0, 1, 0.2]]},
   "cosmic_cod": {"carry": "basket"},
-  "crimson_mosquito": {"drops": [["string", 0, 1, 0.6], ["spider_eye", 0, 1, 0.4]]},
+  "crimson_mosquito": {"drops": [["string", 0, 1, 0.6], ["spider_eye", 0, 1, 0.4]], "spawnDim": [["nether", 7, 1, 2, "g", ["crimson"]]]},
   "devils_hole_pupfish": {"carry": "basket", "aquatic": true, "school": true, "drops": [["cod", 0, 1, 0.5], ["bone_meal", 0, 1, 0.3]]},
   "dropbear": {"drops": [["pelt", 0, 1, 0.6], ["bone", 0, 2, 1]]},
   "emu": {"tame": {"foods": ["wheat_seeds", "melon_seeds", "berries"], "chance": 0.3}, "mount": {"speed": 8.5, "jump": 10, "seatY": 1.5}},
   "endergrade": {"drops": [["chorus_fruit", 0, 1, 0.6], ["ender_shard", 0, 1, 0.3]]},
   "enderiophage": {"drops": [["ender_shard", 0, 1, 0.5]]},
-  "farseer": {"drops": [["ender_pearl", 0, 1, 0.6], ["echo_shard", 0, 1, 0.15]]},
+  "farseer": {"drops": [["ender_pearl", 0, 1, 0.6], ["echo_shard", 0, 1, 0.15]], "removed": true},
   "flutter": {"carry": "basket"},
   "fly": {"carry": "basket", "drops": [["string", 0, 1, 0.2]]},
   "flying_fish": {"carry": "basket", "aquatic": true, "school": true},
@@ -30,7 +30,7 @@
   "hammerhead_shark": {"aquatic": true, "drops": [["shark_tooth", 1, 3, 0.8], ["cod", 0, 2, 0.5]]},
   "jerboa": {"carry": "pet", "tame": {"foods": ["wheat_seeds", "melon_seeds"], "chance": 0.4}, "drops": [["pelt", 1, 1, 0.4]]},
   "komodo_dragon": {"drops": [["croc_scale", 0, 1, 0.6], ["raw_meat", 0, 2, 1], ["venom_sac", 0, 1, 0.25]]},
-  "laviathan": {"amphibious": true, "swimsIn": "lava"},
+  "laviathan": {"amphibious": true, "swimsIn": "lava", "spawnDim": [["nether", 7, 1, 1, "l"]]},
   "leafcutter_ant": {"carry": "basket", "drops": [["string", 0, 1, 0.3]]},
   "maned_wolf": {"tame": {"foods": ["raw_meat", "chicken", "rabbit", "berries"], "chance": 0.25}, "drops": [["pelt", 0, 1, 0.6], ["bone", 0, 1, 0.5]]},
   "mantis_shrimp": {"aquatic": true, "drops": [["cod", 0, 1, 0.6], ["bone_meal", 0, 1, 0.5]]},
@@ -56,5 +56,7 @@
   "underminer": {"drops": [["coal", 0, 2, 1], ["iron_nugget", 0, 2, 0.4]]},
   "void_worm": {"drops": [["ender_pearl", 1, 3, 1], ["ender_shard", 1, 2, 1]]},
   "warped_mosco": {"drops": [["string", 1, 3, 1], ["spider_eye", 0, 1, 0.5]]},
-  "warped_toad": {"amphibious": true}
+  "warped_toad": {"amphibious": true, "spawnDim": [["nether", 12, 1, 2, "g", ["warped"]]]},
+  "guster": {"spawnDim": [["night", 12, 1, 2, "g", ["desert", "redlands", "sand", "badlands"]]]},
+  "soul_vulture": {"spawnDim": [["nether", 12, 1, 2, "g", ["soul"]]]}
 }
