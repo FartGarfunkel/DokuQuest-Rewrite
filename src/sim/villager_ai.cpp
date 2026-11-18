@@ -32,6 +32,20 @@ static bool isNpcDoor(BlockId id) { doorTables(); return id < g_door.size() && g
 
 NpcNavStats& npcNavStats() { static NpcNavStats s; return s; }
 
+std::shared_ptr<const NpcReach> golemGround(Level& lv, const Village& v, const Creature& e) {
+  struct Entry { std::shared_ptr<const NpcReach> r; double at = -1e9; };
+  static std::unordered_map<std::string, Entry> cache;
+  VillagerSystem* S = vsys(lv);
+  const double now = S ? S->now : 0;
+  Entry& E = cache[v.id + "/" + e.type];
+  // (worked out again every few minutes: walls built and stalls taken down change it)
+  if (E.r && now - E.at < 180 && now >= E.at) return E.r;
+  World& w = lv.world(REALM_MAIN);
+  if (!w.isLoaded(v.x, v.y, v.z)) return E.r;
+  E.r = npcBroadReach(w, vec3(v.x + 0.5f, v.y + 1, v.z + 0.5f), e.w, e.h, std::max(24, v.r + 16)); E.at = now;
+  return E.r;
+}
+
 static std::string doorSnd(const BlockDef& b, bool open) {
   const std::string& k = b.key;
   std::string kind = k.rfind("iron", 0) == 0 || k.find("_iron") != std::string::npos || k.rfind("copper", 0) == 0 || k.find("_copper") != std::string::npos ? "door_iron"
@@ -596,7 +610,12 @@ static Move brainInner(Level& lv, Creature& e, NpcMind& M, json& N, const Villag
     if (!M.hasGoal || M.goalT <= 0 || std::hypot(M.goal.x - e.pos.x, M.goal.z - e.pos.z) < 0.8f) {
       if (M.hasGoal && M.lookT == 0) M.lookT = 2 + rnd() * 4;
       if (M.lookT > 0) { M.lookT -= dt; if (guard) M.pose |= NP_FOLD; if (M.lookT > 0) return Move{0, e.yaw}; M.lookT = 0; }
-      if (golem || v.roads.empty()) M.goal = npcPickSpot(lv, v, true);
+      if (golem) {   // (only where a body its width can get to from the square and back: never a garden it can't leave)
+        auto G = golemGround(lv, v, e);
+        std::vector<i64> pick;
+        if (G) for (i64 k : G->cells) { const vec3 at = G->spot(k); if (std::hypot(at.x - v.x, at.z - v.z) < 22) pick.push_back(k); }
+        M.goal = !pick.empty() ? G->spot(pick[(size_t)(rnd() * pick.size()) % pick.size()]) : npcPickSpot(lv, v, true);
+      } else if (v.roads.empty()) M.goal = npcPickSpot(lv, v, true);
       else {
         const VRoad& rd = v.roads[(size_t)std::floor(rnd() * v.roads.size())];
         int t = std::min(rd.L, 6 + (int)std::floor(rnd() * rd.L));
@@ -786,6 +805,30 @@ OptMove npcBrain(Level& lv, Creature& e, Entity* p, float dist, float dt) {
   else if (N.value("i", 0) == 400) { OptMove m = travellerAI(lv, e, M, p, dist, dt); out = m ? *m : out; }
   else if (VillageRef v = villageById(lv, N.value("v", std::string()))) {
     const int i = N.value("i", 0);
+    // a broad body (a golem) shut in where it can't get out at its width — among a market's stalls, from before it was
+    // set down on open ground — goes once to the nearest open ground with a way to the square, while nobody watches
+    if (e.w > 0.5f && (M.wedgeT -= dt) <= 0) {
+      M.wedgeT = 20;
+      World& w = lv.world(e.realm);
+      const vec3 sq(v->x + 0.5f, v->y + 1, v->z + 0.5f);
+      bool partial = true;
+      const auto way = npcPath(w, e.pos, sq, e.w, e.h, &partial, 4000);
+      vec3 o;
+      // (shut in: no room for all of it where it stands, or no way on more than a step or two — not merely far)
+      bool room = false;
+      const int bx = ifloor(e.pos.x + 0.5f) - 1, bz = ifloor(e.pos.z + 0.5f) - 1, by = ifloor(e.pos.y + 0.45f);
+      for (int dz = -1; dz <= 1 && !room; dz++) for (int dx = -1; dx <= 1 && !room; dx++) for (int dy : {0, 1, -1}) if (!std::isnan(npcStandAt(w, bx + dx, by + dy, bz + dz, e.w, e.h))) { room = true; break; }
+      auto G = golemGround(lv, *v, e);
+      const bool pocket = G && !G->cells.empty() && !G->near(e.pos);   // (off the ground it can reach from the square: a pocket)
+      if ((!room || pocket || (partial && way.size() < 4)) && !nearestPawn(lv, e.realm, e.pos, 24) && [&] {
+            if (G && !G->cells.empty()) {   // (the nearest of the ground it can reach from the square)
+              float bd = 1e9f; for (i64 k : G->cells) { const vec3 at = G->spot(k); const float d = glm::distance(at, e.pos); if (d < bd) { bd = d; o = at; } }
+              return true;
+            }
+            return npcOpenGround(w, e.pos, sq, e.w, e.h, o); }()) {
+        e.pos = o + vec3(0, 0.01f, 0); e.vel = vec3(0); M.hasPath = false; M.stuckGo = 0; npcNavStats().rescues++;
+      }
+    }
     // the first guard takes a turn on lookout now and then, up a corner tower's lift (sim/villager_lookout.cpp); a
     // monster about, or someone to have a word with, comes first
     if (i == 100 && e.type == "village_guard" && !M.confront && v->hasWall && M.holdT <= 0 && !npcFoe(lv, e, M, *v))

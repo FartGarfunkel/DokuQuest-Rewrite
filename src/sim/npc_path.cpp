@@ -9,6 +9,7 @@
 #include "sim/physics.h"
 #include "core/registry.h"
 #include <queue>
+#include <deque>
 
 namespace dq {
 
@@ -182,12 +183,15 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
   }
   bool c0; int w0;
   float f0 = stand(F, sx, sy, sz, &c0, &w0);
-  if (f0 == NONE && F.wide) {   // (a broad body off the grid of corners: the corner beside it that holds it)
-    for (int dz = -1; dz <= 1 && f0 == NONE; dz++) for (int dx = -1; dx <= 1 && f0 == NONE; dx++)
-      for (int dy : {0, 1, -1}) if ((f0 = stand(F, sx + dx, sy + dy, sz + dz, &c0, &w0)) != NONE) { sx += dx; sy += dy; sz += dz; break; }
-    // (wedged where no 2 x 2 holds it — among the stalls of a market: out the way a narrower body would go, it'll
-    // squeeze, and from the open ground on it walks as itself)
-    if (f0 == NONE) return npcPath(w, from, to, 0.45f, bodyH, partial, maxNodes, snapped);
+  if (f0 == NONE && F.wide) {   // (a broad body off the grid of corners: the nearest corner by it that holds it)
+    for (int r = 1; r <= 2 && f0 == NONE; r++)
+      for (int dz = -r; dz <= r && f0 == NONE; dz++) for (int dx = -r; dx <= r && f0 == NONE; dx++) {
+        if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
+        for (int dy : {0, 1, -1}) if ((f0 = stand(F, sx + dx, sy + dy, sz + dz, &c0, &w0)) != NONE) { sx += dx; sy += dy; sz += dz; break; }
+      }
+    // (wedged where no 2 x 2 holds it: no way at its width. It doesn't squeeze on as a narrower body would — that took
+    // golems into gardens and alleys they couldn't turn round in; it waits to be set on open ground (sim/villager_ai.cpp))
+    if (f0 == NONE) return none;
   }
   if (f0 == NONE) {   // (mid-step, mid-jump, on a ladder: the nearest step that will hold them)
     for (int dy : {1, -1, 2, -2}) if ((f0 = stand(F, sx, sy + dy, sz, &c0, &w0)) != NONE) { sy += dy; break; }
@@ -288,8 +292,77 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
 float npcStandAt(const World& w, int x, int y, int z, float bodyW, float bodyH) {
   tables();
   Finder F(w, bodyW, bodyH); bool cl; int wt;
-  const float f = standAt(F, x, y, z, &cl, &wt);
+  const float f = stand(F, x, y, z, &cl, &wt);
   return f == NONE || cl ? NAN : f;
+}
+
+bool npcOpenGround(const World& w, vec3 near, vec3 square, float bodyW, float bodyH, vec3& out, int maxR) {
+  tables();
+  const bool wide = bodyW > 0.5f;
+  const int cx = wide ? ifloor(near.x + 0.5f) - 1 : ifloor(near.x), cz = wide ? ifloor(near.z + 0.5f) - 1 : ifloor(near.z), cy = ifloor(near.y + 0.45f);
+  int tried = 0;
+  for (int r = 0; r <= maxR; r++)
+    for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
+      if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
+      const int x = cx + dx, z = cz + dz;
+      if (!w.isLoaded(x, cy, z) || !w.isLoaded(x + 1, cy, z + 1)) continue;
+      for (int dy : {0, 1, -1, 2, -2, 3, -3}) {
+        const float f = npcStandAt(w, x, cy + dy, z, bodyW, bodyH);
+        if (std::isnan(f)) continue;
+        if (Finder F(w, bodyW, bodyH); [&] { bool cl; int wt; stand(F, x, cy + dy, z, &cl, &wt); return wt != 0; }()) break;   // (not in the water)
+        const vec3 at = wide ? vec3(x + 1.f, f, z + 1.f) : vec3(x + 0.5f, f, z + 0.5f);
+        // (and a way from there to the square at their width: open ground, not a pocket between the stalls)
+        if (++tried > 40) return false;
+        bool partial = true;
+        const auto way = npcPath(w, at, square, bodyW, bodyH, &partial, 4000);
+        if (!partial) { out = at; return true; }
+        break;
+      }
+    }
+  return false;
+}
+
+std::shared_ptr<const NpcReach> npcBroadReach(const World& w, vec3 square, float bodyW, float bodyH, int radius) {
+  tables();
+  auto R = std::make_shared<NpcReach>();
+  Finder F(w, bodyW, std::max(1.f, bodyH));
+  auto cellOf = [&](float v) { return F.wide ? ifloor(v + 0.5f) - 1 : ifloor(v); };
+  int sx = cellOf(square.x), sz = cellOf(square.z), sy = ifloor(square.y + 0.45f);
+  bool cl; int wt; float f0 = NONE;
+  // (the square's middle may be a fountain or a well: the nearest step by it that holds the body)
+  for (int r = 0; r <= 4 && f0 == NONE; r++)
+    for (int dz = -r; dz <= r && f0 == NONE; dz++) for (int dx = -r; dx <= r && f0 == NONE; dx++) {
+      if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
+      for (int dy : {0, 1, -1, 2, -2}) { const float f = stand(F, sx + dx, sy + dy, sz + dz, &cl, &wt); if (f != NONE && wt != 2) { f0 = f; sx += dx; sy += dy; sz += dz; break; } }
+    }
+  if (f0 == NONE) return R;
+  const int ox = sx, oz = sz;
+  struct Q { int x, y, z; float f; };
+  std::deque<Q> q; q.push_back({sx, sy, sz, f0}); R->at[NpcReach::key(sx, sz)] = sy;
+  static const int DIRS[8][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+  while (!q.empty() && R->at.size() < 60000) {
+    const Q c = q.front(); q.pop_front();
+    for (auto& d : DIRS) {
+      const int nx = c.x + d[0], nz = c.z + d[1];
+      if (std::abs(nx - ox) > radius || std::abs(nz - oz) > radius || R->at.count(NpcReach::key(nx, nz))) continue;
+      const bool diag = d[0] && d[1];
+      for (int ny = c.y + 1; ny >= c.y - 3; ny--) {
+        const float nf = stand(F, nx, ny, nz, &cl, &wt);
+        if (nf == NONE) continue;
+        const float rise = nf - c.f;
+        if (rise > 1.15f || rise < -3.2f || wt == 2) break;
+        if (diag && std::fabs(rise) > 0.55f) break;
+        if (rise > 0.55f && !clearCols(F, c.x, c.z, c.f + 0.02f, nf + F.H)) break;
+        if (rise < -0.05f && !clearCols(F, nx, nz, nf + 0.02f, c.f + F.H)) break;
+        if (diag) { bool c1, c2; int w1, w2; if (stand(F, c.x + d[0], c.y, c.z, &c1, &w1) == NONE || stand(F, c.x, c.y, c.z + d[1], &c2, &w2) == NONE) break; }
+        R->at[NpcReach::key(nx, nz)] = ny; q.push_back({nx, ny, nz, nf});
+        break;
+      }
+    }
+  }
+  R->wide = F.wide;
+  for (auto& [k, y] : R->at) R->cells.push_back(k);
+  return R;
 }
 
 } // namespace dq

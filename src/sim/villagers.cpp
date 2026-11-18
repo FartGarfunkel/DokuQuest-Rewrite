@@ -331,6 +331,12 @@ Creature* npcSpawn(Level& lv, const Village& v, int i, const std::string& kind) 
   const char* type = kind == "golem" ? (isCreatureType(golem) ? golem : "iron_golem") : kind == "guard" ? "village_guard" : "villager";
   Creature* e = spawnCreature(lv, REALM_MAIN, type, at);
   if (!e) return nullptr;
+  // a body broader than a block (a golem) where there's room for all of it and a way out to the square at its width:
+  // the spot by the square was among a market's stalls in a city, and it never got out
+  if (e->w > 0.5f) {
+    vec3 o;
+    if (npcOpenGround(lv.world(REALM_MAIN), at, vec3(v.x + 0.5f, v.y + 1, v.z + 0.5f), e->w, e->h, o)) { e->pos = o + vec3(0, 0.01f, 0); e->vel = vec3(0); }
+  }
   int idx = kind == "guard" ? 100 + i : kind == "golem" ? 200 + i : i;
   u32 seed = kind == "golem" ? 0 : npcSeedOf(v, idx);
   e->data["npc"] = {{"v", v.id}, {"i", idx}, {"n", kind == "golem" ? std::string(e->type == "sandstone_golem" ? "Sandstone Golem" : e->type == "frost_golem" ? "Frost Golem" : e->type == "moss_golem" ? "Mossy Golem" : e->type == "savanna_golem" ? "Savanna Golem" : "Iron Golem") : npcName(seed)}, {"j", job}, {"s", seed}, {"p", 0}};
