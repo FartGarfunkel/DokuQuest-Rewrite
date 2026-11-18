@@ -23,6 +23,7 @@
 #include "sim/lift.h"
 #include <thread>
 #include <cstdio>
+#include <functional>
 using namespace dq;
 
 static int fails = 0, passes = 0;
@@ -123,12 +124,28 @@ int main(int argc, char** argv) {
   World& w = L->world();
   const int base = dimBase(DIM_OVERWORLD), Y = base + 200, ly = 200;   // a test floor high in the sky
   { auto p = std::make_unique<Player>(); p->name = "Tester"; p->pos = vec3(8.5f, Y + 1, 20.5f); P = static_cast<Player*>(L->spawn(std::move(p))); }
+  // waiting for land: streamed round where it's wanted, as long as anything is still being made (a busy machine is slow), and
+  // no longer once nothing has been in hand for a few seconds (a wait for land nobody asked for sat out its whole limit)
+  auto waitLand = [&](const std::function<bool()>& done, vec3 at, int r) {
+    double last = nowSeconds();
+    for (double t0 = nowSeconds(); nowSeconds() - t0 < 900 && !done();) {
+      w.stream({{at, r, false}}, 20);
+      if (w.pendingGeneration() > 0) last = nowSeconds(); else if (nowSeconds() - last > 8) break;
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+  };
   double t0 = nowSeconds();
   while (nowSeconds() - t0 < 900) {   // (till they've loaded: a busy machine streams slowly)
-    w.stream({{P->pos, 3, false}}, 20);
+    w.stream({{vec3(8, Y, 8), 4, false}}, 20);   // (round the 5 x 5 the test floor needs: the player's own reach left two corners out)
     bool all = true;
     for (int cx = -2; cx <= 2; cx++) for (int cz = -2; cz <= 2; cz++) if (!w.chunk(DIM_OVERWORLD, cx, cz)) all = false;
     if (all) break;
+    static double said = 0;
+    if (nowSeconds() - t0 > 40 && nowSeconds() - said > 20) {   // (a stall: say what's missing and what's still in hand)
+      said = nowSeconds(); std::string miss;
+      for (int cx = -2; cx <= 2; cx++) for (int cz = -2; cz <= 2; cz++) if (!w.chunk(DIM_OVERWORLD, cx, cz)) miss += strFormat(" %d,%d", cx, cz);
+      printf("  (still waiting after %.0f s: missing%s; %d being made)\n", nowSeconds() - t0, miss.c_str(), w.pendingGeneration()); fflush(stdout);
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
   check(w.chunk(DIM_OVERWORLD, 0, 0) != nullptr, "the test chunks load");
@@ -670,7 +687,7 @@ int main(int argc, char** argv) {
       const int x0 = town->data["wall"].value("x0", 0), z0 = town->data["wall"].value("z0", 0);
       P->pos = vec3(x0 + 0.5f, G.h0 + 1, z0 + 0.5f);
       auto cornerLoaded = [&]() { for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (!w.isLoaded(x0 + dx * 16, G.h0, z0 + dz * 16)) return false; return true; };
-      for (double t0 = nowSeconds(); nowSeconds() - t0 < 900 && !cornerLoaded();) { w.stream({{P->pos, 2, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(20)); }
+      waitLand(cornerLoaded, vec3(x0, G.h0, z0), 3);
       ivec3 sl(0); bool found = false;
       for (int dx = -3; dx <= 3 && !found; dx++) for (int dz = -3; dz <= 3 && !found; dz++) for (int y = G.h0 - 40; y <= G.h0 + 40 && !found; y++)
         if (reg().block(w.getBlock(x0 + dx, y, z0 + dz)).str("machine") == "slider") { sl = ivec3(x0 + dx, y, z0 + dz); found = true; }
@@ -701,7 +718,8 @@ int main(int argc, char** argv) {
             // (near the tower, so the test doesn't wait on a long walk; the land there loaded first, the player kept by it)
             const vec3 watchFrom = vec3(sl) + vec3(6, 1, 6);
             P->pos = watchFrom;
-            for (double t0 = nowSeconds(); nowSeconds() - t0 < 900 && !loadedRound(sl, 1);) { w.stream({{watchFrom, 3, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+            waitLand([&] { return loadedRound(sl, 1); }, vec3(sl), 3);
+            for (int k = 0; k < 20; k++) { w.stream({{watchFrom, 3, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }   // (and round where the player watches from)
             check(loadedRound(sl, 1), "the land round the tower loads");
             // (the watch starts afresh from here: whatever the guard was about while the town loaded is forgotten)
             { NpcMind& GM = vsys(*L)->mind(guard->id); GM.look = 0; GM.nextLookAt = 0; GM.lookClock = 0; GM.rideS = ivec3(INT32_MIN); GM.rideStage = 0; GM.hasPath = false; GM.hasGoal = false; }
