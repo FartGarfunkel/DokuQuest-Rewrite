@@ -224,6 +224,11 @@ int main(int argc, char** argv) {
       printf("  (%zu points; %d moved to the nearest place that holds, %d dropped: nowhere to stand by them)\n", pts.size(), snappedN, dropped);
     }
     if (folk.empty() || pts.empty()) { printf("  (nobody about: %zu folk, %zu points)\n", folk.size(), pts.size()); continue; }
+    for (Creature* c : folk) if (c->T->j.value("golem", false)) {
+      auto G = golemGround(*L, *v, *c);
+      printf("  (the golems' ground: %zu steps a body %.1f wide reaches from the square; golem on it: %d)\n", G ? G->cells.size() : (size_t)0, c->w * 2, G ? (int)G->near(c->pos) : -1);
+      break;
+    }
     Mulberry32 rng((u32)v->seed);
     VillagerSystem* S = vsys(*L);
     Tally T;
@@ -231,7 +236,6 @@ int main(int argc, char** argv) {
       struct Trip { Creature* c; Errand e; double limit = 0, t = 0, lastMove = 0; vec3 last; bool done = false, stuck = false, late = false, over = false; int rescued = 0; };
       std::vector<Trip> trips;
       std::set<size_t> taken;   // (one to a spot at a time: not a crowd round the same doorstep)
-      static std::map<size_t, bool> broadReach; if (round == 0) broadReach.clear();
       for (Creature* c : folk) {
         if (c->removed) continue;
         const bool golem = c->T->j.value("golem", false);
@@ -241,9 +245,8 @@ int main(int argc, char** argv) {
         // the square — a street, the square)
         auto broadOk = [&](size_t k) {
           if (pts[k].kind != "street" && pts[k].kind != "square") return false;
-          auto it = broadReach.find(k); if (it != broadReach.end()) return it->second;
-          bool part = true; npcPath(w, vec3(v->x + 0.5f, v->y + 1, v->z + 0.5f), pts[k].to, c->w, c->h, &part, 12000);
-          return broadReach[k] = !part;
+          auto G = golemGround(*L, *v, *c);
+          return G && G->near(pts[k].to);
         };
         for (int tries = 0; golem && tries < 40 && !broadOk(pick); tries++) pick = (size_t)(rng() * pts.size()) % pts.size();
         if (taken.count(pick) || (golem && !broadOk(pick))) continue;

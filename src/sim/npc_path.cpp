@@ -9,6 +9,7 @@
 #include "sim/physics.h"
 #include "core/registry.h"
 #include <queue>
+#include <deque>
 
 namespace dq {
 
@@ -319,6 +320,49 @@ bool npcOpenGround(const World& w, vec3 near, vec3 square, float bodyW, float bo
       }
     }
   return false;
+}
+
+std::shared_ptr<const NpcReach> npcBroadReach(const World& w, vec3 square, float bodyW, float bodyH, int radius) {
+  tables();
+  auto R = std::make_shared<NpcReach>();
+  Finder F(w, bodyW, std::max(1.f, bodyH));
+  auto cellOf = [&](float v) { return F.wide ? ifloor(v + 0.5f) - 1 : ifloor(v); };
+  int sx = cellOf(square.x), sz = cellOf(square.z), sy = ifloor(square.y + 0.45f);
+  bool cl; int wt; float f0 = NONE;
+  // (the square's middle may be a fountain or a well: the nearest step by it that holds the body)
+  for (int r = 0; r <= 4 && f0 == NONE; r++)
+    for (int dz = -r; dz <= r && f0 == NONE; dz++) for (int dx = -r; dx <= r && f0 == NONE; dx++) {
+      if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
+      for (int dy : {0, 1, -1, 2, -2}) { const float f = stand(F, sx + dx, sy + dy, sz + dz, &cl, &wt); if (f != NONE && wt != 2) { f0 = f; sx += dx; sy += dy; sz += dz; break; } }
+    }
+  if (f0 == NONE) return R;
+  const int ox = sx, oz = sz;
+  struct Q { int x, y, z; float f; };
+  std::deque<Q> q; q.push_back({sx, sy, sz, f0}); R->at[NpcReach::key(sx, sz)] = sy;
+  static const int DIRS[8][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+  while (!q.empty() && R->at.size() < 60000) {
+    const Q c = q.front(); q.pop_front();
+    for (auto& d : DIRS) {
+      const int nx = c.x + d[0], nz = c.z + d[1];
+      if (std::abs(nx - ox) > radius || std::abs(nz - oz) > radius || R->at.count(NpcReach::key(nx, nz))) continue;
+      const bool diag = d[0] && d[1];
+      for (int ny = c.y + 1; ny >= c.y - 3; ny--) {
+        const float nf = stand(F, nx, ny, nz, &cl, &wt);
+        if (nf == NONE) continue;
+        const float rise = nf - c.f;
+        if (rise > 1.15f || rise < -3.2f || wt == 2) break;
+        if (diag && std::fabs(rise) > 0.55f) break;
+        if (rise > 0.55f && !clearCols(F, c.x, c.z, c.f + 0.02f, nf + F.H)) break;
+        if (rise < -0.05f && !clearCols(F, nx, nz, nf + 0.02f, c.f + F.H)) break;
+        if (diag) { bool c1, c2; int w1, w2; if (stand(F, c.x + d[0], c.y, c.z, &c1, &w1) == NONE || stand(F, c.x, c.y, c.z + d[1], &c2, &w2) == NONE) break; }
+        R->at[NpcReach::key(nx, nz)] = ny; q.push_back({nx, ny, nz, nf});
+        break;
+      }
+    }
+  }
+  R->wide = F.wide;
+  for (auto& [k, y] : R->at) R->cells.push_back(k);
+  return R;
 }
 
 } // namespace dq

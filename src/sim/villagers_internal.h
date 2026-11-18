@@ -5,6 +5,7 @@
 #include "sim/villagers.h"
 #include "sim/content.h"
 #include <map>
+#include <memory>
 #include <unordered_map>
 
 namespace dq {
@@ -21,6 +22,20 @@ float npcStandAt(const World& w, int x, int y, int z, float bodyW = 0.3f, float 
 // open ground near `near` for a body bodyW by bodyH: room for all of it, out of the water, and a way from there to
 // `square` at its width (searched outward to maxR). out: where it stands (its middle).
 bool npcOpenGround(const World& w, vec3 near, vec3 square, float bodyW, float bodyH, vec3& out, int maxR = 16);
+// the open ground a body bodyW by bodyH can reach from `square` (within radius blocks), searched out at its width once:
+// the steps it can stand at (a broad body's: the north-west cell of its 2 x 2), and the height there. A golem keeps to it.
+struct NpcReach {
+  std::unordered_map<i64, int> at; std::vector<i64> cells; bool wide = false;
+  static i64 key(int x, int z) { return ((i64)(u32)x << 32) | (u32)z; }
+  bool has(vec3 p) const { const int x = wide ? ifloor(p.x + 0.5f) - 1 : ifloor(p.x), z = wide ? ifloor(p.z + 0.5f) - 1 : ifloor(p.z); return at.count(key(x, z)) > 0; }
+  // (near: within a step of it, for a body a little off its corner)
+  bool near(vec3 p) const { const int x = wide ? ifloor(p.x + 0.5f) - 1 : ifloor(p.x), z = wide ? ifloor(p.z + 0.5f) - 1 : ifloor(p.z);
+    for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) if (at.count(key(x + dx, z + dz))) return true; return false; }
+  vec3 spot(i64 k) const { const int x = (int)(k >> 32), z = (int)(u32)k; const int y = at.at(k); return wide ? vec3(x + 1.f, (float)y, z + 1.f) : vec3(x + 0.5f, (float)y, z + 0.5f); }
+};
+std::shared_ptr<const NpcReach> npcBroadReach(const World& w, vec3 square, float bodyW, float bodyH, int radius);
+// a village's golems' ground (cached a few minutes: sim/villager_ai.cpp)
+std::shared_ptr<const NpcReach> golemGround(Level& lv, const Village& v, const Creature& e);
 // the way-finding tallies (tools/test_villagers.cpp's audit reads them): replans, plans that couldn't get there, and the
 // times someone was moved to where they were going (stuck for good)
 struct NpcNavStats { long plans = 0, partial = 0, failed = 0, rescues = 0, climbs = 0; };
