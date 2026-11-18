@@ -38,6 +38,8 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && ninja -C build
 Xvfb :99 -screen 0 1280x720x24 & export DISPLAY=:99 SDL_VIDEO_X11_FORCE_EGL=1
 ./build/dokuquest --userdir /tmp/ud --create Test --seed hello --smoke-frames 300 --smoke-shot /tmp/shot.png
 ./build/dokuquest --renderer legacy ...   # the GL 3.3 path
+# frame-time benchmark (per-phase CPU ms, GPU ms, input-to-GPU latency, spikes): a scripted walk + fly-over
+SDL_VIDEODRIVER=offscreen tools/bench/run.sh build/dokuquest my_settings.json /tmp/bench_out   # (DQ_BENCH=file.csv on any run)
 ```
 The dev PC has 12 threads (Ryzen 5 7600, 46 GB): build with all of them (plain `ninja`), and run independent test suites in parallel. To check one file quickly (`ninja -C build CMakeFiles/dqcore.dir/src/gen/worldgen.cpp.o`).
 Third-party code is in `third_party/` (SDL2, imgui, glad, miniaudio, enet, quickjs-ng, stb, glm, miniz,

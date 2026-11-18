@@ -83,6 +83,7 @@ public:
   bool hudHidden = false, debugOverlay = false;
   RayHit target;                      // block under the crosshair
   double tickAcc = 0;
+  double frameMsAvg = 0;   // smoothed frame time (update: the mesh uploads' share of a frame)
   float breakProgress = 0; ivec3 breakBlock{0}; bool breaking = false;
   bool paused() const;
 

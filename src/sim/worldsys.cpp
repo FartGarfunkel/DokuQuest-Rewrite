@@ -492,7 +492,7 @@ static void growExtra(Level& lv, World& w, int x, int y, int z, BlockId id, u8 m
   if (id == puddleId || id == snowLayerId || id == iceId) { if (WeatherSystem* ws = weatherOf(lv)) ws->blockTick(lv, w, x, y, z, id, meta); return; }
 }
 
-void randomTicks(Level& lv, World& w, float px, float pz) {
+void randomTicks(Level& lv, World& w, float px, float pz, int slice, int slices) {
   const double RT = 68.27;
   const Registry& R = reg(); const KnownBlocks& B = KB();
   auto* cache = w.system<RandomTickCache>();
@@ -501,10 +501,14 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
   int scanned = 0;
   const double tickSpeed = std::clamp(ruleNum(lv, "randomTickSpeed"), 0.0, 100.0);
   std::vector<Chunk*> list;
-  for (auto& [k, c] : w.chunks()) if (std::abs(k.cx - pcx) <= 6 && std::abs(k.cz - pcz) <= 6) list.push_back(c.get());
+  for (auto& [k, c] : w.chunks()) if (std::abs(k.cx - pcx) <= 6 && std::abs(k.cz - pcz) <= 6) {
+    if (slices > 1 && ((k.cx * 7 + k.cz * 13) % slices + slices) % slices != slice) continue;   // another tick's share
+    list.push_back(c.get());
+  }
+  const int scanCap = slices > 1 ? 2 : 24;   // (first sight of a chunk: its tickable blocks found, a few a call)
   for (Chunk* c : list) {
     auto it = cache->tickables.find(c->key());
-    if (it == cache->tickables.end()) { if (scanned++ > 24) continue; cache->scan(*c); it = cache->tickables.find(c->key()); }
+    if (it == cache->tickables.end()) { if (scanned++ > scanCap) continue; cache->scan(*c); it = cache->tickables.find(c->key()); }
     std::vector<int> idx(it->second.begin(), it->second.end());
     int base = c->baseY();
     const int reps = (int)tickSpeed + (rnd() < tickSpeed - (int)tickSpeed ? 1 : 0);   // randomTickSpeed: 2 = twice as fast

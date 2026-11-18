@@ -4963,6 +4963,12 @@ static bool recreateSwapchain() {
   return createSwapchain(g_window);
 }
 
+void gfxVulkanWaitFrame() {
+  if (!g_on) return;
+  const VkFence f = slots[(slotCur + 1) % kFramesInFlight].fence;
+  if (f) vkWaitForFences(device, 1, &f, VK_TRUE, 100000000ull);   // (NewFrame waits for good; this only moves the wait earlier)
+}
+
 void gfxVulkanNewFrame() {
   if (!g_on) return;
   // The frame just presented keeps running: its state goes back into its slot. The next slot is taken once the
