@@ -55,6 +55,8 @@ struct Town {
   std::string id, name;
   int style = 0, tier = 0, P = 0, hw = 0, fr = 0, x = 0, z = 0, y = 0;
   int planV = 10;   // the terrain version's village plan (11: gen/generator.h's fixes); a world keeps the one it was made with
+  int genV = 0;     // the world's terrain version when the town was laid out (24: the corner towers' and windmills' new ways
+                    // up, below): an older world keeps its towns as they were, so no town is half of one and half the other
   u32 seed = 0;
   std::vector<Street> roads, streets;
   std::vector<Bld> blds;

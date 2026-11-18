@@ -44,9 +44,10 @@ struct Cell {
 
 struct Finder {
   const World& w; float hw, H;
+  bool wide = false;   // a body broader than a block (a golem): it stands on 2 x 2 cells, its middle at their shared corner
   std::unordered_map<i64, Cell> cache;
   std::vector<AABB> boxes;
-  Finder(const World& w_, float hw_, float H_) : w(w_), hw(std::clamp(hw_, 0.1f, 0.45f)), H(H_) {}
+  Finder(const World& w_, float hw_, float H_) : w(w_), hw(std::clamp(hw_, 0.1f, 0.45f)), H(H_), wide(hw_ > 0.5f) {}
   static i64 key(int x, int y, int z) { return ((i64)(x & 0xFFFFF) << 40) | ((i64)(z & 0xFFFFF) << 20) | (i64)(y & 0xFFFFF); }
   const Cell& cell(int x, int y, int z) {
     auto [it, fresh] = cache.try_emplace(key(x, y, z));
@@ -124,19 +125,72 @@ static float standAt(Finder& F, int x, int y, int z, bool* climb, int* wet) {
   return f;
 }
 
-std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, float bodyH, bool* partial, int maxNodes) {
+// a step for the body as it is: one cell, or (broad) the 2 x 2 cells x..x+1, z..z+1 all standing level enough and clear
+static float stand(Finder& F, int x, int y, int z, bool* climb, int* wet) {
+  if (!F.wide) return standAt(F, x, y, z, climb, wet);
+  float f = NONE, lo = 1e9f; int wmax = 0;
+  for (int j = 0; j < 2; j++) for (int i = 0; i < 2; i++) {
+    bool cl; int wt;
+    const float g = standAt(F, x + i, y, z + j, &cl, &wt);
+    if (g == NONE || cl) return NONE;
+    f = std::max(f, g); lo = std::min(lo, g); wmax = std::max(wmax, wt);
+  }
+  if (f - lo > 0.55f) return NONE;   // (not straddling a step)
+  for (int j = 0; j < 2; j++) for (int i = 0; i < 2; i++) if (!F.clearSpan(x + i, z + j, f + 0.02f, f + F.H)) return NONE;
+  *climb = false; *wet = wmax;
+  return f;
+}
+static bool clearCols(Finder& F, int x, int z, float y0, float y1) {
+  if (!F.wide) return F.clearSpan(x, z, y0, y1);
+  for (int j = 0; j < 2; j++) for (int i = 0; i < 2; i++) if (!F.clearSpan(x + i, z + j, y0, y1)) return false;
+  return true;
+}
+
+std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, float bodyH, bool* partial, int maxNodes, bool* snapped) {
   tables();
   const int RR = maxNodes > 4000 ? 110 : 56;   // (a bigger search looks further: across a city)
   std::vector<NpcStep> none;
   if (partial) *partial = true;
+  if (snapped) *snapped = false;
   Finder F(w, bodyW, std::max(1.f, bodyH));
-  const int sx = ifloor(from.x), sz = ifloor(from.z), tx = ifloor(to.x), tz = ifloor(to.z);
+  // (a broad body's step is the corner its middle stands on: the cell to its north-west names it)
+  const int off = F.wide ? 1 : 0;
+  auto cellOf = [&](float v) { return F.wide ? ifloor(v + 0.5f) - 1 : ifloor(v); };
+  int sx = cellOf(from.x), sz = cellOf(from.z);
+  int tx = cellOf(to.x), tz = cellOf(to.z);
+  (void)off;
   int sy = ifloor(from.y + 0.45f);
-  const int ty = ifloor(to.y + 0.45f);
+  int ty = ifloor(to.y + 0.45f);
+  {   // a goal nobody can stand at (out over the water, inside a block, up in the air): the nearest place by it they can
+    bool cl; int wt; bool ok = false;
+    for (int dy : {0, 1, -1}) if (stand(F, tx, ty + dy, tz, &cl, &wt) != NONE) { ok = true; break; }
+    if (!ok) {
+      float bd = 1e9f; int bx = tx, by = ty, bz = tz;
+      for (int r = 1; r <= 3 && bd > 1e8f; r++)
+        for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
+          if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
+          for (int dy : {0, 1, -1, 2, -2}) {
+            const float f = stand(F, tx + dx, ty + dy, tz + dz, &cl, &wt);
+            if (f == NONE || cl || wt == 2) continue;
+            const float d = (float)(dx * dx + dz * dz) + 0.5f * dy * dy;
+            if (d < bd) { bd = d; bx = tx + dx; by = ty + dy; bz = tz + dz; }
+            break;
+          }
+        }
+      if (bd < 1e8f) { tx = bx; ty = by; tz = bz; if (snapped) *snapped = true; }
+    }
+  }
   bool c0; int w0;
-  float f0 = standAt(F, sx, sy, sz, &c0, &w0);
+  float f0 = stand(F, sx, sy, sz, &c0, &w0);
+  if (f0 == NONE && F.wide) {   // (a broad body off the grid of corners: the corner beside it that holds it)
+    for (int dz = -1; dz <= 1 && f0 == NONE; dz++) for (int dx = -1; dx <= 1 && f0 == NONE; dx++)
+      for (int dy : {0, 1, -1}) if ((f0 = stand(F, sx + dx, sy + dy, sz + dz, &c0, &w0)) != NONE) { sx += dx; sy += dy; sz += dz; break; }
+    // (wedged where no 2 x 2 holds it — among the stalls of a market: out the way a narrower body would go, it'll
+    // squeeze, and from the open ground on it walks as itself)
+    if (f0 == NONE) return npcPath(w, from, to, 0.45f, bodyH, partial, maxNodes, snapped);
+  }
   if (f0 == NONE) {   // (mid-step, mid-jump, on a ladder: the nearest step that will hold them)
-    for (int dy : {1, -1, 2, -2}) if ((f0 = standAt(F, sx, sy + dy, sz, &c0, &w0)) != NONE) { sy += dy; break; }
+    for (int dy : {1, -1, 2, -2}) if ((f0 = stand(F, sx, sy + dy, sz, &c0, &w0)) != NONE) { sy += dy; break; }
     if (f0 == NONE) f0 = (float)sy;
   }
   const bool startWet = w0 != 0;
@@ -176,7 +230,7 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
       // the step there: level, up a step or a jump (to a little over a block), or down a drop of up to 3
       for (int ny = c.y + 1; ny >= c.y - 4; ny--) {
         bool cl; int wt;
-        const float nf = standAt(F, nx, ny, nz, &cl, &wt);
+        const float nf = stand(F, nx, ny, nz, &cl, &wt);
         if (nf == NONE) continue;
         // (the highest step in that column that holds is the one: they can't walk under a ledge they'd step onto)
         const float rise = nf - c.floor;
@@ -187,13 +241,17 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
         if (diag && nDoor) break;
         // room on the way: a jump needs headroom where they jump from, a drop room in the column they drop down
         const float top = std::max(nf, c.floor);
-        if (rise > 0.55f && !F.clearSpan(c.x, c.z, c.floor + 0.02f, nf + F.H)) break;
-        if (rise < -0.05f && !F.clearSpan(nx, nz, nf + 0.02f, c.floor + F.H)) break;
-        if (diag && (!F.emptySpan(c.x + dx, c.z, top + 0.02f, top + F.H) || !F.emptySpan(c.x, c.z + dz, top + 0.02f, top + F.H))) break;
+        if (rise > 0.55f && !clearCols(F, c.x, c.z, c.floor + 0.02f, nf + F.H)) break;
+        if (rise < -0.05f && !clearCols(F, nx, nz, nf + 0.02f, c.floor + F.H)) break;
+        if (diag && !F.wide && (!F.emptySpan(c.x + dx, c.z, top + 0.02f, top + F.H) || !F.emptySpan(c.x, c.z + dz, top + 0.02f, top + F.H))) break;
+        if (diag && F.wide) {   // (a broad body across a corner: both the steps beside it hold it too)
+          bool c1, c2; int w1, w2;
+          if (stand(F, c.x + dx, c.y, c.z, &c1, &w1) == NONE || stand(F, c.x, c.y, c.z + dz, &c2, &w2) == NONE) break;
+        }
         // (and nothing at the edges they cross: a plate, a shutter, a sign)
         const int kx = dx > 0 ? 0 : 1, kz = dz > 0 ? 2 : 3;
-        if (dx && (!F.crossClear(c.x, c.z, kx, top + 0.02f, top + F.H) || !F.crossClear(nx, nz, kx ^ 1, top + 0.02f, top + F.H))) break;
-        if (dz && (!F.crossClear(c.x, c.z, kz, top + 0.02f, top + F.H) || !F.crossClear(nx, nz, kz ^ 1, top + 0.02f, top + F.H))) break;
+        if (!F.wide && dx && (!F.crossClear(c.x, c.z, kx, top + 0.02f, top + F.H) || !F.crossClear(nx, nz, kx ^ 1, top + 0.02f, top + F.H))) break;
+        if (!F.wide && dz && (!F.crossClear(c.x, c.z, kz, top + 0.02f, top + F.H) || !F.crossClear(nx, nz, kz ^ 1, top + 0.02f, top + F.H))) break;
         float cost = diag ? 1.414f : 1.f;
         if (rise > 0.55f) cost += 0.8f;          // a jump
         else if (rise > 0.05f) cost += 0.15f;    // a half step
@@ -210,11 +268,11 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
     // up and down a ladder (a vine, a rope, a chain): straight up the climbable column, and off the top
     const Cell& here = F.cell(c.x, c.y, c.z);
     const Cell& below = F.cell(c.x, c.y - 1, c.z);
-    if ((here.f & F_CLIMB) && F.clearSpan(c.x, c.z, c.y + 1.02f, c.y + 1 + F.H)) {
+    if (!F.wide && (here.f & F_CLIMB) && F.clearSpan(c.x, c.z, c.y + 1.02f, c.y + 1 + F.H)) {
       bool cl; int wt; const float nf = standAt(F, c.x, c.y + 1, c.z, &cl, &wt);
       if (nf != NONE) push(ci, c.x, c.y + 1, c.z, nf, 1.6f, true);
     }
-    if (below.f & F_CLIMB) {
+    if (!F.wide && (below.f & F_CLIMB)) {
       bool cl; int wt; const float nf = standAt(F, c.x, c.y - 1, c.z, &cl, &wt);
       if (nf != NONE && nf < c.floor - 0.5f) push(ci, c.x, c.y - 1, c.z, nf, 1.4f, true);
     }
@@ -222,7 +280,7 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
   if (partial) *partial = !reached;
   if (best == 0) return none;
   std::vector<NpcStep> out;
-  for (int c = best; c > 0; c = nodes[c].parent) out.push_back(NpcStep{ivec3(nodes[c].x, nodes[c].y, nodes[c].z), nodes[c].floor, nodes[c].climb});
+  for (int c = best; c > 0; c = nodes[c].parent) out.push_back(NpcStep{ivec3(nodes[c].x, nodes[c].y, nodes[c].z), nodes[c].floor, nodes[c].climb, F.wide ? vec2(nodes[c].x + 1.f, nodes[c].z + 1.f) : vec2(nodes[c].x + 0.5f, nodes[c].z + 0.5f)});
   std::reverse(out.begin(), out.end());
   return out;
 }

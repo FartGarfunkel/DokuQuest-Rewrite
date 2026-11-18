@@ -87,19 +87,21 @@ OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float speed)
   const bool newGoal = !M.hasNavGoal || std::hypot(t.x - M.navGoal.x, t.z - M.navGoal.z) > 1 || std::fabs(t.y - M.navGoal.y) > 1.5f;
   if (newGoal) { M.partialN = 0; M.lostT = 0; }
   // (off the way they were on — knocked aside, round someone — think again)
-  if (M.hasPath && M.pathI < M.path.size() && std::hypot(M.path[M.pathI].at.x + 0.5f - e.pos.x, M.path[M.pathI].at.z + 0.5f - e.pos.z) > 3.f) M.navT = 0;
+  if (M.hasPath && M.pathI < M.path.size() && std::hypot(M.path[M.pathI].c.x - e.pos.x, M.path[M.pathI].c.y - e.pos.z) > 3.f) M.navT = 0;
   if (M.navT <= 0 || newGoal) {
     bool partial = false;
     NpcNavStats& st = npcNavStats();
     // the usual search first; a long one (a city across, round a whole quarter) when that one got nowhere new
     auto endsHere = [&](const std::vector<NpcStep>& p) {
-      return p.empty() || (std::hypot(p.back().at.x + 0.5f - e.pos.x, p.back().at.z + 0.5f - e.pos.z) < 1.6f && std::fabs(p.back().floor - e.pos.y) < 1.2f);
+      return p.empty() || (std::hypot(p.back().c.x - e.pos.x, p.back().c.y - e.pos.z) < 1.6f && std::fabs(p.back().floor - e.pos.y) < 1.2f);
     };
-    M.path = npcPath(w, e.pos, t, e.w, e.h, &partial);
+    bool snapped = false;
+    M.path = npcPath(w, e.pos, t, e.w, e.h, &partial, 2400, &snapped);
     st.plans++;
-    if (partial && (endsHere(M.path) || M.partialN >= 2)) { M.path = npcPath(w, e.pos, t, e.w, e.h, &partial, 12000); st.plans++; }
+    if (partial && (endsHere(M.path) || M.partialN >= 2)) { M.path = npcPath(w, e.pos, t, e.w, e.h, &partial, 12000, &snapped); st.plans++; }
+    M.goalSnapped = snapped && !partial;
     if (partial) st.partial++;
-    M.pathI = 0; M.navGoal = t; M.hasNavGoal = true; M.pathPartial = partial; M.hasPath = !M.path.empty();
+    M.pathI = 0; M.navGoal = t; M.hasNavGoal = true; M.pathPartial = partial; M.hasPath = !M.path.empty() || !partial;   // (no steps and not partial: on the goal's step already)
     M.partialN = partial ? M.partialN + 1 : 0;
     // a whole way is kept till they stray from it or stick (a door shut, someone in the way); a partial one is looked
     // at again as they go
@@ -136,24 +138,25 @@ OptMove npcGo(Level& lv, Creature& e, NpcMind& M, vec3 t, float dt, float speed)
     return d < 3 ? Move{speed * 0.5f, hdg(e.pos, t)} : Move{0, hdg(e.pos, t)};
   }
   auto& P = M.path;
-  auto near = [&](const NpcStep& s, float r) { return std::hypot(s.at.x + 0.5f - e.pos.x, s.at.z + 0.5f - e.pos.z) < r; };
+  auto near = [&](const NpcStep& s, float r) { return std::hypot(s.c.x - e.pos.x, s.c.y - e.pos.z) < r; };
   while (M.pathI < P.size()) {
     const NpcStep& nd = P[M.pathI];
     const float dy = std::fabs(nd.floor - e.pos.y);
     if (near(nd, 0.4f) && dy < (nd.climb || M.climbing ? 0.3f : 1.0f)) { M.pathI++; continue; }
     // (past it already, on the level, the next one nearer: on to that one, not back round)
     if (M.pathI + 1 < P.size() && !nd.climb && !P[M.pathI + 1].climb && !M.climbing && dy < 0.4f && std::fabs(P[M.pathI + 1].floor - nd.floor) < 0.4f
-        && std::hypot(P[M.pathI + 1].at.x + 0.5f - e.pos.x, P[M.pathI + 1].at.z + 0.5f - e.pos.z) < std::hypot(nd.at.x + 0.5f - e.pos.x, nd.at.z + 0.5f - e.pos.z)
+        && std::hypot(P[M.pathI + 1].c.x - e.pos.x, P[M.pathI + 1].c.y - e.pos.z) < std::hypot(nd.c.x - e.pos.x, nd.c.y - e.pos.z)
         && near(nd, 1.2f)) { M.pathI++; continue; }
     break;
   }
   if (M.pathI >= P.size()) {
     npcUnclimb(e, M);
     if (M.pathPartial) { M.navT = std::min(M.navT, 0.3f); return Move{0, hdg(e.pos, t)}; }   // (as far as that way went: think again)
+    if (M.goalSnapped) return std::nullopt;   // (as near as anyone can stand to it: there)
     return Move{d < 0.45f ? 0 : speed * 0.5f, hdg(e.pos, t)};
   }
   const NpcStep& nd = P[M.pathI];
-  const vec3 nc(nd.at.x + 0.5f, nd.floor, nd.at.z + 0.5f);
+  const vec3 nc(nd.c.x, nd.floor, nd.c.y);
   const int cx = ifloor(e.pos.x), cz = ifloor(e.pos.z);
   const bool inCol = nd.at.x == cx && nd.at.z == cz;
   // a ladder (a vine, a rope): up or down it hand over hand, then off at the top onto the floor beside it

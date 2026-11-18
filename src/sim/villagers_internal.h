@@ -11,10 +11,11 @@ namespace dq {
 
 // a step of a townsperson's way (sim/npc_path.cpp): the cell their feet are in, the height they stand at there, and
 // whether it's up or down a ladder (a vine, a rope...) rather than on a floor
-struct NpcStep { ivec3 at{0}; float floor = 0; bool climb = false; };
+struct NpcStep { ivec3 at{0}; float floor = 0; bool climb = false; vec2 c{0}; };   // c: where the body's middle goes (a broad one's: a cell corner)
 // the way from `from` to `to` for a body bodyW (half width) by bodyH: the steps after the first. *partial: it doesn't get
 // there (the steps go as near as the search got). Empty: no step to take at all.
-std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, float bodyH, bool* partial = nullptr, int maxNodes = 2400);
+// *snapped: the goal was somewhere nobody stands (over water, in a block) and the way ends at the nearest place by it.
+std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, float bodyH, bool* partial = nullptr, int maxNodes = 2400, bool* snapped = nullptr);
 // the height a body stands at in cell (x, y, z), or NaN: no floor there (or only a ladder)
 float npcStandAt(const World& w, int x, int y, int z, float bodyW = 0.3f, float bodyH = 1.8f);
 // the way-finding tallies (tools/test_villagers.cpp's audit reads them): replans, plans that couldn't get there, and the
@@ -36,6 +37,7 @@ struct NpcMind {
   std::vector<NpcStep> path; size_t pathI = 0; bool hasPath = false, pathPartial = false, climbing = false; float navT = 0; bool hasNavGoal = false; vec3 navGoal{0};
   int partialN = 0;   // partial plans in a row toward this goal
   bool wentLast = false;
+  bool goalSnapped = false;   // (the way ends by the goal, not on it: it's where nobody can stand)
   bool sent = false; vec3 sentTo{0};   // sent somewhere (tools/test_npc_paths.cpp): they walk there, whatever the hour   // (npcGo walked them last tick: a climber not walked any more is let down)
   float lostT = 0; vec3 lostFrom{0};   // (no way there and not getting anywhere: sim/villager_ai.cpp npcGo's rescue)
   int stuckGo = 0; float stuckT = 0, sideStepT = 0; bool hasNav = false; vec2 navXZ{0};
