@@ -25,6 +25,7 @@
 #include <thread>
 #include <map>
 #include "sim/cave_drips.h"
+#include "sim/controller.h"
 #include <set>
 #include <cstdio>
 #include <cmath>
@@ -101,6 +102,23 @@ int main(int argc, char** argv) {
     w.setBlock(X, Y0 + 2, Z, ST); w.setBlock(X, Y0, Z, CA, 0); w.setBlock(X, Y0 + 7, Z, WA); caveDripTick(w, X, Y0 + 4, Z, 0.0);
     check(w.getMeta(X, Y0, Z) == 0, "something between the tip and the cauldron catches the drops");
     for (int y = Y0; y <= Y0 + 8; y++) w.setBlock(X, y, Z, AIR);
+  }
+
+  printf("[saplings on rooted dirt]\n");
+  {   // a sapling takes to rooted dirt as to any soil, and grows there
+    const BlockId RD = reg().blockId("rooted_dirt"), SAP = reg().blockId("sapling");
+    const int X = 2, Y0 = rg.Y + 1, Z = 2;
+    for (int y = Y0; y <= Y0 + 10; y++) for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) w.setBlock(X + dx, y, Z + dz, AIR);
+    w.setBlock(X, Y0 - 1, Z, RD);
+    rg.P->inv[0] = ItemStack("sapling", 1); rg.P->selected = 0;
+    PlayerController pc(*rg.lv, *rg.P);
+    pc.target = RayHit{}; pc.target.hit = true; pc.target.block = ivec3(X, Y0 - 1, Z); pc.target.normal = ivec3(0, 1, 0); pc.target.id = RD; pc.target.point = vec3(X + 0.5f, Y0, Z + 0.5f);
+    rg.P->pos = vec3(X + 0.5f, Y0, Z + 3.5f);
+    pc.use(false, PlayerInput{});
+    check(w.getBlock(X, Y0, Z) == SAP, "a sapling can be planted on rooted dirt");
+    bool grew = false; for (int k = 0; k < 50 && !grew; k++) { growTree(*rg.lv, w, X, Y0, Z, (k % 10) / 10.0); grew = bhas(w.getBlock(X, Y0, Z), BF::IsLog); }
+    check(grew, "and grows into a tree there");
+    for (int y = Y0; y <= Y0 + 12; y++) for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) w.setBlock(X + dx, y, Z + dz, AIR);
   }
 
   printf("[movement]\n");
