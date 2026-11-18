@@ -2,6 +2,7 @@
 // game/monsters.js (0.8.3 monsters), game/quarrels.js (infighting, calling for help, noticing then
 // remembering, shade-seeking, wariness), game/skymobs.js (the cockatrice) and the Cinder Golem's
 // telegraphed attacks (game/entities.js bossAI).
+#include "sim/world_life.h"
 #include "sim/rules.h"
 #include "sim/creature.h"
 #include "sim/creature_entities.h"
@@ -131,7 +132,7 @@ static void fuseBurst(Level& lv, Creature& m) {
   const bool ember = m.type == "ember_fuseling", moss = m.type == "moss_fuseling", sky = m.type == "sky_fuseling";
   const bool biome = m.type != "fuseling";   // every land's fuseling: a smaller blast, and something of its land
   if (sky) o.noBlocks = true;   // a gust, not a blast: it throws you skyward and breaks nothing
-  explode(lv, m.realm, m.pos + vec3(0, 0.6f, 0), biome && !sky ? 2.2f : sky ? 1.4f : 3, o);
+  explode(lv, m.realm, m.pos + vec3(0, 0.6f, 0), (biome && !sky ? 2.2f : sky ? 1.4f : 3) * chargedBlastScale(m), o);   // (struck by lightning: twice the blast)
   {   // the newer lands' fuselings
     const std::string& t = m.type;
     const char* puff = t == "redlands_fuseling" ? "crit" : t == "jungle_fuseling" || t == "meadow_fuseling" ? "leaf" : t == "beach_fuseling" ? "splash" : t == "mushroom_fuseling" ? "poof" : t == "savanna_fuseling" ? "dust" : nullptr;
@@ -713,6 +714,7 @@ static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp,
       m.meleeAt(lv, *p, dist, dyp);
       return m.chase(lv, *p, dist, toPlayer, dt, 1.7f);
     }
+    enderCarryTick(lv, m, dt);   // a block lifted, carried, set down (sim/world_life.h)
     // an aimless amble, now and then a blink
     m.wanderT -= dt;
     if (m.wanderT <= 0) { m.wanderT = 3 + frand() * 6; m.wanderDir = frand() * TAU; m.wanderOn = frand() < 0.55f; if (frand() < 0.05f) enderBlink(lv, m, m.pos.x, m.pos.z, 14, false); }

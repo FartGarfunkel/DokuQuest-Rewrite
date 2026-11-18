@@ -50,6 +50,7 @@ void skillsTick(Level& lv, Player& p);
 // blocks a player put down: breaking them again teaches nothing (kept per level, the last 8192)
 void skillNotePlaced(Level& lv, int realm, int x, int y, int z);
 bool skillTakePlaced(Level& lv, int realm, int x, int y, int z);   // was it placed? (and forget it)
+bool skillWasPlaced(Level& lv, int realm, int x, int y, int z);   // was it placed? (a look only: it stays remembered)
 bool smithSavesWear(const Player& p);          // a skilled smith's tools: this bit of wear doesn't happen
 
 } // namespace dq

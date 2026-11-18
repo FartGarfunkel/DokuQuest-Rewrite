@@ -708,6 +708,12 @@ void rigPose(Creature& m, const RigModel& M, const mat4& base) {
     if (P.has[hi]) { P.has[ji] = 1; P.P[ji] = P.P[hi]; }
     if (m.angryT > 0) P.headLift = 6.f / 16;   // a pixel of dark mouth between the head and the jaw's teeth
   }
+  // the enderman carrying a block (sim/world_life.h): both arms held out before it, bent a little at the elbow
+  if (m.type == "enderman" && m.data.is_object() && m.data.contains("carry") && m.data["carry"].is_string())
+    for (const char* a : {"armR", "armL", "foreR", "foreL"}) if (int i = M.find(a); i >= 0) {
+      const bool upper = a[0] == 'a';
+      P.has[i] = 1; P.P[i] = vec3(upper ? 0.7f : 0.3f, 0, 0) + (upper ? vec3(0, 0, (a[3] == 'R' ? -1.f : 1.f) * 0.06f) : vec3(0));
+    }
   if (!k.empty()) rigLife(m, M, P);
   rigBlend(m, P);
   mat4 root = base;

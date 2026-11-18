@@ -1,5 +1,6 @@
 // sim/weather.cpp — port of game/weather.js + the weather half of game/skies.js + the Wind
 // (game/vehicles.js, render/clouds.js drift). See weather.h.
+#include "sim/world_life.h"
 #include "sim/weather.h"
 #include "sim/player.h"
 #include "core/init.h"
@@ -692,6 +693,7 @@ void WeatherSystem::strike(Level& lv, int x, int y, int z, const ivec3* rod) {
     }
   }
   if (lvl && lvl->events) lvl->events->emit("lightning", json::array({x, y, z, rod != nullptr}));
+  if (hostRules) lightningChangesCreatures(lv, REALM_MAIN, x, y, z);   // a fuseling charged, a pig turned (sim/world_life.h)
   if (rod) {   // the rod takes it: nothing burns, and it gives a pulse of redstone (the redstone system listens for "lightningRod")
     if (lvl && lvl->events) lvl->events->emit("lightningRod", json::array({rod->x, rod->y, rod->z}));
     lv.fx->particles("white", vec3(rod->x + 0.5f, rod->y + 1, rod->z + 0.5f), 10, json{{"speed", 1.4}});

@@ -1,6 +1,7 @@
 // sim/creature.cpp — the creature core (game/entities.js Mob: update, hurt, die, drawing state) with the
 // layers the later modules wrapped round it: dismember.js, bestiary.js, sounds2.js, monsters.js,
 // quarrels.js, pets.js (hurt), nightmobs.js (jockeys, slime split), husbandry.js (kept animals).
+#include "sim/world_life.h"
 #include "core/tool_parts.h"
 #include <cstdlib>
 #include "sim/rpg.h"
@@ -632,6 +633,7 @@ void Creature::die(Level& lv, const DamageSrc& src) {
     data["rk"] = json::array({std::round(k.x * 100) / 100, 1.2, std::round(k.z * 100) / 100});
   }
   if (globalCreatureHooks().died) globalCreatureHooks().died(lv, *this, src);
+  enderDropCarried(lv, *this);   // the block it carried falls (sim/world_life.h)
   // the hydrogen jellyfish: it bursts when it dies (blocks only where mobs may grief)
   if (const float blast = T->j.value("deathBlast", 0.f); blast > 0 && !lv.isRemote()) explode(lv, realm, pos + vec3(0, h * 0.5f, 0), blast, !rule(lv, "mobGriefing"));
   auto roll = [](int a, int b) { return a + (int)std::floor(frand() * (b - a + 1)); };

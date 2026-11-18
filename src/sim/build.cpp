@@ -1,3 +1,4 @@
+#include "sim/world_life.h"
 #include "sim/dyntree.h"
 #include "sim/fallen.h"
 #include "world/rug.h"
@@ -502,6 +503,7 @@ void PlayerController::useBonemeal(const RayHit& hit, ItemStack& held) {
     if (id == B.cave_vines) { w.setBlock(x, y, z, B.cave_vines_lit, meta); ok = true; }
   } else if (id && id == B.sea_pickle && (meta & 3) < 3) { w.setBlock(x, y, z, id, meta + 1); ok = true; }
   else if (id && id == B.berry_bush_empty) { w.setBlock(x, y, z, B.berry_bush); ok = true; }
+  if (!ok && lifeBonemeal(lv, w, x, y, z, id)) ok = true;   // a huge mushroom, a longer vine (sim/world_life.h)
   if (!ok) return;
   consumeHeld();
   lv.fx->particles("growth", vec3(x + 0.5f, y + 0.6f, z + 0.5f), 8);

@@ -209,6 +209,7 @@ bool skillTakePlaced(Level& lv, int realm, int x, int y, int z) {
   auto& P = levelSlot<PlacedBlocks>(lv, "skillPlaced");
   return P.set.erase(placedKey(realm, x, y, z)) > 0;   // (its order entry ages out on its own)
 }
+bool skillWasPlaced(Level& lv, int realm, int x, int y, int z) { return levelSlot<PlacedBlocks>(lv, "skillPlaced").set.count(placedKey(realm, x, y, z)) > 0; }
 float cookingHealFactor(const Player& p) { return (1 + skillBonus(p, "cooking", 0.25f)) * (hasPerk(p, "cooking", 30) ? 1.1f : 1.f); }
 bool smithSavesWear(const Player& p) { return rnd() < skillBonus(p, "smithing", 0.3f); }
 

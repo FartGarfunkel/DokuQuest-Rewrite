@@ -1,6 +1,7 @@
 // sim/redstone.cpp — circuits (game/redstone.js): power, dust, torches, repeaters, comparators, observers,
 // lamps, bulbs, note blocks, bells, TNT, doors, rails, timers (plates, hooks, detector rails, daylight),
 // hoppers, dispensers and droppers. Pistons live in sim/redstone_parts.cpp.
+#include "sim/world_life.h"
 #include "sim/attach_play.h"
 #include "sim/redstone.h"
 #include "sim/moving.h"
@@ -1198,7 +1199,8 @@ void Redstone::dispense(int x, int y, int z) {
     return;
   }
   if (s.id == "bone_meal" && cur) {
-    // (bone meal on a dispenser's behalf) crops grow a few stages
+    // (bone meal on a dispenser's behalf) crops grow a few stages; a mushroom grows huge, a vine longer (sim/world_life.h)
+    if (lifeBonemeal(lv, w, fx, fy, fz, cur)) { lv.fx->particles("bonemeal", fc, 8); take(); return; }
     const BlockDef& cb = R.block(cur);
     if (cb.props.contains("crop") && cb.props["crop"].is_object()) {
       int stages = cb.props["crop"].value("stages", 8), cm = w.getMeta(fx, fy, fz);
