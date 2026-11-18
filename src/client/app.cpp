@@ -1,6 +1,7 @@
 #include "assets/pack_models.h"
 #include "assets/local_models.h"
 #include "client/app.h"
+#include "world/shapes.h"
 #include "assets/font_files.h"
 #include "render/ore_overlay.h"
 #include "ui/book_ui.h"
@@ -176,6 +177,17 @@ void App::reloadTiles() {
     if (it == tiles.index.end() || it->second < 0 || it->second >= tiles.count) continue;
     u8* px = tiles.rgba.data() + (size_t)it->second * tiles.size * tiles.size * 4;
     for (int i = 0; i < tiles.size * tiles.size; i++) if (px[i * 4 + 3] > 8 && px[i * 4 + 3] != 253) px[i * 4 + 3] = (u8)std::min(155, px[i * 4 + 3] * 3 / 4);
+  }
+  { // where each picture is opaque: plants are picked by what they show (world/shapes.h setTileOpaqueBounds)
+    std::vector<std::array<float, 4>> ob((size_t)tiles.count, {0, 0, 0, 0});
+    const int S = tiles.size;
+    for (int t = 0; t < tiles.count; t++) {
+      const u8* px = tiles.tile(t);
+      int x0 = S, y0 = S, x1 = -1, y1 = -1;
+      for (int y = 0; y < S; y++) for (int x = 0; x < S; x++) if (px[(y * S + x) * 4 + 3] > 24) { x0 = std::min(x0, x); x1 = std::max(x1, x); y0 = std::min(y0, y); y1 = std::max(y1, y); }
+      if (x1 >= 0) ob[t] = {x0 * 16.f / S, y0 * 16.f / S, (x1 + 1) * 16.f / S, (y1 + 1) * 16.f / S};
+    }
+    setTileOpaqueBounds(std::move(ob));
   }
   // the rubyglass, whichever pack painted it: the crystal is see-through (80 % cover, a
   // little more open here so it reads as glass in the Nether's glow), and the whole family shines from within the way

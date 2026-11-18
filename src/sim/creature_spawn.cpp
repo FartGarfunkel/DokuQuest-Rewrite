@@ -955,11 +955,9 @@ public:
       if (!b.player && amt > 0) {
         vec3 to = e->pos + vec3(nx * amt, 0, nz * amt);
         World& w = lv.world(e->realm);
-        std::vector<AABB> tmp; bool free = true;
-        AABB box{to + vec3(-b.r * 0.9f, 0.02f, -b.r * 0.9f), to + vec3(b.r * 0.9f, std::min(b.h, 1.8f) - 0.02f, b.r * 0.9f)};
-        for (int y = ifloor(box.lo.y) - 1; y <= ifloor(box.hi.y) && free; y++) for (int z = ifloor(box.lo.z); z <= ifloor(box.hi.z) && free; z++) for (int x = ifloor(box.lo.x); x <= ifloor(box.hi.x) && free; x++) {
-          tmp.clear(); blockBoxes(w, x, y, z, tmp); for (auto& bb : tmp) if (bb.overlaps(box)) { free = false; break; }
-        }
+        // (its whole width, and a pen's fences, walls and gates as a creature meets them, sim/physics.h penBlock: shoved a
+        //  tenth of its width into a fence post, it was then standing in it, and climbed out of its pen)
+        const bool free = !collides(w, to.x - b.r, to.y + 0.02, to.z - b.r, to.x + b.r, to.y + std::min(b.h, 1.8f) - 0.02, to.z + b.r, true);
         if (free) e->pos = to;
       }
     };

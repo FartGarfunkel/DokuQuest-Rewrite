@@ -104,7 +104,7 @@ void registerLeads() {
           if (d > 10) { snap.push_back(c); lv.fx->material("wool", "break", neck); continue; }   // it snaps
           if (d > 6) {   // dragged along
             vec3 dir = (h - neck) / d;
-            moveBox(lv.world(c->realm), c->pos, c->w, c->h, dir * std::min((d - 6) * 5.f, 12.f) * dt);
+            moveBox(lv.world(c->realm), c->pos, c->w, c->h, dir * std::min((d - 6) * 5.f, 12.f) * dt, 0.6f, true);
             if (dir.y > 0.3f && c->onGround) c->vel.y = std::max(c->vel.y, 4.f);
           }
         }

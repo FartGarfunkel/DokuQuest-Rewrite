@@ -28,6 +28,9 @@
 #include "world/carve_faces.h"
 #include "sim/blockinfo.h"
 #include <mutex>
+#include <atomic>
+#include <array>
+#include <unordered_set>
 
 namespace dq {
 
@@ -76,6 +79,7 @@ void loadModels() {
       b.spin = x.value("spin", false);
       b.only = (u8)x.value("only", 63);   // faces drawn (0: collides and picks, drawn by a render layer)
       b.lift = x.value("lift", 0.f);
+      b.link = x.value("link", false);
       boxes.push_back(b);
     }
     g_modelIdx[name] = (int)g_models.size();
@@ -158,6 +162,126 @@ void initBlockTraits() {
   g_tracedBlocks = R.blocks.size();
 }
 const BlockTraits& traits(BlockId id) { return id < g_traits.size() ? g_traits[id] : g_none; }
+
+void chainLinks(float y0, int n, bool zyFirst, std::vector<ShapeBox>& out) {
+  static const int iron = reg().tile("iron_block");
+  for (int i = 0; i < n; i++) {
+    const float a = y0 - 1 + 8.f * i, b = a + 9;   // (tools/port/moving_parts.py ringXY / ringZY: 4 wide, bars 1 thick)
+    const float bars[4][4] = {{6, a + 1, 7, b - 1}, {9, a + 1, 10, b - 1}, {6.5f, a, 9.5f, a + 1}, {6.5f, b - 1, 9.5f, b}};
+    const bool zy = ((i & 1) == 0) == zyFirst;
+    for (auto& q : bars) {
+      ShapeBox s = zy ? ShapeBox(7.5f, q[1], q[0], 8.5f, q[3], q[2]) : ShapeBox(q[0], q[1], 7.5f, q[2], q[3], 8.5f);
+      s.side = s.end = iron < 0 ? 0 : iron; s.link = true;
+      out.push_back(s);
+    }
+  }
+}
+
+// ---------------------------------------------------------------- the hands-on stations' hitboxes
+bool handsPorted(const std::string& key) {
+  if (key.size() > 13 && key.compare(key.size() - 13, 13, "painted_chest") == 0) return true;
+  if (key == "ender_chest" || key == "party_chest" || key == "jukebox" || key == "enchanting_table") return true;   // (every painted chest: the hands-on in its paint)
+  static const std::unordered_set<std::string> DONE = {"smithing_table", "cartography_table", "furnace", "lit_furnace", "smoker", "lit_smoker", "blast_furnace", "lit_blast_furnace", "anvil", "chipped_anvil", "damaged_anvil", "grindstone", "chest", "brewing_stand"};
+  return DONE.count(key) > 0;
+}
+namespace {
+// per block: the model's bounds for each facing (meta & 3), turned as the mesher turns it (assets/local_models.cpp: the
+// same manifest, models and facing rules), clamped to the cell; empty = not drawn from a hands-on model
+std::vector<std::array<std::array<float, 6>, 4>> g_station;
+std::vector<std::array<std::vector<std::array<float, 6>>, 4>> g_stationParts;   // its pieces, for picking (the small trims dropped)
+std::vector<u8> g_hasStation;
+std::once_flag g_stationOnce;
+void loadStationBounds() {
+  const Registry& R = reg();
+  g_station.assign(R.blocks.size(), {});
+  g_hasStation.assign(R.blocks.size(), 0);
+  g_stationParts.assign(R.blocks.size(), {});
+  const fs::path dir = dataDir() / "local_models" / "hands";
+  const auto man = readJson(dir / "stations.json");
+  if (!man || !man->is_object()) return;
+  for (auto& [key, v] : man->items()) {
+    const BlockId id = R.blockId(key);
+    if (!id || !v.is_object() || !handsPorted(key) || !v.contains("model")) continue;
+    const bool chest = v.value("state", std::string()) == "chest";
+    std::array<std::string, 4> names;
+    for (int k = 0; k < 4; k++) names[k] = chest ? "chest_full" : v["model"].is_array() ? (k < (int)v["model"].size() ? v["model"][k].get<std::string>() : std::string()) : v["model"].get<std::string>();
+    std::array<std::array<float, 6>, 4> per{};
+    std::array<std::vector<std::array<float, 6>>, 4> parts;
+    bool ok = true;
+    int turn[4] = {0, 0, 0, 0};
+    if (v.contains("y") && v["y"].is_array()) for (int k = 0; k < 4 && k < (int)v["y"].size(); k++) turn[k] = ((v["y"][k].get<int>() / 90) % 4 + 4) % 4;
+    const BlockDef& bd = R.block(id);
+    const int facingKind = bd.props.contains("tex") && bd.props["tex"].is_object() && bd.props["tex"].contains("front") ? 1 : bd.has("facingModel") ? 2 : 0;
+    const bool faceBack = key == "brewing_stand" || key == "enchanting_table";
+    for (int m = 0; m < 4 && ok; m++) {
+      static const int FM[4] = {2, 1, 0, 3};
+      int k = facingKind == 1 ? m : facingKind == 2 ? FM[m] : 2;
+      if (faceBack) k = (k + 2) & 3;
+      const auto mj = readJson(dir / "models" / (names[k] + ".json"));
+      if (!mj || !mj->contains("elements") || (*mj)["elements"].empty()) { ok = false; break; }
+      auto turned = [&](std::array<float, 6> b) {   // a quarter turn clockwise seen from above, about the middle: (x, z) -> (16 - z, x)
+        for (int q = 0; q < turn[k]; q++) { const float x0 = 16 - b[5], x1 = 16 - b[2], z0 = b[0], z1 = b[3]; b[0] = x0; b[3] = x1; b[2] = z0; b[5] = z1; }
+        for (int i = 0; i < 6; i++) b[i] = std::clamp(b[i], 0.f, 16.f);
+        return b;
+      };
+      std::array<float, 6> b = {1e9f, 1e9f, 1e9f, -1e9f, -1e9f, -1e9f};
+      std::vector<std::array<float, 6>> es;
+      for (auto& e : (*mj)["elements"]) {
+        std::array<float, 6> eb;
+        for (int i = 0; i < 3; i++) {
+          const float a = e["from"][i].get<float>(), c = e["to"][i].get<float>();
+          eb[i] = std::min(a, c); eb[i + 3] = std::max(a, c);
+          b[i] = std::min(b[i], eb[i]); b[i + 3] = std::max(b[i + 3], eb[i + 3]);
+        }
+        es.push_back(eb);
+      }
+      per[m] = turned(b);
+      // the pieces you'd aim at: each element, less the ones inside another and the little trims (under 4 px across all
+      // told: a lock, a button, a rivet), which an outline of every one would only clutter
+      for (size_t i = 0; i < es.size(); i++) {
+        const auto& e = es[i];
+        if ((e[3] - e[0]) + (e[4] - e[1]) + (e[5] - e[2]) < 4.f) continue;
+        bool inside = false;
+        for (size_t j = 0; j < es.size() && !inside; j++) {
+          if (j == i) continue;
+          const auto& o = es[j];
+          inside = o[0] <= e[0] && o[1] <= e[1] && o[2] <= e[2] && o[3] >= e[3] && o[4] >= e[4] && o[5] >= e[5] && (j < i || o != e);
+        }
+        if (!inside) { auto t = turned(e); if (t[3] > t[0] && t[4] > t[1] && t[5] > t[2]) parts[m].push_back(t); }
+      }
+    }
+    if (!ok) continue;
+    g_station[id] = per;
+    g_stationParts[id] = parts;
+    g_hasStation[id] = 1;
+  }
+}
+std::vector<PlacedShapeFn> g_placed;
+}  // namespace
+bool stationBounds(BlockId id, u8 meta, float out[6]) {
+  std::call_once(g_stationOnce, loadStationBounds);
+  if (id >= g_hasStation.size() || !g_hasStation[id]) return false;
+  for (int i = 0; i < 6; i++) out[i] = g_station[id][meta & 3][i];
+  return true;
+}
+namespace {
+std::atomic<const std::vector<std::array<float, 4>>*> g_tileOpaque{nullptr};
+std::vector<std::unique_ptr<std::vector<std::array<float, 4>>>> g_tileOpaqueKeep;   // (old tables stay: a reader may hold one)
+}
+void setTileOpaqueBounds(std::vector<std::array<float, 4>> bounds) {
+  static std::mutex mx; std::lock_guard<std::mutex> lk(mx);
+  g_tileOpaqueKeep.push_back(std::make_unique<std::vector<std::array<float, 4>>>(std::move(bounds)));
+  g_tileOpaque.store(g_tileOpaqueKeep.back().get(), std::memory_order_release);
+}
+bool tileOpaqueBounds(int tile, float out[4]) {
+  const auto* t = g_tileOpaque.load(std::memory_order_acquire);
+  if (!t || tile < 0 || tile >= (int)t->size()) return false;
+  const auto& b = (*t)[tile];
+  if (b[2] <= b[0] || b[3] <= b[1]) return false;
+  for (int i = 0; i < 4; i++) out[i] = b[i];
+  return true;
+}
+void setPlacedShapes(BlockId id, PlacedShapeFn fn) { if (g_placed.size() <= id) g_placed.resize((size_t)id + 1, nullptr); g_placed[id] = fn; }
 
 const std::vector<ShapeBox>* modelShape(int i) { return i >= 0 && i < (int)g_models.size() ? &g_models[i] : nullptr; }
 int modelShapeIndex(const std::string& name) { auto it = g_modelIdx.find(name); return it == g_modelIdx.end() ? -1 : it->second; }
@@ -419,6 +543,17 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
   const BlockTraits& T = traits(id);
   auto push = [&](ShapeBox b) { out.push_back(b); };
   auto pushRot = [&](ShapeBox b, int f) { rotBox(b, f); out.push_back(b); };
+  // a block whose boxes depend on where it stands (the remains' posed bones: sim/fallen.cpp)
+  if (id < g_placed.size() && g_placed[id]) { ivec3 at; if (nb.at(at) && g_placed[id](id, meta, at, purpose, out)) return true; }
+  // a station drawn from its hands-on model: bumped and picked by that model's bounds (the mesher draws the model itself)
+  if (purpose != ShapePurpose::Draw) {
+    float sb[6];
+    if (stationBounds(id, (u8)m, sb)) {
+      if (purpose == ShapePurpose::Select && !g_stationParts[id][m & 3].empty()) for (auto& q : g_stationParts[id][m & 3]) push(ShapeBox(q[0], q[1], q[2], q[3], q[4], q[5]));
+      else if (purpose == ShapePurpose::Select || def.solid) push(ShapeBox(sb[0], sb[1], sb[2], sb[3], sb[4], sb[5]));
+      return true;
+    }
+  }
   switch (s) {
     case ShapeKind::Slab: {
       int k = m & 7;
@@ -438,19 +573,21 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       return true;
     }
     case ShapeKind::Fence: {
-      float H = purpose == ShapePurpose::Collide ? 24 : 16;
-      push(ShapeBox(6, 0, 6, 10, H, 10));
+      // the post you see is the post you stand on (a creature meets it taller: sim/physics.cpp penBlock);
+      // between posts the rails' plane, down to the ground so nothing slips under them
+      push(ShapeBox(6, 0, 6, 10, 16, 10));
       for (int d = 0; d < 4; d++) {
         if (!joinsFence(nb.id(DIRX[d], 0, DIRZ[d]))) continue;
         if (purpose == ShapePurpose::Draw) { pushRot(ShapeBox(7, 12, 0, 9, 15, 6), d); pushRot(ShapeBox(7, 6, 0, 9, 9, 6), d); }
-        else pushRot(ShapeBox(6, 0, 0, 10, H, 6), d);
+        else pushRot(ShapeBox(7, 0, 0, 9, 15, 6), d);
       }
       return true;
     }
     case ShapeKind::Gate: {
       int f = m & 3, open = m & 4;
       if (purpose == ShapePurpose::Collide && open) return true;
-      if (purpose == ShapePurpose::Collide) { pushRot(ShapeBox(0, 0, 6, 16, 24, 10), f); return true; }
+      // shut: as tall as its posts, and down to the ground so nothing crawls under the bottom bar
+      if (purpose == ShapePurpose::Collide) { pushRot(ShapeBox(0, 0, 7, 16, 16, 9), f); return true; }
       std::vector<ShapeBox> l = {ShapeBox(0, 5, 7, 2, 16, 9), ShapeBox(14, 5, 7, 16, 16, 9)};
       if (!open) { l.push_back(ShapeBox(2, 6, 7, 14, 9, 9)); l.push_back(ShapeBox(2, 12, 7, 14, 15, 9)); l.push_back(ShapeBox(6, 9, 7, 10, 12, 9)); }
       else { for (auto& b : {ShapeBox(0, 6, 9, 2, 9, 15), ShapeBox(0, 12, 9, 2, 15, 15), ShapeBox(14, 6, 9, 16, 9, 15), ShapeBox(14, 12, 9, 16, 15, 15), ShapeBox(0, 9, 13, 2, 12, 15), ShapeBox(14, 9, 13, 16, 12, 15)}) l.push_back(b); }
@@ -464,8 +601,9 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       //  run's low arms a lantern had floated 2 px over the wall)
       const BlockId above = nb.id(0, 1, 0);
       bool post = !straight || R.tShape[above] == ShapeKind::Wall || (above && !R.tLiquid[above] && !fullSolid(above) && !R.tLeaves[above] && !R.block(above).replaceable);
-      if (post) push(ShapeBox(4, 0, 4, 12, purpose == ShapePurpose::Collide ? 24.f : 16.f, 12));
-      for (int d = 0; d < 4; d++) if (c[d]) pushRot(ShapeBox(5, 0, 0, 11, purpose == ShapePurpose::Collide ? 24.f : 14.f, 8), d);
+      // as drawn for every purpose: you stand on the post's top or the arms' (a creature: sim/physics.cpp penBlock)
+      if (post) push(ShapeBox(4, 0, 4, 12, 16, 12));
+      for (int d = 0; d < 4; d++) if (c[d]) pushRot(ShapeBox(5, 0, 0, 11, 14, 8), d);
       return true;
     }
     case ShapeKind::Pane: {
@@ -485,7 +623,7 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       else push(top ? ShapeBox(0, 13, 0, 16, 16, 16) : ShapeBox(0, 0, 0, 16, 3, 16));
       return true;
     }
-    case ShapeKind::Ladder: pushRot(purpose == ShapePurpose::Draw ? ShapeBox(0, 0, 0, 16, 16, 1) : ShapeBox(0, 0, 0, 16, 16, 3), m & 3); return true;
+    case ShapeKind::Ladder: pushRot(purpose == ShapePurpose::Collide ? ShapeBox(0, 0, 0, 16, 16, 3) : ShapeBox(0, 0, 0, 16, 16, 1), m & 3); return true;   // (bumped 3 deep, to cling to)
     case ShapeKind::Carpet: push(ShapeBox(0, 0, 0, 16, 1, 16)); return true;
     case ShapeKind::Layer: push(ShapeBox(0, 0, 0, 16, 2.f * ((m & 7) + 1), 16)); return true;
     case ShapeKind::Cactus: {
@@ -569,7 +707,6 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     }
     case ShapeKind::Scaffold: {
       if (purpose == ShapePurpose::Collide) { push(ShapeBox(0, 14, 0, 16, 16, 16)); return true; }
-      if (purpose == ShapePurpose::Select) { push(ShapeBox(0, 0, 0, 16, 16, 16)); return true; }
       for (auto& b : {ShapeBox(0, 14, 0, 16, 16, 16), ShapeBox(0, 0, 0, 2, 14, 2), ShapeBox(14, 0, 0, 16, 14, 2), ShapeBox(0, 0, 14, 2, 14, 16),
                       ShapeBox(14, 0, 14, 16, 14, 16), ShapeBox(0, 1, 0, 16, 2, 2), ShapeBox(0, 1, 14, 16, 2, 16)}) push(b);
       return true;
@@ -605,7 +742,18 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       return true;
     }
     case ShapeKind::Petals: push(ShapeBox(0, 0, 0, 16, 0.6f, 16)); return true;
-    case ShapeKind::Wire: if (purpose == ShapePurpose::Collide) return false; if (purpose == ShapePurpose::Select) push(ShapeBox(0, 0, 0, 16, 1, 16)); return true;
+    case ShapeKind::Wire: {
+      if (purpose == ShapePurpose::Collide) return false;
+      if (purpose != ShapePurpose::Select) return true;   // (drawn by the mesher from its connections)
+      // picked where the dust lies: its dot and a strip out to each side it runs (and up the next block's side)
+      int con[4]; wireConnects(nb, con);
+      push(ShapeBox(5, 0, 5, 11, 1, 11));
+      for (int d = 0; d < 4; d++) if (con[d]) {
+        pushRot(ShapeBox(5, 0, 0, 11, 1, 5), d);
+        if (con[d] == 2) pushRot(ShapeBox(5, 0, 0, 11, 16, 1), d);
+      }
+      return true;
+    }
     case ShapeKind::Rail: {
       if (purpose == ShapePurpose::Collide) return false;
       int sh = railShape(id, (u8)m);
@@ -614,8 +762,11 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     }
     case ShapeKind::Lever:
       if (purpose == ShapePurpose::Collide) return false;
-      if (purpose == ShapePurpose::Select) push(attachBox(ShapeBox(4, 0, 4, 12, 10, 12), (u8)m));
-      else push(attachBox(BT(5, 0, 4, 11, 3, 12, tn().cobblestone, tn().cobblestone), (u8)m));
+      if (purpose == ShapePurpose::Select) {   // its base, and the handle where it leans (render/mesh_shapes.cpp emitLeverHandle)
+        const float a = 0.7f * ((m & 8) ? 1 : -1), hy = 1.5f + 10 * std::cos(a), hz = 8 + 10 * std::sin(a);
+        push(attachBox(ShapeBox(5, 0, 4, 11, 3, 12), (u8)m));
+        push(attachBox(ShapeBox(7, 1, std::min(8.f, hz) - 1, 9, hy + 1, std::max(8.f, hz) + 1), (u8)m));
+      } else push(attachBox(BT(5, 0, 4, 11, 3, 12, tn().cobblestone, tn().cobblestone), (u8)m));
       return true;
     case ShapeKind::Button: if (purpose == ShapePurpose::Collide) return false; push(attachBox(ShapeBox(5, 0, 6, 11, (m & 8) ? 1.f : 2.f, 10), (u8)m)); return true;
     case ShapeKind::Plate: if (purpose == ShapePurpose::Collide) return false; push(ShapeBox(1, 0, 1, 15, (m & 15) ? 0.5f : 1.f, 15)); return true;
@@ -626,7 +777,7 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       push(b); return true;
     }
     case ShapeKind::Repeater: case ShapeKind::Comparator: {
-      if (purpose != ShapePurpose::Draw) { push(ShapeBox(0, 0, 0, 16, 2, 16)); return true; }
+      if (purpose == ShapePurpose::Collide) { push(ShapeBox(0, 0, 0, 16, 2, 16)); return true; }   // (stood on at the slab; picked by all of it)
       const TileNames& t = tn();
       int f = m & 3; bool rep = s == ShapeKind::Repeater;
       bool lit = rep ? (m & 16) : (m & 8);
@@ -674,10 +825,14 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     }
     case ShapeKind::Tripwire: {
       if (purpose == ShapePurpose::Collide) return false;
-      if (purpose == ShapePurpose::Select) { push(ShapeBox(0, 0, 0, 16, 2, 16)); return true; }
       auto along = [&](int d) { BlockId n = nb.id(DIRX[d], 0, DIRZ[d]); return traits(n).tripwire || R.tShape[n] == ShapeKind::Hook; };
       float y = (m & 2) ? 1.f : 2.5f;
       bool xs = along(1) || along(3), zs = along(0) || along(2) || !xs;
+      if (purpose == ShapePurpose::Select) {   // the strings where they're drawn, a little fatter to aim at
+        if (xs) push(ShapeBox(0, y - 0.5f, 7, 16, y + 1, 9));
+        if (zs) push(ShapeBox(7, y - 0.5f, 0, 9, y + 1, 16));
+        return true;
+      }
       int tw = tn().tripwire;
       if (xs) push(BT(0, y, 7.75f, 16, y + 0.5f, 8.25f, tw, tw));
       if (zs) push(BT(7.75f, y, 0, 8.25f, y + 0.5f, 16, tw, tw));
@@ -685,6 +840,11 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     }
     case ShapeKind::Bed: {
       int f = m & 3, head = m & 4;
+      if (purpose != ShapePurpose::Draw) {   // the mattress on its feet, down to the floor (nothing rolls under it); the pillow picked too
+        push(ShapeBox(0, 0, 0, 16, 9, 16));
+        if (head && purpose == ShapePurpose::Select) pushRot(ShapeBox(1.5f, 9, 1.2f, 14.5f, 11, 6), f);
+        return true;
+      }
       push(ShapeBox(0, 3, 0, 16, 9, 16));
       if (purpose == ShapePurpose::Draw) {
         if (head) { pushRot(ShapeBox(0, 0, 0, 3, 3, 3), f); pushRot(ShapeBox(13, 0, 0, 16, 3, 3), f); }
@@ -733,6 +893,27 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     }
     default: break;
   }
+  // flags, banners, bunting, shop signs: picked by the cloth as the mesher draws it (render/mesh_shapes.cpp emitModel: hung
+  // on a wall, low under another, reaching back to a fence or wall post), not by the standing model's table
+  if (T.cloth && purpose == ShapePurpose::Select) {
+    static thread_local std::vector<ShapeBox> cb;
+    clothBoxes(id, meta, cb);
+    const int rf = T.facingModel ? m & 3 : 0;
+    if (T.cloth == 2 && traits(nb.id(0, 1, 0)).cloth == 2)   // (under another banner: no crossbar of its own)
+      cb.erase(std::remove_if(cb.begin(), cb.end(), [](const ShapeBox& b) { return b.kind == 0 && b.b[0] == 0 && b.b[3] == 16; }), cb.end());
+    float reach = 0;
+    if (T.cloth == 1 || (T.cloth == 2 && (m & 8))) {
+      static const int PX[4] = {0, -1, 0, 1}, PZ[4] = {1, 0, -1, 0};
+      const int ps = R.tShape[nb.id(PX[rf], 0, PZ[rf])];
+      reach = ps == ShapeKind::Fence ? (T.cloth == 1 ? 6.f : 7.f) : ps == ShapeKind::Wall ? (T.cloth == 1 ? 4.f : 5.f) : 0.f;
+    }
+    for (ShapeBox b : cb) {
+      if (reach > 0 && (b.kind == 1 || T.cloth == 2)) { b.b[2] += reach; b.b[5] += reach; }
+      b.b[4] += b.lift; b.b[1] += b.lift;
+      pushRot(b, rf);
+    }
+    return true;
+  }
   // static models and small things
   if (T.model >= 0) {
     int f = T.facingModel ? m & 3 : 0;
@@ -746,7 +927,37 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
     return true;
   }
   if (purpose == ShapePurpose::Select) {
-    if (def.render == Render::Cross) { push(ShapeBox(2, 0, 2, 14, 13, 14)); return true; }
+    if (bhas(id, BF::Sign) && def.render == Render::None) {
+      // a sign (render/sign_layer.cpp draws it): its board, turned the way it stands, and the post under a standing one
+      const bool wall = m & 16;
+      const float ang = wall ? -(float)(m & 3) * PI * 0.5f : (float)(m & 15) / 16.f * TAU, cs = std::cos(ang), sn = std::sin(ang);
+      const float by0 = wall ? 4.5f : 7.f, bz0 = wall ? 0.f : 7.f;
+      auto turned = [&](ShapeBox b) {   // about the middle, as glm::rotate about +y turns the layer's frame
+        float lo[2] = {1e9f, 1e9f}, hi[2] = {-1e9f, -1e9f};
+        for (int c = 0; c < 4; c++) {
+          const float x = ((c & 1) ? b.b[3] : b.b[0]) - 8, z = ((c & 2) ? b.b[5] : b.b[2]) - 8;
+          const float X = x * cs + z * sn + 8, Z = -x * sn + z * cs + 8;
+          lo[0] = std::min(lo[0], X); hi[0] = std::max(hi[0], X); lo[1] = std::min(lo[1], Z); hi[1] = std::max(hi[1], Z);
+        }
+        b.b[0] = lo[0]; b.b[3] = hi[0]; b.b[2] = lo[1]; b.b[5] = hi[1];
+        push(b);
+      };
+      turned(ShapeBox(0, by0, bz0, 16, by0 + 8, bz0 + 1.6f));
+      if (!wall) turned(ShapeBox(7.2f, 0, 7.2f, 8.8f, by0, 8.8f));
+      return true;
+    }
+    if (def.render == Render::Cross) {
+      // a plant is two crossed pictures (turned and a little off centre each): picked as wide and as tall as its picture shows
+      int tile = def.faces[0];
+      if (T.crop && !T.stageTiles.empty()) tile = T.stageTiles[std::min<int>(m & 15, (int)T.stageTiles.size() - 1)];
+      else if ((T.dbl || T.altTile) && (m & 1) && T.upperTile >= 0) tile = T.upperTile;
+      float tb[4];
+      if (tileOpaqueBounds(tile, tb)) {
+        const float hw = std::min(8.f, std::max(8 - tb[0], tb[2] - 8) * 0.92f + 1.f);
+        push(ShapeBox(8 - hw, 16 - tb[3], 8 - hw, 8 + hw, 16 - tb[1], 8 + hw));
+      } else push(ShapeBox(2, 0, 2, 14, 13, 14));
+      return true;
+    }
     if (def.render == Render::Torch) {
       if (m == 0) push(ShapeBox(6, 0, 6, 10, 10, 10));
       else { static const int rf[4] = {3, 1, 0, 2}; pushRot(ShapeBox(5, 3, 0, 11, 13, 6), m >= 1 && m <= 4 ? rf[m - 1] : 0); }

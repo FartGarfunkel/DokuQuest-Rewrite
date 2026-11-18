@@ -53,6 +53,7 @@ struct ShapeBox {
   int faces[6] = {-1, -1, -1, -1, -1, -1};   // per-face tiles (+x -x +y -y +z -z) when hasFaces
   bool hasFaces = false;
   bool nocol = false;                   // drawn but nothing to bump into
+  bool link = false;                    // model boxes: a bar of a chain link (a hanging light's chain: the mesher hangs more above)
   bool spin = false;                    // a part that turns (the stonecutter's blade): left out of the world's mesh, a render layer turns it (the item keeps it)
   u8 only = 63;                         // faces drawn (bit per face)
   float tu = 0;                         // shape boxes: shift the picture across (with tv: down); uvT swaps its axes
@@ -70,6 +71,7 @@ struct ShapeNb {
   virtual BlockId id(int dx, int dy, int dz) const = 0;
   virtual u8 meta(int dx, int dy, int dz) const = 0;
   virtual u8 carve(int dx, int dy, int dz) const { return 0; }   // chisel octant mask (0 where no carve channel exists)
+  virtual bool at(ivec3& p) const { (void)p; return false; }      // where the block stands, when known (world blocks)
   // the neighbour is a whole cube as drawn, so a face against it is out of sight. The mesher's answer is stricter than
   // fullSolid: a chest, furnace or anvil drawn from its model, or a chest standing open, is solid but leaves its cell open
   virtual bool fills(int dx, int dy, int dz) const;
@@ -80,6 +82,7 @@ struct WorldShapeNb : ShapeNb {
   BlockId id(int dx, int dy, int dz) const override { return w.getBlock(x + dx, y + dy, z + dz); }
   u8 meta(int dx, int dy, int dz) const override { return w.getMeta(x + dx, y + dy, z + dz); }
   u8 carve(int dx, int dy, int dz) const override { return w.getCarve(x + dx, y + dy, z + dz); }
+  bool at(ivec3& p) const override { p = ivec3(x, y, z); return true; }
 };
 
 namespace ShapePurpose { enum : int { Draw = 0, Collide = 1, Select = 2 }; }
@@ -128,6 +131,25 @@ SeatShift seatShiftOf(BlockId id, u8 meta, u8 carve, const ShapeNb& nb);
 u8 faceSeat(const World& w, vec3 point, bool aimed, int sx, int sy, int sz, int nx, int ny, int nz);
 // A chain or lantern under one that already chose a column uses that column (hy kept 0).
 u8 inheritColumn(const World& w, int x, int y, int z, u8 seat);
+
+// The stations drawn from their hands-on models (data/local_models/hands, local only: assets/local_models.h draws them).
+bool handsPorted(const std::string& key);   // its hands-on port is whole (docs/HANDS_ON.md): drawn from its model
+// The bounds (pixels) of the hands-on model block `id` is drawn with, at `meta`'s facing: what you bump and pick.
+// false: none (no local models, or not one of them)
+bool stationBounds(BlockId id, u8 meta, float out[6]);
+// Something besides the table above that knows a block's boxes by where it stands (sim/fallen.cpp: the remains' bones,
+// posed by their place). Returns true when it answered.
+using PlacedShapeFn = bool (*)(BlockId id, u8 meta, ivec3 at, int purpose, std::vector<ShapeBox>& out);
+void setPlacedShapes(BlockId id, PlacedShapeFn fn);
+
+// Where each tile's picture is opaque (pixels 0..16: u0, v0, u1, v1; v down), set by the client whenever its tiles are
+// (re)built: plants and other picture-drawn blocks are picked by what their picture shows. Unset: their old boxes.
+void setTileOpaqueBounds(std::vector<std::array<float, 4>> bounds);
+bool tileOpaqueBounds(int tile, float out[4]);
+
+// n full-size chain links (as the chain block's: data/shapes.json "chain") going up from y0 (pixels), 8 apart, each hooked
+// a pixel into the one below; the first faces front-back (zyFirst: a quarter turn round), each next turned from the last
+void chainLinks(float y0, int n, bool zyFirst, std::vector<ShapeBox>& out);
 
 // static block models (data/shapes.json): name -> boxes
 const std::vector<ShapeBox>* modelShape(int index);
