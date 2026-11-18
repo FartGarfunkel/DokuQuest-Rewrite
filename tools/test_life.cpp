@@ -170,7 +170,12 @@ int main(int argc, char** argv) {
     for (int x = -12; x < 28; x++) for (int z = -12; z < 28; z++) if (w.getBlock(x, Y, z) == stone) w.setBlock(x, Y, z, grass);   // (a meadow to wander)
     e->calm = false;
     bool brain = false;
-    for (int i = 0; i < 600 && !brain && !e->removed; i++) { tick(0.5); if (!carriedBlock(*e).empty()) brain = true; }
+    for (int i = 0; i < 1200 && !brain && !e->removed; i++) {
+      tick(0.5);
+      if (!carriedBlock(*e).empty()) brain = true;
+      // (it teleports now and then: off the meadow it has nothing it may lift, and the check waited in vain)
+      if (e->pos.x < -10 || e->pos.x > 26 || e->pos.z < -10 || e->pos.z > 26 || std::fabs(e->pos.y - (Y + 1)) > 3) { e->pos = vec3(8.5f, Y + 1, 8.5f); e->vel = vec3(0); }
+    }
     check(brain, "its own brain lifts a block now and then");
     // carrying, both hands are held out before it (its front is -z at yaw 0), up off its hips
     if (const RigModel* RM = rigModel(e->modelKey())) {
