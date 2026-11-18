@@ -495,8 +495,21 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
       if (dist < 7) { m.lungeT = 0.8f; if (m.onGround || m.inWater) m.vel.y = m.inWater ? 2 : 3.5f; lv.fx->voice("croc", "hurt", m.pos + vec3(0, 0.4f, 0)); }
       return Move{T.speed * 1.4f, toPlayer};
     }
+    if (m.inWater) {
+      // in the water it cruises like the other swimmers (it had used its walking wander there: long idle spells at its
+      // spawn depth, so it barely moved): from one place in open water to the next, low in it, out onto a bank now and then
+      m.swimT -= dt;
+      if (m.swimT <= 0 || !m.hasSwimDir) {
+        m.swimT = 3 + frand() * 4;
+        if (!aquaticWaypoint(lv, m, false)) { m.swimDir = frand() * TAU; m.hasSwimDir = true; m.swimY = m.pos.y; m.hasSwimY = true; }
+      }
+      float dir = m.swimDir, ty = m.hasSwimY ? m.swimY : m.pos.y, want = T.speed * 0.8f;
+      if (m.hitWall) { m.swimVy = 1.6f; m.swimT = std::min(m.swimT, 1.f); return Move{want, dir}; }   // against the bank: up and out onto it (or, a sheer wall, soon another way)
+      aquaticSteer(lv, m, dir, ty, want, dt, false, false);
+      return Move{want, dir};
+    }
     m.wander(dt);
-    Move mv = m.wanderMove(); mv.want *= m.inWater ? 0.6f : 0.4f;
+    Move mv = m.wanderMove(); mv.want *= 0.4f;
     return mv;
   }
   if (t == "shark") {
