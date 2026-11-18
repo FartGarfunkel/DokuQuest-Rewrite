@@ -13,6 +13,7 @@
 #include "world/world.h"
 #include <thread>
 #include <cstdio>
+#include <algorithm>
 using namespace dq;
 
 static int fails = 0, passes = 0;
@@ -191,8 +192,10 @@ int main(int argc, char** argv) {
       const bool wall = x == -11 || x == -5 || z == -11 || z == -5 || y == Y + 4;
       w.setBlock(x, y, z, wall ? stone : AIR);
     }
-    tick(1);
-    const int lit = std::max(w.getLight(-8, Y + 1, -8) >> 4, w.getLight(-8, Y + 1, -8) & 15);
+    // (the light engine does a few milliseconds of its work a call: wait till the room's light has settled)
+    auto litAt = [&] { const u8 l = w.getLight(-8, Y + 1, -8); return std::max(l >> 4, l & 15); };
+    for (int k = 0; k < 30 && litAt() > 12; k++) tick(1);
+    const int lit = litAt();
     check(lit <= 12, "the room is dark (light " + std::to_string(lit) + ")");
     w.setBlock(-8, Y + 1, -8, brownM);
     int most = 0;

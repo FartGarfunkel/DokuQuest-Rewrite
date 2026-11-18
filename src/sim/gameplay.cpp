@@ -196,6 +196,10 @@ std::vector<ItemStack> blockDrops(Level& lv, World& w, int x, int y, int z, Bloc
   const KnownBlocks& B = KB();
   const Registry& R = reg();
   bool shears = tool && tool->type == "shears";
+  // washed off by a flow: the ground cover (grass, ferns, dead bushes... what a block placed there simply replaces) goes with
+  // the water and leaves nothing; a flower or a sapling still floats loose. New land's settling streams turned whole
+  // meadows into a litter of seeds and straw, and the loose items slowed the game.
+  if (washed && R.tReplaceable[id] && !R.tLiquid[id]) return out;
   auto mk = [&](const std::string& k, int n) { if (n > 0 && R.item(k)) out.push_back(ItemStack(k, n)); };
   auto r = rnd;
   auto is = [&](BlockId v) { return v && id == v; };

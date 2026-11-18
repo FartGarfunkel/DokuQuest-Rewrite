@@ -159,9 +159,9 @@ int main(int argc, char** argv) {
         printf("  %-26s %s%s\n", k.c_str(), d.empty() ? "-" : d.c_str(), T->boss ? "  [boss: its fight's own loot too]" : "");
       }
       if (T->boss || T->drops.empty()) continue;   // (a boss's own death: its fight's code)
-      // the real death: killed by a player, up to 30 times until something falls
+      // the real death: killed by a player, up to 100 times until something falls (a fly: one kill in ten gives its string)
       bool any = false;
-      for (int t = 0; t < 30 && !any; t++) {
+      for (int t = 0; t < 100 && !any; t++) {
         clearCreatures(*lv);
         Creature* c = spawnCreature(*lv, 0, k, T->aquatic ? vec3(36.5f, Y + 6, 18.5f) : vec3(8.5f, Y, 20.5f));
         if (!c) break;

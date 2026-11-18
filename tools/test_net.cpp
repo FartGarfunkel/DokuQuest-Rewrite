@@ -1330,7 +1330,10 @@ int main(int argc, char** argv) {
         Creature* gc = nullptr;
         both(5, [&] { gc = ghostOf(cat); return gc != nullptr; });
         if (gc) C.lv->net->action(*C.me, "useEnt", json{{"id", gc->id}, {"sel", C.me->selected}, {"sn", 0}});
-        check(both(5, [&] { return cat && cat->removed && C.me->held().tag.is_object() && C.me->held().tag.contains("mob"); }), "a friend lifts a wild cat into their basket (the host's game; the basket comes back full)");
+        const bool basketed = both(5, [&] { return cat && cat->removed && C.me->held().tag.is_object() && C.me->held().tag.contains("mob"); });
+        if (!basketed) printf("  (basket: ghost %d, cat %s at %.1f %.1f %.1f, the host's Carol at %.1f %.1f %.1f holding %s, distance %.2f)\n", gc ? 1 : 0, cat ? (cat->removed ? "gone" : "here") : "none",
+                              cat ? cat->pos.x : 0.f, cat ? cat->pos.y : 0.f, cat ? cat->pos.z : 0.f, mirror->pos.x, mirror->pos.y, mirror->pos.z, mirror->held().id.c_str(), cat ? glm::distance(cat->pos, mirror->pos) : -1.f);
+        check(basketed, "a friend lifts a wild cat into their basket (the host's game; the basket comes back full)");
         {
           PlayerController gpc(*C.lv, *C.me);
           gpc.target = RayHit{}; gpc.target.hit = true; gpc.target.block = ivec3(bx, by, bz + 2); gpc.target.normal = ivec3(0, 1, 0);

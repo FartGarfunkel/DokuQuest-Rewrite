@@ -1,6 +1,7 @@
 // sim/world_life.cpp — lightning changing creatures, the enderman's carried block, mushrooms and vines that grow
 // (sim/world_life.h).
 #include "sim/world_life.h"
+#include "world/dims.h"
 #include "sim/creature.h"
 #include "sim/player.h"
 #include "sim/rules.h"
@@ -190,7 +191,9 @@ int countNear(World& w, int x, int y, int z, BlockId id, int rxz, int ry) {
 }
 
 void mushroomTick(Level& lv, World& w, int x, int y, int z, BlockId id, bool force) {
-  // bright light withers it, unless it stands on mycelium or podzol
+  // bright light (over 12) withers it when a random tick looks, unless it stands on mycelium or podzol; the land makes
+  // them only in the shade (gen/decorate.cpp, gen/biome_features.cpp: under rock, or enough leaves), so the ones it was made
+  // with stay, and none litter a sunny floor
   if (!mushroomGround(w.getBlock(x, y - 1, z)) && rawLight(w, x, y, z) > 12) {
     if (force || frand() < 0.5f) {
       w.setBlock(x, y, z, AIR, 0);
@@ -206,7 +209,10 @@ void mushroomTick(Level& lv, World& w, int x, int y, int z, BlockId id, bool for
     if (w.getBlock(to.x, to.y, to.z) == AIR && mushroomCanStay(w, to.x, to.y, to.z)) at = to;
     to = step(at);
   }
-  if (w.getBlock(to.x, to.y, to.z) == AIR && mushroomCanStay(w, to.x, to.y, to.z) && dimOfY(to.y) == dimOfY(y)) w.setBlock(to.x, to.y, to.z, id, 0);
+  // (never next to water or lava: a flow washes it off as an item, and a patch by a lava fall refilled itself as fast as
+  // the lava took it, a stream of loose mushrooms)
+  auto wet = [&](ivec3 p) { for (const ivec3 d : {ivec3(1, 0, 0), ivec3(-1, 0, 0), ivec3(0, 0, 1), ivec3(0, 0, -1), ivec3(0, 1, 0)}) if (reg().tLiquid[w.getBlock(p.x + d.x, p.y + d.y, p.z + d.z)]) return true; return false; };
+  if (w.getBlock(to.x, to.y, to.z) == AIR && mushroomCanStay(w, to.x, to.y, to.z) && dimOfY(to.y) == dimOfY(y) && !wet(to)) w.setBlock(to.x, to.y, to.z, id, 0);
 }
 
 static const int VINE_CAP = 5;       // vines to a 9x3x9 patch before it stops creeping sideways and up
