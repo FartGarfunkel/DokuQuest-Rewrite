@@ -265,6 +265,22 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
     const int i = MeshInput::idx(ox, oy, oz); in.ids[i] = AIR; in.meta[i] = 0; in.carve[i] = 0; in.coat[i] = 0;
   };
   for (const ivec3& h : meshHiddenBlocks()) hideAt(h);   // drawn elsewhere for now
+  // a part sharing a cell with a solid main block (a trapdoor behind a chest): that cell holds no light of its own, so
+  // the parts are lit by the brightest open cell beside it (this copy only)
+  for (const MeshInput::Part& pt : in.parts) {
+    const int i = MeshInput::idx(pt.x, pt.y, pt.z);
+    if (!R.tOpaque[in.ids[i]]) continue;
+    static const int N[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+    LightRgb L = in.rgb[i];
+    for (auto& n : N) {
+      const int ny = pt.y + n[1];
+      if (ny < MeshInput::Y0 || ny > 16) continue;
+      const int j = MeshInput::idx(pt.x + n[0], ny, pt.z + n[2]);
+      if (R.tOpaque[in.ids[j]]) continue;
+      for (int c = 0; c < 3; c++) { L.s[c] = std::max(L.s[c], in.rgb[j].s[c]); L.b[c] = std::max(L.b[c], in.rgb[j].b[c]); }
+    }
+    in.rgb[i] = L; in.light[i] = lightNibble(L);
+  }
   // the open chest too (render/chest_layer.cpp draws it): as air here, the blocks beside it draw the faces it covered
   // (they were left out against a solid chest, a hole into the world beside an open one)
   for (int i = 0, n = std::min(CHEST_HIDE_MAX, g_chestHiddenN.load(std::memory_order_relaxed)); i < n; i++)
