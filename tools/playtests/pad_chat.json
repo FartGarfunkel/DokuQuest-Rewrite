@@ -1,0 +1,81 @@
+{
+"note": "Chat by the pad alone: Start, the pause menu's Chat (down, down, right, A) opens the line with the on-screen keyboard; A types q, Start sends it and chat closes.",
+"steps": [
+{
+"wait": 200,
+"do": "pad",
+"button": "x",
+"hold": 3
+},
+{
+"wait": 10,
+"do": "pad",
+"button": "start",
+"hold": 3
+},
+{
+"wait": 40,
+"do": "expect",
+"screen": "pause"
+},
+{
+"do": "pad",
+"button": "down",
+"hold": 3
+},
+{
+"wait": 8,
+"do": "pad",
+"button": "down",
+"hold": 3
+},
+{
+"wait": 8,
+"do": "pad",
+"button": "right",
+"hold": 3
+},
+{
+"wait": 8,
+"do": "expect",
+"nav": "Chat"
+},
+{
+"do": "pad",
+"button": "a",
+"hold": 3
+},
+{
+"wait": 20,
+"do": "expect",
+"screen": "chat"
+},
+{
+"do": "expect",
+"typing": ""
+},
+{
+"do": "pad",
+"button": "a",
+"hold": 3
+},
+{
+"wait": 10,
+"do": "expect",
+"typing": "q"
+},
+{
+"do": "pad",
+"button": "start",
+"hold": 3
+},
+{
+"wait": 20,
+"do": "expect",
+"screen": null
+},
+{
+"do": "report"
+}
+]
+}

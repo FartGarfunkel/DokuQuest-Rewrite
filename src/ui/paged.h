@@ -92,6 +92,10 @@ private:
   float rowNextY_ = 0, rowX_ = 0;
   bool customOpen_ = false; std::string customTip_;
   bool focusFirst_ = true, plain_ = false;
+  // left from a setting: the current page in the list (ImGui's own move found nothing from some rows)
+  std::vector<unsigned> pageIds_; void* pageListWin_ = nullptr; bool rowFocused_ = false, rowOwnsLR_ = false;
+  // right from the list: back into the page, to the setting it left (else the first)
+  bool listFocused_ = false; unsigned firstRowId_ = 0, lastRowId_ = 0; void* rowWin_ = nullptr; int lastRowPage_ = -1;
   void takeFocus();
   ImVec2 lastRowMin_, lastRowMax_;
   bool matches(const char* label) const;

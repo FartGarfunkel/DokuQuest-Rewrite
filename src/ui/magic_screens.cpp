@@ -314,6 +314,7 @@ public:
     book.draw(secs);
     // turning the pages with the arrows: the choice moves onto the open pages
     if (book.turned && !book.shownSel.empty() && std::find(book.shownSel.begin(), book.shownSel.end(), cur) == book.shownSel.end()) cur = book.shownSel.front();
+    if (a.input.usingPad()) { ui::padHint(0, -1, "Ready: right hand"); ui::padHint(2, -1, "Ready: left hand"); ui::padHint(3, -1, "Quick spell"); ui::padHint(14, -1, "Turn pages"); }
     book.hint(a.input.usingPad() ? "\xE2\x86\x91 \xE2\x86\x93 choose \xC2\xB7 A: ready / empty the right hand (RT) \xC2\xB7 X: the left (LT) \xC2\xB7 Y: quick spell (hold B, press RB) \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 pages \xC2\xB7 B: close"
                                  : "Click: right hand (left click casts) \xC2\xB7 right-click: left hand (right click casts) \xC2\xB7 middle-click: quick spell (Z) \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 or the wheel: pages \xC2\xB7 Esc: close");
     book.end();
@@ -700,6 +701,7 @@ public:
     // (the bookmarks: the Compendium's index and each creature's spread are sections; the ribbon goes to the index)
     book.draw(secs);
     if (dexGo >= 0) { book.showSel(2000 + dexGo); dexCur = dexGo; dexGo = -1; }
+    if (a.input.usingPad()) ui::padHint(14, -1, "Turn pages");
     book.hint("J: close \xC2\xB7 K: your skills and perks \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 or the wheel: turn the pages \xC2\xB7 click a leaf on the tree");
     book.end();
   }

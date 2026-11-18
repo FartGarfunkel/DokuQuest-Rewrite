@@ -1,0 +1,162 @@
+{
+"note": "The furnace by the pad alone, up out of the bag first (Hands-on Stations off): iron ore in hand, up to the top spot (what is made), down one to what smelts, A puts it in, B leaves.",
+"steps": [
+{
+"wait": 200,
+"do": "setting",
+"key": "handsStations",
+"value": false
+},
+{
+"do": "anchor"
+},
+{
+"do": "give",
+"item": "cobblestone",
+"n": 20,
+"clear": true
+},
+{
+"do": "give",
+"item": "planks",
+"n": 8
+},
+{
+"do": "give",
+"item": "coal",
+"n": 4
+},
+{
+"do": "give",
+"item": "iron_ore",
+"n": 3
+},
+{
+"do": "give",
+"item": "iron_pickaxe",
+"n": 1,
+"d": 100
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 1,
+"z": -1,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 1,
+"z": -2,
+"key": "air"
+},
+{
+"do": "setBlock",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2,
+"key": "furnace"
+},
+{
+"do": "select",
+"slot": 3
+},
+{
+"do": "lookAt",
+"rel": true,
+"x": 0,
+"y": 0,
+"z": -2
+},
+{
+"wait": 5,
+"do": "pad",
+"button": "lt",
+"hold": 4
+},
+{
+"wait": 40,
+"do": "expect",
+"screen": "cinematic_furnace"
+},
+{
+"do": "pad",
+"button": "up",
+"hold": 3
+},
+{
+"wait": 8,
+"do": "pad",
+"button": "up",
+"hold": 3
+},
+{
+"wait": 8,
+"do": "pad",
+"button": "up",
+"hold": 3
+},
+{
+"wait": 8,
+"do": "pad",
+"button": "up",
+"hold": 3
+},
+{
+"wait": 8,
+"do": "pad",
+"button": "up",
+"hold": 3
+},
+{
+"wait": 8,
+"do": "wait"
+},
+{
+"wait": 8,
+"do": "pad",
+"button": "down",
+"hold": 3
+},
+{
+"wait": 8,
+"do": "wait"
+},
+{
+"do": "pad",
+"button": "a",
+"hold": 3
+},
+{
+"wait": 15,
+"do": "expect",
+"count": "iron_ore",
+"n": 0
+},
+{
+"do": "pad",
+"button": "b",
+"hold": 3
+},
+{
+"wait": 30,
+"do": "expect",
+"screen": null
+},
+{
+"do": "report"
+}
+]
+}

@@ -312,6 +312,10 @@ void Paged::begin(App& a, const char* id, const std::string& title, const std::v
       ImGui::PushID(i);
       bool hit = ImGui::InvisibleButton((pages[i].name + "##page").c_str(), ImVec2(std::max(8.f, leftW - 8 * U - (listH > regionH ? 6 * U : 0)), rowH), ImGuiButtonFlags_EnableNav);
       bool hot = hotItem();
+      if ((int)pageIds_.size() < n) pageIds_.resize(n);
+      pageIds_[i] = ImGui::GetItemID();
+      pageListWin_ = ImGui::GetCurrentWindow();
+      if (ImGui::IsItemFocused() && navVisible()) listFocused_ = true;
       ImGui::PopID();
       if (hit && page != i) { page = i; pageChanged = true; focusFirst_ = true; playClick(); }
       ImU32 c = i == page ? C_WHITE : C_GREY;
@@ -441,6 +445,16 @@ int Paged::footer(const std::vector<std::string>& labels, const std::vector<bool
 
 void Paged::end() {
   if (contentOpen) endContent();
+  if (rowFocused_ && !rowOwnsLR_ && pageListWin_ && page < (int)pageIds_.size() && pageIds_[page] && app().input.navStep().x < 0) {
+    ImGui::NavMoveRequestCancel();   // (ImGui's own move: from some rows it found nothing, from others a page beside it)
+    ImGui::SetFocusID(pageIds_[page], (ImGuiWindow*)pageListWin_);
+    ImGui::SetNavCursorVisible(true);
+  }
+  if (listFocused_ && rowWin_ && app().input.navStep().x > 0) {
+    const unsigned to = lastRowPage_ == page && lastRowId_ ? lastRowId_ : firstRowId_;
+    if (to) { ImGui::NavMoveRequestCancel(); ImGui::SetFocusID(to, (ImGuiWindow*)rowWin_); ImGui::SetNavCursorVisible(true); }
+  }
+  rowFocused_ = rowOwnsLR_ = listFocused_ = false; firstRowId_ = 0;
   if (!tipText.empty()) {
     const float maxW = std::min(W * 0.45f, 420 * Z());
     // (at the mouse, or with the pad beside the highlighted item: ui::tipPlace)
@@ -525,7 +539,9 @@ bool Paged::rowBegin(const char* label, const char* tip, float ctrlU, bool isDef
 
 void Paged::rowEnd(const char* tip, bool isDefault, bool* resetByPad) {
   // the control just drawn: its description shows while a pad or the keys have it focused; Y puts the default back
+  if (!firstRowId_) { firstRowId_ = ImGui::GetItemID(); rowWin_ = ImGui::GetCurrentWindow(); }
   if (ImGui::IsItemFocused() && navVisible()) {
+    rowFocused_ = true; lastRowId_ = ImGui::GetItemID(); lastRowPage_ = page; rowWin_ = ImGui::GetCurrentWindow();
     if (tip && *tip && tipText.empty()) { tipText = tip; tipAtMouse = false; tipPos = ImVec2(ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y + 4 * unit); }
     if (resetByPad && !isDefault && ImGui::IsKeyPressed(ImGuiKey_GamepadFaceUp, false)) { *resetByPad = true; playClick(); }
   }
@@ -536,6 +552,7 @@ void Paged::rowEnd(const char* tip, bool isDefault, bool* resetByPad) {
 
 void Paged::ownLeftRight() {
   if (!(ImGui::IsItemFocused() && navVisible())) return;
+  rowOwnsLR_ = true;
   ImGuiID id = ImGui::GetItemID();
   for (ImGuiKey k : {ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadDpadRight, ImGuiKey_GamepadLStickLeft, ImGuiKey_GamepadLStickRight, ImGuiKey_LeftArrow, ImGuiKey_RightArrow})
     ImGui::SetKeyOwner(k, id);

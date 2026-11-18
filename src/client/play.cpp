@@ -12,7 +12,7 @@
 
 namespace dq {
 
-std::unique_ptr<Screen> makePhotoModeScreen();   // ui/photo_mode.cpp
+std::unique_ptr<Screen> makePhotoModeScreen(bool fromPause = false);   // ui/photo_mode.cpp
 
 struct LocalState {
   std::unique_ptr<PlayerController> ctl;

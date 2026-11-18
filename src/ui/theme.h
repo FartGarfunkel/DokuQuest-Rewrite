@@ -59,6 +59,9 @@ bool slider(const char* id, float* v, float mn, float mx, float step, const char
 bool combo(const char* id, int* cur, const std::vector<std::string>& items, float width = -1);
 bool inputText(const char* id, std::string* s, const char* hint = nullptr, size_t maxLen = 0, float width = -1, int flags = 0);
 void padScrollHere();              // right stick scrolls the current scrolling region
+// after an ImGui slider: while the pad's highlight is on it, left / right move it by `step` (no A first), and the
+// highlight stays put; true when it changed
+bool padSliderAdjust(float* v, float lo, float hi, float step);
 
 // .panel-screen with a .panel: backdrop, header (title + close button), body (scrolls), optional footer
 class Panel {

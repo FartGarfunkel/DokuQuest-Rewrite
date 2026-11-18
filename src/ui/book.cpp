@@ -467,7 +467,9 @@ void Book::draw(const std::vector<BookRows>& sections) {
   }
 }
 
-void Book::hint(const std::string& t) { hint_ = t; }
+// (with the controller in use the line under the book gives way to the hint bar along the bottom: the screens put
+// their pad controls there with padHint, named for the pad in hand)
+void Book::hint(const std::string& t) { hint_ = app && app->input.usingPad() ? std::string() : t; }
 
 void Book::end() {
   if (!hint_.empty() && app) {

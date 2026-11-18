@@ -13,6 +13,7 @@ class GameSession;
 
 void registerUi(App& a);         // once at start-up, after App::initImGui and the tiles: theme, HUD layer, events
 void uiBeginFrame(App& a);       // every frame between ImGui_ImplSDL2_NewFrame and ImGui::NewFrame
+std::string inventoryPadFocus();   // the inventory's pad cursor last frame ("slot Cont 3"), "" none (ui/inventory.cpp; playtests)
 void uiAfterScreens(App& a);     // every frame after the screens drew: the menu tab strip over map/journal/skills/...
 void uiScreenCovered(App& a, Screen* below);   // a screen goes over `below`: keep its pad highlight (App::pushScreen)
 void uiScreenUncovered(App& a, Screen* top);   // `top` is on top again (App::popScreen): its highlight comes back

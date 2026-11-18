@@ -266,6 +266,8 @@ private:
     float before = v;
     if (ImGui::SliderFloat((std::string("##") + lab).c_str(), &v, lo, hi, "%.2f")) { if (!sliding) { CharLook o = look; o.shape = look.shape; undo.push_back(o); sliding = true; } apply(); }
     if (ImGui::IsItemDeactivated()) sliding = false;
+    // the pad: left / right move it straight away, as Options' sliders do (ImGui's own needs A first)
+    if (ui::padSliderAdjust(&v, lo, hi, (hi - lo) / 40)) { CharLook o = look; o.shape = look.shape; undo.push_back(o); apply(); }
     (void)before;
   }
   bool sliding = false;

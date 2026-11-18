@@ -415,7 +415,7 @@ public:
     const ItemStack stone = cutWorkItem(w, at);
     const auto opts = cutWorkOptions(w, at);
     const int n = (int)opts.size();
-    if (mouseTookOver(a)) pad = false;
+    if (mouseTookOver(a)) pad = false; else if (a.input.usingPad()) pad = true;   // (the controller in hand: A acts on its spot from the start, no d-pad press first)
     int hover = -1; bool onStone = false, onTable = false;
     if (!pad && !overUi && scene().phase == 2 && cutAt < 0) {
       for (int k = 0; k < n && hover < 0; k++) if (cutDialShown(k, n, scroll) > 0.5f && under(a, cutDialPoint(at, scene().viewYaw, k, n, scroll, scene().clock), 0.075f)) hover = k;
@@ -544,7 +544,7 @@ public:
     const bool overUi = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook();
     const std::string playing = jukeboxDisc(w, at);
     const int n = (int)g_jv.dial.size();
-    if (mouseTookOver(a)) pad = false;
+    if (mouseTookOver(a)) pad = false; else if (a.input.usingPad()) pad = true;   // (the controller in hand: A acts on its spot from the start, no d-pad press first)
     int hover = -1; bool onBox = false;
     if (!pad && !overUi && scene().phase == 2 && animAt < 0) {
       if (playing.empty()) for (int k = 0; k < n && hover < 0; k++) if (cutDialShown(k, n, scroll) > 0.5f && under(a, jukeDialPoint(at, scene().viewYaw, k, n, scroll, scene().clock), 0.1f)) hover = k;
@@ -652,7 +652,7 @@ public:
     const bool overUi = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow) || bookUiMouseOverBook();
     const std::vector<ItemStack> food = campfireFood(w, at);
     const bool cooks = campfireCooks(p.held()), lit = !(w.getMeta(at.x, at.y, at.z) & 8);
-    if (mouseTookOver(a)) pad = false;
+    if (mouseTookOver(a)) pad = false; else if (a.input.usingPad()) pad = true;   // (the controller in hand: A acts on its spot from the start, no d-pad press first)
     int hover = -1;
     if (!pad && !overUi && scene().phase == 2) { for (int k = 0; k < 4 && hover < 0; k++) if (under(a, campfireSpot(at, k), 0.14f)) hover = k; }
     else if (pad) hover = padSpot;

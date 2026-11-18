@@ -74,6 +74,7 @@ public:
     if (n > 1 && in.pressed(Act::MenuDown)) { choose(a, (sel + 1) % n); ui::playClick(); }
     if (n > 1 && in.pressed(Act::MenuUp)) { choose(a, (sel + n - 1) % n); ui::playClick(); }
     if (in.pressed(Act::MenuOk)) findMe(a);
+    if (in.usingPad()) { ui::padHint(0, -1, "Find me"); ui::padHint(2, 3, "Zoom"); if (n > 1) ui::padHint(12, -1, "Next map"); }   // (the stick pans)
     for (auto& pad : in.pads()) {
       auto pr = [&](int b) { return b < 17 && pad.b[b] && !pad.prevB[b]; };   // standard layout: 2 = X, 3 = Y
       if (pr(SDL_CONTROLLER_BUTTON_X)) zoomBy(1 / 1.5f);
