@@ -4,6 +4,7 @@
 // adds to it: riftarc.js, riftlore.js, hearth.js, paths.js, rpg.js) and paths.js's path choice and talents.
 #include "core/tool_parts.h"
 #include "sim/villagers_internal.h"
+#include "sim/item_uses.h"
 #include "sim/village_theft.h"
 #include "sim/skills.h"
 #include "sim/rpg.h"
@@ -306,7 +307,7 @@ std::vector<ShopLine> shopLines(Level& lv, Player& p, const Village& v, int npcI
     if (!reg().item(l[0].get<std::string>())) continue;
     ShopLine o; o.i = i; o.id = l[0]; o.n = l[1]; o.tier = l[3]; o.key = tab + std::to_string(i);
     double base = l[2].get<double>();
-    o.price = std::max(1, (int)std::floor(base * (tab == "buy" ? disc * shopPriceFactor(p, v.id) : 1) + 0.5));   // (a known thief pays more)
+    o.price = std::max(1, (int)std::floor(base * (tab == "buy" ? disc * shopPriceFactor(p, v.id) * capeShopFactor(p) : 1) + 0.5));   // (a known thief pays more)
     o.locked = o.tier > st.tier; o.left = 12 - rec["u"].value(o.key, 0);
     // the village makes these itself (sim/villager_chores.cpp): only what's been baked or ground is for sale
     if (tab == "buy" && villageMakes(o.id)) o.left = std::min(o.left, villageStock(lv, v).value(o.id, 0) / std::max(1, o.n));
@@ -417,6 +418,7 @@ float pathPetFactor(Level& lv, const Creature& victim, const Entity* attacker) {
   float k = 1;
   if (!victim.owner.empty()) if (Player* o = findPlayer(lv, victim.owner)) if (hasTal(*o, "beast")) k *= 0.7f;
   if (auto* ac = dynamic_cast<const Creature*>(attacker)) if (!ac->owner.empty()) if (Player* o = findPlayer(lv, ac->owner)) if (hasTal(*o, "beast")) k *= 1.3f;
+  if (auto* ac = dynamic_cast<const Creature*>(attacker)) if (ac->tamed && rallied(lv, *ac)) k *= RALLY_DAMAGE;   // the War Horn's call (sim/item_uses.h)
   return k;
 }
 

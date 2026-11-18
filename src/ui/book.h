@@ -110,6 +110,7 @@ private:
   float kk = 1, pw = 0, ph = 0, lineH = 0;
   ImVec2 org;                          // the book's top-left
   int curTab = 0, nSpreads = 1, wantTab = -1, wantSel = -1, wheelDir = 0;
+  int openTab = -1, rightSec = 0;      // the bookmark last opened (a section may start on the right-hand page), the right page's section
   std::vector<int> tabSpread;          // the first spread of each section
   std::vector<std::pair<int, int>> selPage;   // sel id -> page
   std::string hint_;

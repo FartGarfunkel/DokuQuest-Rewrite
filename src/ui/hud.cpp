@@ -74,7 +74,7 @@ double now() { return app().time; }
 
 void hudToast(const std::string& text, const std::string& kind) {
   auto& t = H().toasts;
-  t.push_back({text, kind, now(), kind == "boss" ? 4.2 : kind == "whisper" ? 2.6 : 2.8});
+  t.push_back({text, kind, now(), kind == "boss" ? 4.2 : kind == "whisper" ? 2.6 : kind == "hint" ? 8.0 : 2.8});   // (a first-time hint: time to read it, sim/guidance.h)
   while (t.size() > 5) t.pop_front();
 }
 void hudPickup(const std::string& id, int n) {

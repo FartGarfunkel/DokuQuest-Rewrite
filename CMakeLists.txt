@@ -163,6 +163,7 @@ target_link_libraries(test_song PRIVATE dqclient)
 # Content features test (headless): maps, fishing, camping, travel, elytra, the stable, places, farming. Run: build/test_content
 add_executable(test_content tools/test_content.cpp)
 target_link_libraries(test_content PRIVATE dqcore)
+target_compile_definitions(test_content PRIVATE DQ_SRC_DIR="${CMAKE_SOURCE_DIR}/src")   # (the dead-end item check reads the sim code)
 # Ingot and log piles (headless, sim/piles.h). Run: build/test_piles
 add_executable(test_piles tools/test_piles.cpp)
 target_link_libraries(test_piles PRIVATE dqcore)

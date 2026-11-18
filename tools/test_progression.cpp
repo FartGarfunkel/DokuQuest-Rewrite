@@ -3,7 +3,8 @@
 // the anvils, the bloomery, steel, a chisel). Every item comes from a game action: breaking blocks set in the arena (the world's
 // own raw blocks) with the tool in hand, knapping, crafting through matchGrid/consumeCraft, the station functions and the
 // controller's use, with time passed by ticking the level. A step that can't be done legitimately is a FAIL that says why; a
-// missing item is granted only after its failure is recorded (the check says so). Run: build/test_progression (exit = failures)
+// missing item is granted only after its failure is recorded (the check says so). GUIDE: the journal's What next, the first-time hints
+// and the War Horn. Run: build/test_progression [--classic | --immersive | --guide] (exit = failures)
 #include "core/init.h"
 #include "core/registry.h"
 #include "core/metals.h"
@@ -30,6 +31,10 @@
 #include "sim/immersive.h"
 #include "sim/combat.h"
 #include "sim/gameplay.h"
+#include "sim/guidance.h"
+#include "sim/item_uses.h"
+#include "sim/skills.h"
+#include "sim/magic_combat.h"
 #include "common/threadpool.h"
 #include "world/world.h"
 #include "world/dims.h"
@@ -39,6 +44,7 @@
 #include <queue>
 
 using namespace dq;
+namespace dq { void npcRep(Level& lv, Player& p, const std::string& vid, double n, const std::string& why); }   // sim/villagers.h (its sim/content.h clashes with sim/gameplay.h here)
 static int fails = 0, passes = 0;
 static void check(bool ok, const std::string& what) { printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str()); fflush(stdout); (ok ? passes : fails)++; }
 static std::string S(int n) { return std::to_string(n); }
@@ -680,16 +686,57 @@ static void immersivePlay() {
   printf("  (granted: %d)\n", g.granted);
 }
 
+// ---- guidance: the journal's What next, the first-time hints (sim/guidance.h), and the War Horn blown from the hand ----
+static void guidePlay() {
+  printf("[guidance: What next and the first-time hints]\n");
+  Play g("Guide", false);
+  Player& P = *g.P; Level& L = *g.lv;
+  auto has = [](const std::vector<NextGoal>& v, const std::string& k) { for (auto& x : v) if (x.key == k) return true; return false; };
+  auto keys = [](const std::vector<NextGoal>& v) { std::string s; for (auto& x : v) s += " " + x.key; return s; };
+  std::vector<NextGoal> next = whatNext(L, P);
+  CHECK(next.size() >= 3 && next.size() <= 5, "What next offers 3 to 5 goals (" + S((int)next.size()) + ":" + keys(next) + ")");
+  CHECK(has(next, "quest") && has(next, "world"), "a new player is pointed at a village and a world not yet seen" + keys(next));
+  for (auto& x : next) if (x.title.empty() || x.why.empty()) { CHECK(false, "every goal says what and why (" + x.key + ")"); break; }
+  // a skill near its first perk shows; reaching it brings the perk's hint
+  skillGain(L, P, "mining", skillXpFor(26) - skillXp(P, "mining") + 1);
+  next = whatNext(L, P);
+  bool near = false; for (auto& x : next) if (x.key == "perk" && x.title.find("Mining") != std::string::npos && x.title.find("Prospector") != std::string::npos) near = true;
+  CHECK(near, "Mining at 26: the page names the Prospector perk four levels on" + keys(next));
+  CHECK(!hintSeen(P, "perk"), "no perk yet, no perk hint");
+  skillGain(L, P, "mining", skillXpFor(30) - skillXp(P, "mining") + 1);
+  g.tick(2);
+  CHECK(hintSeen(P, "perk"), "the first perk brings its hint once");
+  // stat points: one is waiting (the levels above) and its hint has come; the page says to spend them
+  CHECK(P.statPoints > 0 && hintSeen(P, "stat") && has(whatNext(L, P), "stat"), "unspent stat points: a hint, and a goal on the page (" + S(P.statPoints) + ")");
+  CHECK(!hintOnce(L, P, "stat"), "a hint seen is not shown again");
+  // standing with a village, the quest board, a tamed creature
+  npcRep(L, P, "v_test", 2, "");
+  g.bus.emit("villagerScreen", json::array({P.name, "board", json::object()}));
+  Entity* wolf = spawnCreature(L, "wolf", P.realm, P.pos + vec3(24, 0.5f, 0));
+  if (wolf) wolf->data["owner"] = P.name;   // (tamed to you: the creature takes its owner up on its next step)
+  g.tick(2);
+  if (wolf) wolf->pos = P.pos + vec3(24, 0.5f, 0);   // (it came to heel meanwhile: off again, for the horn)
+  CHECK(hintSeen(P, "rep") && hintSeen(P, "board") && hintSeen(P, "tame"), "standing moved, the board opened, a creature tamed: each hint once");
+  CHECK(P.save()["stats"]["hints"].size() >= 5, "the hints seen are saved with the player");
+  // the War Horn from the hand: your wolf comes, quicker and stronger
+  g.give(ItemStack("war_horn", 1)); g.hold("war_horn"); g.aimAir();
+  g.use();
+  CHECK(wolf && glm::distance(wolf->pos, P.pos) < 4 && rallied(L, *wolf), "the War Horn blown: the tamed wolf 24 blocks off comes to your side, under its call");
+  g.tick(HORN_SECS + 1);
+  CHECK(wolf && !rallied(L, *wolf), "...for " + S((int)HORN_SECS) + " s");
+}
+
 int main(int argc, char** argv) {
   std::string ud = (fs::temp_directory_path() / "dq-test-progression").string();
   for (int i = 1; i < argc; i++) if (std::string(argv[i]) == "--userdir" && i + 1 < argc) ud = argv[++i];
   std::error_code ec; fs::remove_all(ud, ec);
   CoreOptions co; co.server = true; co.userDirOverride = ud;
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
-  bool doC = true, doI = true;
-  for (int i = 1; i < argc; i++) { if (std::string(argv[i]) == "--classic") doI = false; if (std::string(argv[i]) == "--immersive") doC = false; }
+  bool doC = true, doI = true, doG = true;
+  for (int i = 1; i < argc; i++) { const std::string a = argv[i]; if (a == "--classic") doI = doG = false; if (a == "--immersive") doC = doG = false; if (a == "--guide") doC = doI = false; }
   if (doC) classic();
   if (doI) immersivePlay();
+  if (doG) guidePlay();
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails;
 }

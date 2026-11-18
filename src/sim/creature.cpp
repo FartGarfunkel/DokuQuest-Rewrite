@@ -2,6 +2,7 @@
 // layers the later modules wrapped round it: dismember.js, bestiary.js, sounds2.js, monsters.js,
 // quarrels.js, pets.js (hurt), nightmobs.js (jockeys, slime split), husbandry.js (kept animals).
 #include "sim/world_life.h"
+#include "sim/item_uses.h"
 #include "core/tool_parts.h"
 #include <cstdlib>
 #include "sim/rpg.h"
@@ -957,6 +958,7 @@ void Creature::update(Level& lv, float dt) {
   if (regrab.on && alive()) if (OptMove fw = fetchWeapon(lv, dt)) { want = fw->want; dir = fw->dir; }
   if (float stun = data.value("hitStun", 0.f); stun > 0) { data["hitStun"] = std::max(0.f, stun - dt); want = 0; }
   if (slowT > 0) want *= 0.5f;
+  if (tamed && rallied(lv, *this)) want *= RALLY_SPEED;   // the War Horn's call (sim/item_uses.h)
   if (crawling) want *= 0.35f;
   if (limp) want *= std::max(0.3f, 1 - limp * 0.25f);
   lastWant = want;

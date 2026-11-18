@@ -1,5 +1,6 @@
 #include "core/tool_parts.h"
 #include "sim/inventory.h"
+#include "sim/item_uses.h"
 #include "sim/player.h"
 #include "sim/quiver.h"
 
@@ -126,7 +127,7 @@ float charmBonus(const Player& p, const std::string& kind) {
   return d->props["charm"].value(kind, 0.0f);
 }
 float fireResist(const Player& p) {
-  float r = charmBonus(p, "fire");
+  float r = charmBonus(p, "fire") + gearFireResist(p);   // (the ember cape: sim/item_uses.h)
   for (auto& s : p.armor) if (!s.empty()) r += armorFireResistOf(s);   // (a mixed piece's own too)
   return std::min(0.9f, r);
 }

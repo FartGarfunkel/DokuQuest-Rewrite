@@ -2,6 +2,7 @@
 // felling/breath/fire/falls/drop/pick block), fairplay.js (food over time), itemfix.js (eating for
 // effect, the off hand), blocks2.js (bow and arrows) and blockfx.js (cracks that mend).
 #include "sim/attach_play.h"
+#include "sim/item_uses.h"
 #include "sim/dyntree.h"
 #include "sim/weather.h"
 #include "sim/controller.h"
@@ -119,7 +120,7 @@ void PlayerController::consumeHeld(int n) {
 }
 
 bool itemHasUse(const ItemDef& d) {   // (also sim/combat_rpg.cpp: a shield waits for a main hand that has a use)
-  for (const char* k : {"cape", "block", "heartCrystal", "cart", "boat", "food", "backpack", "bucket", "igniter", "pocketKey", "summon", "armor", "bow", "spyglass", "bonemeal", "plants", "disc", "bottle", "drink", "summonWand", "paintbrush", "pottery"})
+  for (const char* k : {"cape", "block", "heartCrystal", "cart", "boat", "food", "backpack", "bucket", "igniter", "pocketKey", "summon", "armor", "bow", "spyglass", "bonemeal", "plants", "disc", "bottle", "drink", "summonWand", "paintbrush", "pottery", "warHorn"})
     if (d.has(k)) return true;
   return false;
 }
@@ -180,6 +181,7 @@ void PlayerController::update(float dt, const PlayerInput& in) {
   p.contacts = sampleContacts(w, p, p.eye);
   bool wasHang = (bool)p.hang, wasClimb = (bool)p.climb;
   MoveOpts mo; mo.slow = (p.carrying.is_null() ? 1.f : CARRY_SLOW) * (p.scoping ? 0.25f : 1.f);   // (a spyglass to your eye: you edge along) mo.noLedge = !p.carrying.is_null(); mo.noSprint = !rule(lv, "allowSprinting");
+  mo.slow *= gearMoveFactor(lv, p);   // a dragon set's footing (sim/item_uses.h)
   MoveInfo mv = p.move(w, in, dt, mo);
   if (in.crawl) toastMsg(p.crawlWant ? "Crawling" : "Standing up");
   if (p.hang && !wasHang) { sfxMaterial(lv, "stone", "step", p.pos); if (!ledgeTip) { ledgeTip = true; toastMsg("Hanging on \xE2\x80\x94 move left or right along the ledge, jump to climb up, sneak to drop"); } }
