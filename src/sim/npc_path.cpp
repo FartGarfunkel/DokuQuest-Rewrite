@@ -182,12 +182,15 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
   }
   bool c0; int w0;
   float f0 = stand(F, sx, sy, sz, &c0, &w0);
-  if (f0 == NONE && F.wide) {   // (a broad body off the grid of corners: the corner beside it that holds it)
-    for (int dz = -1; dz <= 1 && f0 == NONE; dz++) for (int dx = -1; dx <= 1 && f0 == NONE; dx++)
-      for (int dy : {0, 1, -1}) if ((f0 = stand(F, sx + dx, sy + dy, sz + dz, &c0, &w0)) != NONE) { sx += dx; sy += dy; sz += dz; break; }
-    // (wedged where no 2 x 2 holds it — among the stalls of a market: out the way a narrower body would go, it'll
-    // squeeze, and from the open ground on it walks as itself)
-    if (f0 == NONE) return npcPath(w, from, to, 0.45f, bodyH, partial, maxNodes, snapped);
+  if (f0 == NONE && F.wide) {   // (a broad body off the grid of corners: the nearest corner by it that holds it)
+    for (int r = 1; r <= 2 && f0 == NONE; r++)
+      for (int dz = -r; dz <= r && f0 == NONE; dz++) for (int dx = -r; dx <= r && f0 == NONE; dx++) {
+        if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
+        for (int dy : {0, 1, -1}) if ((f0 = stand(F, sx + dx, sy + dy, sz + dz, &c0, &w0)) != NONE) { sx += dx; sy += dy; sz += dz; break; }
+      }
+    // (wedged where no 2 x 2 holds it: no way at its width. It doesn't squeeze on as a narrower body would — that took
+    // golems into gardens and alleys they couldn't turn round in; it waits to be set on open ground (sim/villager_ai.cpp))
+    if (f0 == NONE) return none;
   }
   if (f0 == NONE) {   // (mid-step, mid-jump, on a ladder: the nearest step that will hold them)
     for (int dy : {1, -1, 2, -2}) if ((f0 = stand(F, sx, sy + dy, sz, &c0, &w0)) != NONE) { sy += dy; break; }
@@ -288,8 +291,34 @@ std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, fl
 float npcStandAt(const World& w, int x, int y, int z, float bodyW, float bodyH) {
   tables();
   Finder F(w, bodyW, bodyH); bool cl; int wt;
-  const float f = standAt(F, x, y, z, &cl, &wt);
+  const float f = stand(F, x, y, z, &cl, &wt);
   return f == NONE || cl ? NAN : f;
+}
+
+bool npcOpenGround(const World& w, vec3 near, vec3 square, float bodyW, float bodyH, vec3& out, int maxR) {
+  tables();
+  const bool wide = bodyW > 0.5f;
+  const int cx = wide ? ifloor(near.x + 0.5f) - 1 : ifloor(near.x), cz = wide ? ifloor(near.z + 0.5f) - 1 : ifloor(near.z), cy = ifloor(near.y + 0.45f);
+  int tried = 0;
+  for (int r = 0; r <= maxR; r++)
+    for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
+      if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
+      const int x = cx + dx, z = cz + dz;
+      if (!w.isLoaded(x, cy, z) || !w.isLoaded(x + 1, cy, z + 1)) continue;
+      for (int dy : {0, 1, -1, 2, -2, 3, -3}) {
+        const float f = npcStandAt(w, x, cy + dy, z, bodyW, bodyH);
+        if (std::isnan(f)) continue;
+        if (Finder F(w, bodyW, bodyH); [&] { bool cl; int wt; stand(F, x, cy + dy, z, &cl, &wt); return wt != 0; }()) break;   // (not in the water)
+        const vec3 at = wide ? vec3(x + 1.f, f, z + 1.f) : vec3(x + 0.5f, f, z + 0.5f);
+        // (and a way from there to the square at their width: open ground, not a pocket between the stalls)
+        if (++tried > 40) return false;
+        bool partial = true;
+        const auto way = npcPath(w, at, square, bodyW, bodyH, &partial, 4000);
+        if (!partial) { out = at; return true; }
+        break;
+      }
+    }
+  return false;
 }
 
 } // namespace dq

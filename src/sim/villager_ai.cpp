@@ -786,6 +786,23 @@ OptMove npcBrain(Level& lv, Creature& e, Entity* p, float dist, float dt) {
   else if (N.value("i", 0) == 400) { OptMove m = travellerAI(lv, e, M, p, dist, dt); out = m ? *m : out; }
   else if (VillageRef v = villageById(lv, N.value("v", std::string()))) {
     const int i = N.value("i", 0);
+    // a broad body (a golem) shut in where it can't get out at its width — among a market's stalls, from before it was
+    // set down on open ground — goes once to the nearest open ground with a way to the square, while nobody watches
+    if (e.w > 0.5f && (M.wedgeT -= dt) <= 0) {
+      M.wedgeT = 20;
+      World& w = lv.world(e.realm);
+      const vec3 sq(v->x + 0.5f, v->y + 1, v->z + 0.5f);
+      bool partial = true;
+      const auto way = npcPath(w, e.pos, sq, e.w, e.h, &partial, 4000);
+      vec3 o;
+      // (shut in: no room for all of it where it stands, or no way on more than a step or two — not merely far)
+      bool room = false;
+      const int bx = ifloor(e.pos.x + 0.5f) - 1, bz = ifloor(e.pos.z + 0.5f) - 1, by = ifloor(e.pos.y + 0.45f);
+      for (int dz = -1; dz <= 1 && !room; dz++) for (int dx = -1; dx <= 1 && !room; dx++) for (int dy : {0, 1, -1}) if (!std::isnan(npcStandAt(w, bx + dx, by + dy, bz + dz, e.w, e.h))) { room = true; break; }
+      if ((!room || (partial && way.size() < 4)) && !nearestPawn(lv, e.realm, e.pos, 24) && npcOpenGround(w, e.pos, sq, e.w, e.h, o)) {
+        e.pos = o + vec3(0, 0.01f, 0); e.vel = vec3(0); M.hasPath = false; M.stuckGo = 0; npcNavStats().rescues++;
+      }
+    }
     // the first guard takes a turn on lookout now and then, up a corner tower's lift (sim/villager_lookout.cpp); a
     // monster about, or someone to have a word with, comes first
     if (i == 100 && e.type == "village_guard" && !M.confront && v->hasWall && M.holdT <= 0 && !npcFoe(lv, e, M, *v))
