@@ -13,8 +13,11 @@ set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
 add_library(imgui STATIC
   ${IMGUI_DIR}/imgui.cpp ${IMGUI_DIR}/imgui_draw.cpp ${IMGUI_DIR}/imgui_tables.cpp ${IMGUI_DIR}/imgui_widgets.cpp
   ${IMGUI_DIR}/imgui_demo.cpp ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp
-  ${IMGUI_DIR}/backends/imgui_impl_sdl2.cpp ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp)
+  ${IMGUI_DIR}/backends/imgui_impl_sdl2.cpp ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../src/imgui_hooks/nav_hooks.cpp)
 target_include_directories(imgui PUBLIC ${IMGUI_DIR} ${IMGUI_DIR}/backends ${IMGUI_DIR}/misc/cpp)
+target_include_directories(imgui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../src)
+target_compile_definitions(imgui PUBLIC IMGUI_ENABLE_TEST_ENGINE)   # item hooks with labels: src/imgui_hooks/nav_hooks.cpp (which item the pad highlights, for playtests)
 target_include_directories(imgui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/glad/include)
 # Use the game's GL entry points (glad) instead of ImGui's own loader. MSVC has no -include, so the
 # Windows build of alpha.17 never saw a GL header and stopped with GLuint unknown.

@@ -282,8 +282,8 @@ void Input::endFrame() {
   for (auto& p : padList) {
     readPad(p);
     p.rb = p.b; p.rl = p.lstick;
-    for (int k = 0; k < 17; k++) if (p.rawEdge(k)) { lastWasPad = true; if (lastPadButton < 0 && k < 16) lastPadButton = k; if (background) backgroundPress = true; }
-    if (glm::length(p.lstick) > 0.3f || glm::length(p.rstick) > 0.3f) lastWasPad = true;
+    for (int k = 0; k < 17; k++) if (p.rawEdge(k)) { lastWasPad = true; lastPadId = p.id; if (lastPadButton < 0 && k < 16) lastPadButton = k; if (background) backgroundPress = true; }
+    if (glm::length(p.lstick) > 0.3f || glm::length(p.rstick) > 0.3f) { lastWasPad = true; lastPadId = p.id; }
     // muted: the on-screen keyboard has this pad, or the window is in the background (see `background` in input.h).
     // A button still held when the mute ends stays let go until it is released, so the press that closed the keyboard
     // (or woke the window) doesn't also act on whatever is underneath.
@@ -297,13 +297,22 @@ void Input::endFrame() {
     if (setupActive) continue;
     for (int k = 0; k < 17; k++) if (k != 9 && p.edge(k)) p.used = true;
     if (glm::length(p.lstick) > 0.5f || glm::length(p.rstick) > 0.5f) p.used = true;
-    // navigation: d-pad edges, or the left stick with key-repeat (0.38 s, then every 0.11 s)
-    int nx = (p.edge(15) ? 1 : 0) - (p.edge(14) ? 1 : 0), ny = (p.edge(13) ? 1 : 0) - (p.edge(12) ? 1 : 0);
-    int sx = std::fabs(p.lstick.x) > 0.6f ? (p.lstick.x > 0 ? 1 : -1) : 0, sy = std::fabs(p.lstick.y) > 0.6f ? (p.lstick.y > 0 ? 1 : -1) : 0;
-    if ((sx || sy) && !nx && !ny) {
-      if (ivec2(sx, sy) != p.navDir) { p.navDir = ivec2(sx, sy); p.navT = 0.38f; nx = sx; ny = sx ? 0 : sy; }
-      else { p.navT -= (float)dt; if (p.navT <= 0) { p.navT = 0.11f; nx = sx; ny = sx ? 0 : sy; } }
-    } else if (!sx && !sy) p.navDir = ivec2(0);
+    // menu steps: the d-pad or the left stick (one direction: the d-pad wins, a diagonal stick takes its larger
+    // axis), one step at once, then after 0.35 s about ten a second, quickening to twenty while it's held (the d-pad
+    // used not to repeat at all, and the stick began at 0.38 s and stayed at 9 a second)
+    ivec2 d(0);
+    if (p.b[12] || p.b[13] || p.b[14] || p.b[15]) d = ivec2((p.b[15] ? 1 : 0) - (p.b[14] ? 1 : 0), (p.b[13] ? 1 : 0) - (p.b[12] ? 1 : 0));
+    else if (std::max(std::fabs(p.lstick.x), std::fabs(p.lstick.y)) > 0.6f) {
+      if (std::fabs(p.lstick.x) >= std::fabs(p.lstick.y)) d.x = p.lstick.x > 0 ? 1 : -1; else d.y = p.lstick.y > 0 ? 1 : -1;
+    }
+    if (d.x && d.y) d.y = 0;   // (the d-pad pressed at a slant: across first)
+    int nx = 0, ny = 0;
+    if (d != p.navDir) { p.navDir = d; p.navReps = 0; p.navT = 0.35f; nx = d.x; ny = d.y; }
+    else if (d != ivec2(0) && (p.navT -= (float)dt) <= 0) {
+      p.navReps++;
+      p.navT += std::max(0.05f, 0.1f - 0.004f * (float)p.navReps);   // 10 a second, to 20 after a dozen
+      nx = d.x; ny = d.y;
+    }
     if (nx || ny) p.navOut = ivec2(nx, ny);
     if (std::fabs(p.rstick.y) > 0.25f) p.scrollOut = (p.rstick.y > 0 ? 1.f : -1.f) * (std::fabs(p.rstick.y) - 0.25f) / 0.75f * 900.f * (float)dt;
     // controllers: the stick click latches sprint until the stick comes back to the middle; sneak tapped twice
@@ -416,5 +425,17 @@ void Input::setCapture(SDL_Window* w, bool on) {
   SDL_SetRelativeMouseMode(on ? SDL_TRUE : SDL_FALSE);
 }
 int Input::padCount() const { return (int)padList.size(); }
+std::string Input::padStyle() const {
+  for (auto& p : padList) if (p.id == lastPadId || lastPadId < 0) {
+    if (p.ctl) switch (SDL_GameControllerGetType(p.ctl)) {
+      case SDL_CONTROLLER_TYPE_PS3: case SDL_CONTROLLER_TYPE_PS4: case SDL_CONTROLLER_TYPE_PS5: return "playstation";
+      case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO: case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_LEFT: case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT:
+      case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_PAIR: return "nintendo";
+      default: break;
+    }
+    break;
+  }
+  return settings && settings->padLayout == "nintendo" ? "nintendo" : "xbox";
+}
 
 } // namespace dq

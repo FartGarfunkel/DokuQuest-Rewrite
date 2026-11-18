@@ -1,0 +1,21 @@
+{
+"note": "The character creator by the pad alone (flat menus): the name box is highlighted at once, down walks into the options list (it used to stop on the list as a whole, and down jumped to the buttons at the foot), on through the sliders, and B closes it.",
+"steps": [
+{"wait": 200, "do": "setting", "key": "bookMenus", "value": false},
+{"do": "pad", "button": "x", "hold": 3},
+{"wait": 10, "do": "screen", "name": "creator"},
+{"wait": 40, "do": "expect", "screen": "creator"},
+{"do": "expect", "nav": "Name"},
+{"do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "expect", "nav": "<"},
+{"do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "expect", "nav": "##Height"},
+{"do": "pad", "button": "b", "hold": 3},
+{"wait": 20, "do": "expect", "screen": null},
+{"do": "report"}
+]
+}

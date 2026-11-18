@@ -88,11 +88,11 @@ public:
     float flatW = rest * 0.56f, viewW = rest - flatW;
     if (bk) {   // (in the journal: tools and the flat cape on the left page, the cape on you, colours and the foot on the right)
       toolsW = pageW * 0.34f; flatW = pageW - toolsW - sty.ItemSpacing.x; sideW = pageW * 0.42f; viewW = pageW - sideW - sty.ItemSpacing.x;
-      ImGui::BeginChild("L##cpe", ImVec2(pageW, H), 0, ImGuiWindowFlags_NoBackground);
+      ImGui::BeginChild("L##cpe", ImVec2(pageW, H), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground);
     }
     if (bk) body = H;
     // ---- tools ----
-    ImGui::BeginChild("tools##cpe", ImVec2(toolsW, body), ImGuiChildFlags_Borders);
+    ImGui::BeginChild("tools##cpe", ImVec2(toolsW, body), ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened);
     for (int i = 0; i < 4; i++) if (ImGui::Selectable(TOOLS[i], tool == i)) setTool(i);
     ImGui::SeparatorText("Brush");
     for (int s = 1; s <= 3; s++) { if (s > 1) ImGui::SameLine(); if (ImGui::RadioButton(std::to_string(s).c_str(), size == s)) size = s; }
@@ -113,7 +113,7 @@ public:
     ImGui::EndChild();
     if (bk) {
       ImGui::EndChild(); ImGui::SameLine(0, gutter);
-      ImGui::BeginChild("R##cpe", ImVec2(pageW, H), 0, ImGuiWindowFlags_NoBackground); inR = true;
+      ImGui::BeginChild("R##cpe", ImVec2(pageW, H), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground); inR = true;
       body = H - botH;
     } else
     ImGui::SameLine();
@@ -121,7 +121,7 @@ public:
     draw3D(io, a);
     ImGui::EndChild();
     ImGui::SameLine();
-    ImGui::BeginChild("side##cpe", ImVec2(0, body), ImGuiChildFlags_Borders);
+    ImGui::BeginChild("side##cpe", ImVec2(0, body), ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened);
     sidePanel(a);
     ImGui::EndChild();
     // ---- foot ----

@@ -14,7 +14,7 @@
 //     hurt{entity,amount,tool,type,at} (strike the nearest creature of that type as the player, e.g. tool "axe")
 //     kill (the player / "local" dies)  drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
 //     expect{screen | block:[x,y,z],is | entity,near | held | inv:slot,item,n | count:item,n | cursor:item |
-//            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text | typing (the text box being edited holds it; null: none) | tooltipNear (true: a tooltip beside the pad's highlight; false: none)} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
+//            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text | typing (the text box being edited holds it; null: none) | tooltipNear (true: a tooltip beside the pad's highlight; false: none) | nav (the highlight is on an item with this text in its label)} navlog{tag} setting{key,value} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
 // give takes "d" (wear) and "tag" (enchantments, gear xp). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
 #include "sim/creature_rig.h"
@@ -196,6 +196,11 @@ void runStep(App& a, const json& st) {
     SDL_JoystickSetVirtualAxis(vj, ax, (Sint16)std::clamp(v * 32767.f, -32768.f, 32767.f));
     Sint16 rest = trig ? SDL_JOYSTICK_AXIS_MIN : 0;
     R.later.push_back({f + hold, [ax, vj, rest] { SDL_JoystickSetVirtualAxis(vj, ax, rest); }});
+  } else if (op == "setting") {   // an engine setting (settings.extra[key] = value), e.g. {"key":"bookMenus","value":false}: the menus flat, not in the journal
+    a.settings.extra[st.value("key", std::string())] = st.contains("value") ? st["value"] : json();
+  } else if (op == "navlog") {   // log what the pad's highlight is on (exploring a screen)
+    std::string got; for (auto& l : ui::navLabels(true)) got += (got.empty() ? "" : " | ") + l;
+    DQ_LOG("test: nav %s: %s [%s]", st.value("tag", std::string()).c_str(), got.empty() ? "(nothing)" : got.c_str(), screenStack(a).c_str());
   } else if (op == "unfocus") {   // the window stops being the one in front: SDL's own focus change, as when another program takes it
     SDL_SetKeyboardFocus(nullptr); a.args.scriptFocusPause = true;
   } else if (op == "focus") {   // the window comes back to the front
@@ -386,6 +391,11 @@ void runStep(App& a, const json& st) {
       json* e = s->world().blockEntity(b.x, b.y, b.z);
       std::string dump = e ? e->dump() : "null", want = st.value("has", "");
       result(dump.find(want) != std::string::npos, "block entity " + st["blockEntity"].dump() + " has '" + want + "' (got " + dump.substr(0, 200) + ")");
+    }
+    if (st.contains("nav")) {   // the pad's highlight is on an item whose label holds this text
+      std::string want = st["nav"].get<std::string>(), got; bool ok = false;
+      for (auto& l : ui::navLabels()) { ok = ok || l.find(want) != std::string::npos; got += (got.empty() ? "" : " | ") + l; }
+      result(ok, "highlight on \"" + want + "\" (on: " + (got.empty() ? std::string("nothing") : got) + ")");
     }
     if (st.contains("tooltipNear")) {   // true: a tooltip shows beside the highlighted item (the pad); false: none placed by an item
       const ui::LastTip& t = ui::lastTooltip();

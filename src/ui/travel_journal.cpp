@@ -56,7 +56,7 @@ public:
     if (!keys.empty()) {
       // the list
       ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.55f, 0.38f, 0.16f, 0.30f)); ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.55f, 0.38f, 0.16f, 0.20f));
-      ImGui::BeginChild("##tj_list", ImVec2(0, -footH), 0, ImGuiWindowFlags_NoBackground);
+      ImGui::BeginChild("##tj_list", ImVec2(0, -footH), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground);
       ui::padScrollHere();
       for (int i = 0; i < (int)keys.size(); i++) {
         const ItemDef* d = R.item(keys[i]);
@@ -73,7 +73,7 @@ public:
       ImGui::TextDisabled("Up/down to turn the pages \xC2\xB7 faded: not found yet");
       ui::bookPagesRight("##travel_journal-r");
       // the page: what it is, and how it's made
-      ImGui::BeginChild("##tj_page", ImVec2(0, -footH), 0, ImGuiWindowFlags_NoBackground);
+      ImGui::BeginChild("##tj_page", ImVec2(0, -footH), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground);
       const std::string& key = keys[sel];
       const ItemDef* d = R.item(key);
       ImDrawList* dl = ImGui::GetWindowDrawList();
