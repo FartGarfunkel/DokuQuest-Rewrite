@@ -18,7 +18,7 @@
 //     hurt{entity,amount,tool,type,at} (strike the nearest creature of that type as the player, e.g. tool "axe")
 //     kill (the player / "local" dies)  drop{path} (a file dropped on the window) screen{name} (open a screen; "close" pops) data{key,value} wear{item,slot?}
 //     expect{screen | block:[x,y,z],is | entity,near | held | inv:slot,item,n | count:item,n | cursor:item |
-//            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text | typing (the text box being edited holds it; null: none)} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
+//            container:[x,y,z],slot,item,n | blockEntity:[x,y,z],has:text | typing (the text box being edited holds it; null: none) | tooltipNear (true: a tooltip beside the pad's highlight; false: none) | nav (the highlight is on an item with this text in its label)} navlog{tag} setting{key,value} lookAt{entity,job?,dist?: aim at (and stand dist south of) the nearest creature of a type} report{near?,ents?: a type, to list where each stands} shot{path} save leave open{world} quit
 // give takes "d" (wear) and "tag" (enchantments, gear xp). pad buttons: a b x y back guide start ls rs lb rb up down left right, lt / rt (triggers).
 // The log gets "TEST PASS/FAIL ..." lines and a final "TEST DONE passes=N fails=M".
 #include "sim/creature_rig.h"
@@ -32,14 +32,18 @@
 #include "gen/village_pieces.h"
 #include "client/app.h"
 #include "client/session.h"
+#include "client/netplay.h"
 #include "ui/screen.h"
 #include "ui/ui.h"
 #include "ui/villager_screens.h"
 #include "ui/magic_screens.h"
 #include "ui/content_screens.h"
 #include "ui/osk.h"
+#include "ui/theme.h"
 #include <imgui_internal.h>
 #include "sim/commands.h"
+#include "sim/endstory_int.h"
+#include "sim/rpg.h"
 #include "sim/player.h"
 #include "sim/combat.h"
 #include "render/instruments.h"
@@ -235,6 +239,15 @@ void runStep(App& a, const json& st) {
     SDL_JoystickSetVirtualAxis(vj, ax, (Sint16)std::clamp(v * 32767.f, -32768.f, 32767.f));
     Sint16 rest = trig ? SDL_JOYSTICK_AXIS_MIN : 0;
     R.later.push_back({f + hold, [ax, vj, rest] { SDL_JoystickSetVirtualAxis(vj, ax, rest); }});
+  } else if (op == "setting") {   // an engine setting (settings.extra[key] = value), e.g. {"key":"bookMenus","value":false}: the menus flat, not in the journal
+    const std::string key = st.value("key", std::string());
+    json all = a.settings.toJson();
+    if (all.contains(key)) { all[key] = st.contains("value") ? st["value"] : json(); a.settings.fromJson(all); }   // (a named setting: handsStations...)
+    else a.settings.extra[key] = st.contains("value") ? st["value"] : json();
+  } else if (op == "navlog") {   // log what the pad's highlight is on (exploring a screen)
+    std::string got; for (auto& l : ui::navLabels(true)) got += (got.empty() ? "" : " | ") + l;
+    const std::string inv = inventoryPadFocus();
+    DQ_LOG("test: nav %s: %s%s [%s]", st.value("tag", std::string()).c_str(), got.empty() ? "(nothing)" : got.c_str(), inv.empty() ? "" : (" | inv " + inv).c_str(), screenStack(a).c_str());
   } else if (op == "unfocus") {   // the window stops being the one in front: SDL's own focus change, as when another program takes it
     SDL_SetKeyboardFocus(nullptr); a.args.scriptFocusPause = true;
   } else if (op == "focus") {   // the window comes back to the front
@@ -244,6 +257,10 @@ void runStep(App& a, const json& st) {
     if (s->level->info.rules.is_object()) s->level->info.rules["commands"] = true;   // tests may always use commands
     std::string out = runCommand(*s->level, p, st.value("text", ""));
     DQ_LOG("test: %s -> %s", st.value("text", "").c_str(), out.c_str());
+  } else if (op == "lan" && s) {   // lan{port}: open the world to friends on that port (no announcing, no router)
+    LanOpenOptions o; o.port = st.value("port", 25580); o.announce = false; o.internet = false;
+    std::string err;
+    result(openToLan(a, o, &err), "open to LAN on port " + std::to_string(o.port) + " " + err);
   } else if (op == "look" && p) {
     p->yaw = deg(st, "yaw", p->yaw * 180.f / (float)PI); p->pitch = deg(st, "pitch", 0);
   } else if (op == "anchor" && p) {
@@ -422,6 +439,24 @@ void runStep(App& a, const json& st) {
       std::string dump = e ? e->dump() : "null", want = st.value("has", "");
       result(dump.find(want) != std::string::npos, "block entity " + st["blockEntity"].dump() + " has '" + want + "' (got " + dump.substr(0, 200) + ")");
     }
+    if (st.contains("invCursor")) {   // the inventory's pad cursor ("slot Cont 3", "recipe 2"...)
+      const std::string got = inventoryPadFocus(), want = st["invCursor"].get<std::string>();
+      result(got == want || (want.back() == '*' && got.rfind(want.substr(0, want.size() - 1), 0) == 0), "inventory cursor on \"" + want + "\" (on: \"" + got + "\")");
+    }
+    if (st.contains("nav")) {   // the pad's highlight is on an item whose label holds this text
+      std::string want = st["nav"].get<std::string>(), got; bool ok = false;
+      for (auto& l : ui::navLabels()) { ok = ok || l.find(want) != std::string::npos; got += (got.empty() ? "" : " | ") + l; }
+      result(ok, "highlight on \"" + want + "\" (on: " + (got.empty() ? std::string("nothing") : got) + ")");
+    }
+    if (st.contains("tooltipNear")) {   // true: a tooltip shows beside the highlighted item (the pad); false: none placed by an item
+      const ui::LastTip& t = ui::lastTooltip();
+      const bool recent = t.frame + 2 >= a.frame;
+      const float gx = std::max({0.f, t.a.x - (t.pos.x + t.size.x), t.pos.x - t.b.x}), gy = std::max({0.f, t.a.y - (t.pos.y + t.size.y), t.pos.y - t.b.y});
+      const bool near = recent && t.byItem && gx <= 40 * ui::Z() && gy <= 40 * ui::Z();
+      char b[200]; std::snprintf(b, sizeof b, "tooltip %s (last: frame %llu of %llu, %s, item %.0f,%.0f-%.0f,%.0f, tip at %.0f,%.0f)", st["tooltipNear"].get<bool>() ? "beside the highlight" : "not by a highlight",
+        (unsigned long long)t.frame, (unsigned long long)a.frame, t.byItem ? "by an item" : "by the mouse", t.a.x, t.a.y, t.b.x, t.b.y, t.pos.x, t.pos.y);
+      result(st["tooltipNear"].get<bool>() ? near : !(recent && t.byItem), b);
+    }
     if (st.contains("typing")) {   // a text box is being edited and holds this text (null: none is being edited)
       std::string got; const bool on = ui::oskSeenEditing(a, &got);   // (in the main context, a viewport or the journal's pages)
       bool ok = st["typing"].is_null() ? !on : on && got == st["typing"].get<std::string>();
@@ -437,6 +472,13 @@ void runStep(App& a, const json& st) {
     Entity* ar = spawnArrow(*s->level, p->realm, from, glm::normalize(to - from) * st.value("speed", 30.f), nullptr, st.value("damage", 5.f), false);
     char b[160]; std::snprintf(b, sizeof b, "arrow %u shot: hp %.1f stamina %.1f blockT %.3f", ar ? ar->id : 0u, p->hp, p->stamina, p->blockT);
     DQ_LOG("test: %s", b);
+  } else if (op == "watcher" && s && p) {   // watcher{dist, mode}: one of his sightings (sim/haunt.cpp) that far ahead of you, on your level
+    const float d = st.value("dist", 6.f);
+    const vec3 at(std::floor(p->pos.x - std::sin(p->yaw) * d) + 0.5f, p->pos.y, std::floor(p->pos.z - std::cos(p->yaw) * d) + 0.5f);
+    Entity* w = es::spawnWatcher(*s->level, *p, at, st.value("mode", "far"), st.value("stare", 30.f));
+    DQ_LOG("test: watcher %u at %.1f %.1f %.1f", w ? w->id : 0u, at.x, at.y, at.z);
+  } else if (op == "dex" && p) {   // dex{entity}: that creature met, in the journal's Compendium (sim/rpg.h)
+    dexNote(*p, st.value("entity", ""), false);
   } else if (op == "hurt" && s && p) {   // strike the nearest creature of a type as the player would (tool kind, the ray from the eyes)
     std::string t = st.value("entity", ""); Entity* best = nullptr; float bd = st.value("near", 24.f);
     for (auto& e : s->level->entities()) if (e && !e->removed && e.get() != p && e->type == t && e->hp > 0 && glm::distance(e->pos, p->pos) < bd) { bd = glm::distance(e->pos, p->pos); best = e.get(); }
@@ -537,6 +579,11 @@ void runStep(App& a, const json& st) {
     s->viewMode = std::clamp(st.value("mode", 0), 0, 3);
   } else if (op == "data" && p) {   // set Player::data[key] = value (hideGear, cape ...)
     p->data[st.value("key", "")] = st.contains("value") ? st["value"] : json();
+  } else if (op == "mobData" && p && s) {   // mobData{entity,key,value,calm?,yaw? (degrees)}: set data[key] on the nearest creature of that type (a charged fuseling, an enderman's carried block)
+    Creature* best = nullptr; float bd = 1e9f;
+    for (auto& e : s->level->entities()) if (auto* c = dynamic_cast<Creature*>(e.get()); c && !c->removed && c->type == st.value("entity", "")) { float d = glm::distance(c->pos, p->pos); if (d < bd) { bd = d; best = c; } }
+    if (best) { best->data[st.value("key", "")] = st.contains("value") ? st["value"] : json(); if (st.contains("calm")) best->calm = st.value("calm", false); if (st.contains("yaw")) best->yaw = best->prevYaw = st.value("yaw", 0.f) * PI / 180; }
+    else result(false, "mobData: no " + st.value("entity", std::string()) + " near");
   } else if (op == "explode" && s) {   // a blast there ("power", default 3; "at": "rug" the first rug "find" found)
     ivec3 b = at(st); if (st.value("at", std::string()) == "found" || st.value("at", std::string()) == "rug") b = R.lastFound;
     explode(*s->level, REALM_MAIN, vec3(b) + vec3(0.5f, 0.5f, 0.5f), st.value("power", 3.f));

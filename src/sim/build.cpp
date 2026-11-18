@@ -1,8 +1,9 @@
+#include "sim/world_life.h"
 #include "sim/dyntree.h"
 #include "sim/fallen.h"
 #include "world/rug.h"
 // sim/build.cpp — building rules (port of game/build.js, the player side of game/blocks2.js,
-// blockfx.js flint and steel, furniture.js sitting and shelves, local.js Carry On / ground storage).
+// blockfx.js flint and steel, furniture.js sitting and shelves, local.js carrying things / ground storage).
 #include "sim/controller.h"
 #include "sim/vehicles.h"
 #include "sim/rules.h"
@@ -13,6 +14,9 @@
 #include "sim/station_work.h"
 #include "sim/brewing.h"
 #include "sim/hands.h"
+#include "sim/mob_carry.h"
+#include "sim/attach_play.h"
+#include "world/attach.h"
 #include <random>
 
 namespace dq {
@@ -269,7 +273,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   int nx = hit.normal.x, ny = hit.normal.y, nz = hit.normal.z;
   if (R.tRender[bid] == (u8)Render::Torch) {
     BlockId cur = w.getBlock(x, y, z);
-    if (!R.tReplaceable[cur] && cur != AIR) return;
+    if (!R.tReplaceable[cur] && cur != AIR && !attachable(bid)) return;   // (an occupied cell: maybe an attachment, below)
     BlockId below = w.getBlock(x, y - 1, z);
     u8 bcv = w.getCarve(x, y - 1, z);
     int bdp = carveFaceDepth(bcv, 0, 1, 0);
@@ -331,7 +335,17 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     }
   }
   BlockId cur = w.getBlock(x, y, z);
-  if (cur != AIR && !R.tReplaceable[cur]) return;
+  bool stepAside = false;
+  if ((cur != AIR && !R.tReplaceable[cur]) || w.hasAttachments(x, y, z)) {   // an occupied cell: a part sharing it (sim/attach_play.h)
+    const int r = placeAttachment(lv, &p, w, x, y, z, bid, meta);
+    if (r == 1) {
+      consumeHeld(); swingArm();
+      if (bhas(bid, BF::Sign)) if (const auto* parts = w.attachments(x, y, z)) openScreen(lv, p, "sign", {{"pos", {x, y, z}}, {"slot", (int)parts->size() - 1}});
+      return;
+    }
+    if (r != 2) return;
+    stepAside = true;
+  }
   bool door = bhas(bid, BF::Door);
   if (bhas(bid, BF::NeedsSupport) && !bhas(bid, BF::Crop) && !bhas(bid, BF::AlwaysWet) && R.tRender[bid] != (u8)Render::Torch && !traits(bid).lantern && bid != B.sugar_cane && !door) {
     if (!supportOK(bid, x, y, z, meta)) return;
@@ -347,6 +361,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   }
   if (lv.events && !lv.events->emit("blockPlace", json::array({p.name, x, y, z, bdef.key}))) return;
   ItemStack placed = held;   // (contents travel with chests and barrels)
+  if (stepAside) { attachStepAside(w, x, y, z); seat = 0; }
   w.setBlock(x, y, z, bid, meta, SetFlags::Urgent);
   if (seat) w.setCarve(x, y, z, seat, SetFlags::Urgent);
   for (auto& a : also) w.setBlock(a[0], a[1], a[2], (BlockId)a[3], (u8)a[4], SetFlags::Urgent);
@@ -488,6 +503,7 @@ void PlayerController::useBonemeal(const RayHit& hit, ItemStack& held) {
     if (id == B.cave_vines) { w.setBlock(x, y, z, B.cave_vines_lit, meta); ok = true; }
   } else if (id && id == B.sea_pickle && (meta & 3) < 3) { w.setBlock(x, y, z, id, meta + 1); ok = true; }
   else if (id && id == B.berry_bush_empty) { w.setBlock(x, y, z, B.berry_bush); ok = true; }
+  if (!ok && lifeBonemeal(lv, w, x, y, z, id)) ok = true;   // a huge mushroom, a longer vine (sim/world_life.h)
   if (!ok) return;
   consumeHeld();
   lv.fx->particles("growth", vec3(x + 0.5f, y + 0.6f, z + 0.5f), 8);
@@ -805,6 +821,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (bhas(id, BF::Trapdoor) || R.tShape[id] == ShapeKind::Gate) {
     u8 m = meta ^ 4;
     if (R.tShape[id] == ShapeKind::Gate && (m & 4)) { int f = lookDir(p); if ((((m & 3) + 2) & 3) == f) m = (u8)((m & ~3) | f); }   // gates swing away from you
+    if (partBlocked(w, x, y, z, -1, id, m)) { toastMsg("It's blocked"); return true; }   // (a part sharing the cell is in its way: sim/attach_play.h)
     w.setBlock(x, y, z, id, m, SetFlags::Urgent); sfxAt(lv, doorSound(id, m & 4), c); swingArm(); return true;
   }
   if (bhas(id, BF::Bed)) { sleep(x, y, z, meta); return true; }
@@ -841,6 +858,10 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (b.has("machine")) { openScreen(lv, p, "machine", {{"pos", {x, y, z}}}); return true; }
   if (b.has("cauldron")) {
     std::string bk = def ? def->str("bucket") : "";
+    const bool lava = (meta & 4) && (meta & 3);   // (sim/cave_drips.h: a cauldron of lava)
+    if (bk == "lava" && (meta & 3) == 0) { w.setBlock(x, y, z, id, 4 | 3); if (!p.creative()) *held = ItemStack("bucket", 1); sfxUi(lv, p, "bucket"); return true; }
+    if (bk == "empty" && lava && (meta & 3) == 3) { w.setBlock(x, y, z, id, 0); ItemStack full("lava_bucket", 1); if (--held->n <= 0) *held = full; else giveItem(lv, p, full); sfxUi(lv, p, "bucket"); return true; }
+    if (lava) return false;
     if (bk == "water" && (meta & 3) < 3) { w.setBlock(x, y, z, id, 3); if (!p.creative()) *held = ItemStack("bucket", 1); sfxUi(lv, p, "bucket"); return true; }
     if (bk == "empty" && (meta & 3) == 3) { w.setBlock(x, y, z, id, 0); ItemStack full("water_bucket", 1); if (--held->n <= 0) *held = full; else giveItem(lv, p, full); sfxUi(lv, p, "bucket"); return true; }
     return false;
@@ -1090,7 +1111,7 @@ void PlayerController::usePile(const RayHit& hit, ItemStack* held) {
   swingArm();
 }
 
-// ---- Carry On ----
+// ---- carrying things in your arms ----
 void PlayerController::pickUpBlock(int x, int y, int z) {
   World& w = world();
   const Registry& R = reg();
@@ -1110,8 +1131,9 @@ void PlayerController::placeCarried() {
   const Registry& R = reg();
   json c = p.carrying;
   if (!target.hit) { toastMsg("Look at the ground to set it down"); return; }
+  if (lv.isRemote() && c.value("kind", "") == "mob") { useOnHost(*this, "block", &target); return; }   // (the host sets it down: sim/basket.cpp)
   ivec3 t = placeTarget(target);
-  if (!inWorldY(t.y) || !R.tReplaceable[w.getBlock(t.x, t.y, t.z)]) return;
+  if (!inWorldY(t.y) || !R.tReplaceable[w.getBlock(t.x, t.y, t.z)]) { toastMsg("No room to set it down there"); return; }
   if (c.value("kind", "") == "block") {
     if (blockedByBody(t.x, t.y, t.z)) return;
     BlockId bid = R.blockId(c.value("key", std::string()));
@@ -1120,14 +1142,7 @@ void PlayerController::placeCarried() {
     if (c.contains("ent") && c["ent"].is_object()) w.setBlockEntity(t.x, t.y, t.z, c["ent"]);
     sfxMaterial(lv, R.block(bid).sound, "place", vec3(t));
   } else {
-    auto m = createEntity(c.value("type", std::string("boar")));
-    m->realm = p.realm; m->pos = vec3(t.x + 0.5f, t.y, t.z + 0.5f); m->yaw = p.yaw;
-    if (c.contains("save") && c["save"].is_object()) m->load(c["save"]);   // (its coat, colour, age, name... as it was)
-    m->realm = p.realm; m->pos = vec3(t.x + 0.5f, t.y, t.z + 0.5f); m->vel = vec3(0); m->yaw = p.yaw;
-    if (c.contains("hp") && c["hp"].is_number()) m->hp = c["hp"];
-    if (c.contains("data") && c["data"].is_object()) m->data = c["data"];
-    if (R.mobs.contains(m->type) && R.mobs[m->type].value("farm", false)) m->data["kept"] = true;
-    lv.spawn(std::move(m));
+    setDownCarriedCreature(lv, p, vec3(t.x + 0.5f, t.y, t.z + 0.5f), p.yaw);   // (sim/mob_carry.h: as it was, its owner and all)
     sfxUi(lv, p, "pop");
   }
   p.carrying = nullptr;

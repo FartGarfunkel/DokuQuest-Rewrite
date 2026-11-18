@@ -2,6 +2,7 @@
 // game/monsters.js (0.8.3 monsters), game/quarrels.js (infighting, calling for help, noticing then
 // remembering, shade-seeking, wariness), game/skymobs.js (the cockatrice) and the Cinder Golem's
 // telegraphed attacks (game/entities.js bossAI).
+#include "sim/world_life.h"
 #include "sim/rules.h"
 #include "sim/creature.h"
 #include "sim/creature_entities.h"
@@ -131,7 +132,7 @@ static void fuseBurst(Level& lv, Creature& m) {
   const bool ember = m.type == "ember_fuseling", moss = m.type == "moss_fuseling", sky = m.type == "sky_fuseling";
   const bool biome = m.type != "fuseling";   // every land's fuseling: a smaller blast, and something of its land
   if (sky) o.noBlocks = true;   // a gust, not a blast: it throws you skyward and breaks nothing
-  explode(lv, m.realm, m.pos + vec3(0, 0.6f, 0), biome && !sky ? 2.2f : sky ? 1.4f : 3, o);
+  explode(lv, m.realm, m.pos + vec3(0, 0.6f, 0), (biome && !sky ? 2.2f : sky ? 1.4f : 3) * chargedBlastScale(m), o);   // (struck by lightning: twice the blast)
   {   // the newer lands' fuselings
     const std::string& t = m.type;
     const char* puff = t == "redlands_fuseling" ? "crit" : t == "jungle_fuseling" || t == "meadow_fuseling" ? "leaf" : t == "beach_fuseling" ? "splash" : t == "mushroom_fuseling" ? "poof" : t == "savanna_fuseling" ? "dust" : nullptr;
@@ -495,8 +496,21 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
       if (dist < 7) { m.lungeT = 0.8f; if (m.onGround || m.inWater) m.vel.y = m.inWater ? 2 : 3.5f; lv.fx->voice("croc", "hurt", m.pos + vec3(0, 0.4f, 0)); }
       return Move{T.speed * 1.4f, toPlayer};
     }
+    if (m.inWater) {
+      // in the water it cruises like the other swimmers (it had used its walking wander there: long idle spells at its
+      // spawn depth, so it barely moved): from one place in open water to the next, low in it, out onto a bank now and then
+      m.swimT -= dt;
+      if (m.swimT <= 0 || !m.hasSwimDir) {
+        m.swimT = 3 + frand() * 4;
+        if (!aquaticWaypoint(lv, m, false)) { m.swimDir = frand() * TAU; m.hasSwimDir = true; m.swimY = m.pos.y; m.hasSwimY = true; }
+      }
+      float dir = m.swimDir, ty = m.hasSwimY ? m.swimY : m.pos.y, want = T.speed * 0.8f;
+      if (m.hitWall) { m.swimVy = 1.6f; m.swimT = std::min(m.swimT, 1.f); return Move{want, dir}; }   // against the bank: up and out onto it (or, a sheer wall, soon another way)
+      aquaticSteer(lv, m, dir, ty, want, dt, false, false);
+      return Move{want, dir};
+    }
     m.wander(dt);
-    Move mv = m.wanderMove(); mv.want *= m.inWater ? 0.6f : 0.4f;
+    Move mv = m.wanderMove(); mv.want *= 0.4f;
     return mv;
   }
   if (t == "shark") {
@@ -505,17 +519,21 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
     bool targetIn = p && p->inWater;
     Entity* foe = m.quarrel ? m.ent(lv, m.quarrel) : (targetIn && dist < 18 && std::fabs(dyp) < 10 && !pawnCreative(p) ? p : nullptr);
     if (foe) {
-      m.swimVy = clampv(((foe->pos.y + 0.5f) - m.pos.y) * 2, -3.f, 3.f);
       if (std::hypot(foe->pos.x - m.pos.x, foe->pos.z - m.pos.z) < 1.6f + m.w && std::fabs(foe->pos.y - m.pos.y) < 1.6f && m.attackCd <= 0) {
         m.attackCd = 1.3f; m.swingT = 0.3f;
         DamageSrc d; d.knock = 3; damageEntity(lv, *foe, T.damage, &m, "mob", d);
         lv.fx->sound("splash_small", m.pos + vec3(0, 0.5f, 0));
       }
-      return Move{T.speed * 1.2f, toPlayer};
+      float dir = std::atan2(-(foe->pos.x - m.pos.x), -(foe->pos.z - m.pos.z)), ty = foe->pos.y + 0.2f, want = T.speed * 1.2f;
+      aquaticSteer(lv, m, dir, ty, want, dt, true, false);   // (after you, but never up onto the beach)
+      return Move{want, dir};
     }
-    m.swimVy = std::sin(m.age * 0.4f + m.id) * 0.5f;
-    m.wander(dt); m.wanderOn = true;
-    return Move{T.speed * 0.45f, m.wanderDir};
+    // cruising: from one place in open water to the next, at depth (it had drifted up and down at random, out of the top)
+    m.swimT -= dt;
+    if (m.swimT <= 0 || m.hitWall || !m.hasSwimDir) { m.swimT = 3 + frand() * 4; aquaticWaypoint(lv, m, false); }
+    float dir = m.hasSwimDir ? m.swimDir : m.yaw, ty = m.hasSwimY ? m.swimY : m.pos.y, want = T.speed * 0.45f;
+    aquaticSteer(lv, m, dir, ty, want, dt, false, false);
+    return Move{want, dir};
   }
   if (T.snake) {
     Entity* foe = m.quarrel ? m.ent(lv, m.quarrel) : (m.angryT > 0 ? m.ent(lv, m.foe) : nullptr);
@@ -696,6 +714,7 @@ static OptMove realmAI(Level& lv, Creature& m, Entity* p, float dist, float dyp,
       m.meleeAt(lv, *p, dist, dyp);
       return m.chase(lv, *p, dist, toPlayer, dt, 1.7f);
     }
+    enderCarryTick(lv, m, dt);   // a block lifted, carried, set down (sim/world_life.h)
     // an aimless amble, now and then a blink
     m.wanderT -= dt;
     if (m.wanderT <= 0) { m.wanderT = 3 + frand() * 6; m.wanderDir = frand() * TAU; m.wanderOn = frand() < 0.55f; if (frand() < 0.05f) enderBlink(lv, m, m.pos.x, m.pos.z, 14, false); }

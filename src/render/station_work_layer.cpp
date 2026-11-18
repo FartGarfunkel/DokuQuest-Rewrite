@@ -1,7 +1,7 @@
 // render/station_work_layer.cpp — what lies on the grindstone and the stonecutter (sim/station_work.h), and their scenes
 // (ui/cinematic.h): the two pieces lifted to the wheel and stroked on it, the stone slid into the saw and the pieces out
-// the other side, the shapes it cuts into on a dial over the blade (Cinematic Interactions' GrindstoneStation /
-// StonecutterStation)
+// the other side, the shapes it cuts into on a dial over the blade (the grindstone scene's /
+// stonecutter scene)
 #include "assets/local_models.h"
 #include "render/item_layers.h"
 #include "render/env_layers.h"

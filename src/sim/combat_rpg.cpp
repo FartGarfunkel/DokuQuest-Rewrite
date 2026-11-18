@@ -89,7 +89,7 @@ void mobApplyLevel(Entity& e, int lvl, bool elite, float base) {
 }
 void mobLevelUpdate(Level& lv, Entity& e) {
   if (e.isPlayer() || e.hp <= 0) return;
-  if (e.data.contains("owner") && !e.data["owner"].is_null() && e.data["owner"] != "") return;   // (a pet or a summon: yours, not the world's)
+  if (!petOwnerOf(e).empty()) return;   // (a pet or a summon: yours, not the world's)
   int n = 0, best = 1; float sum = 0;
   for (auto& up : lv.entities()) {
     if (!up->isPlayer() || up->removed || up->realm != e.realm) continue;

@@ -17,7 +17,7 @@ struct DBox { double x0, y0, z0, x1, y1, z1; };
 // one-way platform: with `feet` set (not NaN) it only holds up a body above it that isn't sneaking.
 void gatherBoxes(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ,
                  std::vector<DBox>& out, double feet = NAN, bool sneak = false);
-bool collides(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ);
+bool collides(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ, bool creature = false);   // creature: pens stand taller (penBlock)
 // things that are solid but not blocks in the world (moving pieces, sim/moving.cpp): they add their boxes over the region
 using ExtraBoxesFn = void (*)(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ, std::vector<DBox>& out);
 void setExtraBoxes(ExtraBoxesFn f);   // (adds one: moving pieces, rope bridges)
@@ -30,13 +30,17 @@ void blockBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out);
 
 // Move an entity by its velocity for dt, sliding along walls and stepping up onto slabs and
 // stairs (stepHeight; airStep = the little lip a body just off the ground may still step over).
-struct MoveParams { float stepHeight = 0.6f, airStep = 0; bool sneaking = false, item = false; const std::string* itemId = nullptr; int itemD = 0; };   // item: a dropped item (falls through mesh; a gold mesh lets through only the item and damage it is set to)
+// creature: fences, walls and shut gates stand a block taller for it than they're drawn (players stand on the posts;
+// a creature can neither jump onto one nor over it, so a pen holds it)
+struct MoveParams { float stepHeight = 0.6f, airStep = 0; bool sneaking = false, item = false, creature = false; const std::string* itemId = nullptr; int itemD = 0; };   // item: a dropped item (falls through mesh; a gold mesh lets through only the item and damage it is set to)
 struct MoveOut { bool hitWall = false, hitX = false, hitZ = false, hitCeiling = false, landed = false; };
 MoveOut moveEntity(const World& w, Entity& e, float dt, const MoveParams& mp = {});
 
 // compat: move a box (centre-bottom pos) by delta
 struct MoveResult { bool hitX = false, hitY = false, hitZ = false, onGround = false; };
-MoveResult moveBox(const World& w, vec3& pos, float hw, float h, vec3 delta, float stepUp = 0.6f);
+MoveResult moveBox(const World& w, vec3& pos, float hw, float h, vec3 delta, float stepUp = 0.6f, bool creature = false);
+// a fence, wall or shut gate: what a creature can't jump onto or over (the same rule its path finding keeps)
+bool penBlock(BlockId id, u8 meta);
 
 // Which liquids/portals/cactus/ladders touch the entity's box (eye = eye height, < 0 = none).
 struct Contacts {
@@ -49,7 +53,7 @@ Contacts sampleContacts(const World& w, const Entity& e, float eye = -1);
 bool spikeOverlap(const World& w, const Entity& e);
 
 // Voxel DDA ray cast against the blocks' real shapes. pickLiquid: still liquid sources count.
-struct RayHit { bool hit = false; ivec3 block{0}; ivec3 normal{0}; float dist = 0; BlockId id = 0; vec3 point{0}; };
+struct RayHit { bool hit = false; ivec3 block{0}; ivec3 normal{0}; float dist = 0; BlockId id = 0; vec3 point{0}; int part = -1; };   // part: an attachment's slot in that cell (world/attach.h; id is its id), -1 the main block
 RayHit raycastBlocks(const World& w, glm::dvec3 origin, vec3 dir, float maxDist, bool pickLiquid = false);
 // Ray vs AABB (slab method): distance or -1.
 double rayAABB(glm::dvec3 o, glm::dvec3 d, glm::dvec3 lo, glm::dvec3 hi);

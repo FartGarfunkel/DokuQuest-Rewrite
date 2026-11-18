@@ -1,0 +1,23 @@
+{"steps":[
+ {"wait":200,"do":"anchor"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":0},
+ {"do":"cmd","text":"/time set 6000"},
+ {"do":"fill","rel":true,"from":[-8,0,-8],"to":[8,5,8],"key":"air"},
+ {"do":"fill","rel":true,"from":[-8,-1,-8],"to":[8,-1,8],"key":"grass"},
+ {"do":"look","yaw":0,"pitch":0},
+ {"do":"cmd","text":"/ride emu"},
+ {"wait":40,"do":"shot","path":"/tmp/dq_ride_emu.png"},
+ {"do":"report"},
+ {"wait":5,"do":"key","key":"Left Shift","hold":3},
+ {"wait":20,"do":"cmd","text":"/kill @e[type=emu]"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":0},
+ {"do":"cmd","text":"/ride tusklin"},
+ {"wait":40,"do":"shot","path":"/tmp/dq_ride_tusklin.png"},
+ {"do":"report"},
+ {"wait":5,"do":"key","key":"Left Shift","hold":3},
+ {"wait":20,"do":"cmd","text":"/kill @e[type=tusklin]"},
+ {"do":"tp","rel":true,"x":0,"y":0,"z":0},
+ {"do":"cmd","text":"/ride horse"},
+ {"wait":40,"do":"shot","path":"/tmp/dq_ride_horse.png"},
+ {"do":"quit"}
+]}

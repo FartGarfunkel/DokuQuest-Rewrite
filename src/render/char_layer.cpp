@@ -36,6 +36,7 @@
 #include "render/map_render.h"
 #include "render/instruments.h"
 #include "sim/maps.h"
+#include "sim/treasure_maps.h"
 #include <cstdlib>
 #include <cstdio>
 #include "sim/quiver.h"
@@ -366,7 +367,13 @@ void CharacterLayer::update(GameSession& s, double dt) {
   float fdt = (float)std::min(dt, 0.1);
   if (fdt <= 0) return;
   // the local player's arm timers (the hand view keeps them)
-  if (Player* lp = s.player) if (HeldItemLayer* h = s.layer<HeldItemLayer>()) { lp->swingT = h->swing; }
+  if (Player* lp = s.player) if (HeldItemLayer* h = s.layer<HeldItemLayer>()) {
+    lp->swingT = h->swing;
+    // each swing begun is counted: the count goes to the others (net/protocol.cpp "sn"), whose games play it
+    Anim& a = anims[lp->id];
+    if (h->swing > 0 && (a.lastOwnSwing <= 0 || h->swing < a.lastOwnSwing - 0.05f)) lp->swingN++;
+    a.lastOwnSwing = h->swing;
+  }
   for (auto& up : s.level->entities()) {
     Entity* e = up.get();
     if (!e || e->removed || e->type != "player") continue;
@@ -382,7 +389,8 @@ void CharacterLayer::update(GameSession& s, double dt) {
     {   // the shield raised (eased), a dodge roll begun (sim/combat_rpg.h: the guest's own, or sent: net/server_sync.cpp)
       const bool up = p->blockT > 0;
       st.block += ((up ? 1.f : 0.f) - st.block) * std::min(1.f, fdt * (up ? 16.f : 8.f));
-      if (p->dodgeT > st.lastDodge + 0.05f) { st.rollU = 0.0001f; st.rollYaw = p->dodgeYaw; st.rollBack = std::fabs(wrapAngle(p->dodgeYaw - p->yaw)) > 2.0f; }
+      if (p->dodgeT > st.lastDodge + (p->ghost ? 0.15f : 0.05f)) {   // (a replica's: only a fresh roll, not a late message's value)
+        st.rollU = 0.0001f; st.rollYaw = p->dodgeYaw; st.rollBack = std::fabs(wrapAngle(p->dodgeYaw - p->yaw)) > 2.0f; }
       st.lastDodge = p->dodgeT;
       // a blow on the shield: a parry, a hit taken on it, an arrow stopped on it — the guard is knocked in and comes back
       // (render/char_poses.cpp)
@@ -450,6 +458,23 @@ void CharacterLayer::update(GameSession& s, double dt) {
     // sprinting and sneaking come and go over a moment, the legs never stopping (render/char_anim.cpp)
     st.runAmt += ((p->sprinting ? 1.f : 0.f) - st.runAmt) * std::min(1.f, fdt / 0.15f);
     st.sneakAmt += ((p->sneaking && !p->swimming ? 1.f : 0.f) - st.sneakAmt) * std::min(1.f, fdt / 0.12f);
+    if (p->ghost) {   // another player's arm: each swing their game began (its count, sent) played here at the same pace
+      remoteSwingStep(*p, fdt, fpSwingRate(p->held().id, p->mineP > 0));   // (sim/net_interp.cpp: each swing played through, digging cycling on)
+      // their digging: the dust knocked off and its sound, as their own game makes them (the host's own come as its effects)
+      if (p->mineP > 0 && !p->fxSent && !p->dead && s.fx) {
+        if ((st.digT -= fdt) <= 0) {
+          st.digT = 0.22f;
+          World& w = s.level->world(p->realm);
+          const BlockId b = w.getBlock(p->mineAt.x, p->mineAt.y, p->mineAt.z);
+          if (b != AIR && glm::distance(vec3(p->mineAt), p->pos) < 8) {
+            const BlockDef& d = reg().block(b);
+            const vec3 c = vec3(p->mineAt) + vec3(0.5f);
+            s.fx->material(d.sound, "dig", c);
+            s.fx->particles("burst", c + glm::normalize(p->pos + vec3(0, 1.5f, 0) - c) * 0.55f, 2, {{"tile", d.key}, {"speed", 0.6f}});
+          }
+        }
+      } else st.digT = 0;
+    }
     // weapon combos: a swing begun within 0.8 s of the last is the next of the chain (the combo window)
     if (p->swingT > 0 && (st.lastSwing <= 0 || p->swingT < st.lastSwing - 0.05f)) {
       st.swingN = time - st.swingAt < 0.8 ? (u8)((st.swingN + 1) % 3) : 0; st.swingAt = time; st.swingU = 0.0001f;
@@ -860,13 +885,14 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   }
   if (fp && (p.activity & Player::ACT_SCREEN)) ps.fpLeftArm = false;
   if (fp && &p == s.player && (bookUiStationOn(s.app) || heldBookOpen())) ps.fpLeftArm = false;   // (a book read in both hands: the hand view's)   // (your journal in your off hand at a station: that arm is the one holding it, no second)   // (your journal held in both your hands: the hand view's two arms, no third)
-  if (fp && ((HeldItemLayer::handsTaken & 2) || (isMapStack(p.held()) && (p.offhand.empty() || p.offhand[0].empty())))) ps.fpLeftArm = false;
+  if (fp && ((HeldItemLayer::handsTaken & 2) || (isReadableMapStack(p.held()) && (p.offhand.empty() || p.offhand[0].empty())))) ps.fpLeftArm = false;
   if (wear.held == "bow" && p.bowPull > 0) wear.held = p.bowPull < 0.45f ? "bow_pulling_0" : p.bowPull < 0.85f ? "bow_pulling_1" : "bow_pulling_2";
   // game/elytra.js: gliding on the wings (they open, you lie flat, arms swept back)
   ps.wingOpen = st.wing;
   if ((p.gliding || (devPose == "glide" && &p == s.player)) && wear.cape == "elytra") { ps.swim = true; ps.glide = true; ps.swimPitch = p.pitch; ps.air = false; ps.capeA = 0.05f; wear.back.clear(); }
   // Carry On: both arms out around it, nothing else in the hands
-  const bool carrying = p.carrying.is_object();
+  const json& carried = p.carrying.is_object() ? p.carrying : p.netCarry;   // (a remote player's: what their game says is in their arms)
+  const bool carrying = carried.is_object();
   if (carrying) { ps.carry = true; ps.held = ps.off = false; wear.held.clear(); wear.off.clear(); wear.carried.clear(); ps.fpLeftArm = false; }
   if (p.data.value("invisible", false)) return;
   vec3 rel = f.cam.rel(glm::dvec3(p.pos));
@@ -882,9 +908,8 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   vec2 lt((l >> 4) / 15.f, (l & 15) / 15.f);
   if (!fp && !ps.sleep && !ps.swim && !ps.crawl && !ps.hang && ps.climb <= 0 && ps.deathT <= 0 && !ps.ladder && !carrying) {
     ItemStack* off = p.offhand.empty() ? nullptr : &p.offhand[0];
-    bool mainMap = isMapStack(p.held()), offMap = off && isMapStack(*off);
+    bool mainMap = isReadableMapStack(p.held()), offMap = off && isReadableMapStack(*off);
     if (mainMap || offMap) {
-      MapStore& ms = mapStore(*s.level);
       ps.mapMain = mainMap; ps.mapOff = offMap;
       bool both = mainMap && !offMap && wear.off.empty();
       float drop = ps.sneak ? 0.22f : 0;
@@ -894,7 +919,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
         M = glm::translate(M, vec3(side * 0.2f, 0.98f - drop - (ps.sneak ? 0.1f : 0), -0.5f));
         if (side != 0) M = glm::rotate(M, -side * 0.35f, vec3(0, 1, 0));
         M = glm::rotate(M, -0.95f, vec3(1, 0, 0));   // tipped up toward its holder's eyes
-        sheets.push_back({ms.forStack(p, st), &p, M, S, lt});
+        sheets.push_back({readableMapFor(*s.level, p, st), &p, M, S, lt});
       };
       if (both) sheet(p.held(), 0, 0.46f);
       else { if (mainMap) sheet(p.held(), 1, 0.34f); if (offMap) sheet(*off, -1, 0.34f); }
@@ -948,7 +973,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   if (carrying && !fp && !ps.sleep && ps.deathT <= 0) {   // skins.js: it sits against the chest, in front of the arms
     mat4 m = glm::rotate(base, ps.hasBodyYaw && !ps.swim && !ps.crawl ? ps.bodyYaw : ps.yaw, vec3(0, 1, 0));
     m = glm::translate(m, vec3(0, 15 * CHAR_PX - (ps.sneak ? 0.12f : 0.f), -9 * CHAR_PX));
-    drawCarriedThing(p.carrying, m, false, o.light, o.tint);
+    drawCarriedThing(carried, m, false, o.light, o.tint);
   }
 }
 

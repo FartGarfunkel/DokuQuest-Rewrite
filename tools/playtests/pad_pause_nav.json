@@ -1,0 +1,29 @@
+{
+"note": "The pause menu by the pad alone (in the journal, first person): the first button is highlighted at once, the d-pad walks the buttons and stops at the ends, Options and back with B puts the highlight back on Options (it used to jump to Back to Game, so A then resumed the game).",
+"steps": [
+{"wait": 200, "do": "pad", "button": "x", "hold": 3},
+{"wait": 10, "do": "pad", "button": "start", "hold": 3},
+{"wait": 60, "do": "expect", "screen": "pause"},
+{"do": "expect", "nav": "Back to Game"},
+{"do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "expect", "nav": "Options"},
+{"do": "pad", "button": "a", "hold": 3},
+{"wait": 30, "do": "expect", "screen": "settings"},
+{"do": "pad", "button": "b", "hold": 3},
+{"wait": 20, "do": "expect", "screen": "pause"},
+{"do": "expect", "nav": "Options"},
+{"do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "pad", "button": "down", "hold": 3},
+{"wait": 8, "do": "expect", "nav": "Quit to Title"},
+{"do": "pad", "button": "up", "hold": 3},
+{"wait": 8, "do": "expect", "nav": "LAN"},
+{"do": "pad", "button": "b", "hold": 3},
+{"wait": 20, "do": "expect", "screen": null},
+{"do": "report"}
+]
+}

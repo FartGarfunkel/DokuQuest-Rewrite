@@ -79,9 +79,9 @@ public:
     int footRows = flow::rowsNeeded({{"Save character", 150}, {"Character creator...", 170}, {"Back", 100}}, bk ? pageW : ImGui::GetContentRegionAvail().x);
     float footH = ImGui::GetTextLineHeightWithSpacing() + ImGui::GetFrameHeightWithSpacing() * (footRows + 1) + sty.WindowPadding.y;
     float body = std::max(160.f, ImGui::GetContentRegionAvail().y - footH);
-    if (bk) { ImGui::BeginChild("L##ske", ImVec2(pageW, H), 0, ImGuiWindowFlags_NoBackground); body = H; }
+    if (bk) { ImGui::BeginChild("L##ske", ImVec2(pageW, H), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground); body = H; }
     // ---- tools ----
-    ImGui::BeginChild("tools##ske", ImVec2(toolsW, body), ImGuiChildFlags_Borders);
+    ImGui::BeginChild("tools##ske", ImVec2(toolsW, body), ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened);
     for (int i = 0; i < 4; i++) if (ImGui::Selectable(TOOLS[i], tool == i)) setTool(i);
     ImGui::SeparatorText("Brush");
     for (int s = 1; s <= 3; s++) { if (s > 1) ImGui::SameLine(); if (ImGui::RadioButton(std::to_string(s).c_str(), size == s)) size = s; }
@@ -106,7 +106,7 @@ public:
     ImGui::EndChild();
     if (bk) {   // (over the gutter to the right page)
       ImGui::EndChild(); ImGui::SameLine(0, gutter);
-      ImGui::BeginChild("R##ske", ImVec2(pageW, H), 0, ImGuiWindowFlags_NoBackground); inR = true;
+      ImGui::BeginChild("R##ske", ImVec2(pageW, H), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground); inR = true;
       body = H - footH; vw = pageW - side - sty.ItemSpacing.x;
     } else
     ImGui::SameLine();
@@ -115,7 +115,7 @@ public:
     ImGui::EndChild();
     ImGui::SameLine();
     // ---- colour, parts, arms, start, files ----
-    ImGui::BeginChild("side##ske", ImVec2(0, body), ImGuiChildFlags_Borders);
+    ImGui::BeginChild("side##ske", ImVec2(0, body), ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened);
     sidePanel(a);
     ImGui::EndChild();
     // ---- foot ----

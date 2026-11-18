@@ -20,6 +20,11 @@ public:
   virtual bool onBack(App& a) { return false; }         // Esc / B: true if handled (else the screen closes)
   virtual void onOpen(App& a) {}
   virtual void onClose(App& a) {}
+  // controllers (ui/ui_main.cpp padNavAfterScreens): the highlight this screen had when another went over it, put
+  // back when it is on top again; the frame it opened (a screen opened with the pad gets a first highlight)
+  struct NavKeep { unsigned item = 0, window = 0; void* ctx = nullptr; float rect[4] = {}; int layer = 0; bool back = false; };
+  NavKeep navKeep;
+  unsigned long long openedFrame = 0;
 };
 
 // Built-in screen factories (implemented in ui/*.cpp)

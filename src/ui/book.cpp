@@ -330,7 +330,12 @@ void Book::begin(App& a, const char* id, const std::vector<BookTab>& tabs) {
     if ((keysTurn && in.pressed(Act::MenuLeft)) || in.keyPressed(SDL_SCANCODE_PAGEUP)) wheelDir -= 1;
     if ((keysTurn && in.pressed(Act::MenuRight)) || in.keyPressed(SDL_SCANCODE_PAGEDOWN)) wheelDir += 1;
     if (((keysTab && in.pressed(Act::MenuX)) || in.keyPressed(SDL_SCANCODE_TAB)) && !tabs_.empty()) wantTab = (curTab + 1) % (int)tabs_.size();
+    // the triggers turn the pages on every book screen (the d-pad may be walking a cursor there)
+    if (in.padButtonPressed(6)) wheelDir -= 1;
+    if (in.padButtonPressed(7)) wheelDir += 1;
   }
+  padHint(6, 7, "Turn pages");   // (the controller hints bar)
+  if (keysTab && tabs_.size() > 1) padHint(2, -1, "Next bookmark");
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   ImGui::SetNextWindowSize(ImVec2(W, H));
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
@@ -462,7 +467,9 @@ void Book::draw(const std::vector<BookRows>& sections) {
   }
 }
 
-void Book::hint(const std::string& t) { hint_ = t; }
+// (with the controller in use the line under the book gives way to the hint bar along the bottom: the screens put
+// their pad controls there with padHint, named for the pad in hand)
+void Book::hint(const std::string& t) { hint_ = app && app->input.usingPad() ? std::string() : t; }
 
 void Book::end() {
   if (!hint_.empty() && app) {

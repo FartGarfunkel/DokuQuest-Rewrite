@@ -4,6 +4,7 @@
 #include "world/region.h"
 #include "world/light.h"
 #include "world/shapes.h"
+#include "world/attach.h"
 
 namespace dq {
 
@@ -84,6 +85,18 @@ int World::surfaceY(int x, int z, int dim) const {
   return dimBase(dim) + ly;
 }
 
+bool World::placedAt(int x, int y, int z) const {
+  if (!inWorldY(y)) return false;
+  const Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
+  return c && !c->placed.empty() && c->placed.count((u16)colIdx(x & 15, y & 255, z & 15));
+}
+void World::setPlacedAt(int x, int y, int z, bool on) {
+  if (!inWorldY(y)) return;
+  Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
+  if (!c) return;
+  const u16 i = (u16)colIdx(x & 15, y & 255, z & 15);
+  if (on ? c->placed.insert(i).second : c->placed.erase(i) > 0) { c->modified = true; c->dirty = true; }
+}
 bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   if (!inWorldY(y)) return false;
   Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
@@ -99,6 +112,7 @@ bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   // carve-bit trace is now off: the layout moved to a full carve byte (meta&0x7F) on plain blocks,
   // which share bits with facing states on shape blocks, so an unconditional gate would be noisy.
   c->set(lx, ly, lz, id, meta);
+  if (old != id && !c->placed.empty() && (id == AIR || reg().tLiquid[id])) c->placed.erase((u16)colIdx(lx, ly, lz));   // broken: no longer a player's block
   if (setCarveTo) c->setCarve(lx, ly, lz, setCarveTo);
   else if (old == id && oldCarve) c->setCarve(lx, ly, lz, oldCarve);   // same block (waterlog, a seat): keep its octants
   if (old == id && oldCoat) c->setCoat(lx, ly, lz, oldCoat);
@@ -106,8 +120,90 @@ bool World::setBlock(int x, int y, int z, BlockId id, u8 meta, u32 flags) {
   if (!(flags & SetFlags::NoModify)) { c->modified = true; c->dirty = true; }
   if (!(flags & SetFlags::NoRemesh)) markBlockDirty(x, y, z, flags & SetFlags::Urgent);
   if (!(flags & SetFlags::NoNotify)) { u32 pf = changeFlags; changeFlags = flags; changeOldMeta = oldMeta; for (auto& s : systems) s->onBlockChanged(*this, x, y, z, old, id); changeFlags = pf; }
+  if (!(flags & SetFlags::KeepAttach) && !c->attach.empty()) {
+    auto it = c->attach.find(colIdx(lx, ly, lz));
+    if (it != c->attach.end() && c->get(lx, ly, lz) == id) {
+      const Registry& R = reg();
+      if (old != id && (id == AIR || R.tLiquid[id] || R.tReplaceable[id])) {
+        // the main block went: the first attachment takes its place (getBlock never reads air where something is)
+        Attachment a = std::move(it->second.front());
+        it->second.erase(it->second.begin());
+        if (it->second.empty()) c->attach.erase(it);
+        const bool wet = R.tLiquid[id] == 1 && R.tWlog[a.id];
+        setBlock(x, y, z, a.id, (u8)(a.meta | (wet ? WLOG : 0)), flags | SetFlags::KeepAttach);
+        if (!a.be.is_null()) setBlockEntity(x, y, z, std::move(a.be));
+        attachChanged(x, y, z, flags);
+      } else if (old != id && fullSolid(id) && !attachRoomFor(*this, x, y, z)) {   // a whole block set over them: buried
+        c->attach.erase(it);
+        attachChanged(x, y, z, flags);
+      }
+    }
+  }
   return true;
 }
+
+// ---- attachments ----
+const std::vector<Attachment>* World::attachments(int x, int y, int z) const {
+  if (!inWorldY(y)) return nullptr;
+  Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
+  if (!c || c->attach.empty()) return nullptr;
+  auto it = c->attach.find(colIdx(x & 15, y & 255, z & 15));
+  return it == c->attach.end() || it->second.empty() ? nullptr : &it->second;
+}
+void World::attachChanged(int x, int y, int z, u32 flags) {
+  Chunk* c = chunkAtBlock(x, y, z);
+  if (!c) return;
+  if (!(flags & SetFlags::NoModify)) { c->modified = true; c->dirty = true; }
+  if (!(flags & SetFlags::NoRemesh)) markBlockDirty(x, y, z, flags & SetFlags::Urgent);
+  BlockId id = c->get(x & 15, y & 255, z & 15);
+  if (!(flags & SetFlags::NoLight)) for (auto& s : systems) if (auto* le = dynamic_cast<LightEngine*>(s.get())) le->onBlockChanged(*this, x, y, z, id, id);   // a torch on the wall lights the cell
+  if (!(flags & SetFlags::NoNotify)) { u32 pf = changeFlags; changeFlags = flags; for (auto& s : systems) s->onAttachmentsChanged(*this, x, y, z); changeFlags = pf; }
+}
+bool World::addAttachment(int x, int y, int z, BlockId id, u8 meta, u32 flags, json be) {
+  Chunk* c = chunkAtBlock(x, y, z);
+  if (!c || !id) return false;
+  auto& v = c->attach[colIdx(x & 15, y & 255, z & 15)];
+  if ((int)v.size() >= MAX_ATTACH) return false;
+  v.push_back({id, meta, std::move(be)});
+  attachChanged(x, y, z, flags);
+  return true;
+}
+bool World::setAttachmentMeta(int x, int y, int z, int slot, u8 meta, u32 flags) {
+  Chunk* c = chunkAtBlock(x, y, z);
+  if (!c) return false;
+  auto it = c->attach.find(colIdx(x & 15, y & 255, z & 15));
+  if (it == c->attach.end() || slot < 0 || slot >= (int)it->second.size() || it->second[slot].meta == meta) return false;
+  it->second[slot].meta = meta;
+  attachChanged(x, y, z, flags);
+  return true;
+}
+bool World::removeAttachment(int x, int y, int z, int slot, u32 flags) {
+  Chunk* c = chunkAtBlock(x, y, z);
+  if (!c) return false;
+  auto it = c->attach.find(colIdx(x & 15, y & 255, z & 15));
+  if (it == c->attach.end() || slot < 0 || slot >= (int)it->second.size()) return false;
+  it->second.erase(it->second.begin() + slot);
+  if (it->second.empty()) c->attach.erase(it);
+  attachChanged(x, y, z, flags);
+  return true;
+}
+void World::setAttachments(int x, int y, int z, std::vector<Attachment> parts, u32 flags) {
+  Chunk* c = chunkAtBlock(x, y, z);
+  if (!c) return;
+  const int i = colIdx(x & 15, y & 255, z & 15);
+  if ((int)parts.size() > MAX_ATTACH) parts.resize(MAX_ATTACH);
+  if (parts.empty()) { if (!c->attach.erase(i)) return; }
+  else c->attach[i] = std::move(parts);
+  attachChanged(x, y, z, flags);
+}
+json* World::attachmentEntity(int x, int y, int z, int slot) {
+  Chunk* c = chunkAtBlock(x, y, z);
+  if (!c) return nullptr;
+  auto it = c->attach.find(colIdx(x & 15, y & 255, z & 15));
+  if (it == c->attach.end() || slot < 0 || slot >= (int)it->second.size()) return nullptr;
+  return &it->second[slot].be;
+}
+void World::attachmentEntityChanged(int x, int y, int z) { attachChanged(x, y, z, 0); }
 bool World::setMeta(int x, int y, int z, u8 meta, u32 flags) {
   return setBlock(x, y, z, getBlock(x, y, z), meta, flags);
 }

@@ -1,5 +1,6 @@
 // sim/physics.cpp — port of game/physics.js (gatherBoxes, clipAxis, moveEntity, sampleContacts, raycastBlocks).
 #include "sim/physics.h"
+#include "world/attach.h"
 #include "world/shapes.h"
 #include "world/carve_faces.h"
 #include "sim/blockinfo.h"
@@ -12,6 +13,11 @@ static thread_local std::vector<PixBox> t_pix;
 static thread_local bool t_itemMove = false;   // moveEntity for a dropped item: mesh blocks let it through
 static thread_local const std::string* t_itemId = nullptr;   // ... and which item it is (the gold mesh's filter)
 static thread_local int t_itemD = 0;                         // ... and that item's damage (filterD)
+static thread_local bool t_creature = false;                 // moveEntity for a creature: pens stand taller (penBlock)
+bool penBlock(BlockId id, u8 meta) {
+  const int k = reg().tShape[id];
+  return k == ShapeKind::Fence || k == ShapeKind::Wall || (k == ShapeKind::Gate && !(meta & 4));
+}
 static int meshBlock(BlockId id) {
   static std::vector<u8> T; const Registry& R = reg();
   if (T.size() != R.blocks.size()) { T.assign(R.blocks.size(), 0); for (size_t i = 0; i < R.blocks.size(); i++) T[i] = R.blocks[i].has("mesh") ? (R.blocks[i].has("meshFilter") ? 2 : 1) : 0; }
@@ -72,8 +78,11 @@ void gatherBoxes(const World& w, double minX, double minY, double minZ, double m
     if (!hasShapeBoxes(id) && !carved) { if (y >= yb) out.push_back({(double)x, (double)y, (double)z, x + 1.0, y + 1.0, z + 1.0}); continue; }
     if (bhas(id, BF::Scaffold) && !std::isnan(feet) && (sneak || feet < y + 1 - 0.05)) continue;
     if (!worldBoxes(w, x, y, z, id, SHAPE_COLLIDE, t_pix)) { if (y >= yb) out.push_back({(double)x, (double)y, (double)z, x + 1.0, y + 1.0, z + 1.0}); continue; }
+    // a walking creature meets a fence, wall or gate a whole block taller than it is drawn: never onto it or over it, even
+    // from the top of a jump with a step or a shove on top (birds perch on the posts: they move as flyers, sim/creature.cpp)
+    const bool pen = t_creature && penBlock(id, w.getMeta(x, y, z));
     for (auto& b : t_pix) {
-      DBox d{x + b.x0 / 16.0, y + b.y0 / 16.0, z + b.z0 / 16.0, x + b.x1 / 16.0, y + b.y1 / 16.0, z + b.z1 / 16.0};
+      DBox d{x + b.x0 / 16.0, y + b.y0 / 16.0, z + b.z0 / 16.0, x + b.x1 / 16.0, y + (pen && b.y1 >= 13 ? 32.0 : b.y1) / 16.0, z + b.z1 / 16.0};
       if (d.x1 <= minX || d.x0 >= maxX || d.y1 <= minY || d.y0 >= maxY || d.z1 <= minZ || d.z0 >= maxZ) continue;
       out.push_back(d);
     }
@@ -81,9 +90,11 @@ void gatherBoxes(const World& w, double minX, double minY, double minZ, double m
   if (!t_noExtraBoxes) for (ExtraBoxesFn f : g_extraBoxes) f(w, minX, minY - 1, minZ, maxX, maxY, maxZ, out);
 }
 
-bool collides(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+bool collides(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ, bool creature) {
   static thread_local std::vector<DBox> bs;
+  const bool was = t_creature; t_creature = t_creature || creature;
   gatherBoxes(w, minX, minY, minZ, maxX, maxY, maxZ, bs);
+  t_creature = was;
   for (auto& b : bs) if (b.x1 > minX && b.x0 < maxX && b.y1 > minY && b.y0 < maxY && b.z1 > minZ && b.z0 < maxZ) return true;
   return false;
 }
@@ -164,8 +175,8 @@ static void pushOut(const World& w, double& ex, double& ey, double& ez, double e
 
 MoveOut moveEntity(const World& w, Entity& e, float dt, const MoveParams& mp) {
   MoveOut res;
-  struct ItemScope { bool old; const std::string* oldId; int oldD; ~ItemScope() { t_itemMove = old; t_itemId = oldId; t_itemD = oldD; } } itemScope{t_itemMove, t_itemId, t_itemD};
-  t_itemMove = mp.item; t_itemId = mp.itemId; t_itemD = mp.itemD;
+  struct ItemScope { bool old; const std::string* oldId; int oldD; bool oldC; ~ItemScope() { t_itemMove = old; t_itemId = oldId; t_itemD = oldD; t_creature = oldC; } } itemScope{t_itemMove, t_itemId, t_itemD, t_creature};
+  t_itemMove = mp.item; t_itemId = mp.itemId; t_itemD = mp.itemD; t_creature = mp.creature;
   double ex = e.pos.x, ey = e.pos.y, ez = e.pos.z, ew = e.w, eh = e.h;
   pushOut(w, ex, ey, ez, ew, eh, mp.sneaking);
   double dx = (double)e.vel.x * dt, dy = (double)e.vel.y * dt, dz = (double)e.vel.z * dt;
@@ -207,7 +218,9 @@ MoveOut moveEntity(const World& w, Entity& e, float dt, const MoveParams& mp) {
         ex += s2[0]; ez += s2[2];
         double dn[3]; sweep(0, -lift - 0.01, 0, dn);
         ey += dn[1];
-        if (std::hypot(s2[0], s2[2]) > std::hypot(rx, rz) + 1e-4 && dn[1] < 0) {
+        // (and only onto something: a down-sweep that falls its whole way found no floor. In the air that had "landed" a body
+        //  mid-jump, so it could jump again from nothing: creatures climbed a fence's side, and out of their pens, that way)
+        if (std::hypot(s2[0], s2[2]) > std::hypot(rx, rz) + 1e-4 && dn[1] < 0 && dn[1] > -lift - 0.01 + 1e-6) {
           landed = true; dy = 0; e.vel.y = std::min(e.vel.y, 0.f); side[1] = -1;
           if (std::fabs(s2[0] - dx) > 1e-6) { blockedX = true; side[0] = dx > 0 ? 1 : -1; }
           if (std::fabs(s2[2] - dz) > 1e-6) { blockedZ = true; side[2] = dz > 0 ? 1 : -1; }
@@ -231,15 +244,16 @@ MoveOut moveEntity(const World& w, Entity& e, float dt, const MoveParams& mp) {
   if (!e.onGround && e.vel.y <= 0) {
     std::vector<DBox> bs;
     gatherBoxes(w, ex - ew + 0.01, ey - 0.02, ez - ew + 0.01, ex + ew - 0.01, ey, ez + ew - 0.01, bs, ey, mp.sneaking);
-    for (auto& b : bs) if (b.x1 > ex - ew + 0.01 && b.x0 < ex + ew - 0.01 && b.y1 > ey - 0.02 && b.y0 < ey && b.z1 > ez - ew + 0.01 && b.z0 < ez + ew - 0.01) { e.onGround = true; break; }
+    for (auto& b : bs) if (b.x1 > ex - ew + 0.01 && b.x0 < ex + ew - 0.01 && b.y1 > ey - 0.02 && b.y1 <= ey + 0.02 && b.y0 < ey && b.z1 > ez - ew + 0.01 && b.z0 < ez + ew - 0.01) { e.onGround = true; break; }   // (a floor: a top at the feet. A wall the body is pressed a hair into is not one: it had let a body jump again from mid-air)
   }
   e.pos = {storeToward(ex, side[0]), storeToward(ey, side[1]), storeToward(ez, side[2])};
   return res;
 }
 
-MoveResult moveBox(const World& w, vec3& pos, float hw, float h, vec3 delta, float stepUp) {
+MoveResult moveBox(const World& w, vec3& pos, float hw, float h, vec3 delta, float stepUp, bool creature) {
   Entity e; e.pos = pos; e.w = hw; e.h = h; e.vel = delta; e.onGround = stepUp > 0;
-  MoveOut o = moveEntity(w, e, 1.0f, {stepUp, 0, false});
+  MoveParams mp{stepUp, 0, false}; mp.creature = creature;
+  MoveOut o = moveEntity(w, e, 1.0f, mp);
   pos = e.pos;
   MoveResult r; r.hitX = o.hitX; r.hitZ = o.hitZ; r.hitY = o.landed || o.hitCeiling; r.onGround = e.onGround;
   return r;
@@ -351,11 +365,21 @@ RayHit raycastBlocks(const World& w, glm::dvec3 o, vec3 dirf, float maxDist, boo
   };
   for (int i = 0; i < 256 && t <= maxDist; i++) {
     BlockId id = w.getBlock(x, y, z);
+    if (id && w.hasAttachments(x, y, z)) {   // a cell shared with attachments: the nearest part's own boxes (world/attach.h)
+      int part = -1; double tt = 0; ivec3 nn(0);
+      if (attachRayCell(w, o, d, x, y, z, maxDist, part, tt, nn)) {
+        finish(x, y, z, part < 0 ? id : (*w.attachments(x, y, z))[part].id, nn, tt);
+        h.part = part;
+        return h;
+      }
+      id = 0;   // the ray passes through the cell's open part
+    }
     if (id) {
       Render r = (Render)R.tRender[id];
       bool liquid = r == Render::Liquid;
       if (!liquid || (pickLiquid && R.tLiquid[id] && (w.getMeta(x, y, z) & 15) == 0)) {
-        bool full = r == Render::Cube || r == Render::Cutout || liquid || !worldBoxes(w, x, y, z, id, SHAPE_SELECT, bx);
+        float sb[6];   // (a cube drawn from its hands-on model is picked by the model: world/shapes.h stationBounds)
+        bool full = ((r == Render::Cube || r == Render::Cutout) && !stationBounds(id, 0, sb)) || liquid || !worldBoxes(w, x, y, z, id, SHAPE_SELECT, bx);
         // Remember this cell for the aimed-sub-box pick when it is a chisel-carved block.
         bool carved = fullSolid(id) && w.getCarve(x, y, z);   // a seat mark on a torch is not geometry
         if (full && !carved) { finish(x, y, z, id, n, t); return h; }

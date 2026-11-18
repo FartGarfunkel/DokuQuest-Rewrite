@@ -142,7 +142,7 @@ public:
     if (std::hypot(ImGui::GetIO().MouseDelta.x, ImGui::GetIO().MouseDelta.y) > 2) padOn = false;
     {   // the search, over the book (typing there: the book's keys wait)
       const float z2 = ui::Z();
-      ImGui::SetNextWindowPos(ImVec2(a.width * 0.5f, 8 * z2), ImGuiCond_Always, ImVec2(0.5f, 0));
+      ImGui::SetNextWindowPos(ImVec2(a.width * 0.5f, 38 * z2), ImGuiCond_Always, ImVec2(0.5f, 0));   // (under the tab strip, which covered it)
       ImGui::SetNextWindowBgAlpha(0.8f);
       ImGui::Begin("##guide_search", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing);
       ImGui::SetNextItemWidth(260 * z2);
@@ -150,6 +150,7 @@ public:
       book.active = !ImGui::IsItemActive();
       ImGui::End();
     }
+    if (a.input.usingPad()) { ui::padHint(0, -1, "Open"); ui::padHint(2, 3, "Turn pages"); }
     book.hint("Click a picture: its page \xC2\xB7 B / Esc: back \xC2\xB7 X / Y or the arrows: turn the pages \xC2\xB7 D-pad + A on a controller");
     book.end();
   }
@@ -207,7 +208,7 @@ private:
     if ((hot || padHere) && !item.empty()) {
       const ItemDef* d = reg().item(item);
       const std::string n = label.empty() ? (d ? d->name : item) : label;
-      if (!bookUiScreenTip(n)) ImGui::SetTooltip("%s", n.c_str());
+      if (!bookUiScreenTip(n)) ui::setTooltip("%s", n.c_str());
       if (hot && ImGui::IsMouseClicked(0)) open(item);
     }
   }

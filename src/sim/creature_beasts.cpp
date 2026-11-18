@@ -2,6 +2,7 @@
 // swimmer, amphibian), the farm animals (game/blocks2.js farmAI / breeding / eggs / wool), game/husbandry.js
 // (following food, babies trailing their elders, bees working flowers), game/aquatic.js (stranded flopping),
 // game/pets.js (taming, follow/stay, defending, riding with saddles) and monsters.js's stalking big cats.
+#include "sim/mob_carry.h"
 #include "core/tool_parts.h"
 #include "sim/husbandry.h"
 #include "sim/trough.h"
@@ -31,40 +32,15 @@ static bool solidAt(World& w, float x, float y, float z) { return reg().tSolid[w
 static bool wetAt(World& w, float x, float y, float z) { return reg().tLiquid[w.getBlock(ifloor(x), ifloor(y), ifloor(z))] == 1; }
 static bool isAlive(Entity* e) { if (!e || e->removed) return false; if (auto* c = dynamic_cast<Creature*>(e)) return c->alive(); if (auto* p = dynamic_cast<Player*>(e)) return !p->dead; return true; }
 
-// ---- what each creature can be tamed with, and the chance each offer works (pets.js) ----
-struct TameFood { std::vector<std::string> foods; float chance; };
-static const std::unordered_map<std::string, TameFood>& tameTable() {
-  static const std::vector<std::string> meat = {"raw_meat", "venison", "porkchop", "beef", "mutton"}, horse = {"apple", "golden_apple", "sugar", "wheat", "hay_bale"},
-                                       seeds = {"wheat_seeds", "melon_seeds", "pumpkin_seeds", "beetroot_seeds"}, fish = {"cod", "salmon"};
-  static const std::unordered_map<std::string, TameFood> m = {
-    {"wolf", {{"bone"}, 0.34f}}, {"fox", {{"sweet_berries", "glow_berries"}, 0.25f}}, {"snow_fox", {{"sweet_berries", "glow_berries"}, 0.25f}},
-    {"cat", {fish, 0.34f}}, {"ocelot", {fish, 0.25f}}, {"parrot", {seeds, 0.34f}}, {"horse", {horse, 0.25f}}, {"donkey", {horse, 0.3f}},
-    {"llama", {{"wheat", "hay_bale", "apple"}, 0.3f}}, {"camel", {{"cactus", "apple"}, 0.3f}}, {"moa", {{"wheat_seeds", "beetroot_seeds"}, 0.3f}},
-    {"pig", {{"carrot", "potato", "beetroot"}, 0.34f}}, {"boar", {{"carrot", "potato", "apple"}, 0.25f}}, {"cow", {{"wheat"}, 0.34f}}, {"sheep", {{"wheat"}, 0.34f}},
-    {"goat", {{"wheat"}, 0.3f}}, {"deer", {{"apple", "carrot"}, 0.25f}}, {"chicken", {{"wheat_seeds"}, 0.34f}}, {"turkey", {{"wheat_seeds"}, 0.34f}}, {"duck", {{"wheat_seeds", "bread"}, 0.34f}},
-    {"rabbit", {{"carrot", "dandelion"}, 0.34f}}, {"mouse", {{"wheat_seeds", "wheat"}, 0.4f}}, {"raccoon", {{"sweet_berries", "apple", "bread"}, 0.3f}},
-    {"brown_bear", {{"honey_bottle", "salmon", "cod", "sweet_berries"}, 0.2f}}, {"polar_bear", {fish, 0.2f}}, {"panda", {{"bamboo"}, 0.3f}},
-    {"frog", {{"slime_ball"}, 0.34f}}, {"turtle", {{"seagrass"}, 0.34f}}, {"axolotl", {fish, 0.34f}}, {"armadillo", {{"spider_eye", "string"}, 0.3f}},
-    {"aerbunny", {{"carrot"}, 0.4f}}, {"dolphin", {fish, 0.3f}}, {"lion", {meat, 0.15f}}, {"lioness", {meat, 0.18f}}, {"tiger", {meat, 0.15f}},
-    {"panther", {{"raw_meat", "venison", "porkchop", "chicken"}, 0.15f}}, {"snow_leopard", {{"raw_meat", "venison", "mutton", "rabbit"}, 0.2f}},
-    {"crocodile", {{"raw_meat", "cod", "salmon"}, 0.1f}}, {"slime", {{"slime_ball"}, 0.4f}}, {"magma_slime", {{"magma_cream"}, 0.4f}},
-  };
-  return m;
-}
-// creatures you can ride once tamed and saddled: top speed (blocks a second) and jump
+// ---- taming and riding come from the data (mobs.json "tame" {foods, chance} and "mount" {speed, jump}: sim/creature.h) ----
 static bool mountStats(const std::string& t, float& speed, float& jump) {
-  static const std::unordered_map<std::string, vec2> M = {
-    {"horse", {10, 9.5f}}, {"donkey", {7.5f, 8.5f}}, {"llama", {6.5f, 8}}, {"camel", {7.5f, 8}}, {"deer", {9.5f, 10}}, {"goat", {6.5f, 11}}, {"moa", {8.5f, 10}},
-    {"pig", {5.5f, 5.6f}},   // a saddled pig is ridden too; its short legs can't jump a whole block (stairs and slabs help)
-    {"brown_bear", {6.5f, 8}}, {"polar_bear", {6.5f, 8}}, {"lion", {9.5f, 9.5f}}, {"lioness", {9.5f, 9.5f}}, {"tiger", {10, 9.5f}}, {"panther", {10, 10}}, {"snow_leopard", {9, 10.5f}}};
-  auto it = M.find(t);
-  if (it == M.end()) { speed = 7; jump = 8; return false; }
-  speed = it->second.x; jump = it->second.y; return true;
+  const CreatureType* T = creatureType(t);
+  speed = T ? T->mountSpeed : 7; jump = T ? T->mountJump : 8;
+  return T && T->mount;
 }
 static bool tameFood(const std::string& type, const std::string& item) {
-  auto it = tameTable().find(type);
-  if (it == tameTable().end() || !reg().item(item)) return false;
-  return std::find(it->second.foods.begin(), it->second.foods.end(), item) != it->second.foods.end();
+  const CreatureType* T = creatureType(type);
+  return T && T->tameable() && T->tamesWith(item);
 }
 
 // ------------------------------------------------------------------ shared moves
@@ -476,6 +452,56 @@ void strandedFlop(Level& lv, Creature& m, float dt, float air, float every, floa
   if (m.dryT > air) { m.dryT -= every; DamageSrc s; s.type = "drown"; s.bypassArmor = true; m.hurt(lv, dmg, s); }
 }
 
+// ---- swimming for real (data "aquatic" / "amphibious", sim/creature.h): neutral in the water, at depth, in three dimensions
+// the water column at (x, z) about y: its top (the first dry block up) and its floor (the first dry block down)
+// (med: what it swims in, reg().tLiquid's number: 1 water, 2 lava)
+static void waterColumn(World& w, float x, float y, float z, float& top, float& floor, int med = 1) {
+  const int bx = ifloor(x), by = ifloor(y), bz = ifloor(z);
+  top = (float)by + 16; floor = (float)by - 16;
+  for (int k = by; k < by + 16; k++) if (reg().tLiquid[w.getBlock(bx, k, bz)] != med) { top = (float)k; break; }
+  for (int k = by; k > by - 16; k--) if (reg().tLiquid[w.getBlock(bx, k, bz)] != med) { floor = (float)k + 1; break; }
+}
+static bool inMediumAt(World& w, float x, float y, float z, int med) { return reg().tLiquid[w.getBlock(ifloor(x), ifloor(y), ifloor(z))] == med; }
+// the height an aquatic creature may swim at here: off the floor, its whole body under the surface (a fish no longer
+// rises to the top and bobs there); in water too shallow for that, along the bottom. under: how far below the top
+float aquaticDepth(Level& lv, const Creature& m, float ty, float under) {
+  float top, floor;
+  waterColumn(lv.world(m.realm), m.pos.x, m.pos.y + std::min(m.h * 0.5f, 0.5f), m.pos.z, top, floor, m.T->medium);
+  const float lo = floor + 0.05f, hi = top - m.h - under;
+  return hi < lo ? lo : clampv(ty, lo, hi);
+}
+// a fresh place to swim to: somewhere in open water a few blocks off, up or down a little (false: none found)
+bool aquaticWaypoint(Level& lv, Creature& m, bool deep) {
+  World& w = lv.world(m.realm);
+  for (int i = 0; i < 10; i++) {
+    float a = frand() * TAU, r = 3 + frand() * 5, nx = m.pos.x - std::sin(a) * r, nz = m.pos.z - std::cos(a) * r, ny = m.pos.y + (frand() - (deep ? 0.65f : 0.5f)) * 4;
+    const int md = m.T->medium;
+    if (!inMediumAt(w, nx, ny, nz, md) || !inMediumAt(w, nx, ny + std::min(m.h, 1.f), nz, md)) continue;
+    if (deep && !(inMediumAt(w, nx, ny + 1.6f, nz, md) && inMediumAt(w, nx, ny - 1.2f, nz, md))) continue;
+    // (the way there in water too: not across a sand bar into the next pool)
+    const float mx = (m.pos.x + nx) / 2, mz = (m.pos.z + nz) / 2;
+    if (!inMediumAt(w, mx, (m.pos.y + ny) / 2 + 0.2f, mz, md)) continue;
+    m.swimDir = a; m.hasSwimDir = true; m.swimY = ny; m.hasSwimY = true;
+    return true;
+  }
+  return false;
+}
+// steering in the water: a water creature keeps off the shore (turn back, or hold where it is when after something), the height kept under
+// the surface, the climb or dive as a speed, and the body pitched along the way it moves
+void aquaticSteer(Level& lv, Creature& m, float& dir, float& ty, float& want, float dt, bool chasing, bool surfacing) {
+  World& w = lv.world(m.realm);
+  const float reach = m.w + 0.6f, ax = m.pos.x - std::sin(dir) * reach, az = m.pos.z - std::cos(dir) * reach;
+  if (m.T->aquatic && want > 0.05f && !inMediumAt(w, ax, m.pos.y + std::min(m.h * 0.5f, 0.6f), az, m.T->medium)) {   // (an amphibian may go ashore)
+    if (chasing) want = 0;
+    else { m.swimDir = dir = dir + PI * (0.75f + frand() * 0.5f); m.hasSwimDir = true; m.swimT = 1.5f + frand() * 2; }
+  }
+  if (!surfacing) ty = aquaticDepth(lv, m, ty, m.T->aquatic ? 0.3f : -m.h * 0.4f);
+  m.swimVy = clampv((ty - m.pos.y) * 1.2f, -2.f, 2.f);
+  const float hs = std::hypot(m.vel.x, m.vel.z);
+  const float aim = clampv(-std::atan2(m.vel.y, std::max(hs, 0.6f)), -0.7f, 0.7f);
+  m.swimPitch += (aim - m.swimPitch) * std::min(1.f, dt * 4);
+}
+
 static Move swimmerAI(Level& lv, Creature& m, Entity* p, float dist, float dyp, float dt) {
   const auto& T = *m.T;
   World& w = lv.world(m.realm);
@@ -516,19 +542,16 @@ static Move swimmerAI(Level& lv, Creature& m, Entity* p, float dist, float dyp, 
   else if (leader && leader->alive()) { dir = heading(m.pos.x, m.pos.z, leader->pos.x + std::sin((float)m.id) * 0.8f, leader->pos.z + std::cos((float)m.id) * 0.8f); ty = leader->pos.y; want = std::hypot(leader->pos.x - m.pos.x, leader->pos.z - m.pos.z) > 1.5f ? T.speed * 1.2f : T.speed * 0.4f; }
   else if (m.swimT <= 0 || m.hitWall) {
     m.swimT = 2 + frand() * 4;
-    for (int i = 0; i < (squid ? 10 : 6); i++) {
-      // (a squid keeps to the deep: it heads for water with more water over it and under it, and never into the shallows)
-      float a = frand() * TAU, r = 3 + frand() * 5, nx = m.pos.x - std::sin(a) * r, nz = m.pos.z - std::cos(a) * r, ny = m.pos.y + (frand() - (squid ? 0.65f : 0.5f)) * 4;
-      if (wetAt(w, nx, ny, nz) && wetAt(w, nx, ny + 0.4f, nz) && (!squid || (wetAt(w, nx, ny + 1.6f, nz) && wetAt(w, nx, ny - 1.2f, nz)))) { m.swimDir = a; m.hasSwimDir = true; m.swimY = ny; m.hasSwimY = true; break; }
-    }
+    // (a squid keeps to the deep: it heads for water with more water over it and under it, and never into the shallows)
+    if (!aquaticWaypoint(lv, m, squid) && squid) aquaticWaypoint(lv, m, false);
     if (m.hasSwimDir) dir = m.swimDir; if (m.hasSwimY) ty = m.swimY;
     if (squid) want = T.speed * (0.4f + frand() * 0.8f);
   }
-  if (!wetAt(w, m.pos.x, ty + m.h, m.pos.z) && !(T.playful && frand() < 0.002f)) ty = std::min(ty, m.pos.y);
+  // up for air (a dolphin, an orca) or a playful leap: the only times one makes for the top
+  const bool surfacing = (T.needsAir && m.airT < 25) || (T.playful && frand() < 0.002f);
   if (T.playful && m.speedNow > 3 && !wetAt(w, m.pos.x, m.pos.y + 1.2f, m.pos.z) && frand() < dt * 0.6f) { m.vel.y = 7; lv.fx->sound("splash", m.pos + vec3(0, 1, 0), 20); }
   if (squid && !fleeing) want *= 0.35f + 1.3f * std::pow(std::max(0.f, std::sin(m.age * 2.6f)), 3.f);   // a squid moves in strokes: push, glide
-  m.swimVy = clampv((ty - m.pos.y) * 1.2f, -2.f, 2.f);
-  m.swimPitch = clampv(-m.vel.y * 0.2f, -0.6f, 0.6f);
+  aquaticSteer(lv, m, dir, ty, want, dt, foe != nullptr, surfacing);
   return {want, dir};
 }
 
@@ -557,12 +580,13 @@ static Move amphibianAI(Level& lv, Creature& m, Entity* p, float dist, float toP
   }
   if (m.inWater) {
     m.swimT -= dt;
-    if (m.swimT <= 0 || m.hitWall) { m.swimT = 3 + frand() * 4; m.swimDir = frand() * TAU; m.swimUp = (frand() - (T.playsDead ? 0.6f : 0.35f)) * 1.6f; }
-    if (m.hitWall) m.swimUp = 1.6f;   // climb out onto the bank
-    m.swimVy = m.swimUp;
-    m.swimPitch = clampv(-m.vel.y * 0.2f, -0.5f, 0.5f);
-    if (T.farm) if (OptMove f = m.farmAI(lv, p, dist, toPlayer, dt)) return {T.swimSpeed, f->dir};
-    return {T.swimSpeed * 0.7f, m.swimDir};
+    // swims about under the water, up and down, and now and then makes for the bank and climbs out (it lives on both)
+    if (m.swimT <= 0) { m.swimT = 3 + frand() * 4; m.swimDir = frand() * TAU; m.swimUp = (frand() - (T.playsDead ? 0.6f : 0.5f)) * 3.f; m.swimY = m.pos.y + m.swimUp; }
+    float dir = m.swimDir, want = T.swimSpeed * 0.7f, ty = m.swimY;
+    if (T.farm) if (OptMove f = m.farmAI(lv, p, dist, toPlayer, dt)) { dir = f->dir; want = T.swimSpeed; }
+    if (m.hitWall) { m.swimVy = 1.6f; m.swimPitch += (-0.5f - m.swimPitch) * std::min(1.f, dt * 4); return {want, dir}; }   // against the bank: up and out onto it
+    aquaticSteer(lv, m, dir, ty, want, dt, false, false);
+    return {want, dir};
   }
   m.swimPitch = 0;
   bool spooked = p && dist < 4 && !pawnSneaking(p) && T.sound == "frog";
@@ -774,8 +798,7 @@ Creature* rideControl(Level& lv, Player& p, float fwd, float strafe, bool jump, 
   if (sneak && !descend) { dismount(lv, *m, p); return nullptr; }
   m->rideIn = {fwd, strafe, jump, sprint, descend};
   if (m->ghost) {   // a joined world: the host moves the mount (net: ME "ri"); we sit where it is here
-    float seatY = m->h * 0.7f;
-    if (reg().models.contains(m->modelKey())) seatY = reg().models[m->modelKey()].value("seatY", seatY);
+    const float seatY = m->riderSeatY();
     p.pos = vec3(m->pos.x, m->pos.y + seatY - 0.28f, m->pos.z); p.vel = vec3(0); p.onGround = true; p.fallDist = 0;
   }
   return m;
@@ -863,14 +886,14 @@ bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
   }
   if (e.owner.empty() && !held.empty() && held.id == "saddle" && mountable) {
     std::string foods;
-    if (auto it = tameTable().find(e.type); it != tameTable().end()) for (size_t i = 0, n = 0; i < it->second.foods.size() && n < 2; i++) if (auto* d = reg().item(it->second.foods[i])) { foods += (n++ ? " or " : "") + d->name; }
+    for (size_t i = 0, n = 0; i < e.T->tameFoods.size() && n < 2; i++) if (auto* d = reg().item(e.T->tameFoods[i])) { foods += (n++ ? " or " : "") + d->name; }
     toast("Tame it first: feed it " + (foods.empty() ? std::string("its food") : foods)); return true;
   }
   if (e.owner.empty() && !held.empty() && tameFood(e.type, held.id) && (sneaking || !e.T->farm || (mountable && !e.baby))) {
     if ((e.type == "slime" || e.type == "magma_slime") && e.size > 1) { toast("Only a little one can be tamed"); return true; }
     if (e.T->boss) return false;
     use1(p, held); lv.fx->soundUi(p.id, "eat");
-    float chance = p.creative() ? 1 : std::min(1.f, tameTable().at(e.type).chance);
+    float chance = p.creative() ? 1 : std::min(1.f, e.T->tameChance);
     if (frand() < chance) {
       e.owner = p.name; e.tamed = true; e.kept = true; e.angryT = 0; e.foe = 0; e.panicT = 0; e.quarrel = 0; e.petFoe = 0; e.stay = false; e.loveT = 0;
       hearts(lv, e.pos + vec3(0, e.h, 0), 7); lv.fx->sound("levelup", e.pos, 12);
@@ -879,7 +902,7 @@ bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking) {
     return true;
   }
   if (mine && held.empty()) {
-    if (sneaking && e.T->carry) return false;   // Carry On picks it up (gameplay)
+    if (sneaking && canCarryInArms(e, p)) return false;   // Carrying in your arms picks it up (sim/controller.cpp, sim/mob_carry.h)
     if (!sneaking && mountable && e.saddled && !e.baby && !p.riding) {
       if (e.riddenBy) { toast("Someone is riding it"); return true; }
       e.riddenBy = p.id; p.riding = e.id; p.vel = vec3(0); p.yaw = e.yaw;

@@ -77,6 +77,9 @@ void npcSkinPixels(u32 seed, const std::string& job, std::vector<u8>& px);
 void npcSkinTouches(u32 seed, const std::string& job, std::vector<u8>& px);   // our own touches over it (freckles, scarves, patches...)
 enum NpcPose : int { NP_SLEEP = 1, NP_SIT = 2, NP_WAVE = 4, NP_TALK = 8, NP_WORK = 16, NP_READ = 32, NP_FOLD = 64, NP_HOE = 128, NP_BOW = 256 };
 bool isVillager(const Entity& e);                     // a creature with data.npc (golems included)
+// a villager gone from its village other than by dying (struck by lightning, turned witch): counted gone as a death is
+// (the village refills the place by its usual rule), off the family tree, its mind and claims dropped
+void villagerLost(Level& lv, Creature& c);
 const json* npcOf(const Entity& e);                   // data["npc"] or null
 double npcPhase(const Level& lv);                     // time of day 0..1 (the original's meta.time / DAY_LEN)
 bool npcNight(const Level& lv);

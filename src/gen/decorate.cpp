@@ -5,6 +5,7 @@
 #include "gen/overworld.h"
 #include "gen/biome_features.h"
 #include "common/holiday.h"
+#include "gen/huge_mushroom.h"
 
 namespace dq {
 using namespace vmap;
@@ -23,6 +24,12 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
   const BlockId PLAIN_FLOWERS[] = {B.flower_yellow, B.flower_red, B.azure_bluet, B.oxeye_daisy, B.cornflower, B.red_tulip, B.orange_tulip, B.white_tulip, B.pink_tulip};
   const BlockId FOREST_FLOWERS[] = {B.lily_of_the_valley, B.allium, B.flower_red, B.lilac, B.rose_bush, B.peony};
   auto set = [&](int x, int y, int z, BlockId id, u8 meta = 0) { int i = colIdx(x, y, z); b.blocks[i] = id; b.meta[i] = meta; };
+  // a mushroom only where it can live (sim/world_life.cpp withers one in light over 12): under rock, or under three
+  // layers of leaves (each dims the sky by one), so a forest's own mushrooms stay and none litter a sunny floor
+  // (our sky light also spreads sideways, a step dimmer a block: so the shade must be over every column within 3 blocks,
+  // or a mushroom under the canopy's edge sits in light over 12 after all; columns off this chunk count as open sky)
+  auto colShade = [&](int x, int y, int z) { if (x < 0 || x > 15 || z < 0 || z > 15) return false; int dim = 0; for (int k = 1; k <= 32 && y + k < DIM_H && dim < 3; k++) { const BlockId a = b.blocks[colIdx(x, y + k, z)]; dim += reg().tOpaque[a] ? 15 : reg().block(a).lightAtt; } return dim >= 3; };
+  auto shaded = [&](int x, int y, int z) { for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) if (std::abs(dx) + std::abs(dz) <= 3 && !colShade(x + dx, y, z + dz)) return false; return true; };
   auto tall = [&](int x, int y, int z, BlockId id) { if (y + 1 < DIM_H && b.blocks[colIdx(x, y + 1, z)] == AIR) { set(x, y, z, id, 0); set(x, y + 1, z, id, 1); } };
   // terrain version 15: the land biomes grow their own plants (gen/biome_features.h); ours below only add what theirs
   // haven't: the warm seas' coral, berry bushes in the woods
@@ -76,7 +83,7 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
         else if (r < 0.095) set(x, y, z, B.fern);
         else if (r < 0.105) set(x, y, z, bushFor(c, r2));
         else if (r < 0.115) { BlockId f = FOREST_FLOWERS[jsFloor(r2 * 6)]; if (B.dbl[f]) tall(x, y, z, f); else set(x, y, z, f); }
-        else if (r < 0.12) set(x, y, z, r2 < 0.5 ? B.brown_mushroom : B.red_mushroom);
+        else if (r < 0.12) { if (shaded(x, y, z)) set(x, y, z, r2 < 0.5 ? B.brown_mushroom : B.red_mushroom); }
         else if (r < 0.1205 && c.temp > 0.2) set(x, y, z, B.melon);
       } else if (c.biome == BIOME_MOUNTAINS) {
         if (r < 0.05) set(x, y, z, B.tall_grass);
@@ -148,18 +155,7 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
     if (c.special == 1 && B.mycelium && below == B.mycelium) {
       if (r < 0.012 && x >= 3 && x <= 12 && z >= 3 && z <= 12 && B.mushroom_stem) {
         const bool red = r2 < 0.5; const int hgt = 5 + jsFloor(r2 * 8) % 3;
-        for (int k = 0; k < hgt; k++) set(x, y + k, z, B.mushroom_stem);
-        const BlockId cap = red ? B.red_mushroom_block : B.brown_mushroom_block;
-        if (red) {   // a dome: a ring hanging down round a top
-          for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {
-            if (std::abs(dx) == 2 && std::abs(dz) == 2) continue;
-            if (std::abs(dx) == 2 || std::abs(dz) == 2) for (int k = hgt - 3; k < hgt; k++) set(x + dx, y + k, z + dz, cap);
-            else set(x + dx, y + hgt, z + dz, cap);
-          }
-        } else for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {   // a flat plate
-          if (std::abs(dx) == 3 && std::abs(dz) == 3) continue;
-          set(x + dx, y + hgt, z + dz, cap);
-        }
+        buildHugeMushroom([&](int X, int Y, int Z, BlockId id) { set(X, Y, Z, id); }, x, y, z, red, hgt, B.mushroom_stem, B.red_mushroom_block, B.brown_mushroom_block);
         continue;
       }
       if (r < 0.05) { set(x, y, z, r2 < 0.5 ? B.red_mushroom : B.brown_mushroom); continue; }
@@ -234,7 +230,15 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
       else if (r < 0.225) set(x, y, z, B.melon);
       continue;
     }
-    if (below == B.dirt_with_coniferous_litter) { if (r < 0.05) set(x, y, z, B.fern); else if (r < 0.06) set(x, y, z, B.brown_mushroom); continue; }
+    if (below == B.dirt_with_coniferous_litter) {
+      if (r < 0.05) set(x, y, z, B.fern);
+      else if (r < 0.06) {   // (only in the shade, as shaded() in decorate)
+        auto colShade = [&](int x2, int z2) { if (x2 < 0 || x2 > 15 || z2 < 0 || z2 > 15) return false; int dim = 0; for (int k = 1; k <= 32 && y + k < DIM_H && dim < 3; k++) { const BlockId a = b.blocks[colIdx(x2, y + k, z2)]; dim += reg().tOpaque[a] ? 15 : reg().block(a).lightAtt; } return dim >= 3; };
+        bool ok = true; for (int dz = -3; dz <= 3 && ok; dz++) for (int dx = -3; dx <= 3 && ok; dx++) if (std::abs(dx) + std::abs(dz) <= 3 && !colShade(x + dx, z + dz)) ok = false;
+        if (ok) set(x, y, z, B.brown_mushroom);
+      }
+      continue;
+    }
     if (below == B.grass) {
       if (patch > 0.6 && r < (hw ? 0.15 : 0.05) && (c.biome == BIOME_PLAINS || c.biome == BIOME_FOREST)) set(x, y, z, B.pumpkin, (u8)jsFloor(r2 * 4));   // facing meta is legacy again: carve lives in its own byte now
       else if (c.biome == BIOME_MOUNTAINS && c.humid > 0.15 && c.h < 78 && r < 0.18) set(x, y, z, B.pink_petals);
@@ -303,4 +307,26 @@ void OverworldGen::decorateCaves(GenBuf& b, const OwColumn* cols, int cx, int cz
   }
 }
 
+} // namespace dq
+
+namespace dq {
+void buildHugeMushroom(const std::function<void(int, int, int, BlockId)>& set, int x, int y, int z, bool red, int hgt,
+                       BlockId stem, BlockId redCap, BlockId brownCap) {
+  for (int k = 0; k < hgt; k++) set(x, y + k, z, stem);
+  const BlockId cap = red ? redCap : brownCap;
+  if (red) {   // a dome: a ring hanging down round a top
+    for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {
+      if (std::abs(dx) == 2 && std::abs(dz) == 2) continue;
+      if (std::abs(dx) == 2 || std::abs(dz) == 2) for (int k = hgt - 3; k < hgt; k++) set(x + dx, y + k, z + dz, cap);
+      else set(x + dx, y + hgt, z + dz, cap);
+    }
+  } else for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {   // a flat plate
+    if (std::abs(dx) == 3 && std::abs(dz) == 3) continue;
+    set(x + dx, y + hgt, z + dz, cap);
+  }
+}
+void hugeMushroomCells(bool red, int hgt, std::vector<ivec3>& out) {
+  out.clear();
+  buildHugeMushroom([&](int X, int Y, int Z, BlockId) { out.push_back(ivec3(X, Y, Z)); }, 0, 0, 0, red, hgt, 1, 1, 1);
+}
 } // namespace dq

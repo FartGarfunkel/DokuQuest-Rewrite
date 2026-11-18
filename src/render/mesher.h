@@ -47,6 +47,8 @@ struct MeshInput {
   LightRgb rgb[N * N * NY];                // sun + block RGB the smooth bias samples (parallel to light)
   u8 climate[N * N * 2];                       // temp, humidity per apron column (x,z)
   std::vector<std::pair<int, BlockId>> potPlants;   // idx -> plant in a flower pot (block entities)
+  struct Part { i8 x, y, z; BlockId id; u8 meta; };
+  std::vector<Part> parts;                     // the section's attachments (world/attach.h): drawn in their cell beside its main block
   bool empty = true;                           // nothing to draw
   vec3 origin() const { return vec3(cx * 16, dimBase(dim) + sy * 16, cz * 16); }
 };

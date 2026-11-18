@@ -4,7 +4,7 @@
 //
 // A PlayerController drives a Player each frame from a PlayerInput: movement, breath, regen, fire,
 // falls, the crosshair target, mining (speeds, tool tiers, drops, XP, tree felling), placing every
-// block kind, using blocks and items, eating, attacking, Carry On, ground storage, beds, seats,
+// block kind, using blocks and items, eating, attacking, carrying things, ground storage, beds, seats,
 // buckets, dropping, pick block, creative flight. It runs in dqcore, so the dedicated server can
 // drive remote players with the same code. Screens are asked for through the EventBus
 // ("screenOpen" [player, kind, opts]) and the UI calls back into the controller/inventory.

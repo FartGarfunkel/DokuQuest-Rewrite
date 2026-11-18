@@ -703,6 +703,8 @@ int main(int argc, char** argv) {
     World& wt = L->world();
     for (auto& q : P->inv) q = ItemStack();
     P->inv[0] = ItemStack("treasure_map", 1); P->selected = 0;
+    json opened;
+    const int hScr = bus.on("contentScreen", [&](const json& a) { if (a.is_array() && a.size() >= 3 && a[1] == "treasure_map") opened = a[2]; return true; });
     const bool used = !use("treasure_map");
     const ItemStack& tm = P->inv[0];
     const bool hasX = tm.tag.is_object() && tm.tag.contains("tx") && tm.tag.contains("tz");
@@ -711,7 +713,49 @@ int main(int argc, char** argv) {
     check(used && hasX && dist > 150 && dist < 1000, "using a treasure map marks its X some way off (" + std::to_string((int)dist) + " blocks)");
     ColumnSample cs; if (DimGenerator* g = L->gen->forDim(DIM_OVERWORLD)) g->sample(tx, tz, cs);
     check(cs.water < 0 && cs.height > 0, "the X is on dry land");
-    check(fx.heard("blocks"), "and says which way and how far");
+    check(opened.is_object() && opened.value("x", 1 << 30) == tx && opened.value("z", 1 << 30) == tz && opened.value("slot", -1) == 0,
+          "using it opens the treasure map's screen with its X");
+    {   // the picture: the land round the X, centred on it, painted (the generator where nothing's loaded), its X marked
+      const double t1 = nowSeconds();
+      PaperMap* pic = treasureMapPicture(*L, tx, tz);
+      const double ms = (nowSeconds() - t1) * 1000;
+      const bool centred = pic && pic->x0 + pic->span() / 2 == tx && pic->z0 + pic->span() / 2 == tz && pic->scale == TREASURE_MAP_SCALE;
+      check(centred && ms < 30, "its picture is the land round the X; asking for it doesn't hold the game up (" + std::to_string((int)ms) + " ms)");
+      double worst = 0, waited = 0;
+      for (const double t2 = nowSeconds(); pic && pic->explored() < 0.95f && nowSeconds() - t2 < 20;) {
+        const double t3 = nowSeconds(); treasureMapPicture(*L, tx, tz); worst = std::max(worst, nowSeconds() - t3);
+        std::this_thread::sleep_for(std::chrono::milliseconds(16)); waited = nowSeconds() - t2;
+      }
+      // (done: a sample straight from the generator where nothing's loaded)
+      bool exact = pic != nullptr;
+      if (pic) for (int k = 0; k < 64; k++) {
+        const int px = (k * 37 + 5) % MAP_N, pz = (k * 53 + 3) % MAP_N, s = 1 << pic->scale;
+        const int bx = pic->x0 + px * s + (s >> 1), bz = pic->z0 + pz * s + (s >> 1);
+        if (L->world().chunk(DIM_OVERWORLD, bx >> 4, bz >> 4)) continue;
+        ColumnSample c; L->gen->forDim(DIM_OVERWORLD)->sample(bx, bz, c);
+        const int hh = pic->h[pz * MAP_N + px] - 1;
+        if (hh != c.height && hh != c.water && hh != c.treeTop) exact = false;
+      }
+      check(pic && pic->explored() > 0.95f && exact && worst < 0.03, "drawn on a worker, then laid in: the whole land filled in as the generator makes it (" + std::to_string((int)(waited * 1000)) + " ms; worst call " + std::to_string((int)(worst * 1000)) + " ms)");
+      bool xMark = false; if (pic) for (auto& k : mapMarkers(*L, *pic, P)) if (k.cell == 16 && std::fabs(k.u - MAP_N / 2.f) < 1 && std::fabs(k.v - MAP_N / 2.f) < 1) xMark = true;
+      check(xMark && treasureMapPicture(*L, tx, tz) == pic && !mapStore(*L).dirty.count(pic ? pic->id : ""), "with a red X in the middle; made once, never saved");
+      ItemStack held = P->inv[0];
+      check(isReadableMapStack(held) && readableMapFor(*L, *P, held) == pic && !isReadableMapStack(ItemStack("treasure_map", 1)), "held, it's read as a map (its picture)");
+    }
+    {   // the hint: which way from where it's read, and how far
+      struct W { float px, pz; const char* dir; } ways[] = {{0, 500, "north"}, {-400, 0, "east"}, {300, 300, "north-west"}, {-300, -300, "south-east"}, {0, -250, "south"}, {350, 0, "west"}};
+      bool all = true; std::string got;
+      for (auto& w2 : ways) {
+        const std::string h = treasureHint(*L, 0, 0, w2.px, w2.pz);
+        if (h.rfind(std::string("Buried ") + w2.dir + " of here", 0) != 0) { all = false; got = h; }
+      }
+      check(all, "the hint gives the way to the X from where it's read (N, E, NW, SE, S, W)" + (got.empty() ? std::string() : " -- got: " + got));
+      const double th = nowSeconds();
+      const std::string h = treasureHint(*L, 0, 0, 0, 300);
+      const int hms = (int)((nowSeconds() - th) * 1000);
+      check(h.find("about 300 blocks") != std::string::npos && treasureHint(*L, 0, 0, 1, 1).find("right here") != std::string::npos && hms < 50, "and how far (" + h + "; " + std::to_string(hms) + " ms)");
+    }
+    bus.off(hScr);
     // the land at the X loaded: a chest is buried there, with loot
     for (double t0 = nowSeconds(); nowSeconds() - t0 < 60 && !wt.isLoaded(tx, dimBase(DIM_OVERWORLD) + 100, tz);) { wt.stream({{vec3(tx, dimBase(DIM_OVERWORLD) + 100, tz), 1, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
     tick(3);
@@ -724,6 +768,22 @@ int main(int argc, char** argv) {
     check(chestY > 0 && loot >= 3 && top > chestY, "a chest of loot lies buried under the X (" + std::to_string(loot) + " stacks, " + std::to_string(top - chestY) + " down)");
     const bool again = !use("treasure_map");
     check(again && P->inv[0].tag.value("tx", 0) == tx, "using it again shows the same X");
+    // an item like any other: used on a chest or crouched it's not opened (the chest, the ground take it: tools/test_gameplay.cpp)
+    {
+      int opens = 0;
+      const int h2 = bus.on("contentScreen", [&](const json& a) { if (a.is_array() && a.size() >= 3 && a[1] == "treasure_map") opens++; return true; });
+      const ivec3 ch(4, Y + 1, 4);
+      for (double t0 = nowSeconds(); nowSeconds() - t0 < 30 && !wt.isLoaded(ch.x, ch.y, ch.z);) { wt.stream({{vec3(ch), 1, false}}, 20); std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
+      wt.setBlock(ch.x, ch.y, ch.z, B("chest"));
+      use("treasure_map", ch, 2);
+      const int onChest = opens;
+      wt.setBlock(ch.x, ch.y, ch.z, AIR);
+      P->sneaking = true; use("treasure_map", ivec3(4, Y, 4), 2); P->sneaking = false;
+      const int crouched = opens - onChest;
+      use("treasure_map", ivec3(4, Y, 4), 2);
+      check(onChest == 0 && crouched == 0 && opens == 1, "used on a chest, or crouched, the map isn't opened (the chest or the ground takes it); at the ground it is (" + std::to_string(onChest) + std::to_string(crouched) + std::to_string(opens) + ")");
+      bus.off(h2);
+    }
     for (auto& q : P->inv) q = ItemStack();
   }
 

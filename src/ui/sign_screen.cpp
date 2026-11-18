@@ -16,8 +16,15 @@ using namespace ui;
 namespace {
 class SignScreen : public Screen {
 public:
-  explicit SignScreen(ivec3 at) : at(at) {}
+  SignScreen(ivec3 at, int slot) : at(at), slot(slot) {}
   ivec3 at;
+  int slot = -1;   // >= 0: a sign attached in that cell (world/attach.h)
+  json* entity(World& w, bool create) { return slot < 0 ? w.blockEntity(at.x, at.y, at.z, create) : w.attachmentEntity(at.x, at.y, at.z, slot); }
+  bool there(World& w) {
+    if (slot < 0) return reg().block(w.getBlock(at.x, at.y, at.z)).has("sign");
+    const auto* parts = w.attachments(at.x, at.y, at.z);
+    return parts && slot < (int)parts->size() && reg().block((*parts)[slot].id).has("sign");
+  }
   std::array<std::string, 4> lines, keep;
   int focusLine = 0;            // the box that gets keyboard focus next frame (-1 = none)
   bool saved = false;
@@ -27,27 +34,28 @@ public:
   // its Enter moves to the next line like the keyboard's, and on the last line it is Done)
   void onOpen(App& a) override {
     if (!a.session) return;
-    if (json* e = a.session->world().blockEntity(at.x, at.y, at.z)) if (e->contains("lines") && (*e)["lines"].is_array())
+    if (json* e = entity(a.session->world(), false)) if (e->contains("lines") && (*e)["lines"].is_array())
       for (size_t i = 0; i < 4 && i < (*e)["lines"].size(); i++) if ((*e)["lines"][i].is_string()) lines[i] = (*e)["lines"][i].get<std::string>();
   }
   void save(App& a) {
     if (saved || !a.session) return;
     saved = true;
     World& w = a.session->world();
-    if (!reg().block(w.getBlock(at.x, at.y, at.z)).has("sign")) return;   // broken while we wrote
-    json* e = w.blockEntity(at.x, at.y, at.z, true);
+    if (!there(w)) return;   // broken while we wrote
+    json* e = entity(w, true);
+    if (!e) return;
     if (!e->is_object()) *e = json::object();
     (*e)["type"] = "sign";
     json arr = json::array();
     for (auto& l : lines) arr.push_back(l.substr(0, 16));
     (*e)["lines"] = arr;
-    w.blockEntityChanged(at.x, at.y, at.z);
+    if (slot < 0) w.blockEntityChanged(at.x, at.y, at.z); else w.attachmentEntityChanged(at.x, at.y, at.z);
   }
   void onClose(App& a) override { save(a); }
   bool onBack(App& a) override { return false; }   // Esc / B: close (onClose saves)
   void update(App& a, double) override {
     if (!a.session) { a.popScreen(); return; }
-    if (!reg().block(a.session->world().getBlock(at.x, at.y, at.z)).has("sign")) { saved = true; a.popScreen(); }
+    if (!there(a.session->world())) { saved = true; a.popScreen(); }
   }
   void draw(App& a) override {
     float z = Z(), W = (float)a.width, H = (float)a.height;
@@ -116,6 +124,6 @@ public:
 };
 }
 
-std::unique_ptr<Screen> makeSignScreen(ivec3 at) { return std::make_unique<SignScreen>(at); }
+std::unique_ptr<Screen> makeSignScreen(ivec3 at, int slot) { return std::make_unique<SignScreen>(at, slot); }
 
 } // namespace dq

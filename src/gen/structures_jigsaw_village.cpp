@@ -12,6 +12,7 @@
 #include <cstring>
 #include "gen/structures_town.h"
 #include "gen/village_pieces.h"
+#include "gen/village_mill_lift.h"
 #include <algorithm>
 #include <map>
 #include <set>
@@ -1046,6 +1047,20 @@ void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
         if (y < 1 || y >= DIM_H - 1 || P.get(x, y, z) != STAND) continue;
         fixGeneratedStand(P, x, y, z);
       }
+    }
+    // (terrain 24) a style's windmill with its millstone up a floor or more: a lift up to it, as ours has
+    // (gen/village_mill_lift.cpp; the miller rides it, sim/villager_chores.cpp)
+    if (v.genV >= 24 && !p.terrain) if (const auto ML = millLiftOf(p)) {
+      auto at = [&](int lx, int lz) { auto [tx, tz] = vpTurn(p, q.r, lx, lz); return std::array<int, 2>{q.x0 + tx, q.z0 + tz}; };
+      const auto S = at(ML->shaft[0], ML->shaft[2]), R = at(ML->rail[0], ML->rail[1]), T = at(ML->stop[0], ML->stop[1]);
+      const int sy = q.y0 + ML->shaft[1], top = q.y0 + ML->top;
+      if (P.in(S[0], S[1])) {
+        const int i = P.put(S[0], sy, S[1], "slider", 1); if (i >= 0) P.setEntity(i, json{{"type", "machine_state"}, {"glue", 1 << 2}});
+        const int j = P.put(S[0], sy + 1, S[1], hasBlock("spruce_slab") ? "spruce_slab" : st.slab, 0); if (j >= 0) P.setEntity(j, json{{"glue", 1 << 3}});
+        for (int y = sy + 2; y <= top; y++) P.put(S[0], y, S[1], "air");   // (the shaft open through the floors between)
+      }
+      if (P.in(R[0], R[1])) for (int y = sy; y <= top; y++) P.put(R[0], y, R[1], "lift_rail");
+      if (P.in(T[0], T[1])) { P.put(T[0], sy + 1, T[1], "lift_stop"); P.put(T[0], top, T[1], "lift_stop"); }
     }
   }
   // a walled town's ways out through its gates

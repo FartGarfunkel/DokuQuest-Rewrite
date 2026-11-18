@@ -85,19 +85,17 @@ public:
     bool begun = false;
     struct Text { GLuint tex; mat4 m; vec2 light; };
     std::vector<Text> texts;
-    forBlockEntities(w, f, 40.f, [&](const Chunk&, json& e, int x, int y, int z) {
+    auto drawSign = [&](const json& e, int x, int y, int z, BlockId id, u8 meta, u8 carve, int slot) {
       if (e.value("type", "") != "sign") return;
-      BlockId id = w.getBlock(x, y, z);
       const BlockDef& bd = reg().block(id);
       if (!bd.has("sign")) return;
       vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
       if (!f.cam.frustum.sphere(rel + vec3(0.5f), 1.f)) return;
       u8 l = w.getLight(x, y, z);
       vec2 light((l >> 4) / 15.f, (l & 15) / 15.f);
-      u8 meta = w.getMeta(x, y, z);
       bool wall = meta & 16;
       float ang = wall ? -(float)(meta & 3) * PI * 0.5f : (float)(meta & 15) / 16.f * TAU;
-      SeatShift sh = seatShiftOf(id, meta, w.getCarve(x, y, z), WorldShapeNb(w, x, y, z));
+      SeatShift sh = seatShiftOf(id, meta, carve, WorldShapeNb(w, x, y, z));
       vec3 anchor(0.5f, 0, 0.5f);
       if (sh.micro) anchor += vec3(sh.x, sh.y, sh.z) / 16.f;
       // the wood's planks for the board (oak_sign -> planks, birch_sign -> birch_planks ...)
@@ -132,7 +130,7 @@ public:
       auto dc = dyeColours().find(col);
       u32 rgb = dc != dyeColours().end() ? dc->second : 0x1c140c;
       std::string key = L[0] + "\n" + L[1] + "\n" + L[2] + "\n" + L[3] + "|" + col + (glow ? "*" : "");
-      u64 pk = ((u64)(u32)x << 40) ^ ((u64)(u32)y << 20) ^ (u64)(u32)z;
+      u64 pk = ((u64)(u32)x << 40) ^ ((u64)(u32)y << 20) ^ (u64)(u32)z ^ ((u64)(slot + 1) << 61);
       SignTex& st = cache[pk];
       if (st.key != key || !st.tex) {
         auto px = paintSign(L, rgb, glow);
@@ -144,7 +142,17 @@ public:
       mat4 tm = glm::translate(m, vec3(0.5f, (by0 + 4.f) / 16.f, bz1 / 16.f + 0.004f));
       tm = glm::scale(tm, vec3(14.f / 16.f, 7.f / 16.f, 1));
       texts.push_back({st.tex, tm, glow ? vec2(1, 1) : light});
-    });
+    };
+    forBlockEntities(w, f, 40.f, [&](const Chunk&, json& e, int x, int y, int z) { drawSign(e, x, y, z, w.getBlock(x, y, z), w.getMeta(x, y, z), w.getCarve(x, y, z), -1); });
+    {   // signs sharing a cell with its main block (world/attach.h)
+      const int r = 4, pcx = ifloor(f.cam.pos.x) >> 4, pcz = ifloor(f.cam.pos.z) >> 4;
+      for (int cz = pcz - r; cz <= pcz + r; cz++) for (int cx = pcx - r; cx <= pcx + r; cx++) {
+        const Chunk* c = w.chunk(f.dim, cx, cz);
+        if (!c || c->attach.empty()) continue;
+        for (auto& [ci, parts] : c->attach) for (int k = 0; k < (int)parts.size(); k++)
+          if (parts[k].be.is_object()) drawSign(parts[k].be, cx * 16 + (ci & 15), c->baseY() + (ci >> 8), cz * 16 + ((ci >> 4) & 15), parts[k].id, parts[k].meta, 0, k);
+      }
+    }
     for (auto& t : texts) {
       if (!begun) break;
       bool glowLit = t.light == vec2(1, 1);

@@ -96,6 +96,7 @@ public:
       std::string id = a[1].get<std::string>();
       const json& args = a[2];
       if (id == "map") app.pushScreen(makeMapScreen(args.value("slot", -1)));
+      else if (id == "treasure_map") app.pushScreen(makeTreasureMapScreen(args.value("slot", -1), args.value("x", 0), args.value("z", 0)));
       else if (id == "waystones") app.pushScreen(makeWaystoneScreen(args.value("here", "")));
       else if (id == "stable") app.pushScreen(makeStableScreen());
       else if (id == "places") app.pushScreen(makePlacesScreen());

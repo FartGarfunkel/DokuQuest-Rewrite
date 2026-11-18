@@ -31,6 +31,18 @@ struct CreatureType {
        retaliates = false, rams = false, spit = false, curls = false, roosts = false, perches = false, stings = false, school = false, puffs = false,
        playful = false, needsAir = false, playsDead = false, frogTongue = false, ambient = false, displays = false, bear = false, snake = false,
        dayNeutral = false, noPush = false, fleesSun = false, npc = false, noDismember = false, carry = false, spirit = false, phase = false;   // phase: drifts through leaves (the October ghost)
+  // what can be done with it (mobs.json; data/mob_traits.json for the imported creatures), read through sim/mob_carry.h:
+  // "carry": "any" (true) anyone lifts it in their arms (sneak + use, empty hand; a tamed one only its owner), "pet" only
+  // its owner once tamed (a wild one goes in a wicker basket), "basket" only in a wicker basket, false/absent never.
+  // "tame": {"foods": [...], "chance": 0..1} what wins it over; "mount": {"speed", "jump"} ridden once tamed and saddled.
+  // "aquatic": lives in water only (swims at depth, flops and suffocates on land); "amphibious": swims and walks.
+  std::string carryMode;
+  std::vector<std::string> tameFoods; float tameChance = 0;
+  bool mount = false; float mountSpeed = 7, mountJump = 8, mountSeatY = 0;   // seatY: the rider's seat over its feet (blocks; 0: the model's, or 0.7 of its height)
+  bool aquatic = false, amphibious = false;
+  int medium = 1;   // what it swims in (data "swimsIn"): 1 water, 2 lava (the laviathan) — reg().tLiquid's numbers
+  bool tameable() const { return !tameFoods.empty() && tameChance > 0; }
+  bool tamesWith(const std::string& item) const { return std::find(tameFoods.begin(), tameFoods.end(), item) != tameFoods.end(); }
   bool hasTint = false; vec4 tint{0};
   std::vector<std::string> skinGlowParts;      // mobs.json "skinGlow": ["head"] — skin parts drawn unlit (herobrine's white eyes)
   struct Drop { std::string id; int lo = 0, hi = 0; float chance = 1; };
@@ -216,6 +228,10 @@ public:
   void breedWith(Level& lv, Creature& mate);
   Player* ownerPawn(Level& lv) const;
   bool isPetOf(const Entity* who) const;
+  // the owner and its pet's particulars live in the members above; anything that wrote them into data (an old save, the
+  // stable's book, a spell's summon, a mod) is taken in here and the data keys dropped, so there is one place to look
+  void adoptDataOwner();
+  float riderSeatY() const;   // where a rider sits, over its feet (blocks): "mount" seatY, else its model's seatY, else 0.7 of its height
 
 private:
   void update(Level& lv, float dt);
@@ -257,6 +273,11 @@ const std::string& creatureVoice(const CreatureType& T);
 // shearing, dyeing, saddling, riding, stay/follow. Returns true when something happened (the held stack is
 // changed in place). Gameplay calls this from the player's "use" on an entity.
 bool useOnCreature(Level& lv, Player& p, Creature& e, bool sneaking);
+// swimming (sim/creature_beasts.cpp): the height it may keep here (under the surface, off the floor), a fresh place in open
+// water to swim to, and the steering that keeps a water creature off the shore, at its depth and pitched the way it goes
+float aquaticDepth(Level& lv, const Creature& m, float ty, float under);
+bool aquaticWaypoint(Level& lv, Creature& m, bool deep);
+void aquaticSteer(Level& lv, Creature& m, float& dir, float& ty, float& want, float dt, bool chasing, bool surfacing);
 // Other areas' say in a creature's life (the villagers: their brain, who may hurt them, using them). All optional;
 // a second user wraps the first (keep the old function and call it). Per-type hooks: CreatureHooks below.
 struct CreatureGlobalHooks {

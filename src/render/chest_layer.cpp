@@ -350,7 +350,8 @@ public:
         if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
         // lit by the air before its door; faced to a wall (the wall holds no light: it was drawn black) the brightest
         // open side round it
-        const ivec3 fr = pos + ivec3(FRONT[o.facing & 3]);
+        static const vec3 CAB_FRONT[4] = {vec3(0, 0, 1), vec3(-1, 0, 0), vec3(0, 0, -1), vec3(1, 0, 0)};   // (as the mesher turns its model: sim/chest_work.cpp CABINET_FRONT)
+        const ivec3 fr = pos + ivec3(CAB_FRONT[o.facing & 3]);
         u8 l = w.getLight(fr.x, fr.y, fr.z);
         if (reg().tOpaque[w.getBlock(fr.x, fr.y, fr.z)]) {
           int sk = 0, bl = 0;
@@ -362,7 +363,7 @@ public:
         }
         const VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
         mat4 m = glm::translate(mat4(1), rel + vec3(0.5f, 0, 0.5f));
-        m = glm::rotate(m, (o.facing & 3) * PI / 2, vec3(0, 1, 0));
+        m = glm::rotate(m, -(o.facing & 3) * PI / 2, vec3(0, 1, 0));   // (the mesher's turn, world/shapes.cpp rotBox: +z to -x for meta 1)
         m = glm::translate(m, vec3(-0.5f, 0, -0.5f));
         VR.draw(cab.base.gl, m * cab.base.matrix(), L);
         const float e = o.settling ? 0.f : 1 - (1 - o.t) * (1 - o.t);

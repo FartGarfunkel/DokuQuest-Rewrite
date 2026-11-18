@@ -34,9 +34,11 @@ public:
   virtual void onChunkLoaded(class World& w, Chunk& c) {}
   virtual void onChunkUnloading(class World& w, Chunk& c) {}
   virtual void onBlockEntityChanged(class World& w, int x, int y, int z) {}   // setBlockEntity / blockEntityChanged
+  virtual void onAttachmentsChanged(class World& w, int x, int y, int z) {}   // a cell's attachments changed (added, removed, meta, entity)
 };
 
-namespace SetFlags { enum : u32 { None = 0, NoNotify = 1, NoRemesh = 2, NoModify = 4, Urgent = 8, NoLight = 16, FromNet = 32 }; }   // FromNet: applied from the server/a client (net/)
+namespace SetFlags { enum : u32 { None = 0, NoNotify = 1, NoRemesh = 2, NoModify = 4, Urgent = 8, NoLight = 16, FromNet = 32,
+  KeepAttach = 64 }; }   // KeepAttach: the cell's attachments stay as they are (no promotion when the main block goes, none buried)   // FromNet: applied from the server/a client (net/)
 
 class World {
 public:
@@ -69,6 +71,22 @@ public:
   void blockEntityChanged(int x, int y, int z);       // call after editing a blockEntity() in place (chest contents...): saves + syncs it
   void markModified(int x, int y, int z);
   int surfaceY(int x, int z, int dim) const;          // global y of the highest non-air block in that band (-1 none)
+
+  // ---- attachments: up to MAX_ATTACH small parts sharing a cell with its main block (world/attach.h) ----
+  // getBlock stays the main block. When the main block goes (air, a liquid, something replaceable) the first attachment
+  // takes its place; a full solid block set over them buries them (they're gone). KeepAttach skips both.
+  // These do no gameplay checks (room, support): sim/attach_play.h does.
+  const std::vector<Attachment>* attachments(int x, int y, int z) const;   // null = none
+  // ---- player-placed cells (Chunk::placed; saved with the chunk) ----
+  bool placedAt(int x, int y, int z) const;
+  void setPlacedAt(int x, int y, int z, bool on);
+  bool hasAttachments(int x, int y, int z) const { return attachments(x, y, z) != nullptr; }
+  bool addAttachment(int x, int y, int z, BlockId id, u8 meta, u32 flags = 0, json be = json());
+  bool setAttachmentMeta(int x, int y, int z, int slot, u8 meta, u32 flags = 0);
+  bool removeAttachment(int x, int y, int z, int slot, u32 flags = 0);
+  void setAttachments(int x, int y, int z, std::vector<Attachment> parts, u32 flags = 0);   // the whole cell's (net, mods)
+  json* attachmentEntity(int x, int y, int z, int slot);
+  void attachmentEntityChanged(int x, int y, int z);   // after editing an attachmentEntity in place: saves + syncs it
 
   // ---- streaming ----
   void stream(const std::vector<StreamAnchor>& anchors, double budgetMs);
@@ -119,6 +137,7 @@ private:
   void insertChunk(std::unique_ptr<Chunk> c);
   void unloadChunk(const ChunkKey& k, bool save);
   void tryPopulate(Chunk& c);
+  void attachChanged(int x, int y, int z, u32 flags);
 };
 
 } // namespace dq

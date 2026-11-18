@@ -192,6 +192,25 @@ int main(int argc, char** argv) {
       P->inv[0] = ItemStack("stick", 2);
       worktablePut(*L, *P, w, T, 0, P->held());
       check(worktableTake(*L, *P, w, T, 0) && P->inv[0].n == 2, "a piece taken back off its square");
+      // worked in the world with a full grid: the rim round the drawn squares takes what's made, a square gives its piece
+      // back, and so does looking at the made thing hovering over the table
+      setWorktableGrid(vec4(0.15f, 0.15f, 0.85f, 0.85f));   // (squares drawn inside a rim, as on the table's picture)
+      auto fill = [&] { for (auto& st : P->inv) st = ItemStack(); P->inv[0] = ItemStack("iron_ingot", 9); P->selected = 0; for (int c = 0; c < 9; c++) worktablePut(*L, *P, w, T, c, P->held()); };
+      auto made = [&] { int n = 0; for (auto& st : P->inv) if (st.id == "iron_block") n += st.n; return n; };
+      fill();
+      RayHit rim; rim.hit = true; rim.block = T; rim.id = w.getBlock(T.x, T.y, T.z); rim.normal = ivec3(0, 1, 0); rim.point = vec3(T) + vec3(0.06f, 1, 0.5f);
+      check(worktableCell(rim) < 0 && worktableOffGrid(rim), "the rim round the drawn squares is not a square");
+      RayHit sq = rim; sq.point = vec3(T) + vec3(0.5f, 1, 0.5f);
+      ItemStack none;
+      check(worktableUse(*L, *P, w, sq, none) && made() == 0 && P->inv[0].id == "iron_ingot", "an empty hand on a filled square takes that piece back");
+      worktablePut(*L, *P, w, T, 4, P->inv[0]);
+      check(worktableUse(*L, *P, w, rim, none) && made() == 1 && !w.blockEntity(T.x, T.y, T.z), "an empty hand on the rim takes what the full grid makes");
+      fill();
+      ivec3 tb;
+      const vec3 eye = vec3(T) + vec3(0.5f, 1.38f, 3.5f), dir(0, 0, -1);   // looking straight at the made thing, nothing behind it
+      check(worktableResultAlong(w, eye, dir, 5, P->yaw, tb) && tb == T && worktableCraft(*L, *P, w, tb) && made() == 1, "looking at the made thing hovering over the table takes it");
+      check(!worktableResultAlong(w, eye + vec3(0, 0.6f, 0), dir, 5, P->yaw, tb), "...not when looking over it");
+      setWorktableGrid(vec4(0, 0, 1, 1));
     }
     // the anvil worked in the world (sim/anvil_work.h): a worn sword and an ingot on its face, forged into the sword mended
     {

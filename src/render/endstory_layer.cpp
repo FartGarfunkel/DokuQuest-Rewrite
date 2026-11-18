@@ -85,29 +85,9 @@ public:
 
   void drawWatcher(GameSession& s, CreatureDraw& D, World& w, Entity& e, vec3 ip, vec3 rel, const FrameCtx& f) {
     bool boar = e.data.value("boar", false);
-    // the player made him a skin of their own (skins/herobrine.png, a folder of his, or a pack's): he wears it
-    if (!boar && !userHerobrineSkin().empty()) {
-      Creature& H = dummy("herobrine");
-      const float leaving = jf(e.data, "leaving");
-      H.age = e.age; H.walk = jf(e.data, "walk"); H.walkAmt = leaving > 0 ? 1 : 0;
-      H.headPitch = leaving > 0 ? 0 : clampv(std::atan2(s.player->pos.y + 1.62f - (ip.y + 1.6f), std::hypot(s.player->pos.x - ip.x, s.player->pos.z - ip.z)), -0.5f, 0.5f);
-      drawSkinFigure(H, ip, e.yaw, w, f);
-      D.begin(f);   // (the skin pipeline used its own shader)
-      return;
-    }
-    // the watcher is drawn from the stock voxel model (the hb_* parts, with the unlit white eyes), not the
-    // player skin herobrine now wears in the living worlds — so pin its render key to "herobrine" regardless.
-    Creature& M = dummy(boar ? "boar" : "watcher_herobrine");
-    if (!boar) M.variant = "herobrine";
-    const RigModel* RM = rigModel(M.modelKey());
-    const CreatureModelGL* CM = creatureModel(M.modelKey());
-    if (!RM || !CM) return;
     Player& p = *s.player;
     float leaving = jf(e.data, "leaving");
-    M.pos = ip; M.yaw = e.yaw; M.age = e.age; M.walk = jf(e.data, "walk"); M.walkAmt = leaving > 0 ? 1 : 0;
     float pitch = std::atan2(p.pos.y + 1.62f - (ip.y + 1.6f), std::hypot(p.pos.x - ip.x, p.pos.z - ip.z));
-    M.headPitch = leaving > 0 ? 0 : clampv(pitch, -0.5f, 0.5f);
-    M.headYawRel = 0;
     // as the boundary thins he glitches: the head twitches, the figure jitters and skips frames, now and then a pose
     // held a beat too long (0 until the rift has a few fragments, full near the end)
     const float g = boar ? 0.f : clampv((75 - riftStability(*s.level)) / 67.f, 0.f, 1.f);
@@ -115,12 +95,29 @@ public:
     auto gu = [&] { return (float)(gr() % 10000) / 10000.f; };
     static float twitchT = 0, twitchYaw = 0, twitchPitch = 0;
     vec3 jitter(0);
+    float headYaw = 0, headPitch = leaving > 0 ? 0 : clampv(pitch, -0.5f, 0.5f);
     if (g > 0) {
       if (twitchT > 0) twitchT -= 1.f / 60; else if (gu() < g * 0.03f) { twitchT = 0.08f + gu() * 0.25f; twitchYaw = (gu() - 0.5f) * 1.6f * g; twitchPitch = (gu() - 0.5f) * 0.9f * g; }
-      if (twitchT > 0) { M.headYawRel = twitchYaw; M.headPitch += twitchPitch; }
+      if (twitchT > 0) { headYaw = twitchYaw; headPitch += twitchPitch; }
       if (gu() < g * 0.12f) jitter = vec3(gu() - 0.5f, (gu() - 0.5f) * 0.3f, gu() - 0.5f) * (0.18f * g);
       if (gu() < g * 0.05f) return;   // a dropped frame
     }
+    if (!boar) {
+      // he wears the same skin as everywhere else (mobs.json herobrine "skin": the player's own skin for him if they made
+      // one, else the game's data/textures/entity/herobrine/herobrine.png — assets/char_creator.cpp resolveCharacter),
+      // drawn like the living herobrine, his white eyes unlit on top of it
+      Creature& H = dummy("herobrine");
+      H.age = e.age; H.walk = jf(e.data, "walk"); H.walkAmt = leaving > 0 ? 1 : 0; H.headPitch = headPitch;
+      drawSkinFigure(H, ip, e.yaw, w, f, jitter, headYaw);
+      D.begin(f);   // (the skin pipeline used its own shader)
+      return;
+    }
+    Creature& M = dummy("boar");
+    const RigModel* RM = rigModel(M.modelKey());
+    const CreatureModelGL* CM = creatureModel(M.modelKey());
+    if (!RM || !CM) return;
+    M.pos = ip; M.yaw = e.yaw; M.age = e.age; M.walk = jf(e.data, "walk"); M.walkAmt = leaving > 0 ? 1 : 0;
+    M.headPitch = headPitch; M.headYawRel = headYaw;
     rigPose(M, *RM, creatureBase(M, true));
     VoxelLight L = lightAt(w, ip + vec3(0, 1.2f, 0));
     mat4 T0 = glm::translate(mat4(1), rel + jitter);

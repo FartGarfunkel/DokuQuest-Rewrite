@@ -214,9 +214,15 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
   if (!center) return false;
   in.dim = k.dim; in.cx = k.cx; in.sy = k.sy; in.cz = k.cz;
   in.potPlants.clear();
+  in.parts.clear();
   const Section* cs = center->section(k.sy);
   in.empty = !cs || cs->solidCount == 0;
   if (in.empty) return true;
+  if (!center->attach.empty()) for (auto& [ci, parts] : center->attach) {
+    const int ly = ci >> 8;
+    if ((ly >> 4) != k.sy) continue;
+    for (const Attachment& a : parts) in.parts.push_back({(i8)(ci & 15), (i8)(ly & 15), (i8)((ci >> 4) & 15), a.id, a.meta});
+  }
   std::memset(in.climate, 128, sizeof in.climate);
   const Registry& R = reg();
   int baseY = dimBase(k.dim) + k.sy * 16;
@@ -259,6 +265,22 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
     const int i = MeshInput::idx(ox, oy, oz); in.ids[i] = AIR; in.meta[i] = 0; in.carve[i] = 0; in.coat[i] = 0;
   };
   for (const ivec3& h : meshHiddenBlocks()) hideAt(h);   // drawn elsewhere for now
+  // a part sharing a cell with a solid main block (a trapdoor behind a chest): that cell holds no light of its own, so
+  // the parts are lit by the brightest open cell beside it (this copy only)
+  for (const MeshInput::Part& pt : in.parts) {
+    const int i = MeshInput::idx(pt.x, pt.y, pt.z);
+    if (!R.tOpaque[in.ids[i]]) continue;
+    static const int N[6][3] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
+    LightRgb L = in.rgb[i];
+    for (auto& n : N) {
+      const int ny = pt.y + n[1];
+      if (ny < MeshInput::Y0 || ny > 16) continue;
+      const int j = MeshInput::idx(pt.x + n[0], ny, pt.z + n[2]);
+      if (R.tOpaque[in.ids[j]]) continue;
+      for (int c = 0; c < 3; c++) { L.s[c] = std::max(L.s[c], in.rgb[j].s[c]); L.b[c] = std::max(L.b[c], in.rgb[j].b[c]); }
+    }
+    in.rgb[i] = L; in.light[i] = lightNibble(L);
+  }
   // the open chest too (render/chest_layer.cpp draws it): as air here, the blocks beside it draw the faces it covered
   // (they were left out against a solid chest, a hole into the world beside an open one)
   for (int i = 0, n = std::min(CHEST_HIDE_MAX, g_chestHiddenN.load(std::memory_order_relaxed)); i < n; i++)
@@ -404,7 +426,7 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
     const FaceDef& F = FACES[f];
     BlockId nb = c.at(x + F.n[0], y + F.n[1], z + F.n[2]);
     u8 nmeta = c.metaAt(x + F.n[0], y + F.n[1], z + F.n[2]);
-    if (R.tOpaque[nb] && !c.carveAt(x + F.n[0], y + F.n[1], z + F.n[2]) && !stationModelOpen(nb)) continue;   // carved neighbour (or a station drawn from a model): face exposed, draw it
+    if (c.fillsCell(x + F.n[0], y + F.n[1], z + F.n[2]) && !c.carveAt(x + F.n[0], y + F.n[1], z + F.n[2])) continue;   // carved neighbour (or a station drawn from a model, an open chest): face exposed, draw it
     // a top under a shaped block standing on all of it (a stair, a bottom slab, a path, a carpet): out of sight, and its
     // relief poked out round the shape's foot (teal grass bumps along the bottom of every path stair)
     // (not under a shape that's never meshed: piles and pit kilns draw their own contents, so the ground must show)
@@ -941,6 +963,20 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
       else if (R.tSolid[id] && R.tOpaque[id]) { int a = R.tLiquid[c.at(x, y + 1, z)]; if (a) out.fx.drips.push_back(ivec4(wp, a)); }
       else if (T.leaves) out.fx.drips.push_back(ivec4(wp, 3));
     }
+  }
+  // attachments (world/attach.h): each part drawn in its cell as the block would be alone; they never hide a neighbour's faces
+  for (const MeshInput::Part& pt : in.parts) {
+    const int x = pt.x, y = pt.y, z = pt.z;
+    const BlockId id = pt.id;
+    const u8 meta = pt.meta;
+    switch ((Render)R.tRender[id]) {
+      case Render::Torch: emitTorch(c, out.cutout, id, x, y, z, meta); break;
+      case Render::Model: emitModel(c, out.cutout, id, x, y, z, meta); break;
+      case Render::Shape: emitShapeBlock(c, R.tTrans[id] ? out.trans : out.cutout, id, x, y, z, meta); break;
+      case Render::Cross: emitCross(c, out.cutout, id, x, y, z, meta); break;
+      default: break;   // (signs: render/sign_layer.cpp)
+    }
+    if (traits(id).emitsParticles) out.fx.emitters.push_back({ivec3(c.wx0 + x, c.wy0 + y, c.wz0 + z), id});
   }
   if (gm) flushGreedy(c, *gm);
   out.ms = (nowSeconds() - t0) * 1000;

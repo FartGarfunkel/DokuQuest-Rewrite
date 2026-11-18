@@ -19,10 +19,13 @@
 #include "gen/nether_painted.h"
 #include "sim/dyntree.h"
 #include "sim/blockinfo.h"
+#include "sim/physics.h"
 #include "sim/worldsys.h"
 #include "world/chunk.h"
 #include <thread>
 #include <map>
+#include "sim/cave_drips.h"
+#include "sim/controller.h"
 #include <set>
 #include <cstdio>
 #include <cmath>
@@ -68,6 +71,56 @@ int main(int argc, char** argv) {
   Rig rg("World", true, true);
   World& w = rg.lv->world();
 
+  printf("[cave drips]\n");
+  {   // a stalactite drips what lies over the stone it hangs from, and fills a cauldron under it (sim/cave_drips.h)
+    const BlockId DS = reg().blockId("pointed_dripstone"), ST = reg().blockId("stone"), WA = reg().blockId("water"), LA = reg().blockId("lava"), CA = reg().blockId("cauldron");
+    const int X = 14, Y0 = rg.Y + 1, Z = 14;
+    for (int y = Y0; y <= Y0 + 8; y++) w.setBlock(X, y, Z, AIR);
+    w.setBlock(X, Y0 + 6, Z, ST);                                          // the roof
+    w.setBlock(X, Y0 + 5, Z, DS, 1); w.setBlock(X, Y0 + 4, Z, DS, 1);      // a stalactite two long
+    w.setBlock(X, Y0, Z, CA, 0);                                           // a cauldron under it
+    check(caveDripAt(w, X, Y0 + 4, Z).liquid == 0, "a dry roof: no drips");
+    check(caveDripAt(w, X, Y0 + 5, Z).liquid == 0 && caveDripAt(w, X, Y0 + 5, Z).length == 0, "only the tip drips, not the stalactite's root");
+    w.setBlock(X, Y0 + 7, Z, WA);
+    const CaveDrip d = caveDripAt(w, X, Y0 + 4, Z);
+    check(d.liquid == 1 && d.length == 2, "water over the stone: the tip drips water (" + std::to_string(d.liquid) + ", length " + std::to_string(d.length) + ")");
+    for (int i = 0; i < 3; i++) caveDripTick(w, X, Y0 + 4, Z, 0.0);
+    check(cauldronWater(w.getMeta(X, Y0, Z)) == 3, "the cauldron under it fills with water, a level at a time");
+    caveDripTick(w, X, Y0 + 4, Z, 0.0);
+    check(cauldronLevel(w.getMeta(X, Y0, Z)) == 3, "...and stops when it's full");
+    w.setBlock(X, Y0, Z, CA, 0); w.setBlock(X, Y0 + 7, Z, LA);
+    check(caveDripAt(w, X, Y0 + 4, Z).liquid == 2, "lava over the stone: the tip drips lava");
+    for (int i = 0; i < 3; i++) caveDripTick(w, X, Y0 + 4, Z, 0.0);
+    const u8 lm = w.getMeta(X, Y0, Z);
+    check(cauldronLava(lm) && cauldronLevel(lm) == 3 && cauldronWater(lm) == 0, "a cauldron of lava fills under it (no water in it)");
+    check(reg().metaLight(CA, lm) > 10 && reg().metaLight(CA, 3) == 0, "a cauldron of lava glows; one of water doesn't");
+    w.setBlock(X, Y0, Z, CA, 1); w.setBlock(X, Y0 + 7, Z, WA);   // a little water in it already, then lava over the roof
+    w.setBlock(X, Y0 + 7, Z, LA); caveDripTick(w, X, Y0 + 4, Z, 0.0);
+    check(w.getMeta(X, Y0, Z) == 1, "lava doesn't drip into a cauldron of water");
+    caveDripTick(w, X, Y0 + 4, Z, 0.99);
+    check(w.getMeta(X, Y0, Z) == 1, "(and a drip is now and then, not every tick)");
+    w.setBlock(X, Y0 + 2, Z, ST); w.setBlock(X, Y0, Z, CA, 0); w.setBlock(X, Y0 + 7, Z, WA); caveDripTick(w, X, Y0 + 4, Z, 0.0);
+    check(w.getMeta(X, Y0, Z) == 0, "something between the tip and the cauldron catches the drops");
+    for (int y = Y0; y <= Y0 + 8; y++) w.setBlock(X, y, Z, AIR);
+  }
+
+  printf("[saplings on rooted dirt]\n");
+  {   // a sapling takes to rooted dirt as to any soil, and grows there
+    const BlockId RD = reg().blockId("rooted_dirt"), SAP = reg().blockId("sapling");
+    const int X = 2, Y0 = rg.Y + 1, Z = 2;
+    for (int y = Y0; y <= Y0 + 10; y++) for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) w.setBlock(X + dx, y, Z + dz, AIR);
+    w.setBlock(X, Y0 - 1, Z, RD);
+    rg.P->inv[0] = ItemStack("sapling", 1); rg.P->selected = 0;
+    PlayerController pc(*rg.lv, *rg.P);
+    pc.target = RayHit{}; pc.target.hit = true; pc.target.block = ivec3(X, Y0 - 1, Z); pc.target.normal = ivec3(0, 1, 0); pc.target.id = RD; pc.target.point = vec3(X + 0.5f, Y0, Z + 0.5f);
+    rg.P->pos = vec3(X + 0.5f, Y0, Z + 3.5f);
+    pc.use(false, PlayerInput{});
+    check(w.getBlock(X, Y0, Z) == SAP, "a sapling can be planted on rooted dirt");
+    bool grew = false; for (int k = 0; k < 50 && !grew; k++) { growTree(*rg.lv, w, X, Y0, Z, (k % 10) / 10.0); grew = bhas(w.getBlock(X, Y0, Z), BF::IsLog); }
+    check(grew, "and grows into a tree there");
+    for (int y = Y0; y <= Y0 + 12; y++) for (int dx = -3; dx <= 3; dx++) for (int dz = -3; dz <= 3; dz++) w.setBlock(X + dx, y, Z + dz, AIR);
+  }
+
   printf("[movement]\n");
   {   // a jump from right against a slab's side is a whole jump: the step up mustn't swallow its rise (the "slow, sticky"
       // jump on stairs and roofs)
@@ -91,6 +144,53 @@ int main(int argc, char** argv) {
     }
     check(!hung && onTop >= 0 && onTop < 0.5f, "a one-block step is jumped onto, not hung from (" + std::string(hung ? "hung" : "no hang") + ", on top at " + std::to_string(onTop) + " s)");
     for (int x = 6; x <= 10; x++) w.setBlock(x, rg.Y + 1, 7, AIR);
+  }
+  {   // fences and walls: you stand on the top you see (not half a block over it), and jump up onto them; a creature can't
+    const BlockId fence = reg().blockId("oak_fence"), wall = reg().blockId("cobblestone_wall");
+    for (BlockId b : {fence, wall}) {
+      w.setBlock(8, rg.Y + 1, 4, b);
+      rg.P->pos = vec3(8.5f, rg.Y + 2.4f, 4.5f); rg.P->vel = vec3(0); rg.fall(1.0);
+      check(rg.P->onGround && std::fabs(rg.P->pos.y - (rg.Y + 2)) < 0.01f, "standing on a " + reg().block(b).key + ": feet on its top (+" + std::to_string(rg.P->pos.y - (rg.Y + 1)) + ")");
+      rg.P->pos = vec3(8.5f, rg.Y + 1, 5.0f + rg.P->w + 0.05f); rg.P->vel = vec3(0); rg.fall(0.3);
+      PlayerInput fw; fw.mz = -1; PlayerInput fj = fw; fj.jump = true;
+      float onTop = -1;
+      for (int i = 0; i < 60 && onTop < 0; i++) { rg.P->move(w, i < 20 ? fj : fw, 1 / 60.f, MoveOpts{}); if (rg.P->onGround && rg.P->pos.y > rg.Y + 1.99f) onTop = i / 60.f; }
+      check(onTop >= 0, "a jump gets you up onto a " + reg().block(b).key);
+      w.setBlock(8, rg.Y + 1, 4, AIR);
+    }
+    {   // a creature meets a fence a block taller than it is drawn: moving into it over its top, it is stopped
+      w.setBlock(8, rg.Y + 1, 4, fence);
+      vec3 p(8.5f, rg.Y + 2.1f, 3.3f); MoveResult r = moveBox(w, p, 0.3f, 0.9f, vec3(0, 0, 1.0f), 0.f, true);
+      vec3 q(8.5f, rg.Y + 2.1f, 3.3f); moveBox(w, q, 0.3f, 0.9f, vec3(0, 0, 1.0f), 0.f, false);
+      check(r.hitZ && p.z < 4.375f - 0.3f + 0.01f && q.z > 4.2f, strFormat("over a fence's top a creature is stopped (z %.3f), a player is not (z %.3f)", p.z, q.z));
+      w.setBlock(8, rg.Y + 1, 4, AIR);
+    }
+    // pens: a ring of fence with a shut gate, and a ring of wall. Their creatures, running and jumping at the sides again and
+    // again, never get up onto a post (a player can) and never out
+    const BlockId gate = reg().blockId("oak_fence_gate");
+    for (BlockId ring : {fence, wall}) {
+      for (int x = 1; x <= 9; x++) for (int z = 1; z <= 9; z++) if (x == 1 || x == 9 || z == 1 || z == 9) w.setBlock(x, rg.Y + 1, z, ring);
+      if (gate && ring == fence) w.setBlock(5, rg.Y + 1, 1, gate, 0);
+      rg.P->pos = vec3(14.5f, rg.Y + 1, 14.5f);
+      std::vector<Creature*> pen;
+      for (const char* k : {"cow", "sheep", "pig", "chicken", "goat", "horse", "rabbit", "llama", "wolf"})
+        if (reg().mobs.contains(k)) if (Creature* c = spawnCreature(*rg.lv, 0, k, vec3(5.5f, rg.Y + 1, 5.5f))) pen.push_back(c);
+      std::set<std::string> up, out;
+      for (int t = 0; t < 60 * 30; t++) {
+        for (size_t i = 0; i < pen.size(); i++) {   // each runs at a side of the pen, jumping
+          Creature* c = pen[i];
+          const float a = (float)i * 0.7f + t * 0.002f;
+          c->vel.x = std::cos(a) * 4; c->vel.z = std::sin(a) * 4; c->wantJump = true;
+        }
+        rg.lv->tick(TICK_DT);
+      }
+      for (Creature* c : pen) if (c->pos.x < 1.6f || c->pos.x > 9.4f || c->pos.z < 1.6f || c->pos.z > 9.4f) out.insert(c->type + strFormat("@%.2f,%.2f,%.2f", c->pos.x, c->pos.y - rg.Y, c->pos.z));
+      std::string bad; for (auto& k : up) bad += " " + k + " (on top)"; for (auto& k : out) bad += " " + k + " (out)";
+      check(!pen.empty() && bad.empty(), std::to_string(pen.size()) + " creatures jumping at a " + reg().block(ring).key + " pen for 30 s stay in it" + bad);
+      for (Creature* c : pen) c->removed = true;
+      rg.lv->tick(TICK_DT);
+      for (int x = 1; x <= 9; x++) for (int z = 1; z <= 9; z++) w.setBlock(x, rg.Y + 1, z, AIR);
+    }
   }
   {   // the view keeps up with a jump (the steady climb is for steps on the ground: the "slow, sticky" jump)
     float y = 0, cam = 0, vy = JUMP_V, lag = 0;

@@ -92,7 +92,7 @@ public:
     if (bk) ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::Begin("Character creator##cc", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings | (bk ? ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoBackground : 0));
     if (bk) ImGui::PopStyleVar();
-    if (bk) ImGui::BeginChild("L##cc", ImVec2(pageW, H), 0, ImGuiWindowFlags_NoBackground);   // (in the journal: the top bar and the options on the left page, the model and the foot on the right)
+    if (bk) ImGui::BeginChild("L##cc", ImVec2(pageW, H), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground);   // (in the journal: the top bar and the options on the left page, the model and the foot on the right)
     // ---- top bar (wraps when the window is narrow) ----
     ImGui::SetNextItemWidth(std::min(200.f * ui::Z(), W * 0.3f)); ImGui::InputText("Name", &name);
     flow::Row top; top.first = false;
@@ -104,7 +104,7 @@ public:
     if (top.button("Redo")) { undo.push_back(look); look = redo.back(); redo.pop_back(); apply(); }
     ImGui::EndDisabled();
     if (top.button(picker.busy() ? "Choosing..." : "Import skin PNG...")) picker.open("Your own skin under the character (64x32 or 64x64 PNG)", "png");
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Wear your own skin under a 3D character (or drop a skin .png on the window)");
+    if (ImGui::IsItemHovered()) ui::setTooltip("Wear your own skin under a 3D character (or drop a skin .png on the window)");
     if (top.button("Load...")) ImGui::OpenPopup("load##cc");
     if (ImGui::BeginPopup("load##cc")) {
       auto list = listCharacters();
@@ -120,16 +120,16 @@ public:
     int botRows = flow::rowsNeeded({{"Save & wear", 150}, {"Save", 100}, {"Export skin PNG", 150}, {"Paint by hand...", 150}, {"Cape editor...", 150}, {"Back", 100}}, bk ? pageW : ImGui::GetContentRegionAvail().x);
     float botH = ImGui::GetTextLineHeightWithSpacing() + botRows * (ImGui::GetFrameHeight() + sty.ItemSpacing.y) + sty.WindowPadding.y;
     float bodyH = std::max(120.f, ImGui::GetContentRegionAvail().y - (bk ? 0 : botH));
-    ImGui::BeginChild("opts##cc", ImVec2(left, bodyH), ImGuiChildFlags_Borders);
+    ImGui::BeginChild("opts##cc", ImVec2(left, bodyH), ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened);
     options();
     ImGui::EndChild();
     if (bk) {
       ImGui::EndChild(); ImGui::SameLine(0, gutter);
-      ImGui::BeginChild("R##cc", ImVec2(pageW, H), 0, ImGuiWindowFlags_NoBackground); inR = true;
+      ImGui::BeginChild("R##cc", ImVec2(pageW, H), ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoBackground); inR = true;
       bodyH = H - botH;
     } else
     ImGui::SameLine();
-    ImGui::BeginChild("view##cc", ImVec2(0, bodyH), ImGuiChildFlags_Borders, ImGuiWindowFlags_NoScrollbar);
+    ImGui::BeginChild("view##cc", ImVec2(0, bodyH), ImGuiChildFlags_Borders | ImGuiChildFlags_NavFlattened, ImGuiWindowFlags_NoScrollbar);
     ImVec2 avail = ImGui::GetContentRegionAvail();
     float ph = std::max(40.f, avail.y - ImGui::GetFrameHeightWithSpacing() - 4);
     CharPreviewOpts o; o.yaw = yaw; o.elev = elev; o.dist = dist; o.time = t; o.walk = walk;
@@ -266,6 +266,8 @@ private:
     float before = v;
     if (ImGui::SliderFloat((std::string("##") + lab).c_str(), &v, lo, hi, "%.2f")) { if (!sliding) { CharLook o = look; o.shape = look.shape; undo.push_back(o); sliding = true; } apply(); }
     if (ImGui::IsItemDeactivated()) sliding = false;
+    // the pad: left / right move it straight away, as Options' sliders do (ImGui's own needs A first)
+    if (ui::padSliderAdjust(&v, lo, hi, (hi - lo) / 40)) { CharLook o = look; o.shape = look.shape; undo.push_back(o); apply(); }
     (void)before;
   }
   bool sliding = false;

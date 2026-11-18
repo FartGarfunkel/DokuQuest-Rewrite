@@ -36,7 +36,7 @@ const std::vector<Section>& helpText() {
     {KEY, "Shift", "Sneak: you won't walk off edges, and you chop one log at a time. Tap twice to crawl"},
     {KEY, "Left click", "Mine \xC2\xB7 attack. In Creative every click breaks a block"},
     {KEY, "Right click", "Place \xC2\xB7 use \xC2\xB7 eat \xC2\xB7 open"},
-    {KEY, "Shift + right click", "Empty hand: pick up a chest, furnace or animal and carry it. Holding something: set it down"},
+    {KEY, "Shift + right click", "Empty hand: pick up a chest, a furnace, a farm animal or your own tamed pet and carry it (a wild cat, fox or fish goes in a wicker basket). Holding something: set it down"},
     {KEY, "1\xE2\x80\x93" "9 \xC2\xB7 wheel", "Choose a hotbar slot"},
     {KEY, "Tab", "Bring the next row of your bag into the hotbar"},
     {KEY, "R", "Placing mode: vertical slabs, upside-down stairs and trapdoors"},
@@ -189,6 +189,7 @@ public:
       }
     }
     book.draw(rows);
+    if (a.input.usingPad()) padHint(14, -1, "Turn pages");
     book.hint(a.input.usingPad() ? "D-pad: turn the pages \xC2\xB7 X: next bookmark \xC2\xB7 B: close" : "\xE2\x86\x90 \xE2\x86\x92 or the wheel: turn the pages \xC2\xB7 Tab or a bookmark: next subject \xC2\xB7 Esc: close");
     book.end();
   }

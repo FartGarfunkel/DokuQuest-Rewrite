@@ -1,5 +1,5 @@
 // render/station_cards.cpp — what the enchanting table and the anvil show in the world while you work them (after
-// Cinematic Interactions' EnchantRenderer / AnvilStation): the three offers floating in a crown over the table, each a
+// the enchanting and anvil scenes): the three offers floating in a crown over the table, each a
 // tablet of glyphs with its level and its lapis (the one you look at lifts and glows), the glyphs streaming from the
 // bookshelves round it into the book, and the rite — the chosen tablet drawn into the item, the others falling away, a
 // burst of glyphs; over the anvil, a card of what the work would become: the result, its wear before and after, its

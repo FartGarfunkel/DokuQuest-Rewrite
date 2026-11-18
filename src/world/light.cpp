@@ -139,6 +139,18 @@ void initialChunkLight(Chunk& c) {
       Q.push_back((u32)(x | (z << 4) | (y << 8)));
     }
   }
+  for (auto& [ci, parts] : c.attach) {   // attachments that give light (world/attach.h)
+    const int x = ci & 15, z = (ci >> 4) & 15, y = ci >> 8;
+    for (const Attachment& a : parts) {
+      const u8 level = R.metaLight(a.id, a.meta);
+      if (!level) continue;
+      u8 em[3] = {0, 0, 0};
+      blockLightRgb(a.id, level, em);
+      u8* dst = BL[idx(x, y, z)].c;
+      for (int i = 0; i < 3; i++) dst[i] = std::max(dst[i], em[i]);
+      Q.push_back((u32)(x | (z << 4) | (y << 8)));
+    }
+  }
   flood(BL, false);
   // 4. store. A uniform section stays unallocated and remembers its rgb (open sky is full sun, a nether cave is dark).
   for (int sy = 0; sy < SECS; sy++) {
@@ -215,6 +227,14 @@ LightEngine::R3 LightEngine::emission(int x, int y, int z, int ch, BlockId id, u
     return e;
   }
   blockLightRgb(id, R.metaLight(id, meta), e.c);
+  if (Chunk* c = chunkAt(x, y, z); c && !c->attach.empty()) {   // a torch sharing the cell lights it (world/attach.h)
+    auto it = c->attach.find(colIdx(x & 15, y & 255, z & 15));
+    if (it != c->attach.end()) for (const Attachment& a : it->second) {
+      u8 em[3] = {0, 0, 0};
+      blockLightRgb(a.id, R.metaLight(a.id, a.meta), em);
+      for (int i = 0; i < 3; i++) e.c[i] = std::max(e.c[i], em[i]);
+    }
+  }
   return e;
 }
 
@@ -359,14 +379,15 @@ void LightEngine::flush(World& world) {
   double t0 = nowSeconds();
   w = &world; cells = 0;
   for (auto& e : cache) e = CacheEnt();
-  // Both kinds of work get a few milliseconds a call, the rest waits for the next (the main thread runs this every
+  // Both kinds of work get a few milliseconds a call (2.5 and 2: at 4 and 3 a busy stream held frames past 7 ms on built-in
+  // graphics), the rest waits for the next (the main thread runs this every
   // frame). Block changes go first, so a torch you place lights up at once. In an old Nether land, fire and the
   // decoration of chunks coming in changed ~50 blocks a frame, each re-flooding a light-15 ball (~6000 cells): 150-300 ms
   // frames on an i5-6300U. A chunk's lava sea meeting its neighbours' was as bad.
   std::vector<ivec3> ch; ch.swap(changes);
   size_t ci = 0;
   for (; ci < ch.size(); ci++) {
-    if (ci > 0 && (nowSeconds() - t0) * 1000 > 4.0) break;
+    if (ci > 0 && (nowSeconds() - t0) * 1000 > 2.5) break;
     queued.erase(posKey(ch[ci]));
     applyChange(ch[ci]);
   }
@@ -375,7 +396,7 @@ void LightEngine::flush(World& world) {
   size_t ai = 0;
   const double t1 = nowSeconds();
   for (; ai < arr.size(); ai++) {
-    if (ai > 0 && (nowSeconds() - t1) * 1000 > 3.0) break;
+    if (ai > 0 && (nowSeconds() - t1) * 1000 > 2.0) break;
     Chunk* c = w->chunk(arr[ai].dim, arr[ai].cx, arr[ai].cz);
     if (!c) continue;
     mergeBorders(*c);

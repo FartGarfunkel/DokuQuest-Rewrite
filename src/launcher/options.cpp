@@ -421,6 +421,7 @@ void drawOptions(Launcher& L) {
         if (k.toggle("Full Screen", &s.fullscreen, D.fullscreen, "Start in full screen. F11 switches at any time.")) changed = true;
         { static const int v[] = {0, 30, 60, 120, 144, 240, -1}; int cur = s.vsync ? 0 : 6; if (!s.vsync) for (int i = 1; i < 6; i++) if (s.fpsLimit == v[i]) cur = i;
           if (k.cycle("FPS Limit", &cur, {"VSync", "30 FPS", "60 FPS", "120 FPS", "144 FPS", "240 FPS", "Unlimited"}, 0, "VSync matches the display. 30 saves battery.")) { s.vsync = cur == 0; s.fpsLimit = v[cur]; changed = true; } }
+        { bool ll = s.extra.value("lowLatency", true); if (k.toggle("Low Latency", &ll, true, "On: the picture keeps up with the mouse, one frame behind at most. Off: two frames may wait on the graphics card, a little smoother when it is the slow part.")) { s.extra["lowLatency"] = ll; changed = true; } }
         if (k.range("Render Scale", &s.scale, 0.4f, 1, 0.05f, pct(s.scale), D.scale, "Render fewer pixels for smoother play.")) custom();
       }
       if (k.category("Visuals")) {

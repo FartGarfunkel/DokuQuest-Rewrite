@@ -194,21 +194,15 @@ void skillsTick(Level& lv, Player& p) {
   json q = std::move(*it); p.data.erase("smeltTaken");
   if (q.is_array()) for (auto& e : q) if (e.is_array() && e.size() == 2 && e[0].is_string() && e[1].is_number_integer()) onSmeltedTaken(lv, p, e[0].get<std::string>(), e[1].get<int>());
 }
-namespace {
-struct PlacedBlocks { std::unordered_set<u64> set; std::deque<u64> order; };
-u64 placedKey(int realm, int x, int y, int z) { return ((u64)(u32)x * 73856093ull) ^ ((u64)(u32)y << 42) ^ ((u64)(u32)z * 19349663ull) ^ ((u64)(u32)z << 21) ^ ((u64)(u32)realm << 58); }
-}
-void skillNotePlaced(Level& lv, int realm, int x, int y, int z) {
-  auto& P = levelSlot<PlacedBlocks>(lv, "skillPlaced");
-  const u64 k = placedKey(realm, x, y, z);
-  if (!P.set.insert(k).second) return;
-  P.order.push_back(k);
-  while (P.order.size() > 8192) { P.set.erase(P.order.front()); P.order.pop_front(); }
-}
+// the record of player-placed blocks lives in the chunks (world/chunk.h Chunk::placed), saved with them
+void skillNotePlaced(Level& lv, int realm, int x, int y, int z) { lv.world(realm).setPlacedAt(x, y, z, true); }
 bool skillTakePlaced(Level& lv, int realm, int x, int y, int z) {
-  auto& P = levelSlot<PlacedBlocks>(lv, "skillPlaced");
-  return P.set.erase(placedKey(realm, x, y, z)) > 0;   // (its order entry ages out on its own)
+  World& w = lv.world(realm);
+  if (!w.placedAt(x, y, z)) return false;
+  w.setPlacedAt(x, y, z, false);
+  return true;
 }
+bool skillWasPlaced(Level& lv, int realm, int x, int y, int z) { return lv.world(realm).placedAt(x, y, z); }
 float cookingHealFactor(const Player& p) { return (1 + skillBonus(p, "cooking", 0.25f)) * (hasPerk(p, "cooking", 30) ? 1.1f : 1.f); }
 bool smithSavesWear(const Player& p) { return rnd() < skillBonus(p, "smithing", 0.3f); }
 

@@ -88,7 +88,7 @@ void emitBox(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, u8 meta, int x
       BlockId nbid = c.at(nx, ny, nz);
       u8 nm = c.metaAt(nx, ny, nz);
       bool ncarved = nbid && c.carveAt(nx, ny, nz);   // neighbour carved (dedicated carve byte)
-      if (!forced && R.tOpaque[nbid] && !stationModelOpen(nbid)) {   // (a station drawn from its model doesn't fill its cell)
+      if (!forced && c.fillsCell(nx, ny, nz)) {   // (a station drawn from its model, or an open chest, doesn't fill its cell)
         if (ncarved) {
           // a chiseled neighbour covers this face only if every one of its octants touching the face is still there: its
           // near half across the face's axis, and the halves of the other two axes the face reaches into. (This tested
@@ -516,6 +516,20 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
     if ((R.tShape[up] == ShapeKind::Slab && (c.metaAt(x, y + 1, z) & 7) == 1) || (fullSolid(up) && carveFaceDepth(c.carveAt(x, y + 1, z), 0, -1, 0) == 8)) extra = 1;
   }
   static int chainTile = -2; if (chainTile == -2) chainTile = R.tile("chain");
+  // a chain of 3D links (the chain block, a hanging light's chain: data/shapes.json "link"): the rest of it up to a ceiling
+  // further up, or an upper underside, in more links, each turned from the one under it (no stretched bars)
+  {
+    const ShapeBox* topL = nullptr;
+    for (auto& b0 : *boxes) if (b0.link && (!topL || b0.b[4] > topL->b[4])) topL = &b0;
+    const int n = topL ? extra + (stretchTop ? 1 : 0) : 0;
+    if (n > 0) {
+      ShapeBox t = *topL; if (rf) rotBox(t, rf);
+      const bool topZY = t.b[3] - t.b[0] < t.b[5] - t.b[2];   // (thin across x: it faces sideways)
+      thread_local std::vector<ShapeBox> more; more.clear();
+      chainLinks(16, n, !topZY, more);
+      for (auto& s : more) addShapeBox(c, d, s, o, 1 / 16.f, sk, bl, lift, rf, mat, nullptr);
+    }
+  }
   for (auto& b0 : *boxes) {
     if (!b0.only || b0.spin) continue;   // a box that collides and picks but a render layer draws (or turns: the stonecutter's blade) (a placed mob head: its stone box
                               // fought the head's own faces, the flicker round placed skulls)
@@ -534,7 +548,10 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
     int ft = R.tile(T.campfire == 1 ? "campfire_fire" : "soul_campfire_fire");
     if (ft >= 0) emitPlanes(c, d, ft, o.x, y + lift / 16, o.z, 0.08f, 1, 15, 15, false);
   }
-  if (T.cauldron && (meta & 3)) {
+  if (T.cauldron && (meta & 3) && (meta & 4)) {   // lava in a cauldron (sim/cave_drips.h): glowing, opaque, the lava's own picture
+    ShapeBox lb(2, 4, 2, 14, 4 + (meta & 3) * 3.6f, 14); lb.side = lb.end = R.tile("lava");
+    addShapeBox(c, c.out.cutout, lb, o, 1 / 16.f, sk, 15, 0, 0, (u8)(Mat::NoRelief));
+  } else if (T.cauldron && (meta & 3)) {
     // water in a cauldron: the ponds' own (clear, tinted, its surface lit and rippled as theirs: the translucent pass)
     c.tint = c.cornerTint((float)x + 1, (float)z + 1, 2); c.tintKind = Tint::Water; c.extraMat = Mat::TintAll;
     ShapeBox wb(2, 4, 2, 14, 4 + (meta & 3) * 3.6f, 14); wb.side = wb.end = R.tile("water");

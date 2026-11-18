@@ -13,7 +13,10 @@ class GameSession;
 
 void registerUi(App& a);         // once at start-up, after App::initImGui and the tiles: theme, HUD layer, events
 void uiBeginFrame(App& a);       // every frame between ImGui_ImplSDL2_NewFrame and ImGui::NewFrame
+std::string inventoryPadFocus();   // the inventory's pad cursor last frame ("slot Cont 3"), "" none (ui/inventory.cpp; playtests)
 void uiAfterScreens(App& a);     // every frame after the screens drew: the menu tab strip over map/journal/skills/...
+void uiScreenCovered(App& a, Screen* below);   // a screen goes over `below`: keep its pad highlight (App::pushScreen)
+void uiScreenUncovered(App& a, Screen* top);   // `top` is on top again (App::popScreen): its highlight comes back
 // run something at the start of the next frame, outside any screen's draw (opening/leaving worlds, replacing the stack)
 void uiDefer(std::function<void(App&)> f);
 
@@ -35,7 +38,7 @@ std::unique_ptr<Screen> makeDeathScreen(const std::string& cause, int level);
 std::unique_ptr<Screen> makeChatScreen(const std::string& prefill);
 std::unique_ptr<Screen> makeInventoryScreen(const InvOpen& o);
 void inventoryBookPick(App& a, int recipe);   // (ui/inventory.cpp: the guide's "Lay it out" in the 2 x 2)   // also stations, the stonecutter, machines (InvOpen::mode)
-std::unique_ptr<Screen> makeSignScreen(ivec3 signPos);            // writing on a sign (ui/sign_screen.cpp)
+std::unique_ptr<Screen> makeSignScreen(ivec3 signPos, int slot = -1);   // writing on a sign (ui/sign_screen.cpp); slot: a sign attached in that cell (world/attach.h)
 std::unique_ptr<Screen> makeLecternScreen(ivec3 at);              // an old book on a lectern: choose the page (ui/lectern_screen.cpp)
 std::unique_ptr<Screen> makeMultiplayerScreen();                    // title → Multiplayer (LAN list + address)
 std::unique_ptr<Screen> makeLanHostScreen();                        // pause → Open to LAN

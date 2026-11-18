@@ -52,7 +52,7 @@ bool resetButton(ImVec2 p, float s) {
   ImVec2 tip(c.x + r * std::cos(3.14159f * 0.15f), c.y + r * std::sin(3.14159f * 0.15f));
   dl->AddTriangleFilled(ImVec2(tip.x + s * 0.12f, tip.y - s * 0.02f), ImVec2(tip.x - s * 0.1f, tip.y - s * 0.02f), ImVec2(tip.x + s * 0.01f, tip.y + s * 0.14f), ic);
   if (hit) playClick();
-  if (hot) ImGui::SetTooltip("Reset to default");
+  if (hot) ui::setTooltip("Reset to default");
   return hit;
 }
 // the classic text field: black, a grey frame (white while typing)
@@ -260,6 +260,7 @@ void Paged::begin(App& a, const char* id, const std::string& title, const std::v
   pageChanged = false; tipText.clear(); tipAtMouse = false; rowSeq = 0;
   pendCat.clear(); curCat.clear(); catOpen = true; catShown = false;
   const int n = (int)pages.size();
+  if (n > 1) padHint(4, 5, "Pages");   // (the controller hints bar)
   if (n) {
     page = clampv(page, 0, n - 1);
     if (ImGui::IsKeyPressed(ImGuiKey_GamepadL1, false)) { page = (page + n - 1) % n; pageChanged = true; playClick(); }
@@ -309,8 +310,12 @@ void Paged::begin(App& a, const char* id, const std::string& title, const std::v
       ImGui::SetCursorPos(ImVec2(4 * U, y0 + rowH * i));
       ImVec2 p = ImGui::GetCursorScreenPos();
       ImGui::PushID(i);
-      bool hit = ImGui::InvisibleButton("##page", ImVec2(std::max(8.f, leftW - 8 * U - (listH > regionH ? 6 * U : 0)), rowH), ImGuiButtonFlags_EnableNav);
+      bool hit = ImGui::InvisibleButton((pages[i].name + "##page").c_str(), ImVec2(std::max(8.f, leftW - 8 * U - (listH > regionH ? 6 * U : 0)), rowH), ImGuiButtonFlags_EnableNav);
       bool hot = hotItem();
+      if ((int)pageIds_.size() < n) pageIds_.resize(n);
+      pageIds_[i] = ImGui::GetItemID();
+      pageListWin_ = ImGui::GetCurrentWindow();
+      if (ImGui::IsItemFocused() && navVisible()) listFocused_ = true;
       ImGui::PopID();
       if (hit && page != i) { page = i; pageChanged = true; focusFirst_ = true; playClick(); }
       ImU32 c = i == page ? C_WHITE : C_GREY;
@@ -368,7 +373,9 @@ bool Paged::fieldAt(const char* id, std::string* s, ImVec2 pos, float wU, const 
 void Paged::takeFocus() {
   if (!focusFirst_) return;
   focusFirst_ = false;
-  if (navVisible()) ImGui::SetKeyboardFocusHere();
+  // a controller in hand (or the keys' highlight showing): the first setting gets the highlight, so the pad has
+  // something to move from the moment the screen opens (it used to start on nothing)
+  if (navVisible() || app().input.usingPad()) { ImGui::SetKeyboardFocusHere(); ImGui::SetNavCursorVisible(true); }
 }
 
 void Paged::drawBands(App& app) {
@@ -438,9 +445,21 @@ int Paged::footer(const std::vector<std::string>& labels, const std::vector<bool
 
 void Paged::end() {
   if (contentOpen) endContent();
+  if (rowFocused_ && !rowOwnsLR_ && pageListWin_ && page < (int)pageIds_.size() && pageIds_[page] && app().input.navStep().x < 0) {
+    ImGui::NavMoveRequestCancel();   // (ImGui's own move: from some rows it found nothing, from others a page beside it)
+    ImGui::SetFocusID(pageIds_[page], (ImGuiWindow*)pageListWin_);
+    ImGui::SetNavCursorVisible(true);
+  }
+  if (listFocused_ && rowWin_ && app().input.navStep().x > 0) {
+    const unsigned to = lastRowPage_ == page && lastRowId_ ? lastRowId_ : firstRowId_;
+    if (to) { ImGui::NavMoveRequestCancel(); ImGui::SetFocusID(to, (ImGuiWindow*)rowWin_); ImGui::SetNavCursorVisible(true); }
+  }
+  rowFocused_ = rowOwnsLR_ = listFocused_ = false; firstRowId_ = 0;
   if (!tipText.empty()) {
-    ImVec2 p = tipAtMouse ? ImGui::GetIO().MousePos + ImVec2(12, -10) * Z() : tipPos;
-    tooltipBox(ImGui::GetForegroundDrawList(), p, tipText, std::min(W * 0.45f, 420 * Z()));
+    const float maxW = std::min(W * 0.45f, 420 * Z());
+    // (at the mouse, or with the pad beside the highlighted item: ui::tipPlace)
+    ImVec2 p = tipAtMouse ? tipPlace(textSize(F_BODY, tipText.c_str(), maxW) + ImVec2(10, 10) * Z()) : tipPos;
+    tooltipBox(ImGui::GetForegroundDrawList(), p, tipText, maxW);
   }
   ImGui::PopFont();
   ImGui::End();
@@ -460,7 +479,7 @@ void Paged::flushCategory() {
   const float U = unit;
   ImVec2 p = ImGui::GetCursorScreenPos();
   ImGui::PushID(("cat/" + pendCat).c_str());
-  bool clicked = ImGui::InvisibleButton("##cat", ImVec2(cw, 24 * U), ImGuiButtonFlags_EnableNav);
+  bool clicked = ImGui::InvisibleButton((pendCat + "##cat").c_str(), ImVec2(cw, 24 * U), ImGuiButtonFlags_EnableNav);
   bool hot = hotItem();
   ImGui::PopID();
   const std::string key = std::to_string(page) + "/" + pendCat;
@@ -520,7 +539,9 @@ bool Paged::rowBegin(const char* label, const char* tip, float ctrlU, bool isDef
 
 void Paged::rowEnd(const char* tip, bool isDefault, bool* resetByPad) {
   // the control just drawn: its description shows while a pad or the keys have it focused; Y puts the default back
+  if (!firstRowId_) { firstRowId_ = ImGui::GetItemID(); rowWin_ = ImGui::GetCurrentWindow(); }
   if (ImGui::IsItemFocused() && navVisible()) {
+    rowFocused_ = true; lastRowId_ = ImGui::GetItemID(); lastRowPage_ = page; rowWin_ = ImGui::GetCurrentWindow();
     if (tip && *tip && tipText.empty()) { tipText = tip; tipAtMouse = false; tipPos = ImVec2(ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y + 4 * unit); }
     if (resetByPad && !isDefault && ImGui::IsKeyPressed(ImGuiKey_GamepadFaceUp, false)) { *resetByPad = true; playClick(); }
   }
@@ -531,6 +552,7 @@ void Paged::rowEnd(const char* tip, bool isDefault, bool* resetByPad) {
 
 void Paged::ownLeftRight() {
   if (!(ImGui::IsItemFocused() && navVisible())) return;
+  rowOwnsLR_ = true;
   ImGuiID id = ImGui::GetItemID();
   for (ImGuiKey k : {ImGuiKey_GamepadDpadLeft, ImGuiKey_GamepadDpadRight, ImGuiKey_GamepadLStickLeft, ImGuiKey_GamepadLStickRight, ImGuiKey_LeftArrow, ImGuiKey_RightArrow})
     ImGui::SetKeyOwner(k, id);

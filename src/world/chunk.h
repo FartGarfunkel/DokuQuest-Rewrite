@@ -7,6 +7,7 @@
 #include <array>
 #include <atomic>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace dq {
 
@@ -44,6 +45,11 @@ struct Section {
   LightRgb rgb[4096]{}; // sun RGB + block RGB, the light the meshes shade with
   u16 solidCount = 0;   // non-air blocks (0 -> may be freed)
 };
+
+// A small part sharing a cell with its main block (a torch on the wall of a ladder's cell, a trapdoor behind a chest):
+// up to MAX_ATTACH per cell, each with its own block entity (signs, item frames). world/attach.h has the rules.
+struct Attachment { BlockId id = 0; u8 meta = 0; json be; };
+constexpr int MAX_ATTACH = 4;
 
 struct ChunkKey {
   int dim, cx, cz;
@@ -83,6 +89,7 @@ public:
   std::array<u8, SECS> airLight;  // nibble of unallocated sections
   std::array<LightRgb, SECS> airRgb;  // rgb of unallocated sections (open sky is full sun)
   std::unordered_map<int, json> blockEntities;   // colIdx -> {type, items:[...], ...} (chests, furnaces, piles, signs)
+  std::unordered_map<int, std::vector<Attachment>> attach;   // colIdx -> the parts sharing that cell with its main block (sparse)
   std::array<u8, 512> climate{};  // temp, humidity per column (colour tints) — like JS chunk.climate
   u8 heightMap[256]{};            // highest non-air y per column (band-local), for skylight and LOD
   int maxY = 0;                   // highest non-air y + 1
@@ -93,6 +100,9 @@ public:
   u32 sectionDirty = 0;           // bit per section needing a remesh
   std::atomic<int> refs{0};       // background readers (meshing gathers on the main thread, so rarely used)
   json extra;                     // per-chunk data for systems (structures placed, etc.)
+  // cells whose block a player put down (colIdx; World::placedAt): saved with the chunk ("pl", runs of indices), cleared
+  // when the block is broken (air or a liquid takes the cell). Host-side: endermen leave these be, breaking them teaches no skill
+  std::unordered_set<u16> placed;
 };
 
 // Save codec (palette of block keys + varint RLE, y-fastest) — same idea as the JS format v2.

@@ -53,7 +53,7 @@ double& slotD(Level& lv, const char* k) { auto& s = levelSlotRaw(lv, k); if (!s)
 // water at a block: a liquid block of water or a cauldron holding some (as the quench by hand, sim/controller.cpp)
 bool waterAt(World& w, int x, int y, int z) {
   const BlockId id = w.getBlock(x, y, z);
-  return id && (reg().tLiquid[id] == 1 || (reg().block(id).has("cauldron") && (w.getMeta(x, y, z) & 3)));
+  return id && (reg().tLiquid[id] == 1 || (reg().block(id).has("cauldron") && (w.getMeta(x, y, z) & 3) && !(w.getMeta(x, y, z) & 4)));
 }
 // one stack's JSON (the tag flattened into it): cooled in place; true if it changed
 bool coolJson(json& j, float step, bool water) {

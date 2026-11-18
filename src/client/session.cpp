@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <cstdlib>
 #include "render/gl.h"
+#include "client/bench.h"
 #include "client/session.h"
+#include "net/protocol.h"
 #include "client/app.h"
 #include "common/holiday.h"
 #include "render/sky.h"
@@ -32,9 +34,10 @@ namespace dq {
 // ---- DQ_PROFILE=1: CPU time per render layer and per world pass, the slowest listed in the log every 600 frames ----
 namespace {
 struct Prof {
-  bool on = std::getenv("DQ_PROFILE") != nullptr;
-  bool finish = on && std::atoi(std::getenv("DQ_PROFILE")) == 2;   // DQ_PROFILE=2: glFinish after each scope (GPU time)
-  bool gpu = on && std::atoi(std::getenv("DQ_PROFILE")) == 3;      // DQ_PROFILE=3: GPU timestamps round each scope (pipelined)
+  bool log = std::getenv("DQ_PROFILE") != nullptr;
+  bool on = log || bench::on();   // (DQ_BENCH: the scopes go to its per-frame file too, client/bench.h)
+  bool finish = log && std::atoi(std::getenv("DQ_PROFILE")) == 2;   // DQ_PROFILE=2: glFinish after each scope (GPU time)
+  bool gpu = log && std::atoi(std::getenv("DQ_PROFILE")) == 3;      // DQ_PROFILE=3: GPU timestamps round each scope (pipelined)
   struct GpuQ { std::string k; GLuint a, b; };
   std::vector<GpuQ> pend[4]; int slot = 0; GLuint64 lastGpu = 0;
   std::map<std::string, double> ms; u64 frames = 0; double lastT = 0;
@@ -53,7 +56,9 @@ struct Prof {
       }
       pend[slot].clear();
     }
-    if (!on || ++frames % every) return;
+    if (!on) return;
+    if (!log) { ++frames; ms.clear(); return; }
+    if (++frames % every) return;
     std::vector<std::pair<double, std::string>> v; for (auto& [k, t] : ms) v.push_back({t / every, k});
     std::sort(v.rbegin(), v.rend());
     const double now = nowSeconds(); const double fps = lastT > 0 ? every / (now - lastT) : 0; lastT = now;
@@ -73,6 +78,7 @@ struct ProfScope {
     if (!prof().on) return;
     const double ms = (nowSeconds() - t0) * 1000.0;
     prof().add(std::string(a) + b, ms);
+    bench::scope(std::string(a) + b, ms);
     if (ms > 100) DQ_LOG("profile: hitch %s%s %.0f ms (frame %llu)", a, b, ms, (unsigned long long)prof().frames);
   }
 };
@@ -85,6 +91,7 @@ GameSession::GameSession(App& a, std::unique_ptr<Level> lv) : app(a), level(std:
   frame.settings = &app.settings;
   setHolidayEventsEnabled(app.settings.extra.value("holidayEvents", true));
   fx = std::make_unique<ClientFx>(*this); level->fx = fx.get();
+  level->frameGlide = true;   // (replicas moved every frame: update)
   worldRenderer.init(app.settings, app.tileTex);
   sky = std::make_unique<SkyRenderer>();
   sky->init();
@@ -164,7 +171,7 @@ void GameSession::update(double dt) {
   level->autosaveEvery = (double)std::max(0, app.settings.autosaveSec);   // a live change in Settings applies on the next tick
   setHolidayEventsEnabled(app.settings.extra.value("holidayEvents", true));
   selectLocal(0);
-  if (level->net) level->net->update(*level, dt);   // multiplayer (net/): a joined world, or one open to LAN
+  if (level->net) { ProfScope ps("net"); level->net->update(*level, dt); }   // multiplayer (net/): a joined world, or one open to LAN
   checkJoin();                                      // Start on a free controller joins split screen
   // a new spawn inside the ground (the start point is chosen from the terrain's plan, before the cliffs, trees and buildings are
   // in): once its chunk is here, up to the first place with two free blocks over something solid
@@ -199,6 +206,7 @@ void GameSession::update(double dt) {
   bool pz = paused() && !level->allRealms().empty() && !level->net;   // a shared world never pauses
   if (!pz) {
     if (!split()) {
+      ProfScope ps("player");
       tickLocalPlayer(dt);
       for (auto& l : layers) l->afterPlayerMove(*this, dt);
     } else for (int i = 0; i < n; i++) {
@@ -212,6 +220,23 @@ void GameSession::update(double dt) {
     { ProfScope ps("sim.tick"); while (tickAcc >= TICK_DT && ticks < 4) { level->tick(TICK_DT); tickAcc -= TICK_DT; ticks++; } }
     if (ticks == 4) tickAcc = 0;
   }
+  {   // the others' replicas move every frame, not in the sim's 30-a-second steps (which judder at any other frame rate):
+      // in someone else's world they glide to their place at this moment (sim/net_interp.cpp); hosting, a guest's body
+      // keeps its newest place for the rules and is only drawn at its view (showReplicas)
+    ProfScope ps("replicas");
+    const double now = nowSeconds();
+    for (auto& e : level->entities()) {
+      if (e->removed || !e->ghost) continue;
+      if (level->isRemote()) { e->glide(dt); e->prevPos = e->pos; e->prevYaw = e->yaw; }
+      else if (!e->netHist.empty()) {
+        e->netUpdateView(now);
+        // hosting: a guest's doings put on their drawing copy when their smoothed body gets to that moment
+        if (auto* p = e->isPlayer() ? dynamic_cast<Player*>(e.get()) : nullptr; p && p->netView) {
+          net::hostViewStep(*p, now, (float)dt);
+        }
+      }
+    }
+  }
   World& w = world();
   if (worldRenderer.world() != &w) { worldRenderer.setWorld(&w); worldRenderer.remeshAll(); }   // a new realm: mesh what is already loaded there
   std::vector<StreamAnchor> anchors = {{player->pos, app.settings.renderDist, true}};
@@ -222,6 +247,10 @@ void GameSession::update(double dt) {
   // cameras: one per person, each in its own viewport
   int dw, dh; SDL_GL_GetDrawableSize(app.window, &dw, &dh);
   float sx = (float)dw / std::max(1, app.width), sy = (float)dh / std::max(1, app.height);
+  // the mesh uploads' time a frame follows the frame rate: about a quarter of a frame, 1.5 to 4 ms (a flat 4 ms was half
+  // of a 120 fps frame on built-in graphics, and every streamed-in row of land showed as a run of long frames)
+  frameMsAvg = frameMsAvg <= 0 ? dt * 1000 : frameMsAvg * 0.95 + std::min(dt * 1000, 100.0) * 0.05;
+  const double meshBudget = std::clamp(frameMsAvg * 0.25, 1.5, 4.0);
   for (int i = 0; i < n; i++) {
     selectLocal(i);
     Camera& cam = frame.cam;
@@ -236,20 +265,68 @@ void GameSession::update(double dt) {
     const bool photo = photoMode().active && !split();
     const double realTime = level->info.time;
     if (photo && photoMode().setTime) level->info.time = photoDayTime();   // photo mode's hour: only for the sky's picture
-    sky->computeFrame(*level, frame, app.settings.renderDist);
+    { ProfScope ps("sky.compute"); sky->computeFrame(*level, frame, app.settings.renderDist); }
     level->info.time = realTime;
     if (photo) photoFrame(frame);
     cam.update();
-    { ProfScope ps("world.meshUpdate"); worldRenderer.update(cam, *app.pool, 4.0 / n); }
+    { ProfScope ps("world.meshUpdate"); worldRenderer.update(cam, *app.pool, meshBudget / n); }
   }
   selectLocal(0);
+  showReplicas(true);   // (the layers animate the guests as they are drawn)
   if (!split()) for (auto& l : layers) { ProfScope ps(l->name(), ".update"); l->update(*this, dt); }
   else for (int i = 0; i < n; i++) {
     enterLocal(i);
     for (auto& l : layers) if (i == 0) l->update(*this, dt); else if (perViewerLayer(l->name())) l->update(*this, 0.0);
     leaveLocal();
   }
+  showReplicas(false);
   if (app.audio) app.audio->setListener(vec3(frame.cam.pos), frame.cam.forward(), vec3(0, 1, 0));
+}
+
+void GameSession::showReplicas(bool on) {
+  if (on) {
+    shownAt.clear(); shownGear.clear(); shownViews.clear();
+    if (level->isRemote()) return;   // (in someone else's world the replicas are already where they're drawn)
+    for (auto& e : level->entities()) {
+      if (e->removed || !e->ghost) continue;
+      auto* p = e->isPlayer() ? dynamic_cast<Player*>(e.get()) : nullptr;
+      // a guest with a drawing copy (their doings at the moment their smoothed body is at): the copy drawn in their place,
+      // where the smooth view has them (riding: where the mount, which moves here, has them), then put back
+      if (p && p->netView) {
+        std::shared_ptr<Player> sp = p->netView;
+        Player& v = *sp;
+        const bool smooth = e->hasView && !e->riding;
+        v.pos = v.prevPos = smooth ? e->viewPos : e->pos; v.vel = e->vel;
+        v.yaw = v.prevYaw = smooth ? e->viewYaw : e->yaw; v.pitch = smooth ? e->viewPitch : e->pitch; v.bodyYaw = smooth ? e->viewBody : e->bodyYaw;
+        v.hasView = false;
+        std::swap(*p, v);
+        shownViews.push_back({p, sp});
+        continue;
+      }
+      // (riding: on the mount, which moves here, so where the mount has them)
+      if (e->hasView && !e->riding) {
+        shownAt.push_back({e.get(), {e->pos.x, e->pos.y, e->pos.z, e->yaw, e->pitch, e->bodyYaw}});
+        e->pos = e->viewPos; e->yaw = e->viewYaw; e->pitch = e->viewPitch; e->bodyYaw = e->viewBody;
+      }
+      // a guest's hands and armour as their game has them now (their bags here change only when their game saves them)
+      if (!p || !p->netHands || p->inv.empty()) continue;
+      Gear g; g.p = p; g.sel = clampv(p->selected, 0, (int)p->inv.size() - 1);
+      g.held = p->inv[g.sel]; g.off = p->offhand.empty() ? ItemStack() : p->offhand[0]; g.armor = p->armor;
+      if (g.held.id != p->netHeld) p->inv[g.sel] = p->netHeld.empty() ? ItemStack() : ItemStack(p->netHeld, 1);
+      if (!p->offhand.empty() && p->offhand[0].id != p->netOffItem) p->offhand[0] = p->netOffItem.empty() ? ItemStack() : ItemStack(p->netOffItem, 1);
+      if (p->netArmor.is_array())
+        for (size_t i = 0; i < p->armor.size() && i < p->netArmor.size(); i++) {
+          const std::string id = p->netArmor[i].is_string() ? p->netArmor[i].get<std::string>() : std::string();
+          if (p->armor[i].id != id) p->armor[i] = id.empty() ? ItemStack() : ItemStack(id, 1);
+        }
+      shownGear.push_back(std::move(g));
+    }
+  } else {
+    for (auto& [p, v] : shownViews) std::swap(*p, *v);   // (the body back; the copy keeps what drawing did to it: its swing played on)
+    for (auto& [e, a] : shownAt) { e->pos = vec3(a[0], a[1], a[2]); e->yaw = a[3]; e->pitch = a[4]; e->bodyYaw = a[5]; }
+    for (auto& g : shownGear) { g.p->inv[g.sel] = g.held; if (!g.p->offhand.empty()) g.p->offhand[0] = g.off; g.p->armor = g.armor; }
+    shownAt.clear(); shownGear.clear(); shownViews.clear();
+  }
 }
 
 void GameSession::render() {

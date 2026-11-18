@@ -82,12 +82,7 @@ int localTile(TileSet& ts, const fs::path& dir, const std::string& ref, int reco
 }
 }  // namespace
 
-bool handsPorted(const std::string& key) {
-  if (key.size() > 13 && key.compare(key.size() - 13, 13, "painted_chest") == 0) return true;
-  if (key == "ender_chest" || key == "party_chest" || key == "jukebox" || key == "enchanting_table") return true;   // (every painted chest: the hands-on in its paint)
-  static const std::unordered_set<std::string> DONE = {"smithing_table", "cartography_table", "furnace", "lit_furnace", "smoker", "lit_smoker", "blast_furnace", "lit_blast_furnace", "anvil", "chipped_anvil", "damaged_anvil", "grindstone", "chest", "brewing_stand"};
-  return DONE.count(key) > 0;
-}
+// (handsPorted: world/shapes.cpp, where the stations' hitboxes are taken from the same models)
 const PackModel* handsPart(const std::string& name) {   // a part drawn on its own (a door, a lid, the wheel), loaded once
   const Stations* s = g_st.load(std::memory_order_acquire);
   if (!s) return nullptr;

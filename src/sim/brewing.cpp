@@ -205,6 +205,7 @@ bool fillBottle(Level& lv, Player& p, ItemStack& held, ivec3 hit, int face) {
     const BlockDef& b = reg().block(id);
     if (b.has("cauldron")) {
       u8 m = w.getMeta(hit.x, hit.y, hit.z), l = m & 3;
+      if (m & 4) return false;   // (lava: no bottle fills from it, no water goes in it)
       if (held.id == "glass_bottle" && l > 0) { w.setBlock(hit.x, hit.y, hit.z, id, (u8)((m & ~3) | (l - 1))); fill(); return true; }
       if (held.id == "potion_water" && l < 3) {
         w.setBlock(hit.x, hit.y, hit.z, id, (u8)((m & ~3) | (l + 1)));

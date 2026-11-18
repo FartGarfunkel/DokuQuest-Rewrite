@@ -1,5 +1,5 @@
-// sim/anvil_work.h — an anvil worked in the world (the anvil scene, ui/cinematic_table.cpp; after Cinematic Interactions'
-// AnvilStation): the work lies on the anvil's face and what goes into it beside it (block entity {type:"anvilwork",
+// sim/anvil_work.h — an anvil worked in the world (the anvil scene, ui/cinematic_table.cpp; after the station scenes'
+// anvil scene): the work lies on the anvil's face and what goes into it beside it (block entity {type:"anvilwork",
 // items:[work, addition]}, so it syncs and spills when the anvil breaks), and the forging is the anvil screen's own:
 // stationResult("anvil", ...) (repairs, two of a kind, an enchanted book), its level cost, the anvil's wear.
 #pragma once

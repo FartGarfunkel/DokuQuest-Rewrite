@@ -1,8 +1,10 @@
 // sim/worldsys.cpp — fluids, random ticks, plant growth, furnaces, crowding.
+#include "sim/world_life.h"
 #include "sim/dyntree.h"
 #include "sim/crafting.h"
 #include "core/metals.h"
 #include "sim/worldsys.h"
+#include "sim/cave_drips.h"
 #include "sim/trommel.h"
 #include "sim/gameplay.h"
 #include "sim/blockfx.h"
@@ -443,6 +445,7 @@ static void grassTick(Level& lv, World& w, int x, int y, int z, BlockId id) {
 static void growExtra(Level& lv, World& w, int x, int y, int z, BlockId id, u8 meta) {
   const Registry& R = reg(); const KnownBlocks& B = KB();
   const BlockDef& d = R.block(id);
+  if (lifeRandomTick(lv, w, x, y, z, id, meta)) return;   // mushrooms, vines (sim/world_life.h)
   if (R.tGrassy[id]) { grassTick(lv, w, x, y, z, id); return; }
   if (d.has("crop") && d.props["crop"].contains("fruit")) { if ((meta & 15) >= d.props["crop"].value("stages", 1) - 1 && rnd() < 1.0 / 340) stemFruit(w, x, y, z, d); return; }
   if (id == B.bamboo) {
@@ -492,7 +495,7 @@ static void growExtra(Level& lv, World& w, int x, int y, int z, BlockId id, u8 m
   if (id == puddleId || id == snowLayerId || id == iceId) { if (WeatherSystem* ws = weatherOf(lv)) ws->blockTick(lv, w, x, y, z, id, meta); return; }
 }
 
-void randomTicks(Level& lv, World& w, float px, float pz) {
+void randomTicks(Level& lv, World& w, float px, float pz, int slice, int slices) {
   const double RT = 68.27;
   const Registry& R = reg(); const KnownBlocks& B = KB();
   auto* cache = w.system<RandomTickCache>();
@@ -501,10 +504,14 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
   int scanned = 0;
   const double tickSpeed = std::clamp(ruleNum(lv, "randomTickSpeed"), 0.0, 100.0);
   std::vector<Chunk*> list;
-  for (auto& [k, c] : w.chunks()) if (std::abs(k.cx - pcx) <= 6 && std::abs(k.cz - pcz) <= 6) list.push_back(c.get());
+  for (auto& [k, c] : w.chunks()) if (std::abs(k.cx - pcx) <= 6 && std::abs(k.cz - pcz) <= 6) {
+    if (slices > 1 && ((k.cx * 7 + k.cz * 13) % slices + slices) % slices != slice) continue;   // another tick's share
+    list.push_back(c.get());
+  }
+  const int scanCap = slices > 1 ? 2 : 24;   // (first sight of a chunk: its tickable blocks found, a few a call)
   for (Chunk* c : list) {
     auto it = cache->tickables.find(c->key());
-    if (it == cache->tickables.end()) { if (scanned++ > 24) continue; cache->scan(*c); it = cache->tickables.find(c->key()); }
+    if (it == cache->tickables.end()) { if (scanned++ > scanCap) continue; cache->scan(*c); it = cache->tickables.find(c->key()); }
     std::vector<int> idx(it->second.begin(), it->second.end());
     int base = c->baseY();
     const int reps = (int)tickSpeed + (rnd() < tickSpeed - (int)tickSpeed ? 1 : 0);   // randomTickSpeed: 2 = twice as fast
@@ -516,6 +523,7 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
       if (!R.tTick[id]) { cache->tickables[c->key()].erase(i); continue; }
       u8 meta = c->getMeta(lx, ly, lz);
       const BlockDef& d = R.block(id);
+      if (d.key == "pointed_dripstone") { if (meta & 1) caveDripTick(w, x, y, z, rnd()); continue; }   // (sim/cave_drips.h: a cauldron under it fills)
       if (bhas(id, BF::Tree)) {   // saplings: two stages, each a 1 in 7 chance per random tick
         if (rnd() < 1 / (RT * 7)) {
           if (meta & 8) {
@@ -745,8 +753,8 @@ void crowdPush(Level& lv, float dt) {
       if (e->data.value("pinned", false)) return;
       e->vel.x += ux * v; e->vel.z += uz * v;
       if (!bb.player && amt > 0) {
-        float x = e->pos.x + ux * amt, z = e->pos.z + uz * amt, r = bb.r * 0.9f;
-        if (!collides(w, x - r, e->pos.y + 0.02, z - r, x + r, e->pos.y + std::min(bb.h, 1.8f) - 0.02, z + r)) { e->pos.x = x; e->pos.z = z; }
+        float x = e->pos.x + ux * amt, z = e->pos.z + uz * amt, r = bb.r;   // (its whole width: shoved a tenth into a fence post it had climbed it)
+        if (!collides(w, x - r, e->pos.y + 0.02, z - r, x + r, e->pos.y + std::min(bb.h, 1.8f) - 0.02, z + r, true)) { e->pos.x = x; e->pos.z = z; }   // (a creature never shoved over a pen's posts)
       }
     };
     nudge(b, -nx, -nz, shift * sa, dv * sa * (b.player ? 0.6f : 1));

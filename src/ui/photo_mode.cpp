@@ -9,6 +9,7 @@
 //   down and up, the bumpers tilt, A takes the picture), X or B brings it back. B on the panel (or Esc) leaves.
 #include "client/photo_mode.h"
 #include "ui/screen.h"
+#include "ui/ui.h"
 #include "ui/theme.h"
 #include "ui/paged.h"
 #include "client/app.h"
@@ -72,7 +73,9 @@ public:
       }
     }
   }
+  bool fromPause = false;   // opened from the pause menu: closing it goes back there (B backs out one level)
   void onClose(App& a) override {
+    if (fromPause && a.session) uiDefer([](App& app) { if (app.session && !app.topScreen()) app.pushScreen(makePauseScreen()); });
     photoMode().active = false;
     if (a.session) a.session->hudHidden = hudWas;
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
@@ -207,6 +210,6 @@ private:
 };
 }
 
-std::unique_ptr<Screen> makePhotoModeScreen() { return std::make_unique<PhotoModeScreen>(); }
+std::unique_ptr<Screen> makePhotoModeScreen(bool fromPause) { auto s = std::make_unique<PhotoModeScreen>(); s->fromPause = fromPause; return s; }
 
 } // namespace dq

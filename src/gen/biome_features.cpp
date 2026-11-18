@@ -293,7 +293,19 @@ bool BiomeFeatures::survives(BlockId id, Ctx& c, int x, int y, int z) const {
   if (here != AIR && here != water_ && !R.tReplaceable[here]) return false;
   if (here == water_ && !R.tWlog[id]) return false;
   if (in(plantable_, id)) return in(dirt_, below) || in(sand_, below) || in(terracotta_, below);   // (the dry lands' plants)
-  if (d.key.find("mushroom") != std::string::npos) return R.tSolid[below] && R.tOpaque[below];
+  if (d.key.find("mushroom") != std::string::npos) {   // (where one can live: sim/world_life.cpp withers one in light over 12)
+    if (!R.tSolid[below] || !R.tOpaque[below]) return false;
+    if (below == R.blockId("mycelium") || below == R.blockId("podzol")) return true;
+    // how much each column over it, and every column within 3 blocks (our sky light spreads sideways a step dimmer a block),
+    // dims the sky: rock, or three layers of leaves, is shade enough; land not known here counts as open sky
+    for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {
+      if (std::abs(dx) + std::abs(dz) > 3) continue;
+      int dim = 0;
+      for (int k = 1; k <= 32 && dim < 3; k++) { const BlockId a = c.get(x + dx, y + k, z + dz); if (a == OUT) break; dim += R.tOpaque[a] ? 15 : R.block(a).lightAtt; }
+      if (dim < 3) return false;
+    }
+    return true;
+  }
   return in(dirt_, below);
 }
 

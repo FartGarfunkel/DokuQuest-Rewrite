@@ -1,4 +1,5 @@
 // sim/explosion.cpp — game/blockfx.js explode: blow a round hole, knock everyone back.
+#include "sim/attach_play.h"
 #include "sim/villagers.h"
 #include "sim/explosion.h"
 #include "sim/creature.h"
@@ -29,6 +30,7 @@ void explode(Level& lv, int realm, vec3 c, float power, const ExplodeOpts& o) {
         if (be->contains("items") && (*be)["items"].is_array()) for (auto& s : (*be)["items"]) { ItemStack st = ItemStack::fromJson(s); if (!st.empty()) dropItem(lv, realm, st, vec3(bx + 0.5f, by + 0.5f, bz + 0.5f), true); }
         w.setBlockEntity(bx, by, bz, nullptr);
       }
+      if (w.hasAttachments(bx, by, bz)) dropAllAttachments(lv, w, bx, by, bz, lv.info.rules.value("blockDrops", true) && frand() < 0.3f);   // the parts sharing the cell go too
       w.setBlock(bx, by, bz, AIR, 0, SetFlags::Urgent);
       if (frand() < 0.3f && !b.drop.empty() && lv.info.rules.value("blockDrops", true)) dropItem(lv, realm, ItemStack(b.drop, 1), vec3(bx + 0.5f, by + 0.5f, bz + 0.5f), true);
     }

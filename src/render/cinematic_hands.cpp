@@ -1,5 +1,5 @@
-// render/cinematic_hands.cpp — your own arms at the crafting table scene (ui/cinematic.h), after Cinematic Interactions'
-// Hands / TableStation (MIT, Southware): each arm comes from just below and beside the view (the shoulder: 0.38 out,
+// render/cinematic_hands.cpp — your own arms at the crafting table scene (ui/cinematic.h), after the station scenes'
+// Hands / table scene (MIT, Southware): each arm comes from just below and beside the view (the shoulder: 0.38 out,
 // 0.46 down, 0.08 ahead); at rest the hands lie on the table's near edge (0.4 back, 0.24 apart each way, 0.062 up); the
 // working hand goes over the square you aim at (0.075 above the top with something in it, 0.045 without, held back
 // 0.075 along the reach), dips 0.06 as it sets a piece down (a 0.22 s tap), and the left hand takes the squares well to
@@ -85,7 +85,7 @@ public:
       PairView pv;
       if (cinematicPairView(pv) && pv.t >= 0) { const double f = pv.t - (pairBeats(8).contact - 0.7); if (f >= 0.45 && f < 1.62) forging = f; }
     }
-    if (forging >= 0) {   // the anvil's hammer (AnvilStation: BLOWS 0.7, 1.02, 1.3; put away 0.32 after): raised, then down on each
+    if (forging >= 0) {   // the anvil's hammer (anvil scene: BLOWS 0.7, 1.02, 1.3; put away 0.32 after): raised, then down on each
       static const double BLOWS[3] = {0.7, 1.02, 1.3};
       const vec3 strike = top + side * 0.02f + right * 0.03f + vec3(0, 0.14f, 0);
       float lift = 0;
@@ -193,7 +193,7 @@ public:
         VR.draw(hm.gl, m * hm.matrix(), L);
       }
     }
-    // what you're working with, in the working hand (Cinematic Interactions' heldItemPoint)
+    // what you're working with, in the working hand (the station scenes' held-item point)
     const ItemStack& held = s.player->held();
     if (!held.empty() && forging < 0 && cinematicLeaning()) {
       const std::string pk = partToolModelKey(held);

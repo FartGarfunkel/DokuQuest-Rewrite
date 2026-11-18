@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(DokuQuest VERSION 1.0.0 LANGUAGES C CXX)
 # DokuQuest C++ — game client, launcher (with dedicated server + Mod Studio) and headless server.
-set(DQ_VERSION "1.0.0-alpha.33" CACHE STRING "Full game version shown in game and launcher")
+set(DQ_VERSION "1.0.0-alpha.34" CACHE STRING "Full game version shown in game and launcher")
 # the launcher's own version: always the game's. The launcher holds the dedicated server (all the game's world and network
 # code), so every release changes it; an update installs the whole package and the new launcher takes over at its next
 # start (launcher/updater.cpp, launcher_main.cpp handOff). (It was set apart once and never raised: updates fetched only
@@ -95,6 +95,10 @@ enable_testing()
 add_executable(dq-creature-test tools/test/creature_test.cpp)
 target_link_libraries(dq-creature-test PRIVATE dqcore)
 add_test(NAME creatures COMMAND dq-creature-test)
+# every creature: carried, tamed, ridden, swimming (tools/test_mobs.cpp, headless). Run: build/test_mobs [--table]
+add_executable(test_mobs tools/test_mobs.cpp)
+target_link_libraries(test_mobs PRIVATE dqcore)
+add_test(NAME mobs COMMAND test_mobs)
 # weather particles, sprites, collision (tools/test/weather_test.cpp): pure parts of render/weather_*, no GL context
 add_executable(test_weather tools/test/weather_test.cpp)
 target_link_libraries(test_weather PRIVATE dqclient)
@@ -103,6 +107,10 @@ add_test(NAME weather COMMAND test_weather)
 add_executable(test_anim tools/test/anim_test.cpp)
 target_link_libraries(test_anim PRIVATE dqclient)
 add_test(NAME anim COMMAND test_anim)
+# chiseled blocks keep their faces beside chests, barrels, beds... (tools/test/mesher_carve_test.cpp): one section meshed, no GL
+add_executable(test_mesher tools/test/mesher_carve_test.cpp)
+target_link_libraries(test_mesher PRIVATE dqclient)
+add_test(NAME mesher COMMAND test_mesher)
 
 # every item used and every block placed/used/broken through the player controller; prints anything odd (tools/sweep.cpp)
 add_executable(dq-sweep tools/sweep.cpp)
@@ -193,6 +201,10 @@ add_test(NAME materials COMMAND test_materials)
 add_executable(test_world tools/test_world.cpp)
 target_link_libraries(test_world PRIVATE dqcore)
 add_test(NAME world COMMAND test_world)
+# The living world (headless: lightning changing creatures, the enderman carrying blocks, mushrooms and vines). Run: build/test_life
+add_executable(test_life tools/test_life.cpp)
+target_link_libraries(test_life PRIVATE dqcore)
+add_test(NAME life COMMAND test_life)
 # The deep world (headless: the layouts, the Underworld under the Overworld, its floor, light, water and bodies across
 # the seams, saving; an old world keeping its four bands). Run: build/test_deep
 add_executable(test_deep tools/test_deep.cpp)
@@ -217,16 +229,24 @@ add_test(NAME endstory COMMAND test_endstory)
 add_executable(test_villagers tools/test_villagers.cpp)
 target_link_libraries(test_villagers PRIVATE dqcore)
 add_test(NAME villagers COMMAND test_villagers)
+# Hitbox audit (headless): drawn vs collision vs selection bounds of every shaped block. Run: build/test_shapes [--all]
+add_executable(test_shapes tools/test_shapes.cpp)
+target_link_libraries(test_shapes PRIVATE dqcore)
+add_test(NAME shapes COMMAND test_shapes)
 # Townsfolk way-finding audit (headless): errands about generated towns, arrival rate and time. Run: build/test_npc_paths
 add_executable(test_npc_paths tools/test_npc_paths.cpp)
 target_link_libraries(test_npc_paths PRIVATE dqcore)
 add_test(NAME npc_paths COMMAND test_npc_paths)
+# Attachments: small parts sharing a cell with its main block (headless, world/attach.h). Run: build/test_attachments
+add_executable(test_attachments tools/test_attachments.cpp)
+target_link_libraries(test_attachments PRIVATE dqcore)
+add_test(NAME attachments COMMAND test_attachments)
 # Redstone, rails/carts, boats/ships and machines test (headless). Run: build/test_redstone
 add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
 
 # every program finds data/ and assets/ next to it
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_weather test_balance test_npc_paths)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_attachments test_piles test_immersive test_fire test_metal test_materials test_world test_life test_progression test_anim test_mesher test_weather test_balance test_npc_paths test_shapes)
   if(TARGET ${t})
     add_dependencies(${t} dq_runtime_data)
   endif()
@@ -236,3 +256,8 @@ endforeach()
 add_executable(test_death tools/test_death.cpp)
 target_link_libraries(test_death PRIVATE dqcore)
 add_test(NAME death COMMAND test_death)
+# Limp bodies (headless: creatures of every build dying on flat ground, stairs, slabs, ledges, holes, walls, water, by lava:
+# no part deeper than 1/16 of a block in the blocks, no joint pulled apart, all settle). Run: build/test_ragdoll
+add_executable(test_ragdoll tools/test_ragdoll.cpp)
+target_link_libraries(test_ragdoll PRIVATE dqcore)
+add_test(NAME ragdoll COMMAND test_ragdoll)

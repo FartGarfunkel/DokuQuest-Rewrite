@@ -401,6 +401,13 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
     if (it != meshes.end()) { release(it->second->base, it->second->cap); meshes.erase(it); }
   }
   camPos = vec3(cam.pos);
+  // the chores below that run every half / quarter second count real time (they counted 1/60 s a frame, so at 240 fps the
+  // walk over every mesh ran four times as often as meant)
+  const double nowT = nowSeconds();
+  const double since = lastUpdateAt > 0 ? std::clamp(nowT - lastUpdateAt, 0.0, 0.25) : 1.0 / 60;
+  lastUpdateAt = nowT;
+  // copying sections out for the mesher shares the frame's budget (2.5 ms at most: more held built-in graphics' frames)
+  const double submitMs = std::clamp(budgetMs * 0.6, 1.0, 2.5);
   // sections to mesh: nearest first, a few milliseconds of copying them out of the world a frame (streaming in new
   // land marked hundreds at once, 20-90 ms on an i5-6300U); one dirtied again while it waits is meshed once
   for (auto& k : w->drainDirtySections()) dirtyQ.insert(k);
@@ -415,7 +422,7 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
     std::sort(order.begin(), order.end(), [](auto& a, auto& b) { return a.first < b.first; });
     const double ts = nowSeconds();
     for (auto& [d, k] : order) {
-      if (nSub > 0 && (nowSeconds() - ts) * 1000 > 2.5) break;
+      if (nSub > 0 && (nowSeconds() - ts) * 1000 > submitMs) break;
       dirtyQ.erase(k);
       submit(k, pool, d - 10000, wantDetail(k, camPos));   // meshing beats generation in the shared pool
       nSub++;
@@ -423,7 +430,7 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
   }
   // the land next door is only drawn once you cross into it: mesh its sections near the edge (and at the far end of a
   // portal window into it); the rest wait here, and meshes left behind are let go
-  parkT -= 1.0 / 60;
+  parkT -= since;
   if (parkT <= 0) {
     parkT = 0.5;
     // the memory budget: over it, mesh a chunk less far out; well under it, a chunk further again
@@ -451,7 +458,7 @@ void WorldRenderer::update(const Camera& cam, ThreadPool& pool, double budgetMs)
     }
   }
   // as you go, the sections coming close are rebuilt with their 3D plants (original perfDetailTick)
-  detailT -= 1.0 / 60;
+  detailT -= since;
   if (plantDetail == 1 && detailT <= 0) {
     detailT = 0.25;
     std::vector<std::pair<float, SectionKey>> list;

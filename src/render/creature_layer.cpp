@@ -233,34 +233,23 @@ static Interp interp(const Entity& e, float a) {
 
 // a mob dressed in a player skin (mobs.json "skin": "<file>.png"): the voxel-character pipeline from
 // render/char_layer.cpp (the same meshes, rig and face the players get), with the mob's own pose fields.
-static void drawSkinMob(const Creature& m, const Interp& ip, World& w, const FrameCtx& f, bool& begun) {
+// The body itself, the voxelRenderer already begun: base = where its feet are (render space), L its light, tint over it,
+// headTurn a turn of the head alone (the watcher's twitch). The bestiary's picture draws it this way too.
+void drawSkinMobBody(const Creature& m, float yaw, const mat4& base, VoxelLight L, vec4 tint, float headTurn) {
   auto spec = resolveCharacter(m.T->skin);
   CharPose ps;
-  ps.yaw = ip.yaw; ps.walk = m.walk * 1.4f; ps.walkAmt = std::min(1.f, m.walkAmt); ps.time = (float)m.age;
+  ps.yaw = yaw; ps.headTurn = headTurn; ps.walk = m.walk * 1.4f; ps.walkAmt = std::min(1.f, m.walkAmt); ps.time = (float)m.age;
   ps.headPitch = m.headPitch;
   ps.swing = m.swingT > 0 ? std::sin(std::min(1.f, m.swingT / 0.3f) * PI) : 0;   // the same strike curve rigPose gives voxel mobs
-  ps.hasBodyYaw = true; ps.bodyYaw = ip.yaw;
+  ps.hasBodyYaw = true; ps.bodyYaw = yaw;
   if (m.deathTime > 0) ps.deathT = std::min(1.f, m.deathTime * 2);   // villagers clamp the topple the same way
   ps.held = !m.heldItem.empty(); ps.off = !m.offItem.empty();       // the pose flags must follow the wear, like char_layer
   CharWear wear;
   wear.held = m.heldItem; wear.off = m.offItem;
-  VoxelLight L = lightAt(w, ip.pos + vec3(0, std::min(1.5f, m.h * 0.6f), 0));
-  if (m.T->glows > 0) L = {1, 1};
   auto glowPart = [&](int i) {   // mobs.json "skinGlow": whole parts of the skin drawn unlit (a pumpkin-headed skin's face)
     for (const std::string& g : m.T->skinGlowParts) { if (g == "head" && i == CP_HEAD) return true; if (g == "body" && i == CP_BODY) return true; }
     return false; };
-  vec4 tint = m.hurtTime > 0 || m.deathTime > 0 ? vec4(1, 0.15f, 0.1f, 0.45f) : (m.T->hasTint ? m.T->tint : vec4(0));
-  if (tint.a == 0 && m.data.is_object() && m.data.value("corrupt", false)) {   // corrupted (sim/rift.cpp): his purple flicker
-    float fl = 0.5f + 0.5f * std::sin(m.age * 23.f + (float)(m.id % 97));
-    tint = vec4(0.42f, 0.08f, 0.62f, fl > 0.92f ? 0.6f : 0.28f + 0.12f * fl);
-  }
-  // draw it through the voxelRenderer pipeline exactly like villagers and players do — NOT CreatureDraw's
-  // creature.glsl batch: that shader never gets uDynN/uDyn set (only world_renderer does), so under a lantern
-  // the skin mob rendered black-on-black and looked invisible at night.
   VoxelRenderer& VR = voxelRenderer();
-  if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
-  vec3 rel = f.cam.rel(glm::dvec3(ip.pos));
-  mat4 base = glm::translate(mat4(1), rel) * staggerOf(m, ip.yaw);
   CharRig R;
   charRig(charModel(*spec), ps, base, R, false, !wear.back.empty());
   const CharModel& M = charModel(*spec);
@@ -282,9 +271,29 @@ static void drawSkinMob(const Creature& m, const Interp& ip, World& w, const Fra
   }
 }
 
-void drawSkinFigure(const Creature& m, vec3 pos, float yaw, World& w, const FrameCtx& f) {
+static void drawSkinMob(const Creature& m, const Interp& ip, World& w, const FrameCtx& f, bool& begun, vec3 jitter = vec3(0), float headTurn = 0) {
+  VoxelLight L = lightAt(w, ip.pos + vec3(0, std::min(1.5f, m.h * 0.6f), 0));
+  if (m.T->glows > 0) L = {1, 1};
+  vec4 tint = m.hurtTime > 0 || m.deathTime > 0 ? vec4(1, 0.15f, 0.1f, 0.45f) : (m.T->hasTint ? m.T->tint : vec4(0));
+  if (tint.a == 0 && m.data.is_object() && m.data.value("corrupt", false)) {   // corrupted (sim/rift.cpp): his purple flicker
+    float fl = 0.5f + 0.5f * std::sin(m.age * 23.f + (float)(m.id % 97));
+    tint = vec4(0.42f, 0.08f, 0.62f, fl > 0.92f ? 0.6f : 0.28f + 0.12f * fl);
+  }
+  // draw it through the voxelRenderer pipeline exactly like villagers and players do — NOT CreatureDraw's
+  // creature.glsl batch: that shader never gets uDynN/uDyn set (only world_renderer does), so under a lantern
+  // the skin mob rendered black-on-black and looked invisible at night.
+  VoxelRenderer& VR = voxelRenderer();
+  if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+  vec3 rel = f.cam.rel(glm::dvec3(ip.pos)) + jitter;
+  drawSkinMobBody(m, ip.yaw, glm::translate(mat4(1), rel) * staggerOf(m, ip.yaw), L, tint, headTurn);
+}
+
+bool drawnFromSkin(const Creature& m) { return m.T->explicitSkin || (!m.T->skin.empty() && !reg().models.contains(m.modelKey())); }
+
+void drawSkinFigure(const Creature& m, vec3 pos, float yaw, World& w, const FrameCtx& f, vec3 jitter, float headTurn) {
   bool begun = false;
-  drawSkinMob(m, Interp{pos, yaw, m.age}, w, f, begun);
+  drawSkinMob(m, Interp{pos, yaw, m.age}, w, f, begun, jitter, headTurn);
+  if (begun) voxelRenderer().end();
 }
 
 void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
@@ -308,7 +317,7 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       // a mob whose mobs.json says "skin": "<file>.png" is drawn as a voxel character from that player skin,
       // exactly like the players (and villagers): so herobrine.png — or any regular 64x64 skin dropped in
       // userDir()/skins — dresses it. Its render rig is always the biped, whatever the skin's arms are.
-      if (m->T->explicitSkin || (!m->T->skin.empty() && !reg().models.contains(m->modelKey()))) { drawSkinMob(*m, ip, w, f, skinBegun); continue; }
+      if (drawnFromSkin(*m)) { drawSkinMob(*m, ip, w, f, skinBegun); continue; }
       if (!f.cam.frustum.sphere(rel + vec3(0, m->h * 0.5f, 0), std::max(m->h, m->w * 2) + 1)) continue;
       const RigModel* RM = rigModel(m->modelKey());
       const CreatureModelGL* CM = modelFor(*m);
@@ -379,6 +388,18 @@ void CreatureLayer::drawOpaque(GameSession& s, const FrameCtx& f) {
       };
       drawHeld(held, held.rfind("bow", 0) == 0 && m->aiming ? "foreL" : "foreR");
       drawHeld(m->offItem, "foreL");
+      // the block an enderman carries (sim/world_life.h): between its two hands, square to its body
+      if (m->data.is_object() && m->data.contains("carry") && m->data["carry"].is_string()) {
+        const int hr = RM->find("foreR"), hl = RM->find("foreL"), bi = RM->find("body");
+        const VoxelModel& im = itemModel(m->data["carry"].get<std::string>());
+        if (hr >= 0 && hl >= 0 && bi >= 0 && im.ready() && rigPartPosed(*m, hr) && rigPartPosed(*m, hl) && rigPartPosed(*m, bi)) {
+          auto tip = [&](int i) { const RigPart& hp = RM->parts[i]; return vec3(m->mats[i] * vec4(0, hp.min.y * 0.85f, 0, 1)); };
+          vec3 c = (tip(hr) + tip(hl)) * 0.5f;
+          mat3 rot(m->mats[bi]); for (int k = 0; k < 3; k++) rot[k] = glm::normalize(rot[k]);
+          mat4 bm = T0 * glm::translate(mat4(1), c + rot[1] * 0.1f + rot[2] * 0.14f) * mat4(rot);
+          D.draw(im.gl, glm::scale(bm, vec3(0.62f)) * im.matrix(), L, tint);
+        }
+      }
       // Halloween: a carved pumpkin or jack-o'-lantern on its head (rolled in sim/creature.cpp tick); the jack glows
       if (m->data.contains("hat") && m->data["hat"].is_string() && !m->lost.count("head")) {
         const std::string hat = m->data["hat"].get<std::string>();
@@ -656,6 +677,23 @@ void CreatureLayer::drawTranslucent(GameSession& s, const FrameCtx& f) {
       if (p.alpha >= 1 || CM->parts[i]->hidden || !rigPartPosed(*m, (int)i) || !rigPartShown(*m, p)) continue;
       // (glowing see-through parts are drawn full bright: the pumpkin creature's faint face, the ghost's eyes; the ghost fades with data["hw"].fa)
       D.draw(CM->parts[i]->gl, glm::translate(mat4(1), rel) * m->mats[i] * CM->parts[i]->local, p.glow ? VoxelLight{1, 1} : L, tint, p.alpha * (m->T->phase ? hwGet(*m, "fa", 1.f) : 1.f));
+    }
+    // a charged fuseling (struck by lightning, sim/world_life.h): a shell of crackling blue light round every part, each
+    // a little larger than the part, flickering part by part
+    if (m->data.is_object() && m->data.value("charged", false) && m->deathTime == 0) {
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      const float t = (float)m->age;
+      for (size_t i = 0; i < RM->parts.size(); i++) {
+        const RigPart& p = RM->parts[i];
+        if (CM->parts[i]->hidden || !rigPartPosed(*m, (int)i) || !rigPartShown(*m, p)) continue;
+        const vec3 ctr = (p.min + p.max) * 0.5f, ext = glm::max(p.max - p.min, vec3(0.02f));
+        const vec3 grow = (ext + vec3(0.09f)) / ext;   // the shell stands ~1.5 px off every face
+        const float fl = 0.5f + 0.5f * std::sin(t * 17.f + i * 2.3f) * std::sin(t * 7.3f + i * 0.9f);
+        const float a = 0.22f + 0.3f * fl * fl + (std::fmod(t * 3.1f + i * 0.37f, 1.f) < 0.08f ? 0.35f : 0.f);   // now and then a spark runs over it
+        mat4 sm = glm::translate(mat4(1), rel) * m->mats[i] * glm::translate(mat4(1), ctr) * glm::scale(mat4(1), grow) * glm::translate(mat4(1), -ctr) * CM->parts[i]->local;
+        D.draw(CM->parts[i]->gl, sm, {1, 1}, vec4(0.3f, 0.6f, 1.f, 1.f), a);
+      }
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
     // a soft round shadow on the ground under it
     if (!m->T->flyer || m->onGround) {

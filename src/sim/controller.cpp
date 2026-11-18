@@ -1,6 +1,7 @@
 // sim/controller.cpp — port of game/local.js (LocalPlayer.update/interact/use/mining/breaking/tree
 // felling/breath/fire/falls/drop/pick block), fairplay.js (food over time), itemfix.js (eating for
 // effect, the off hand), blocks2.js (bow and arrows) and blockfx.js (cracks that mend).
+#include "sim/attach_play.h"
 #include "sim/dyntree.h"
 #include "sim/weather.h"
 #include "sim/controller.h"
@@ -46,6 +47,7 @@
 #include "sim/cavein.h"
 #include "sim/spinning.h"
 #include "world/rug.h"
+#include "sim/mob_carry.h"
 
 namespace dq {
 bool isCampfire(BlockId id);   // sim/camping.h (its header clashes with sim/gameplay.h here)
@@ -86,7 +88,9 @@ void runGuestUse(Level& lv, Player& p, const json& a) {
     Entity* e = lv.entity(a.value("id", 0u));
     if (e && !e->removed && e->realm == p.realm && glm::distance(e->pos, p.pos) < 8) {
       pc.targetEnt = e->id;
-      for (auto& h : hooks().useEntity) if (h(pc, *e, held.empty() ? nullptr : &held, def)) break;
+      bool used = false;
+      for (auto& h : hooks().useEntity) if (h(pc, *e, held.empty() ? nullptr : &held, def)) { used = true; break; }
+      if (!used) liftInArms(pc, *e);   // (sneak + use, empty hand: into their arms, sim/mob_carry.h)
     }
   } else if (k == "block" && a.contains("b") && a["b"].is_array() && a["b"].size() == 3) {
     RayHit hit; hit.hit = true; hit.block = ivec3(a["b"][0].get<int>(), a["b"][1].get<int>(), a["b"][2].get<int>());
@@ -570,6 +574,9 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
       if (mining.progress >= 1) { breakBlock(tg.block.x, tg.block.y, tg.block.z); forgetDamage(lv, tg.block.x, tg.block.y, tg.block.z); mining.active = false; breakCd = 0.18f; }
     }
   } else { if (mining.active) rememberDamage(lv, mining); mining.active = false; }
+  // what the others see you dig (net/ sends it: the cracks on their screens too)
+  p.mineP = mining.active ? std::clamp(mining.progress, 0.f, 1.f) : 0.f;
+  if (mining.active) p.mineAt = ivec3(mining.x, mining.y, mining.z);
   // holding use repeats only after a fresh press in the game
   if (!in.use || t - interactAt > 0.15) useArmed = false;
   interactAt = t;
@@ -649,6 +656,16 @@ void PlayerController::breakBlock(int x, int y, int z) {
   World& w = world();
   BlockId id = w.getBlock(x, y, z);
   if (!id) return;
+  if (target.hit && target.part >= 0 && target.block == ivec3(x, y, z)) {   // an attachment aimed at: only that part (sim/attach_play.h)
+    const auto* parts = w.attachments(x, y, z);
+    if (parts && target.part < (int)parts->size() && (*parts)[target.part].id == target.id) {
+      const bool harvest = canHarvest(target.id);
+      breakAttachment(lv, &p, w, x, y, z, target.part, harvest && !p.creative(), heldTool(p));
+      wearHeld(lv, p, reg().block(target.id).hardness > 0 ? 1 : 0);
+      p.stats["blocksMined"] = p.stats.value("blocksMined", 0) + 1;
+      return;
+    }
+  }
   const BlockDef& b = reg().block(id);
   if (lv.events && !lv.events->emit("blockBreak", json::array({p.name, x, y, z, b.key}))) return;   // a mod said no
   if (const BlockId rug = rugBlockOf(w.getCoat(x, y, z))) {   // a rug on it comes up first (world/rug.h); the floor stays
@@ -801,6 +818,15 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   ItemStack& held = p.held();
   const ItemDef* def = held.empty() ? nullptr : R.item(held.id);
   Entity* te = targetEnt ? lv.entity(targetEnt) : nullptr;
+  // an empty hand on what a crafting table makes, hovering over it (sim/worktable.h): taken, whatever's behind it
+  if (!fromOff && !repeat && held.empty() && !te && !p.sneaking) {
+    const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z), dir = lookVector(p.yaw, p.pitch);
+    const float maxT = hit ? glm::distance(eye, hit->point) + 0.05f : 5.f;
+    ivec3 tab;
+    if (worktableResultAlong(w, eye, dir, maxT, p.yaw, tab) && worktableCraft(lv, p, w, tab)) { swingArm(); return; }
+  }
+  // an attachment aimed at (a lever beside a ladder, a trapdoor behind a chest): it's the part that's used (sim/attach_play.h)
+  if (!fromOff && !repeat && hit && hit->part >= 0 && !te && !(p.sneaking && def && !def->block.empty()) && useAttachment(lv, p, w, *hit, held.empty() ? nullptr : &held)) { swingArm(); return; }
   // EventBus "itemUse" [player, item ("" = empty hand), x, y, z, face] for every use, before any default block or
   // item interaction (portals, redstone levers and buttons, minecarts, tables hook it); false = used up
   if (lv.events && (!repeat || (def && !def->block.empty()))) {
@@ -903,7 +929,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   // quenching (sim/heat.h): something hot used on water (a source, a cauldron) or held in it is cooled at once
   if (!fromOff && !repeat && !held.empty() && itemHeat(held) > 100) {
     bool water = p.inWater || p.contacts.water;
-    if (hit) { const ivec3 n = hit->block + hit->normal; water = water || reg().tLiquid[w.getBlock(n.x, n.y, n.z)] == 1 || reg().tLiquid[hit->id] == 1 || (reg().block(hit->id).has("cauldron") && (w.getMeta(hit->block.x, hit->block.y, hit->block.z) & 3)); }
+    if (hit) { const ivec3 n = hit->block + hit->normal; water = water || reg().tLiquid[w.getBlock(n.x, n.y, n.z)] == 1 || reg().tLiquid[hit->id] == 1 || (reg().block(hit->id).has("cauldron") && (w.getMeta(hit->block.x, hit->block.y, hit->block.z) & 3) && !(w.getMeta(hit->block.x, hit->block.y, hit->block.z) & 4)); }
     if (water && quench(held)) {
       const vec3 at = hit ? vec3(hit->block) + vec3(0.5f, 1, 0.5f) : p.pos + vec3(0, 1, 0);
       lv.fx->sound("fizz", at, 16); lv.fx->particles("campfire_smoke", at, 10, {{"spread", 0.3}, {"vel", {0, 1.4, 0}}, {"life", 1.2}, {"size", 0.14}, {"rise", true}});
@@ -1028,14 +1054,9 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     if (!aimed && held.id != "firestarter" && putDown(downHit, held)) return;
   }
   if (!fromOff && !repeat && te) for (auto& h : hooks().useEntity) if (h(*this, *te, held.empty() ? nullptr : &held, def)) return;
-  // Carry On: sneak + use with an empty hand picks up containers, stations and animals
+  // Carrying: sneak + use with an empty hand picks up containers, stations and animals
   if (!fromOff && !repeat && p.sneaking && held.empty()) {
-    if (te && isMob(*te) && te->hp > 0 && R.mobs[te->type].value("carry", false)) {
-      p.carrying = {{"kind", "mob"}, {"type", te->type}, {"hp", te->hp}, {"data", te->data}, {"save", te->save()}};   // (save: its whole self, coat and all)
-      te->removed = true; sfxUi(lv, p, te->type == "boar" ? "boar" : "pop"); swingArm();
-      toastMsg("Carrying a " + te->type + " \xE2\x80\x94 use to set it down", "good");
-      return;
-    }
+    if (te && te->hp > 0 && liftInArms(*this, *te)) return;   // a creature (sim/mob_carry.h)
     if (hit && bhas(hit->id, BF::Carry)) { pickUpBlock(hit->block.x, hit->block.y, hit->block.z); return; }
   }
   // (a shield in the main hand is carried, not used on things: the hand is free for them, taking, crafting, opening)
@@ -1418,6 +1439,18 @@ std::vector<Crack> damageCracks(Level& lv, World& w, vec3 cam, const Mining* cur
     ++it;
   }
   if (cur && cur->active && cur->progress > 0) out.push_back({cur->x, cur->y, cur->z, std::min(9, (int)std::floor(cur->progress * 10))});
+  // the others digging (their game's progress, sent: net/): their cracks too
+  for (auto& e : lv.entities()) {
+    if (e->removed || !e->ghost || !e->isPlayer() || e->realm != w.realm) continue;
+    const Player& o = *static_cast<const Player*>(e.get());
+    if (o.mineP <= 0 || o.dead) continue;
+    const ivec3 b = o.mineAt;
+    if (std::fabs(b.x - cam.x) > 48 || std::fabs(b.z - cam.z) > 48 || w.getBlock(b.x, b.y, b.z) == AIR) continue;
+    const int stage = std::min(9, (int)std::floor(o.mineP * 10));
+    bool dup = false;
+    for (auto& c : out) if (c.x == b.x && c.y == b.y && c.z == b.z) { c.stage = std::max(c.stage, stage); dup = true; }
+    if (!dup) out.push_back({b.x, b.y, b.z, stage});
+  }
   return out;
 }
 

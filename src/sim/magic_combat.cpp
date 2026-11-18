@@ -27,8 +27,7 @@ bool isSpellTarget(const Entity& e) {
 }
 bool isFoe(const Entity& e) {
   if (!isSpellTarget(e)) return false;
-  auto has = [&](const char* k) { return e.data.contains(k) && !e.data[k].is_null() && e.data[k] != false && e.data[k] != ""; };
-  return !has("owner") && !has("tamed");
+  return petOwnerOf(e).empty();   // (anyone's pet, companion or summon is no foe: sim/entity.h)
 }
 bool isUndead(const Entity& e) {
   static const std::regex re("ghoul|skeleton|stray|husk|drowned|wraith|zombie|wight|lich|revenant");

@@ -10,7 +10,7 @@
 namespace dq {
 
 // the host's clock a little behind, for net replicas to be drawn at (net/client.cpp sets it; < 0: none)
-double g_netViewTime = -1;
+
 
 
 // ---- entities ----
@@ -133,12 +133,14 @@ bool Level::isNight() const { double f = dayFraction(); return f > 0.5 && f < 0.
 void Level::tick(double dt) {
   advanceDayTime(*this, dt);   // sim/rules: day and night lengths from the world's rules
   // DQ_PROFILE_SIM=1: the slowest systems and the entities, in the log every 600 ticks
-  static const bool prof = std::getenv("DQ_PROFILE_SIM") != nullptr;
+  // (DQ_BENCH too: then any one system or entity over 3 ms in a tick is named in the log, for the benchmark's spikes)
+  static const bool prof = std::getenv("DQ_PROFILE_SIM") != nullptr || std::getenv("DQ_BENCH") != nullptr;
+  auto hitch = [](const std::string& k, double s) { if (s > 0.003) DQ_LOG("sim hitch: %s %.1f ms", k.c_str(), s * 1000); };
   static std::map<std::string, double> pms; static int pticks = 0;
   { const bool im = rule(*this, "immersive"); for (auto& [r, w] : realms) w->immersive = im; recipeGate().immersive = im; }   // (the gate: sim/crafting.h, for every recipe and smelt this tick)
   if (prof) {
-    for (auto& [r, w] : realms) for (auto& s : w->systems) { double t = nowSeconds(); s->tick(*w, dt); pms[std::string("world.") + s->name()] += nowSeconds() - t; }
-    for (auto& s : systems) { double t = nowSeconds(); s->tick(*this, dt); pms[s->name()] += nowSeconds() - t; }
+    for (auto& [r, w] : realms) for (auto& s : w->systems) { double t = nowSeconds(); s->tick(*w, dt); t = nowSeconds() - t; pms[std::string("world.") + s->name()] += t; hitch(std::string("world.") + s->name(), t); }
+    for (auto& s : systems) { double t = nowSeconds(); s->tick(*this, dt); t = nowSeconds() - t; pms[s->name()] += t; hitch(s->name(), t); }
   } else {
     for (auto& [r, w] : realms) w->tickSystems(dt);
     for (auto& s : systems) s->tick(*this, dt);
@@ -150,7 +152,7 @@ void Level::tick(double dt) {
     e->prevPos = e->pos; e->prevYaw = e->yaw;
     e->age += (float)dt;
     if (e->ghost) {   // net replica: simulated elsewhere
-      if (info.remote) e->glide(dt);
+      if (info.remote && !frameGlide) e->glide(dt);   // (a game drawing it glides it every frame instead: client/session.cpp)
       // a swing in progress plays on between the snapshots (its owner's game runs it; net/ sends move, time and facing)
       if (e->isPlayer()) if (auto* pl = static_cast<Player*>(e); pl->atkMove) {
         pl->atkT += (float)dt;
@@ -158,13 +160,14 @@ void Level::tick(double dt) {
       }
       continue;
     }
-    e->tick(*this, dt);
+    if (prof) { const double t = nowSeconds(); e->tick(*this, dt); hitch("entity " + e->type, nowSeconds() - t); }
+    else e->tick(*this, dt);
   }
   ents.erase(std::remove_if(ents.begin(), ents.end(), [&](const std::unique_ptr<Entity>& e) {
     if (e->removed) { entityIndex.erase(e->id); return true; } return false; }), ents.end());
   if (prof) {
     pms["entities (" + std::to_string(ents.size() / 50 * 50) + "+)"] += nowSeconds() - tEnt;
-    if (++pticks == 600) {
+    if (++pticks == 600 && std::getenv("DQ_PROFILE_SIM")) {
       std::vector<std::pair<double, std::string>> v; for (auto& [k, t] : pms) v.push_back({t / 600 * 1000, k});
       std::sort(v.rbegin(), v.rend()); std::string o;
       for (size_t i = 0; i < v.size() && i < 12; i++) { char b[96]; snprintf(b, sizeof b, "%s %.2f | ", v[i].second.c_str(), v[i].first); o += b; }
@@ -176,7 +179,12 @@ void Level::tick(double dt) {
   else {
     autosaveTimer += dt;
     // (a save sets every moving piece down at once: while one moves, the autosave waits for it, 15 s at most)
-    if (autosaveTimer >= autosaveEvery && (movingBodiesList(*this).empty() || autosaveTimer >= autosaveEvery + 15)) { autosaveTimer = 0; save(false); }
+    if (autosaveTimer >= autosaveEvery && (movingBodiesList(*this).empty() || autosaveTimer >= autosaveEvery + 15)) {
+      autosaveTimer = 0;
+      const double t = prof ? nowSeconds() : 0;
+      save(false);
+      if (prof) hitch("autosave", nowSeconds() - t);
+    }
   }
 }
 

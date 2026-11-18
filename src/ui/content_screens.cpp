@@ -174,6 +174,7 @@ public:
     }
     book.draw({rm, rp});
     if (book.turned && !book.shownSel.empty() && std::find(book.shownSel.begin(), book.shownSel.end(), cur) == book.shownSel.end()) { cur = book.shownSel.front(); btn = 0; }
+    if (a.input.usingPad()) { padHint(0, -1, "Press"); padHint(2, -1, "Mounts / pets"); }
     book.hint(a.input.usingPad() ? "\xE2\x86\x91 \xE2\x86\x93 choose \xC2\xB7 \xE2\x86\x90 \xE2\x86\x92 its buttons \xC2\xB7 A: press \xC2\xB7 X: mounts / pets \xC2\xB7 Summon brings it to you, wherever it is"
                                  : "H or a whistle opens this \xC2\xB7 Summon brings it to you, wherever it is \xC2\xB7 Dismiss sends it home \xC2\xB7 the star marks your favourite mount: Shift + H calls it");
     book.end();

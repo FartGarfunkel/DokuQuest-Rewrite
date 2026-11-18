@@ -74,7 +74,7 @@ static void onScreenOpen(App& a, const json& args) {
   }
   else if (kind == "stonecutter") { io.mode = "stonecutter"; io.kind = o.value("kind", ""); }   // kind "forge": the Tool Forge
   else if (kind == "machine") { io.mode = "machine"; if (!io.hasPos) return; }
-  else if (kind == "sign") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeSignScreen(p); }; }
+  else if (kind == "sign") { if (!io.hasPos) return; ivec3 p = io.pos; const int slot = o.value("slot", -1); make = [p, slot] { return makeSignScreen(p, slot); }; }
   else if (kind == "anvil_smith") { if (!io.hasPos) return; ivec3 p = io.pos; const int tier = o.value("tier", 0); make = [p, tier] { return makeAnvilScreen(p, tier); }; }
   else if (kind == "knapping") { std::string m = o.value("material", ""), it = o.value("item", ""); if (m.empty() || it.empty()) return; make = [m, it] { return makeKnappingScreen(m, it); }; }
   else if (kind == "lectern") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeLecternScreen(p); }; }
@@ -330,7 +330,67 @@ static const char* tabKeyOfScreen(const std::string& id) {
   if (id == "skilltree") return "skilltree";
   return nullptr;
 }
+// ---- the pad's highlight across screens -----------------------------------------------------------------------
+// A screen covered by another keeps the item its highlight was on; when it is on top again the highlight goes back
+// there (B out of Options lands on "Options...", not the first button: A then did something else). A screen opened
+// with the pad that gives itself no highlight gets its first item highlighted, so there is always something to move.
+void uiScreenCovered(App& a, Screen* below) {
+  (void)a;
+  ImGuiContext* c = ImGui::GetCurrentContext();
+  Screen::NavKeep& k = below->navKeep;
+  k = Screen::NavKeep();
+  if (!c || !c->NavWindow || !c->NavId) return;
+  const ImRect r = c->NavWindow->NavRectRel[c->NavLayer];
+  k.item = c->NavId; k.window = c->NavWindow->ID; k.ctx = c; k.layer = (int)c->NavLayer;
+  k.rect[0] = r.Min.x; k.rect[1] = r.Min.y; k.rect[2] = r.Max.x; k.rect[3] = r.Max.y;
+}
+void uiScreenUncovered(App& a, Screen* top) { (void)a; if (top->navKeep.item) top->navKeep.back = true; }
+static void padNavAfterScreens(App& a) {
+  Screen* s = a.topScreen();
+  ImGuiContext* c = ImGui::GetCurrentContext();
+  if (!s || !c) return;
+  ImGuiContext& g = *c;
+  // B where there's nothing to back out of (the death screen, the title) hid ImGui's highlight, and the next A only
+  // brought it back: with the controller in hand it stays shown
+  if (a.input.usingPad() && g.NavId != 0 && !g.NavCursorVisible && g.ActiveId == 0 && g.NavWindow && !(g.NavWindow->Flags & ImGuiWindowFlags_NoFocusOnAppearing))
+    ImGui::SetNavCursorVisible(true);
+  Screen::NavKeep& k = s->navKeep;
+  if (k.back) {
+    k.back = false;   // (one try: the frame it is drawn again)
+    ImGuiWindow* w = k.ctx == c ? ImGui::FindWindowByID(k.window) : nullptr;
+    if (w && w->Active) {
+      ImGui::FocusWindow(w);
+      ImGui::SetNavID(k.item, (ImGuiNavLayer)k.layer, 0, ImRect(k.rect[0], k.rect[1], k.rect[2], k.rect[3]));
+      g.NavInitRequest = false; g.NavInitResult.ID = 0;   // (the window coming back asked for its first item: not that)
+      if (a.input.usingPad()) { g.NavCursorVisible = true; g.NavHighlightItemUnderNav = true; }
+    }
+    return;
+  }
+  // (from its third frame, a screen that focuses something itself has done so by then; for its first three seconds:
+  // some show their buttons a moment late, the death screen's Respawn)
+  if (a.frame < s->openedFrame + 2 || a.frame > s->openedFrame + 180 || !a.input.usingPad() || g.ActiveId != 0) return;
+  if (g.NavId != 0) {   // ImGui put its highlight on the first item but isn't showing it: show it
+    if (a.frame == s->openedFrame + 2 && !g.NavCursorVisible && g.NavWindow && !(g.NavWindow->Flags & ImGuiWindowFlags_NoFocusOnAppearing)) ImGui::SetNavCursorVisible(true);
+    return;
+  }
+  if (g.NavMoveSubmitted || g.NavMoveScoringItems || g.NavInitRequest) return;
+  auto hasItems = [&](ImGuiWindow* root) {   // it (or a child in it) laid out something the pad can reach
+    for (ImGuiWindow* w : g.Windows) if (w->Active && w->RootWindow == root && w->DC.NavLayersActiveMask) return true;
+    return false;
+  };
+  for (int i = g.Windows.Size - 1; i >= 0; i--) {   // the topmost menu window that the pad can move in
+    ImGuiWindow* w = g.Windows[i];
+    if (!w->Active || w->Hidden || (w->Flags & (ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_Tooltip | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoInputs))) continue;
+    if (!hasItems(w) || (w->Flags & ImGuiWindowFlags_NoFocusOnAppearing)) continue;   // (a side window, e.g. a search over a screen that moves its own cursor)
+    ImGui::FocusWindow(w);
+    ImGui::NavInitWindow(w, true);
+    ImGui::SetNavCursorVisible(true);
+    break;
+  }
+}
+
 void uiAfterScreens(App& a) {
+  padNavAfterScreens(a);
   Screen* s = a.topScreen();
   if (!s || !a.session || !a.session->player) return;
   const char* key = tabKeyOfScreen(s->id());
@@ -347,6 +407,7 @@ void uiAfterScreens(App& a) {
   }
 }
 void menuTabsDraw(App& a, const std::string& current) {
+  ui::padHint(4, 5, "Tabs");   // (the controller hints bar: LB / RB switch these tabs)
   auto& v = tabs(); if (v.size() < 2) return;
   if (bookUiDrawing()) return;   // (in the journal the menus are its pages: Q / E, LB / RB turn them; no strip of tabs)
   using namespace ui;

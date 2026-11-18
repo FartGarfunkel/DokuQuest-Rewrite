@@ -5,18 +5,37 @@
 #include "sim/villagers.h"
 #include "sim/content.h"
 #include <map>
+#include <memory>
 #include <unordered_map>
 
 namespace dq {
 
 // a step of a townsperson's way (sim/npc_path.cpp): the cell their feet are in, the height they stand at there, and
 // whether it's up or down a ladder (a vine, a rope...) rather than on a floor
-struct NpcStep { ivec3 at{0}; float floor = 0; bool climb = false; };
+struct NpcStep { ivec3 at{0}; float floor = 0; bool climb = false; vec2 c{0}; };   // c: where the body's middle goes (a broad one's: a cell corner)
 // the way from `from` to `to` for a body bodyW (half width) by bodyH: the steps after the first. *partial: it doesn't get
 // there (the steps go as near as the search got). Empty: no step to take at all.
-std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, float bodyH, bool* partial = nullptr, int maxNodes = 2400);
+// *snapped: the goal was somewhere nobody stands (over water, in a block) and the way ends at the nearest place by it.
+std::vector<NpcStep> npcPath(const World& w, vec3 from, vec3 to, float bodyW, float bodyH, bool* partial = nullptr, int maxNodes = 2400, bool* snapped = nullptr);
 // the height a body stands at in cell (x, y, z), or NaN: no floor there (or only a ladder)
-float npcStandAt(const World& w, int x, int y, int z, float bodyW = 0.3f, float bodyH = 1.8f);
+float npcStandAt(const World& w, int x, int y, int z, float bodyW = 0.3f, float bodyH = 1.8f);   // (a broad body: x, z name the north-west of its 2 x 2)
+// open ground near `near` for a body bodyW by bodyH: room for all of it, out of the water, and a way from there to
+// `square` at its width (searched outward to maxR). out: where it stands (its middle).
+bool npcOpenGround(const World& w, vec3 near, vec3 square, float bodyW, float bodyH, vec3& out, int maxR = 16);
+// the open ground a body bodyW by bodyH can reach from `square` (within radius blocks), searched out at its width once:
+// the steps it can stand at (a broad body's: the north-west cell of its 2 x 2), and the height there. A golem keeps to it.
+struct NpcReach {
+  std::unordered_map<i64, int> at; std::vector<i64> cells; bool wide = false;
+  static i64 key(int x, int z) { return ((i64)(u32)x << 32) | (u32)z; }
+  bool has(vec3 p) const { const int x = wide ? ifloor(p.x + 0.5f) - 1 : ifloor(p.x), z = wide ? ifloor(p.z + 0.5f) - 1 : ifloor(p.z); return at.count(key(x, z)) > 0; }
+  // (near: within a step of it, for a body a little off its corner)
+  bool near(vec3 p) const { const int x = wide ? ifloor(p.x + 0.5f) - 1 : ifloor(p.x), z = wide ? ifloor(p.z + 0.5f) - 1 : ifloor(p.z);
+    for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) if (at.count(key(x + dx, z + dz))) return true; return false; }
+  vec3 spot(i64 k) const { const int x = (int)(k >> 32), z = (int)(u32)k; const int y = at.at(k); return wide ? vec3(x + 1.f, (float)y, z + 1.f) : vec3(x + 0.5f, (float)y, z + 0.5f); }
+};
+std::shared_ptr<const NpcReach> npcBroadReach(const World& w, vec3 square, float bodyW, float bodyH, int radius);
+// a village's golems' ground (cached a few minutes: sim/villager_ai.cpp)
+std::shared_ptr<const NpcReach> golemGround(Level& lv, const Village& v, const Creature& e);
 // the way-finding tallies (tools/test_villagers.cpp's audit reads them): replans, plans that couldn't get there, and the
 // times someone was moved to where they were going (stuck for good)
 struct NpcNavStats { long plans = 0, partial = 0, failed = 0, rescues = 0, climbs = 0; };
@@ -36,6 +55,8 @@ struct NpcMind {
   std::vector<NpcStep> path; size_t pathI = 0; bool hasPath = false, pathPartial = false, climbing = false; float navT = 0; bool hasNavGoal = false; vec3 navGoal{0};
   int partialN = 0;   // partial plans in a row toward this goal
   bool wentLast = false;
+  bool goalSnapped = false;
+  float wedgeT = 5;   // (a golem: now and then, is it shut in where it can't get out at its width?)   // (the way ends by the goal, not on it: it's where nobody can stand)
   bool sent = false; vec3 sentTo{0};   // sent somewhere (tools/test_npc_paths.cpp): they walk there, whatever the hour   // (npcGo walked them last tick: a climber not walked any more is let down)
   float lostT = 0; vec3 lostFrom{0};   // (no way there and not getting anywhere: sim/villager_ai.cpp npcGo's rescue)
   int stuckGo = 0; float stuckT = 0, sideStepT = 0; bool hasNav = false; vec2 navXZ{0};

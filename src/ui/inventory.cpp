@@ -34,6 +34,7 @@ struct BookState { bool open = false; std::string cat = "all", ccat = "all"; boo
 BookState& book() { static BookState b; return b; }
 
 enum HK { H_SLOT, H_BOOKR, H_CI, H_CAT, H_BOOKBTN, H_BOOKCLOSE, H_TRASH, H_VIS, H_CUT };
+std::string g_invFocus; u64 g_invFocusFrame = 0;
 struct Hit { HK k; Grp g = Grp::Main; int i = 0; std::string s; ImVec2 a, b; bool contains(ImVec2 p) const { return p.x >= a.x && p.y >= a.y && p.x < b.x && p.y < b.y; } };
 bool sameKey(const Hit& x, const Hit& y) { return x.k == y.k && x.g == y.g && x.i == y.i && x.s == y.s; }
 std::string lower(std::string s) { for (auto& c : s) c = (char)tolower((unsigned char)c); return s; }
@@ -362,6 +363,12 @@ public:
   }
   // the end of a frame (both layouts): the mouse, the stack on the cursor, the tooltip, the menu tabs
   void finish(App& a) {
+    {   // (playtests: where the pad's cursor is, "slot Cont 3" etc.)
+      static const char* const GN[] = {"Main", "Armor", "Off", "Back", "Hook", "Charm", "Cape", "Bp", "Grid", "Cont", "Furn", "Out", "Mach", "Sta", "SOut", "Cut", "Quiver", "Qv", "Mount", "Shield"};
+      static const char* const KN[] = {"slot", "recipe", "item", "cat", "bookbtn", "bookclose", "trash", "vis", "cut"};
+      g_invFocus = hasFocus && a.input.usingPad() ? std::string(KN[focus.k]) + (focus.k == H_SLOT ? std::string(" ") + GN[(int)focus.g] : std::string()) + " " + std::to_string(focus.i) : std::string();
+      g_invFocusFrame = a.frame;
+    }
     Player& p = sess->p;
     // ---- input from the mouse ----
     mouse(a);
@@ -477,8 +484,8 @@ public:
       bookPageBlock(a, dl, L, pw, ph);
       bookPageBag(a, dl, R, pw, ph);
     }
-    if (!tip.empty() && !bookUiScreenTip(tip)) { ImVec2 m = ImGui::GetIO().MousePos, s = textSize(F_MID, tip.c_str()); ImDrawList* fg = ImGui::GetForegroundDrawList();
-      fg->AddRectFilled(ImVec2(m.x + 14 * z, m.y - 4 * z), ImVec2(m.x + 26 * z + s.x, m.y + 4 * z + s.y), col::rgb(0x1a120c, 235), 3 * z); text(fg, F_MID, ImVec2(m.x + 20 * z, m.y), col::rgb(0xf0e0b8), tip.c_str()); }
+    if (!tip.empty() && !bookUiScreenTip(tip)) { const ImVec2 s = textSize(F_MID, tip.c_str()), q = tipPlace(s + ImVec2(12, 8) * z); ImDrawList* fg = ImGui::GetForegroundDrawList();
+      fg->AddRectFilled(q, q + s + ImVec2(12, 8) * z, col::rgb(0x1a120c, 235), 3 * z); text(fg, F_MID, q + ImVec2(6, 4) * z, col::rgb(0xf0e0b8), tip.c_str()); }
     // the sun / moon under the book's corner
     { const float s = std::round(18 * z);
       if (bookThemeButton(a, dl, ImVec2(panelB.x - s, panelB.y + 6 * z), s)) { a.settings.extra["bookDark"] = !bookThemeDark(); a.settings.save(); playClick(); } }
@@ -856,17 +863,30 @@ public:
     std::vector<std::pair<std::string, u32>> lines;
     itemInfoText(s, &sess->p, &lines);
     // (on the journal's pages: drawn on the window after the book, at the real pointer, so it isn't cut off at the page)
-    if (bookUiScreenDraw([lines, &a, finger] { drawTip(a, lines, ImGui::GetIO().MousePos, finger); })) return;
-    drawTip(a, lines, m, finger);
+    // the item's box (a finger: over the finger, where it can be read; the pad: beside the item; the mouse: by the pointer —
+    // ui::tipPlace decides)
+    const bool byItem = m.x >= 0 && !finger;
+    ImVec2 ia = h->a, ib = h->b;
+    if (bookUiScreenDraw([lines, &a, byItem, ia, ib, finger] {
+          if (finger) { drawTip(a, lines, nullptr, nullptr, ImGui::GetIO().MousePos); return; }
+          ImVec2 wa = ia, wb = ib;
+          const bool mapped = byItem && bookUiPicToWindow(wa) && bookUiPicToWindow(wb);
+          if (byItem && !mapped) return;   // (the pad, and the pages not open yet: nowhere to put it)
+          drawTip(a, lines, mapped ? &wa : nullptr, mapped ? &wb : nullptr);
+        })) return;
+    drawTip(a, lines, byItem ? &ia : nullptr, byItem ? &ib : nullptr, finger ? (m.x >= 0 ? m : ImGui::GetIO().MousePos) : ImVec2(-1, -1));
   }
-  static void drawTip(App& a, const std::vector<std::pair<std::string, u32>>& lines, ImVec2 m, bool above = false) {
+  static void drawTip(App& a, const std::vector<std::pair<std::string, u32>>& lines, const ImVec2* ia, const ImVec2* ib, ImVec2 fingerAt = ImVec2(-1, -1)) {
     float z = Z(), maxW = 260 * z - 16 * z, k = 13.f / 15.f;
     float w = 0, hgt = 0;
     for (auto& [t, c] : lines) { if (!t.empty() && t[0] == '\x02') { w = std::max(w, 120 * z); hgt += 8 * z; continue; } ImVec2 ts = textSize(F_BODY, t.c_str(), maxW, k); w = std::max(w, ts.x); hgt += ts.y; }
     ImDrawList* dl = ImGui::GetForegroundDrawList();
-    ImVec2 p(m.x + 14 * z, m.y + 10 * z), size(w + 16 * z, hgt + 10 * z);
-    if (above) p = ImVec2(m.x - size.x * 0.5f, m.y - size.y - 48 * z);   // a finger: over it, where it can be read
-    p.x = std::max(4 * z, std::min(p.x, (float)a.width - size.x - 6 * z)); p.y = std::max(4 * z, std::min(p.y, (float)a.height - size.y - 6 * z));
+    const ImVec2 size(w + 16 * z, hgt + 10 * z);
+    ImVec2 p;
+    if (fingerAt.x >= 0) {   // a finger: over it, where it can be read
+      p = ImVec2(fingerAt.x - size.x * 0.5f, fingerAt.y - size.y - 48 * z);
+      p.x = std::max(4 * z, std::min(p.x, (float)a.width - size.x - 6 * z)); p.y = std::max(4 * z, std::min(p.y, (float)a.height - size.y - 6 * z));
+    } else p = tipPlace(size + ImVec2(8, 8) * z, ia, ib) + ImVec2(4, 4) * z;   // (the frame is 4 px round the box)
     dl->AddRectFilled(p - ImVec2(4, 4) * z, p + size + ImVec2(4, 4) * z, col::black);
     dl->AddRectFilled(p - ImVec2(2, 2) * z, p + size + ImVec2(2, 2) * z, col::pnHi);
     dl->AddRectFilled(p, p + size, IM_COL32(18, 12, 8, 245));
@@ -1173,5 +1193,7 @@ void openInventory(App& a, const InvOpen& o) {
 void registerInventoryTab() {
   registerMenuTab({"inventory", "Inventory", [](App& a) { openInventory(a); }, nullptr});
 }
+
+std::string inventoryPadFocus() { return g_invFocusFrame + 1 >= app().frame ? g_invFocus : std::string(); }
 
 } // namespace dq

@@ -51,7 +51,7 @@ struct PadState {
   std::array<float, 4> ax{};           // LX LY RX RY (dead zone applied, -1..1)
   vec2 lstick{0}, rstick{0};
   float lt = 0, rt = 0;
-  float navT = 0; ivec2 navDir{0};     // stick repeat for menus
+  float navT = 0; ivec2 navDir{0}; int navReps = 0;   // d-pad / stick repeat for menus
   float viewHold = 0; double sneakTap = -1; bool sprintLatch = false;
   // A device only drives the game once someone uses it (like the browser, which shows a pad only after a
   // button press): a button, or a stick pushed well past its resting point. Wheels, flight sticks, motion
@@ -112,6 +112,7 @@ public:
   void setCapture(SDL_Window* w, bool on);
   bool captured() const { return capture; }
   bool usingPad() const { return lastWasPad; }
+  std::string padStyle() const;      // the controller used last: "xbox", "playstation" or "nintendo" (its buttons' names in hints)
   int padCount() const;
   std::vector<PadState>& pads() { return padList; }
   SDL_Scancode keyFor(Act a) const;  // first key bound (for hints)
@@ -167,6 +168,7 @@ private:
   vec2 mouseDelta{0};
   float wheelY = 0;
   bool capture = false, lastWasPad = false, dropAllFlag = false, pointerTouch = false;
+  SDL_JoystickID lastPadId = -1;
   double lastW = -1; bool doubleW = false, sneakLatch = false, sprintLatch = false;
   std::vector<PadState> padList;
   void defaults();

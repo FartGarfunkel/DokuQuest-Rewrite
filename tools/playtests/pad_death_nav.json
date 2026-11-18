@@ -1,0 +1,15 @@
+{
+"note": "The death screen by the pad alone: Respawn is highlighted as soon as it shows (it used to need a d-pad press first), B does not close it, A respawns.",
+"steps": [
+{"wait": 200, "do": "setting", "key": "bookMenus", "value": false},
+{"do": "pad", "button": "x", "hold": 3},
+{"wait": 10, "do": "kill"},
+{"wait": 120, "do": "expect", "screen": "death"},
+{"do": "expect", "nav": "Respawn"},
+{"do": "pad", "button": "b", "hold": 3},
+{"wait": 15, "do": "expect", "screen": "death"},
+{"do": "pad", "button": "a", "hold": 3},
+{"wait": 30, "do": "expect", "screen": null},
+{"do": "report"}
+]
+}

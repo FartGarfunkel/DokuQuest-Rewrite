@@ -1,5 +1,5 @@
 // sim/ench_work.h — the enchanting table worked in the world (the enchanting scene, ui/cinematic_table.cpp; after
-// Cinematic Interactions' EnchantStation): the item hovers over the table and the lapis lies on it (block entity
+// the enchant scene's): the item hovers over the table and the lapis lies on it (block entity
 // {type:"enchwork", items:[item, lapis]}, synced, spilt when it breaks); the offers and the enchanting are the enchanting
 // screen's own (sim/enchanting.h enchOffers / enchApplyOffer: the shelves round it, your levels, the lapis).
 #pragma once

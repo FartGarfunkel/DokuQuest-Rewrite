@@ -7,19 +7,21 @@
 #include "gen/generator.h"
 #include "world/dims.h"
 #include "core/registry.h"
+#include "gen/gendefs.h"
+#include "common/threadpool.h"
+#include <algorithm>
+#include <atomic>
+#include <unordered_map>
 #include <cmath>
 #include <random>
 
 namespace dq {
 
+bool interactable(BlockId id);   // (sim/controller.cpp: a block with a use of its own)
+
 namespace {
 json& treasures(Level& lv) { json& T = lv.info.data["treasures"]; if (!T.is_object()) T = json::object(); return T; }
 
-std::string direction(float dx, float dz) {   // (north is -z)
-  static const char* N[8] = {"north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"};
-  float a = std::atan2(dx, -dz); if (a < 0) a += TAU;
-  return N[(int)std::lround(a / (TAU / 8)) % 8];
-}
 
 json loot(std::mt19937& r) {
   json items = json::array(); for (int i = 0; i < 27; i++) items.push_back(nullptr);
@@ -41,16 +43,24 @@ public:
       if (!a.is_array() || a.size() < 6 || !a[1].is_string() || a[1].get<std::string>() != "treasure_map" || lv.isRemote()) return true;
       Player* p = findPlayer(lv, a[0].is_string() ? a[0].get<std::string>() : "");
       if (!p || p->held().id != "treasure_map") return true;
+      // it's an item like any other first: crouched it's set down on the ground, and used on a chest (or anything with a
+      // use of its own) it goes in -- the map is only opened when it's used at the land or the sky
+      if (p->sneaking) return true;
+      if (a[5].is_number() && a[5].get<int>() >= 0 && a[2].is_number() && a[3].is_number() && a[4].is_number())
+        if (interactable(lv.world(p->realm).getBlock(a[2].get<int>(), a[3].get<int>(), a[4].get<int>()))) return true;
       ItemStack& h = p->held();
       if (!h.tag.is_object() || !h.tag.contains("tx")) if (!markX(*p, h)) { lv.fx->message(p->id, "The map's too faded to read here", ""); return false; }
       const int tx = h.tag["tx"], tz = h.tag["tz"];
-      const float dx = tx + 0.5f - p->pos.x, dz = tz + 0.5f - p->pos.z, d = std::hypot(dx, dz);
       json& seen = p->stats["treasureSeen"]; if (!seen.is_object()) seen = json::object();
       seen[h.tag.value("tid", std::string())] = true;
-      lv.fx->message(p->id, d < 4 ? "The X is right here: dig!" : "The X lies about " + std::to_string((int)std::lround(d)) + " blocks " + direction(dx, dz) + " of here", "");
+      sfxUi(lv, *p, "map_paper");
+      openContentScreen(lv, *p, "treasure_map", {{"slot", p->selected}, {"x", tx}, {"z", tz}});   // (ui/treasure_map_screen.cpp)
       return false;
     });
     addMapMarkerSource([this](Level& L, const PaperMap& m, const Player* viewer, std::vector<MapMarker>& out) {
+      if (m.id.rfind("treasure~", 0) == 0) {   // (a treasure map's own picture: its X in the middle)
+        MapMarker k; k.cell = 16; k.u = MAP_N * 0.5f; k.v = MAP_N * 0.5f; out.push_back(k); return;
+      }
       if (&L != &lv || !viewer || m.dim != JS_OVERWORLD || !viewer->stats.contains("treasureSeen")) return;
       const float s = (float)(1 << m.scale);
       for (auto& [tid, r] : treasures(lv).items()) {
@@ -117,6 +127,92 @@ private:
     return false;
   }
 };
+}
+
+std::string treasureDirection(float dx, float dz) {   // (north is -z)
+  static const char* N[8] = {"north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"};
+  float a = std::atan2(dx, -dz); if (a < 0) a += TAU;
+  return N[(int)std::lround(a / (TAU / 8)) % 8];
+}
+
+namespace {
+// a picture being drawn on a worker: the generator's land, handed over when it's done
+struct Drawing { PaperMap gen; std::atomic<bool> done{false}; int cursor = 0; };
+std::unordered_map<const PaperMap*, std::shared_ptr<Drawing>>& drawings() { static std::unordered_map<const PaperMap*, std::shared_ptr<Drawing>> d; return d; }
+}
+
+PaperMap* treasureMapPicture(Level& lv, int tx, int tz) {
+  MapStore& st = mapStore(lv);
+  const std::string id = "treasure~" + std::to_string(tx) + "," + std::to_string(tz);
+  auto& D = drawings();
+  if (auto it = st.all().find(id); it != st.all().end()) {
+    PaperMap* m = it->second.get();
+    auto d = D.find(m);
+    if (d != D.end() && (d->second->gen.x0 != m->x0 || d->second->gen.z0 != m->z0)) { D.erase(d); d = D.end(); }   // (another world's, gone)
+    if (d != D.end()) {
+      Drawing& dr = *d->second;
+      if (dr.done.load()) {   // the generator's land first, then what's loaded over it, as it is
+        for (int i = 0; i < MAP_PIX; i++) if (dr.gen.h[i] && !m->h[i]) m->setPixel(i, dr.gen.ids[i], dr.gen.h[i], dr.gen.cl[i]);
+        int cur = 0; mapPaintLoaded(lv, *m, cur, MAP_PIX);
+        D.erase(d);
+      } else mapPaintLoaded(lv, *m, dr.cursor, 512);   // (meanwhile the land that's loaded, a little each call)
+      st.dirty.erase(id);
+    }
+    return m;
+  }
+  PaperMap* m = st.create(id, JS_OVERWORLD, tx, tz, TREASURE_MAP_SCALE);
+  const int half = (MAP_N << TREASURE_MAP_SCALE) / 2;
+  m->x0 = tx - half; m->z0 = tz - half;   // (centred on the X, not on the grid the drawn maps keep)
+  st.dirty.erase(id);   // (never saved: it's made again from the X)
+  std::shared_ptr<WorldGen> gen = lv.gen;
+  if (!gen || !gen->forDim(DIM_OVERWORLD)) { int cur = 0; mapPaintLoaded(lv, *m, cur, MAP_PIX); st.dirty.erase(id); return m; }
+  auto dr = std::make_shared<Drawing>();
+  dr->gen.dim = m->dim; dr->gen.x0 = m->x0; dr->gen.z0 = m->z0; dr->gen.scale = m->scale;
+  D[m] = dr;
+  auto job = [gen, dr] { mapGeneratedPixels(*gen->forDim(DIM_OVERWORLD), dr->gen, dr->gen); dr->done = true; };
+  if (lv.pool) lv.pool->submit(job, -1);   // (a worker: the generator's caches are its own there)
+  else job();                              // (no workers: a test, at once)
+  return treasureMapPicture(lv, tx, tz);
+}
+
+PaperMap* readableMapFor(Level& lv, Player& p, ItemStack& s) {
+  int tx, tz;
+  if (treasureTarget(s, tx, tz)) return treasureMapPicture(lv, tx, tz);
+  return isMapStack(s) ? mapStore(lv).forStack(p, s) : nullptr;
+}
+
+std::string treasureHint(Level& lv, int tx, int tz, float px, float pz) {
+  const float dx = tx + 0.5f - px, dz = tz + 0.5f - pz, d = std::hypot(dx, dz);
+  if (d < 4) return "The X is right here: dig!";
+  std::string t = "Buried " + treasureDirection(dx, dz) + " of here, ";
+  if (d < 24) t += "only a few steps away";
+  else if (d < 100) t += "under a hundred blocks away";
+  else t += "about " + std::to_string((int)std::lround(d / 50) * 50) + " blocks away";
+  DimGenerator* g = lv.gen ? lv.gen->forDim(DIM_OVERWORLD) : nullptr;
+  if (!g) return t;
+  // what lies between (water on the way: a river, or the open sea; high ground) and the land at the X
+  int wet = 0, run = 0, longest = 0, high = 0;
+  const int steps = std::clamp((int)(d / 12), 1, 64);
+  for (int i = 1; i < steps; i++) {
+    ColumnSample c; g->sample((int)std::lround(px + dx * i / steps), (int)std::lround(pz + dz * i / steps), c);
+    if (c.water >= 0 && c.water >= c.height) { wet++; run++; longest = std::max(longest, run); } else run = 0;
+    if (c.height > 120) high++;
+  }
+  ColumnSample at; g->sample(tx, tz, at);
+  std::vector<std::string> notes;
+  if (wet) notes.push_back(longest * d / steps > 60 ? "across open water" : "past the river");
+  else if (high * 4 > steps) notes.push_back("over the high ground");
+  switch (at.biome) {
+    case BIOME_FOREST: notes.push_back("in the woods"); break;
+    case BIOME_DESERT: notes.push_back("in the sands"); break;
+    case BIOME_TAIGA: notes.push_back("among the pines"); break;
+    case BIOME_MOUNTAINS: notes.push_back("up in the hills"); break;
+    case BIOME_PLAINS: notes.push_back("out on the grassland"); break;
+    case BIOME_BEACH: notes.push_back("by the shore"); break;
+    default: break;
+  }
+  for (size_t i = 0; i < notes.size(); i++) t += (i == 0 ? " \xE2\x80\x94 " : ", ") + notes[i];
+  return t;
 }
 
 void registerTreasureMaps() { registerLevelSystem([](Level& lv) { return std::make_shared<TreasureMaps>(lv); }); }

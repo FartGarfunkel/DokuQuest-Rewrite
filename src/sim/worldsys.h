@@ -20,7 +20,9 @@ void attachWorldSystems(Level& lv, World& w);
 // (fluids waking, supports, falling, hardening) stay quiet: world editing, lit/unlit furnace swaps.
 struct QuietEdits { QuietEdits(); ~QuietEdits(); };
 bool quietEdits();
-void randomTicks(Level& lv, World& w, float px, float pz);
+// slice/slices: only the chunks in that share (each chunk is in one of them), so a second's random ticks are spread over
+// the ticks of that second instead of all landing in one (10-20 ms every second on a desktop processor)
+void randomTicks(Level& lv, World& w, float px, float pz, int slice = 0, int slices = 1);
 bool growTree(Level& lv, World& w, int x, int y, int z, double r);
 void tickFurnaces(Level& lv, double dt);
 bool tickFurnace(json& e, double dt, const std::string& kind);   // true when something visible changed

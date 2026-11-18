@@ -476,7 +476,7 @@ void MagicSystem::tickMob(Entity& e, double dt) {
   if (e.data.contains("spiritT")) {
     float t = e.data.value("spiritT", 60.f) - (float)dt;
     e.data["spiritT"] = t;
-    Player* o = playerNamed(lv, e.data.value("owner", ""));
+    Player* o = playerNamed(lv, petOwnerOf(e));
     if (t <= 0 || !o || glm::length(vec2(o->pos.x - e.pos.x, o->pos.z - e.pos.z)) > 64) {
       sfx::burst(lv, e.pos + vec3(0, 0.5f, 0), "mana_frost", 24, 0.3f, json{{"vy", 1.5}, {"life", 0.7}, {"size", 0.07}, {"spread", 1}});
       e.removed = true;

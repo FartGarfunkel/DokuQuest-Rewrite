@@ -1,5 +1,6 @@
 // net/server_sync.cpp — what the server keeps each player's game in step with (net.js hostTick, flushBlocks,
 // updateRange/flushChunks, sendEntities, flushEffects, env; netsync.js netSnap), plus the server's chat commands.
+#include "world/attach.h"
 #include "sim/combat_rpg.h"
 #include "core/tool_parts.h"
 #include <chrono>
@@ -32,7 +33,8 @@ static std::string stacksSig(const std::vector<ItemStack>& v) {
 }
 std::string playerInvSig(const Player& p) {
   return stacksSig(p.inv) + "|" + stacksSig(p.armor) + "|" + stacksSig(p.offhand) + "|" + stacksSig(p.back) + stacksSig(p.hook) + stacksSig(p.charm) +
-         stacksSig(p.cape) + stacksSig(p.quiver) + stacksSig(p.shield) + "|" + std::to_string(p.xp) + "|" + std::to_string(p.level);
+         stacksSig(p.cape) + stacksSig(p.quiver) + stacksSig(p.shield) + "|" + std::to_string(p.xp) + "|" + std::to_string(p.level) +
+         (p.carrying.is_object() ? "|ca" + std::to_string(std::hash<std::string>()(p.carrying.dump())) : "");   // (an animal or a chest in the arms)
 }
 static json stacksJson(const std::vector<ItemStack>& v) { json a = json::array(); for (auto& s : v) a.push_back(s.toJson()); return a; }
 static void stacksFrom(const json& a, std::vector<ItemStack>& v) { if (!a.is_array()) return; for (size_t i = 0; i < v.size(); i++) v[i] = i < a.size() ? ItemStack::fromJson(a[i]) : ItemStack(); }
@@ -53,6 +55,7 @@ void applyPlayerInv(Player& p, const json& j) {
   if (j.contains("sh")) stacksFrom(j["sh"], p.shield);
   p.selected = clampv(j.value("sel", p.selected), 0, 8);
   p.xp = j.value("xp", p.xp); p.level = j.value("lv", p.level);
+  if (j.contains("ca")) p.carrying = j["ca"].is_object() ? j["ca"] : json();   // (only the host sends it: what it lifted into a joined player's arms)
 }
 
 // ---- what a player's game sees of an entity (netsync.js netSnap) ----
@@ -71,11 +74,15 @@ json entitySnapshot(const Entity& e) {
     s["n"] = p->name; s["md"] = p->mode;
     { auto& A = netSkinAliases(); auto a = A.find(p->skin); s["sk"] = a != A.end() ? a->second : p->skin; }   // the host's own skins by their net names
     const ItemStack& h = p->inv[clampv(p->selected, 0, INV_MAIN - 1)];
-    if (!h.empty()) { s["hd"] = h.id; if (const std::string mk = partToolModelKey(h); !mk.empty()) s["hm"] = mk; }   // (its look's key only: a mixed blade's colours. Its whole tag had made each update too big for one packet, and the others' movement stuttered)
+    if (p->ghost && p->netHands) { if (!p->netHeld.empty()) { s["hd"] = p->netHeld; if (!p->netHeldModel.empty()) s["hm"] = p->netHeldModel; } }   // (a guest's hands as their game says, at once: their bags reach us only when saved)
+    else if (!h.empty()) { s["hd"] = h.id; if (const std::string mk = partToolModelKey(h); !mk.empty()) s["hm"] = mk; }   // (its look's key only: a mixed blade's colours. Its whole tag had made each update too big for one packet, and the others' movement stuttered)
     json ar = json::array(); bool anyAr = false;
+    if (p->ghost && p->netHands && p->netArmor.is_array()) { for (auto& a : p->netArmor) anyAr |= a.is_string(); ar = p->netArmor; }
+    else
     for (auto& a : p->armor) { ar.push_back(a.empty() ? json() : json(a.id)); anyAr |= !a.empty(); }
     if (anyAr) s["ar"] = ar;
-    if (!p->offhand.empty() && !p->offhand[0].empty()) { s["of"] = p->offhand[0].id; if (const std::string mk = partToolModelKey(p->offhand[0]); !mk.empty()) s["om"] = mk; }
+    if (p->ghost && p->netHands) { if (!p->netOffItem.empty()) { s["of"] = p->netOffItem; if (!p->netOffItemModel.empty()) s["om"] = p->netOffItemModel; } }
+    else if (!p->offhand.empty() && !p->offhand[0].empty()) { s["of"] = p->offhand[0].id; if (const std::string mk = partToolModelKey(p->offhand[0]); !mk.empty()) s["om"] = mk; }
     if (!p->shield.empty() && !p->shield[0].empty()) s["sh"] = p->shield[0].id;   // (the shield slot's: on their forearm)
     {   // the backpack and the quiver on their back (unless they hide them), so the others see them
       const json& hg = p->data.is_object() ? p->data.value("hideGear", json::array()) : json::array();
@@ -88,6 +95,10 @@ json entitySnapshot(const Entity& e) {
     }
     int pf = (p->sneaking ? 1 : 0) | (p->sprinting ? 2 : 0) | (p->flying ? 4 : 0) | (p->swimming ? 8 : 0) | (p->crawling ? 16 : 0) | (p->dead ? 32 : 0);
     if (pf) s["pf"] = pf;
+    // when this place was true (our clock): a guest's body is where their game said, when it said (their ME's time put on
+    // our clock), not when we pass it on — so their friends see the steps evenly
+    s["ts"] = p->ghost && !p->riding && !p->netHist.empty() ? p->netHist.back().t - p->netOffTarget : nowSeconds();   // (riding: where the mount took them, now)
+    playerPoseInto(*p, s);
     if ((p->activity & Player::ACT_SCREEN) && !p->bookPic.empty()) {   // their open book's pages: when they change (and now and again for anyone who came in since)
       const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
       s["bv"] = (int)(p->bookPicV & 0xffff);
@@ -117,6 +128,10 @@ void NetWatch::onBlockChanged(World& w, int x, int y, int z, BlockId, BlockId ne
   if (w.changeFlags & SetFlags::NoModify) return;   // world generation: every game makes that itself
   host.blockQ.push_back({w.realm, x, y, z, newId, w.getMeta(x, y, z)});
 }
+void NetWatch::onAttachmentsChanged(World& w, int x, int y, int z) {
+  if (w.changeFlags & SetFlags::NoModify) return;
+  host.blockQ.push_back({w.realm, x, y, z, 0, 0, attachmentsToJson(w.attachments(x, y, z))});   // (in the blocks' stream: never ahead of the block it sits beside)
+}
 void NetWatch::onBlockEntityChanged(World& w, int x, int y, int z) {
   json* e = w.blockEntity(x, y, z);
   host.beQ[{w.realm, x, y, z}] = e ? *e : json();
@@ -134,6 +149,15 @@ void ServerHost::applyBlocks(Peer& p, const json& m) {
   const auto& R = reg();
   for (auto& b : m["l"]) {
     if (!b.is_array() || b.size() < 5) continue;
+    if (b[3].is_string()) {   // [x,y,z,"a",parts]: the cell's attachments (world/attach.h)
+      if (!b[0].is_number() || !b[1].is_number() || !b[2].is_number()) continue;
+      const int x = b[0], y = b[1], z = b[2];
+      if (!inWorldY(y) || !w.isLoaded(x, y, z)) continue;
+      const bool nearby = realm == p.pl->realm && glm::distance(vec3(x + 0.5f, y + 0.5f, z + 0.5f), p.pl->pos) <= 24;
+      if (!nearby) { fix.push_back(json::array({x, y, z, "a", attachmentsToJson(w.attachments(x, y, z))})); continue; }
+      w.setAttachments(x, y, z, attachmentsFromJson(b[4]), SetFlags::FromNet | SetFlags::Urgent);
+      continue;
+    }
     int x = b[0], y = b[1], z = b[2]; u32 id = b[3]; u8 meta = (u8)b[4].get<int>();
     if (id >= R.blocks.size() || !inWorldY(y)) continue;
     bool nearby = realm == p.pl->realm && glm::distance(vec3(x + 0.5f, y + 0.5f, z + 0.5f), p.pl->pos) <= 24;
@@ -170,7 +194,7 @@ void ServerHost::applyBlockEntity(Peer& p, const json& m) {
 void ServerHost::flushBlocks() {
   if (blockQ.empty()) return;
   std::map<int, json> byRealm;
-  for (auto& b : blockQ) byRealm[b.realm].push_back(json::array({b.x, b.y, b.z, b.id, b.meta}));
+  for (auto& b : blockQ) byRealm[b.realm].push_back(b.att.is_null() ? json::array({b.x, b.y, b.z, b.id, b.meta}) : json::array({b.x, b.y, b.z, "a", b.att}));
   blockQ.clear();
   for (auto& [r, l] : byRealm) toAll(BLK, {{"rl", r}, {"l", l}});
 }
@@ -228,9 +252,11 @@ void ServerHost::flushChunks(Peer& p, int maxRecords) {
 }
 
 // ---- entities ----
-void ServerHost::sendEntities(Peer& p, const std::unordered_map<u32, Snap>& snaps) {
+void ServerHost::sendEntities(Peer& p, const std::unordered_map<u32, Snap>& snaps, bool all) {
   Player& pl = *p.pl;
-  json list = json::array(), gone = json::array();
+  const double now = nowSeconds();   // (st: our clock, the one the places' times are on: their game draws by it)
+  json news = json::array(), gone = json::array();
+  std::vector<std::pair<json, size_t>> moves;   // (entry, its size)
   std::unordered_set<u32> seen;
   for (auto& [id, sn] : snaps) {
     if (id == p.eid) continue;
@@ -240,17 +266,36 @@ void ServerHost::sendEntities(Peer& p, const std::unordered_map<u32, Snap>& snap
     if (std::abs(d.x) > ENT_RANGE || std::abs(d.z) > ENT_RANGE || std::abs(d.y) > 128) continue;
     seen.insert(id);
     SentEnt& was = p.sent[id];
-    bool fresh = was.at == 0;
-    if (!fresh && was.hash == sn.hash && was.dataHash == sn.dataHash && t - was.at < 2) continue;
+    const bool fresh = was.at == 0, dataNew = was.dataHash != sn.dataHash, changed = fresh || dataNew || was.hash != sn.hash;
+    // unchanged: sent once more (so its stop is seen as a stop: two places the same), then only now and again
+    if (!changed && was.again && t - was.at < 2) continue;
+    was.again = !changed;
     json s = sn.s;
-    if (fresh || was.dataHash != sn.dataHash) s["d"] = e->data;
+    if (fresh || dataNew) {
+      s["d"] = e->data;
+      // a player's body (sim/corpse.h) wears its owner's skin: the host's own players' skins go by their net names
+      if (e->type == "corpse") { auto& A = netSkinAliases(); auto a = A.find(e->data.value("skin", std::string())); if (a != A.end()) s["d"]["skin"] = a->second; }
+    }
     was.hash = sn.hash; was.dataHash = sn.dataHash; was.at = t;
-    list.push_back(std::move(s));
+    // something new to them, or its data, comes reliably; places and poses come on the movement channel (one lost is
+    // made good by the next), unless it's too big for one datagram (a book's pages)
+    if (fresh || dataNew) { news.push_back(std::move(s)); continue; }
+    const size_t sz = json::to_msgpack(s).size();
+    if (sz > MOVE_PACKET_MAX - 64) news.push_back(std::move(s));
+    else moves.push_back({std::move(s), sz});
   }
-  for (auto it = p.sent.begin(); it != p.sent.end();) {
+  if (all) for (auto it = p.sent.begin(); it != p.sent.end();) {
     if (!seen.count(it->first)) { gone.push_back(it->first); it = p.sent.erase(it); } else ++it;
   }
-  if (!list.empty() || !gone.empty()) send(p.enet, ES, {{"rl", pl.realm}, {"l", list}, {"g", gone}, {"st", t}}, 1);   // (st: the host's clock, for smooth replicas)
+  if (!news.empty() || !gone.empty()) send(p.enet, ES, {{"rl", pl.realm}, {"l", news}, {"g", gone}, {"st", now}}, 1);
+  // the movement, in packets of one datagram each (a bigger unreliable one would go as reliable pieces, holding the rest up)
+  json l = json::array(); size_t bytes = 0;
+  auto flush = [&] { if (!l.empty()) send(p.enet, ES, {{"rl", pl.realm}, {"l", l}, {"st", now}, {"u", 1}}, CH_MOVE, false); l = json::array(); bytes = 0; };
+  for (auto& [s, sz] : moves) {
+    if (bytes + sz > MOVE_PACKET_MAX - 48) flush();
+    l.push_back(std::move(s)); bytes += sz;
+  }
+  flush();
 }
 
 // ---- time & weather ----

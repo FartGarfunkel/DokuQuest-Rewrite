@@ -70,6 +70,12 @@ public:
   void update(double dt);
   void render();
   void drawHud();
+  // hosting: the guests' bodies drawn where their smooth view is (on), then put back at their newest place (off)
+  void showReplicas(bool on);
+  std::vector<std::pair<Entity*, std::array<float, 6>>> shownAt;
+  struct Gear { Player* p = nullptr; int sel = 0; ItemStack held, off; std::vector<ItemStack> armor; };
+  std::vector<Gear> shownGear;
+  std::vector<std::pair<Player*, std::shared_ptr<Player>>> shownViews;   // (a guest swapped with their drawing copy, Player::netView)
   void save();
 
   // camera / view
@@ -77,6 +83,7 @@ public:
   bool hudHidden = false, debugOverlay = false;
   RayHit target;                      // block under the crosshair
   double tickAcc = 0;
+  double frameMsAvg = 0;   // smoothed frame time (update: the mesh uploads' share of a frame)
   float breakProgress = 0; ivec3 breakBlock{0}; bool breaking = false;
   bool paused() const;
 

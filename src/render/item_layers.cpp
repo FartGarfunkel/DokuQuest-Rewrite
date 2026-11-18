@@ -1,6 +1,7 @@
 // render/item_layers.cpp — the first-person hand with the held item, and dropped items (voxel models).
 #include "sim/attack_moves.h"
 #include "sim/maps.h"
+#include "sim/treasure_maps.h"
 #include "render/char_anim.h"
 #include "ui/book_ui.h"
 #include "render/content_draw.h"
@@ -495,7 +496,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     VR.end();
     return;
   }
-  if (p->carrying.is_object()) {   // Carry On (local.js handState): whatever you hold sits in both arms in front of you
+  if (p->carrying.is_object()) {   // carried in the arms (local.js handState): whatever you hold sits in both arms in front of you
     drew = 3;
     drawCarriedThing(p->carrying, glm::translate(mat4(1), vec3(bx, -0.62f + by - eq * 0.5f, -0.95f)), true, L, vec4(0));
     for (float side : {-1.f, 1.f}) {
@@ -676,7 +677,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     offBook = true;
     drew |= 2;
   }
-  const bool mapHeld = isMapStack(held);   // (a map is held up to read in the hand view)
+  const bool mapHeld = isReadableMapStack(held);   // (a map is held up to read in the hand view)
   if (taken & 1) {}
   else if ((cinematicForgeT() >= 0 || [] { PairView pv; return cinematicPairView(pv) && (pv.kind == 8 || pv.kind == 15) && pv.t >= 0 && pv.t < pairBeats(pv.kind).letGo; }()) && !cinematicLeaning() && !bodyHands) {   // (the smithing table and the Tool Forge too, while the blows land; with your body drawn, its own hand has the hammer: render/char_layer.cpp)
     drew |= 1; holdIn(1, ItemStack(!held.empty() && model3dKind(held.id, reg().item(held.id)) == "hammer" ? held.id : std::string("smith_hammer"), 1), 0);   // (your own hammer if you hold one)
@@ -694,7 +695,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     drawArm(m);
   }
   // the off hand, mirrored on the left
-  if (!(taken & 2) && !offBook && !p->offhand.empty() && !p->offhand[0].empty() && p->offhand[0].def() && (!bodyHands || isMapStack(p->offhand[0]))) { drew |= 2; holdIn(-1, p->offhand[0], -0.02f); }
+  if (!(taken & 2) && !offBook && !p->offhand.empty() && !p->offhand[0].empty() && p->offhand[0].def() && (!bodyHands || isReadableMapStack(p->offhand[0]))) { drew |= 2; holdIn(-1, p->offhand[0], -0.02f); }
   VR.end();
   if (offBook) {   // its pages, and where they are on the window (the mouse goes through them: ui/book_ui.h)
     ContentDraw& cd = contentDraw();

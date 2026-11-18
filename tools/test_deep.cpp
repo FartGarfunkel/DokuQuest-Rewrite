@@ -13,6 +13,7 @@
 #include "world/light.h"
 #include <thread>
 #include <cstdio>
+#include <map>
 
 using namespace dq;
 static int fails = 0, passes = 0;
@@ -121,7 +122,9 @@ int main(int argc, char** argv) {
       const vec3 cav(40.5f, (float)dimBase(DIM_UNDER1) + 150, 40.5f);
       streamUntil(w, cav, {{DIM_UNDER1, 0}, {DIM_UNDER2, 0}});
       for (int i = 0; i < 1200; i++) { lv->tick(TICK_DT); if (i % 20 == 0) w.stream({{cav, 3, true}}, 5); }
-      int items = 0; for (auto& e : lv->entities()) if (!e->removed && e->type == "item") items++;
+      int items = 0; std::map<std::string, int> what;
+      for (auto& e : lv->entities()) if (!e->removed && e->type == "item") { items++; what[e->data["stack"].value("id", std::string("?"))]++; }
+      if (items >= 20) { std::string w2; for (auto& [k, n] : what) w2 += " " + k + " x" + std::to_string(n); printf("  (the items:%s)\n", w2.c_str()); }
       check(items < 20, strFormat("a minute in the Underworld drops next to nothing on its own (%d items)", items));
     }
     // something built down there is kept

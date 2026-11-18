@@ -291,6 +291,22 @@ int main(int argc, char** argv) {
     L->info.data["flags"]["fragFoes"].erase("night_lord");
     tick(0.05);
   }
+  // ------------------------------------------------------------ the catalyst: only the first village actually found
+  {
+    json& D = L->info.data;
+    const json riftWas = D.value("rift", json()), seenWas = P->stats.value("vseen", json());
+    D.erase("rift"); D.erase("vknown"); D.erase("vfirst"); D.erase("vfirstAt"); D.erase("vfound");
+    P->stats["vseen"] = json::object();
+    D["playTime"] = 5000.0;
+    tick(3.5);
+    check(riftRec(*L).value("stage", 0) == 0 && !D.contains("vfirst"), "no village found, no rift, however long you play");
+    P->stats["vseen"]["zz_second_by_name"] = 1; tick(1.2);
+    P->stats["vseen"]["aa_first_by_name"] = 1; tick(1.2);
+    check(D.value("vfirst", std::string()) == "zz_second_by_name", "the first village found is the one remembered, not the first by name (" + D.value("vfirst", std::string()) + ")");
+    D.erase("vknown"); D.erase("vfirst"); D.erase("vfirstAt"); D["playTime"] = 0.0;
+    if (riftWas.is_null()) D.erase("rift"); else D["rift"] = riftWas;
+    if (seenWas.is_null()) P->stats.erase("vseen"); else P->stats["vseen"] = seenWas;
+  }
   // ------------------------------------------------------------ the story
   {
     check(riftTier(*L) <= 0 && riftStability(*L) == 100, strFormat("before the rift: all quiet (tier %d, stability %d, stage %d)", riftTier(*L), riftStability(*L), L->info.data.value("rift", json::object()).value("stage", 0)));

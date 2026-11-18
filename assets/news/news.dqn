@@ -1,6 +1,48 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.34 | November 2026
+**Multiplayer, smooth as playing side by side:**
+- **Other players move smoothly over the internet.** Their positions are now smoothed with the time each one was true, a lost packet no longer holds everyone up, and the network library no longer throws movement away on a bumpy connection. Tested on a simulated bad link (50–150 ms of jitter, lost packets) over UDP and TCP: steady walking speed, no jumps backwards.
+- **You see everything they do:** arm swings and digging (with the cracks), bow draws, shields, eating and drinking, ladders, ledges, gliding, paddling, what they carry, what's in their hands and the armour they wear, the journal in their hands, working at a station. When you host, a friend's actions line up with their body on your screen.
+- The network changed: everyone needs alpha.34 to play together (PC and Android alike).
+**Smoother frames, less lag:**
+- Only one frame now waits on the graphics card, so the picture follows your mouse sooner and the frame rate holds steady instead of jumping about. On built-in graphics: input-to-picture time halved (about 40 → 20 ms), stutters over 33 ms down from about 100 a run to under 10, and a 60 fps limit now really holds 60.
+- A **Low Latency** option (on by default) in Options and the launcher.
+- Plant growth and other world work is spread across each second instead of all at once.
+**Several things in one block:**
+- A block can now share its space with small parts that fit beside it: torches, wall lights, ladders, trapdoors, buttons, levers, pressure plates, signs, item frames, vines and lanterns. A ladder shaft with a torch on the wall, a trapdoor up behind a chest (and it won't close while the chest is in the way: "It's blocked").
+- Each part is aimed at, broken and dropped on its own; a part with nothing left to hold on to pops off.
+**Hit boxes that match what you see:**
+- You stand on top of fences and walls instead of floating over them (animals still can't hop out of their pens).
+- Every block was checked: what you aim at and bump into follows its real shape. Chests, stations, plants, signs, levers, lanterns, beds and banners all fixed; aiming through the empty part of a block reaches what's behind it.
+- Hanging lanterns use the 3D chain links; fallen adventurers are picked by their bones.
+**Your body and the creatures:**
+- **Ragdolls rest on the ground** instead of sinking into it (by stairs, ledges and walls too).
+- **A friend's body** wears their own skin, with their armour, backpack and cape.
+- **Pets:** tamed dogs and other small pets can be picked up by their owner again (and stay yours if you fall while carrying one); the stable knows your tamed companions, and a companion that falls goes home to rest. 16 more creatures can be tamed, two more ridden. Friends in your world can carry and basket creatures too.
+- **Water creatures really swim**, under the water and all around it; fish school; a fish on land flops. The crocodile swims about, the laviathan swims in lava.
+- **Every creature leaves something** when it falls (60 dropped nothing).
+**The world lives on its own:**
+- **Lightning** charges a fuseling (a blue crackling shell, a bigger blast) and turns pigs into pig-men and villagers into witches.
+- **Endermen carry blocks** of the land about (never from anything you built).
+- **Mushrooms spread** in the dark and wither in bright light (unless on mycelium or podzol); the land makes them only where they can live, in the shade, so a forest's own stay put. Bone meal grows a huge one. **Vines grow** along walls and down.
+- **Water washing over grass** no longer leaves a litter of seeds and straw behind (flowers and saplings still float loose).
+- **Stalactites drip** what lies over the stone they hang from — water, or lava — and fill a cauldron under them. A cauldron can hold lava, and glows.
+**Towns:**
+- **Townsfolk find their way** much better (a new way-finder that knows the real shapes of blocks), and the golems keep to the open ground they can reach.
+- Lifts to the millstones in every kind of windmill.
+- **The story** starts only in the first village you actually find, and never by itself.
+**Controller:**
+- Every menu starts with something highlighted and remembers where you were; the stick and d-pad step evenly; button hints for your kind of pad; LB/RB and the triggers turn pages; tooltips sit by the highlighted item. Chests, crafting, furnaces, the anvil, the map and chat all worked from the pad.
+- One mouse pointer (your system's), not two.
+**Fixes and more:**
+- **Treasure maps** go in chests and on the ground again, and open as a real map with a red X and a hint which way to go.
+- **Item pictures on the Vulkan renderer** (they were blank) and on older phones.
+- **Sunflowers** have their heads. **Clouds** no longer draw over stained glass. **Cabinets** open the way they face. **Chiseled blocks** keep their faces beside chests.
+- **The crafting table in the world:** with a full grid, the rim round it (or the item floating over it) takes what you made.
+- Creatures wearing a skin of yours wear it wherever they appear.
+- Removed Herobrine.
 ## Alpha 1.0.0.33 | November 2026
 **Your body instead of a grave:**
 - **When you fall, your body stays where you fell,** limp on the ground in your skin and armour, holding everything you carried. The death compass leads you back to it.

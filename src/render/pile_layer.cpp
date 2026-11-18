@@ -206,7 +206,7 @@ public:
       }
       if (type == "brew") {   // the brewing stand: bottles on its three feet, the ingredient in the bowl, the powder at its foot
         begin();
-        // (Cinematic Interactions' BrewingStation FEET {12, 8} {4, 4} {4, 12} px, the bottles' feet on the stone 2 px up)
+        // (the brewing scene's FEET {12, 8} {4, 4} {4, 12} px, the bottles' feet on the stone 2 px up)
         static const vec3 SPOT[5] = {{12.5f / 16, 2 / 16.f, 8 / 16.f}, {3.5f / 16, 2 / 16.f, 4 / 16.f}, {3.5f / 16, 2 / 16.f, 12 / 16.f}, {0.5f, 14.5f / 16.f, 0.5f}, {11 / 16.f, 1 / 16.f, 13 / 16.f}};
         const json& items = e.contains("items") && e["items"].is_array() ? e["items"] : json::array();
         for (int k = 0; k < 5 && k < (int)items.size(); k++) {
@@ -245,7 +245,7 @@ public:
         const std::vector<ItemStack> v = enchWorkItems(w, ivec3(x, y, z));
         const float t = (float)f.time;
         if (!v[0].empty()) if (const VoxelModel& im = itemModel(stackModelKey(v[0])); im.ready()) {
-          mat4 m = glm::translate(base, vec3(0.5f, 0.75f + 0.42f + 0.03f * std::sin(t * 1.6f), 0.5f));   // (EnchantStation ITEM_SIZE 0.34)
+          mat4 m = glm::translate(base, vec3(0.5f, 0.75f + 0.42f + 0.03f * std::sin(t * 1.6f), 0.5f));   // (enchant scene ITEM_SIZE 0.34)
           m = glm::rotate(m, t * 0.8f, vec3(0, 1, 0));
           m = glm::scale(m, vec3(im.kind == VoxelModel::Block ? 0.24f : 0.34f));
           VR.draw(im.gl, m * im.matrix(), VoxelLight{L.sky, std::max(L.block, 0.7f)}, vec4(0), 1.f);   // (glinting, lit by the table)
@@ -284,7 +284,7 @@ public:
           if (v[k].empty()) continue;
           const VoxelModel& im = itemModel(stackModelKey(v[k]));
           if (!im.ready()) continue;
-          // (Cinematic Interactions' AnvilStation: MAIN_SIZE 0.4 turned 45 degrees along the anvil; ADDITION_SIZE 0.3, to the right)
+          // (the anvil scene's: MAIN_SIZE 0.4 turned 45 degrees along the anvil; ADDITION_SIZE 0.3, to the right)
           mat4 m = glm::translate(base, vec3(0.5f + (k ? 0.2f : -0.02f), 1.005f, 0.5f + (k ? 0.12f : 0.f)));
           m = glm::rotate(m, k ? 0.45f : PI / 4, vec3(0, 1, 0));
           if (im.kind == VoxelModel::Block) m = glm::scale(glm::translate(m, vec3(0, 0.07f, 0)), vec3(k ? 0.14f : 0.18f));
@@ -542,6 +542,34 @@ public:
         }
       }
     });
+    {   // item frames sharing a cell with its main block (world/attach.h): the item flat against the wall behind
+      const int r = 3, pcx = ifloor(f.cam.pos.x) >> 4, pcz = ifloor(f.cam.pos.z) >> 4;
+      static const float TURN[4] = {0, -PI / 2, PI, PI / 2};
+      for (int cz = pcz - r; cz <= pcz + r; cz++) for (int cx = pcx - r; cx <= pcx + r; cx++) {
+        const Chunk* c = w.chunk(f.dim, cx, cz);
+        if (!c || c->attach.empty()) continue;
+        for (auto& [ci, parts] : c->attach) for (const Attachment& a : parts) {
+          if (!a.be.is_object() || a.be.value("type", "") != "frame" || !a.be.contains("item") || !a.be["item"].is_object()) continue;
+          const int x = cx * 16 + (ci & 15), y = c->baseY() + (ci >> 8), z = cz * 16 + ((ci >> 4) & 15);
+          const vec3 rel = f.cam.rel(glm::dvec3(x, y, z));
+          if (!f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f)) continue;
+          ItemStack st = ItemStack::fromJson(a.be["item"]);
+          if (st.empty() || !st.def()) continue;
+          const VoxelModel& im = itemModel(stackModelKey(st));
+          if (!im.ready()) continue;
+          const u8 l = w.getLight(x, y, z);
+          const bool glow = reg().block(a.id).num("frame") == 2;
+          const VoxelLight L = glow ? VoxelLight{1, 1} : VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f};
+          begin();
+          mat4 m = glm::translate(mat4(1), rel + vec3(0.5f));
+          m = glm::rotate(m, TURN[a.meta & 3], vec3(0, 1, 0));
+          m = glm::translate(m, vec3(0, 0, -0.5f + std::max(0.09f, im.depth * 0.55f + 0.07f)));
+          m = glm::rotate(m, -(float)a.be.value("rot", 0) * PI / 4, vec3(0, 0, 1));
+          m = glm::scale(m, vec3(im.kind == VoxelModel::Block ? 0.36f : 0.55f));
+          VR.draw(im.gl, m * im.matrix(), L, vec4(0), itemGlints(st) ? 1.f : 0.f);
+        }
+      }
+    }
     if (begun) VR.end();
     if (!handsWater.empty()) {
       ContentDraw& cd = contentDraw();
