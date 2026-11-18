@@ -96,6 +96,10 @@ add_test(NAME weather COMMAND test_weather)
 add_executable(test_anim tools/test/anim_test.cpp)
 target_link_libraries(test_anim PRIVATE dqclient)
 add_test(NAME anim COMMAND test_anim)
+# chiseled blocks keep their faces beside chests, barrels, beds... (tools/test/mesher_carve_test.cpp): one section meshed, no GL
+add_executable(test_mesher tools/test/mesher_carve_test.cpp)
+target_link_libraries(test_mesher PRIVATE dqclient)
+add_test(NAME mesher COMMAND test_mesher)
 
 # every item used and every block placed/used/broken through the player controller; prints anything odd (tools/sweep.cpp)
 add_executable(dq-sweep tools/sweep.cpp)
@@ -223,7 +227,7 @@ add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
 
 # every program finds data/ and assets/ next to it
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_weather test_balance test_npc_paths test_shapes)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_piles test_immersive test_fire test_metal test_materials test_world test_progression test_anim test_mesher test_weather test_balance test_npc_paths test_shapes)
   if(TARGET ${t})
     add_dependencies(${t} dq_runtime_data)
   endif()
@@ -233,3 +237,8 @@ endforeach()
 add_executable(test_death tools/test_death.cpp)
 target_link_libraries(test_death PRIVATE dqcore)
 add_test(NAME death COMMAND test_death)
+# Limp bodies (headless: creatures of every build dying on flat ground, stairs, slabs, ledges, holes, walls, water, by lava:
+# no part deeper than 1/16 of a block in the blocks, no joint pulled apart, all settle). Run: build/test_ragdoll
+add_executable(test_ragdoll tools/test_ragdoll.cpp)
+target_link_libraries(test_ragdoll PRIVATE dqcore)
+add_test(NAME ragdoll COMMAND test_ragdoll)

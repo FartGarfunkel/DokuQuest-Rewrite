@@ -88,7 +88,7 @@ void emitBox(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, u8 meta, int x
       BlockId nbid = c.at(nx, ny, nz);
       u8 nm = c.metaAt(nx, ny, nz);
       bool ncarved = nbid && c.carveAt(nx, ny, nz);   // neighbour carved (dedicated carve byte)
-      if (!forced && R.tOpaque[nbid] && !stationModelOpen(nbid)) {   // (a station drawn from its model doesn't fill its cell)
+      if (!forced && c.fillsCell(nx, ny, nz)) {   // (a station drawn from its model, or an open chest, doesn't fill its cell)
         if (ncarved) {
           // a chiseled neighbour covers this face only if every one of its octants touching the face is still there: its
           // near half across the face's axis, and the halves of the other two axes the face reaches into. (This tested

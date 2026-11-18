@@ -72,6 +72,9 @@ struct ShapeNb {
   virtual u8 meta(int dx, int dy, int dz) const = 0;
   virtual u8 carve(int dx, int dy, int dz) const { return 0; }   // chisel octant mask (0 where no carve channel exists)
   virtual bool at(ivec3& p) const { (void)p; return false; }      // where the block stands, when known (world blocks)
+  // the neighbour is a whole cube as drawn, so a face against it is out of sight. The mesher's answer is stricter than
+  // fullSolid: a chest, furnace or anvil drawn from its model, or a chest standing open, is solid but leaves its cell open
+  virtual bool fills(int dx, int dy, int dz) const;
 };
 struct WorldShapeNb : ShapeNb {
   const World& w; int x, y, z;

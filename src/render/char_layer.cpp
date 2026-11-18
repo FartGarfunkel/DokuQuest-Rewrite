@@ -36,6 +36,7 @@
 #include "render/map_render.h"
 #include "render/instruments.h"
 #include "sim/maps.h"
+#include "sim/treasure_maps.h"
 #include <cstdlib>
 #include <cstdio>
 #include "sim/quiver.h"
@@ -884,7 +885,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   }
   if (fp && (p.activity & Player::ACT_SCREEN)) ps.fpLeftArm = false;
   if (fp && &p == s.player && (bookUiStationOn(s.app) || heldBookOpen())) ps.fpLeftArm = false;   // (a book read in both hands: the hand view's)   // (your journal in your off hand at a station: that arm is the one holding it, no second)   // (your journal held in both your hands: the hand view's two arms, no third)
-  if (fp && ((HeldItemLayer::handsTaken & 2) || (isMapStack(p.held()) && (p.offhand.empty() || p.offhand[0].empty())))) ps.fpLeftArm = false;
+  if (fp && ((HeldItemLayer::handsTaken & 2) || (isReadableMapStack(p.held()) && (p.offhand.empty() || p.offhand[0].empty())))) ps.fpLeftArm = false;
   if (wear.held == "bow" && p.bowPull > 0) wear.held = p.bowPull < 0.45f ? "bow_pulling_0" : p.bowPull < 0.85f ? "bow_pulling_1" : "bow_pulling_2";
   // game/elytra.js: gliding on the wings (they open, you lie flat, arms swept back)
   ps.wingOpen = st.wing;
@@ -907,9 +908,8 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   vec2 lt((l >> 4) / 15.f, (l & 15) / 15.f);
   if (!fp && !ps.sleep && !ps.swim && !ps.crawl && !ps.hang && ps.climb <= 0 && ps.deathT <= 0 && !ps.ladder && !carrying) {
     ItemStack* off = p.offhand.empty() ? nullptr : &p.offhand[0];
-    bool mainMap = isMapStack(p.held()), offMap = off && isMapStack(*off);
+    bool mainMap = isReadableMapStack(p.held()), offMap = off && isReadableMapStack(*off);
     if (mainMap || offMap) {
-      MapStore& ms = mapStore(*s.level);
       ps.mapMain = mainMap; ps.mapOff = offMap;
       bool both = mainMap && !offMap && wear.off.empty();
       float drop = ps.sneak ? 0.22f : 0;
@@ -919,7 +919,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
         M = glm::translate(M, vec3(side * 0.2f, 0.98f - drop - (ps.sneak ? 0.1f : 0), -0.5f));
         if (side != 0) M = glm::rotate(M, -side * 0.35f, vec3(0, 1, 0));
         M = glm::rotate(M, -0.95f, vec3(1, 0, 0));   // tipped up toward its holder's eyes
-        sheets.push_back({ms.forStack(p, st), &p, M, S, lt});
+        sheets.push_back({readableMapFor(*s.level, p, st), &p, M, S, lt});
       };
       if (both) sheet(p.held(), 0, 0.46f);
       else { if (mainMap) sheet(p.held(), 1, 0.34f); if (offMap) sheet(*off, -1, 0.34f); }

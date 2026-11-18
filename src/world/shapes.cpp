@@ -340,6 +340,7 @@ static void faces6(ShapeBox& b, int dir, int front, int back, int side) {
 }
 
 bool fullSolid(BlockId id) { const Registry& R = reg(); return R.tSolid[id] && R.tOpaque[id] && !R.tShape[id]; }
+bool ShapeNb::fills(int dx, int dy, int dz) const { return fullSolid(id(dx, dy, dz)); }
 bool joinsFence(BlockId id) { int s = reg().tShape[id]; return s == ShapeKind::Fence || s == ShapeKind::Gate || fullSolid(id); }
 bool joinsWall(BlockId id) { int s = reg().tShape[id]; return s == ShapeKind::Wall || s == ShapeKind::Pane || s == ShapeKind::Gate || fullSolid(id); }
 bool joinsPane(BlockId id) { int s = reg().tShape[id]; return s == ShapeKind::Pane || s == ShapeKind::Wall || fullSolid(id); }
@@ -1005,7 +1006,7 @@ bool carveBoxes(std::vector<ShapeBox>& out, u8 carve, const ShapeNb& nb) {   // 
       // inside this block the next octant decides alone: present = an interior face, carved = the notch shows this face.
       // (Checking the neighbouring BLOCK here hid the notch's inner faces whenever a full block stood beside it.)
       if (ox >= 0 && ox <= 1 && oy >= 0 && oy <= 1 && oz >= 0 && oz <= 1) return sib(dx, dy, dz);
-      if (!fullSolid(nb.id(dx, dy, dz))) return false;
+      if (!nb.fills(dx, dy, dz)) return false;   // (a chest on it is solid, but its model leaves this face in view)
       int hx = dx ? (dx > 0 ? 0 : 1) : x, hy = dy ? (dy > 0 ? 0 : 1) : y, hz = dz ? (dz > 0 ? 0 : 1) : z;
       return !((carveNib(nb, dx, dy, dz) >> ((hx << 2) | (hy << 1) | hz)) & 1);
     };

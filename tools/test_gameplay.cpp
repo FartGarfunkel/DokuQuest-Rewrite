@@ -15,6 +15,7 @@
 #include "sim/vehicles.h"
 #include "sim/portals.h"
 #include "sim/creature_entities.h"
+#include "sim/chest_work.h"
 #include <set>
 #include <cstdio>
 
@@ -589,6 +590,63 @@ int main(int argc, char** argv) {
     reply = runCommand(*r.lv, r.p, "/give stone"); CHECK(reply.find("Commands are off") != std::string::npos, "commands off: refused");
     reply = runCommand(*r.lv, r.p, "/seed"); CHECK(startsWith(reply, "Seed:"), "/seed always allowed (%s)", reply.c_str());
     rules(*r.lv)["commands"] = true;
+  }
+
+  printf("[treasure map: an item like any other]\n");
+  {   // (sim/treasure_maps.cpp: its use opens it only when it's not used on a chest, and not crouched)
+    const json tag = {{"tx", 1234}, {"tz", -567}, {"tid", "1234,-567"}};
+    auto same = [&](const ItemStack& s) { return s.id == "treasure_map" && s.n == 1 && s.tag == tag; };
+    auto give = [&]() { r.p->selected = 0; r.p->inv[0] = ItemStack("treasure_map", 1); r.p->inv[0].tag = tag; };
+    json opened;
+    const int hScr = bus.on("contentScreen", [&](const json& a) { if (a.is_array() && a.size() >= 3 && a[1] == "treasure_map") opened = a[2]; return true; });
+    PlayerInput use; use.use = true; use.usePressed = true;
+    PlayerInput sneakUse = use; sneakUse.sneak = true;
+    // read at the sky: it opens, with its X
+    r.put(0.5f, Y, 0.5f, 0, 1.4f); r.p->onGround = true; r.step(0.2);
+    give(); r.step(0.05, use); r.step(0.3);
+    CHECK(opened.is_object() && opened.value("x", 0) == 1234 && opened.value("z", 0) == -567, "used at the sky, it opens the treasure map with its X");
+    // used on a chest: the chest's screen, not the map; in and out of it with its X
+    const ivec3 ch(0, Y, -2);
+    r.set(ch.x, ch.y, ch.z, r.B("chest"));
+    r.put(0.5f, Y, 0.5f, 0, 0); r.p->onGround = true; r.step(0.2);
+    r.lookAt(vec3(ch) + vec3(0.5f, 0.5f, 1.0f));
+    opened = json(); events.clear();
+    give(); r.step(0.05, use); r.step(0.3);
+    bool chestScreen = false; for (auto& e : events) if (e.rfind("screen", 0) == 0) chestScreen = true;
+    CHECK(opened.is_null() && chestScreen && same(r.p->inv[0]), "used on a chest, the chest opens (not the map)");
+    const bool put = chestPut(*r.lv, *r.p, r.w(), ch, 5, false);
+    const json* ce = r.w().blockEntity(ch.x, ch.y, ch.z);
+    const bool inChest = put && r.p->inv[0].empty() && ce && ce->contains("items") && same(ItemStack::fromJson((*ce)["items"][5]));
+    CHECK(inChest && chestTake(*r.lv, *r.p, r.w(), ch, 5, false, false) && same(r.p->held()), "it goes into a chest and comes back out with its X");
+    r.set(ch.x, ch.y, ch.z, AIR);
+    // crouched: set down on the ground, and taken back up
+    const ivec3 fl(2, Y - 1, 0);
+    r.put(0.5f, Y, 0.5f, 0, 0); r.p->onGround = true; r.step(0.2);
+    r.lookAt(vec3(fl) + vec3(0.5f, 1.0f, 0.5f));
+    opened = json();
+    give(); r.step(0.05, sneakUse); r.step(0.3);
+    bool onGround = false;
+    if (const json* pe = r.w().blockEntity(fl.x, fl.y + 1, fl.z); pe && pe->contains("items")) for (auto& it : (*pe)["items"]) if (!it.is_null() && same(ItemStack::fromJson(it))) onGround = true;
+    CHECK(opened.is_null() && onGround && r.p->inv[0].empty(), "crouched, it's set down on the ground with its X (not opened)");
+    r.lookAt(vec3(fl) + vec3(0.5f, 1.1f, 0.5f));
+    r.step(0.05, use); r.step(0.3);
+    bool back = false; for (auto& s : r.p->inv) if (same(s)) back = true;
+    CHECK(back, "and taken back up from the ground with its X");
+    r.set(fl.x, fl.y + 1, fl.z, AIR);
+    for (auto& s : r.p->inv) s.clear();
+    // Q drops it; walking over it picks it up
+    r.put(0.5f, Y, 0.5f, 0, 0); r.p->onGround = true; r.step(0.2);
+    give();
+    PlayerInput q; q.drop = true; r.step(0.05, q);
+    int dropped = 0; for (auto& e : r.lv->entities()) if (!e->removed && e->type == "item" && e->data.contains("stack") && same(ItemStack::fromJson(e->data["stack"]))) dropped++;
+    CHECK(dropped == 1 && r.p->inv[0].empty(), "Q drops it as an item with its X");
+    r.step(2.0);
+    for (auto& e : r.lv->entities()) if (!e->removed && e->type == "item" && e->data["stack"].value("id", "") == "treasure_map") { r.put(e->pos.x, e->pos.y, e->pos.z); break; }
+    r.step(1.0);
+    bool picked = false; for (auto& s : r.p->inv) if (same(s)) picked = true;
+    CHECK(picked, "walking over it picks it back up with its X");
+    for (auto& s : r.p->inv) s.clear();
+    bus.off(hScr);
   }
 
   printf("[travel]\n");

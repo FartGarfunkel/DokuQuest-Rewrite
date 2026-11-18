@@ -1,5 +1,6 @@
 // render/map_render.cpp — map pictures, paper, markers, and the map in your hands (game/maps.js).
 #include "render/map_render.h"
+#include "sim/treasure_maps.h"
 #include "render/map_colors.h"
 #include "render/char_layer.h"
 #include "render/item_layers.h"
@@ -174,12 +175,11 @@ int heldMaps(HeldItemLayer& L, GameSession& s, const FrameCtx& f, const mat4& pr
   if (!p || p->dead || p->riding) return 0;
   ItemStack& main = p->held();
   ItemStack* off = p->offhand.empty() ? nullptr : &p->offhand[0];
-  bool mainMap = isMapStack(main), offMap = off && isMapStack(*off);
+  bool mainMap = isReadableMapStack(main), offMap = off && isReadableMapStack(*off);
   if (!mainMap && !offMap) return 0;
   Level& lv = *s.level;
-  MapStore& st = mapStore(lv);
-  const PaperMap* mm = mainMap ? st.forStack(*p, main) : nullptr;
-  const PaperMap* om = offMap ? st.forStack(*p, *off) : nullptr;
+  const PaperMap* mm = mainMap ? readableMapFor(lv, *p, main) : nullptr;
+  const PaperMap* om = offMap ? readableMapFor(lv, *p, *off) : nullptr;
   World& w = s.world();
   u8 l = w.getLight(ifloor(p->pos.x), ifloor(p->pos.y + EYE), ifloor(p->pos.z));
   vec2 light((l >> 4) / 15.f, (l & 15) / 15.f);
