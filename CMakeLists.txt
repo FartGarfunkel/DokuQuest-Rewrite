@@ -229,3 +229,8 @@ endforeach()
 add_executable(test_death tools/test_death.cpp)
 target_link_libraries(test_death PRIVATE dqcore)
 add_test(NAME death COMMAND test_death)
+# Limp bodies (headless: creatures of every build dying on flat ground, stairs, slabs, ledges, holes, walls, water, by lava:
+# no part deeper than 1/16 of a block in the blocks, no joint pulled apart, all settle). Run: build/test_ragdoll
+add_executable(test_ragdoll tools/test_ragdoll.cpp)
+target_link_libraries(test_ragdoll PRIVATE dqcore)
+add_test(NAME ragdoll COMMAND test_ragdoll)
