@@ -23,6 +23,7 @@
 #include "world/chunk.h"
 #include <thread>
 #include <map>
+#include "sim/cave_drips.h"
 #include <set>
 #include <cstdio>
 #include <cmath>
@@ -67,6 +68,39 @@ int main(int argc, char** argv) {
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
   Rig rg("World", true, true);
   World& w = rg.lv->world();
+
+  printf("[cave drips]\n");
+  {   // a stalactite drips what lies over the stone it hangs from, and fills a cauldron under it (sim/cave_drips.h)
+    const BlockId DS = reg().blockId("pointed_dripstone"), ST = reg().blockId("stone"), WA = reg().blockId("water"), LA = reg().blockId("lava"), CA = reg().blockId("cauldron");
+    const int X = 14, Y0 = rg.Y + 1, Z = 14;
+    for (int y = Y0; y <= Y0 + 8; y++) w.setBlock(X, y, Z, AIR);
+    w.setBlock(X, Y0 + 6, Z, ST);                                          // the roof
+    w.setBlock(X, Y0 + 5, Z, DS, 1); w.setBlock(X, Y0 + 4, Z, DS, 1);      // a stalactite two long
+    w.setBlock(X, Y0, Z, CA, 0);                                           // a cauldron under it
+    check(caveDripAt(w, X, Y0 + 4, Z).liquid == 0, "a dry roof: no drips");
+    check(caveDripAt(w, X, Y0 + 5, Z).liquid == 0 && caveDripAt(w, X, Y0 + 5, Z).length == 0, "only the tip drips, not the stalactite's root");
+    w.setBlock(X, Y0 + 7, Z, WA);
+    const CaveDrip d = caveDripAt(w, X, Y0 + 4, Z);
+    check(d.liquid == 1 && d.length == 2, "water over the stone: the tip drips water (" + std::to_string(d.liquid) + ", length " + std::to_string(d.length) + ")");
+    for (int i = 0; i < 3; i++) caveDripTick(w, X, Y0 + 4, Z, 0.0);
+    check(cauldronWater(w.getMeta(X, Y0, Z)) == 3, "the cauldron under it fills with water, a level at a time");
+    caveDripTick(w, X, Y0 + 4, Z, 0.0);
+    check(cauldronLevel(w.getMeta(X, Y0, Z)) == 3, "...and stops when it's full");
+    w.setBlock(X, Y0, Z, CA, 0); w.setBlock(X, Y0 + 7, Z, LA);
+    check(caveDripAt(w, X, Y0 + 4, Z).liquid == 2, "lava over the stone: the tip drips lava");
+    for (int i = 0; i < 3; i++) caveDripTick(w, X, Y0 + 4, Z, 0.0);
+    const u8 lm = w.getMeta(X, Y0, Z);
+    check(cauldronLava(lm) && cauldronLevel(lm) == 3 && cauldronWater(lm) == 0, "a cauldron of lava fills under it (no water in it)");
+    check(reg().metaLight(CA, lm) > 10 && reg().metaLight(CA, 3) == 0, "a cauldron of lava glows; one of water doesn't");
+    w.setBlock(X, Y0, Z, CA, 1); w.setBlock(X, Y0 + 7, Z, WA);   // a little water in it already, then lava over the roof
+    w.setBlock(X, Y0 + 7, Z, LA); caveDripTick(w, X, Y0 + 4, Z, 0.0);
+    check(w.getMeta(X, Y0, Z) == 1, "lava doesn't drip into a cauldron of water");
+    caveDripTick(w, X, Y0 + 4, Z, 0.99);
+    check(w.getMeta(X, Y0, Z) == 1, "(and a drip is now and then, not every tick)");
+    w.setBlock(X, Y0 + 2, Z, ST); w.setBlock(X, Y0, Z, CA, 0); w.setBlock(X, Y0 + 7, Z, WA); caveDripTick(w, X, Y0 + 4, Z, 0.0);
+    check(w.getMeta(X, Y0, Z) == 0, "something between the tip and the cauldron catches the drops");
+    for (int y = Y0; y <= Y0 + 8; y++) w.setBlock(X, y, Z, AIR);
+  }
 
   printf("[movement]\n");
   {   // a jump from right against a slab's side is a whole jump: the step up mustn't swallow its rise (the "slow, sticky"

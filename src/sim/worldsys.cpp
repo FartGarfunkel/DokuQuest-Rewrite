@@ -3,6 +3,7 @@
 #include "sim/crafting.h"
 #include "core/metals.h"
 #include "sim/worldsys.h"
+#include "sim/cave_drips.h"
 #include "sim/trommel.h"
 #include "sim/gameplay.h"
 #include "sim/blockfx.h"
@@ -516,6 +517,7 @@ void randomTicks(Level& lv, World& w, float px, float pz) {
       if (!R.tTick[id]) { cache->tickables[c->key()].erase(i); continue; }
       u8 meta = c->getMeta(lx, ly, lz);
       const BlockDef& d = R.block(id);
+      if (d.key == "pointed_dripstone") { if (meta & 1) caveDripTick(w, x, y, z, rnd()); continue; }   // (sim/cave_drips.h: a cauldron under it fills)
       if (bhas(id, BF::Tree)) {   // saplings: two stages, each a 1 in 7 chance per random tick
         if (rnd() < 1 / (RT * 7)) {
           if (meta & 8) {

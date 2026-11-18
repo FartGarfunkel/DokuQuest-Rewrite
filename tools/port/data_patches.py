@@ -141,6 +141,8 @@ _s = _u.spec_from_file_location('forging', pathlib.Path(__file__).with_name('for
 _s = _u.spec_from_file_location('moving_parts', pathlib.Path(__file__).with_name('moving_parts.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 # ---- the sunflower's head: pictures of its own (tools/port/plant_heads.py) ----
 _s = _u.spec_from_file_location('plant_heads', pathlib.Path(__file__).with_name('plant_heads.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
+# ---- drips off a stalactite, a cauldron of lava (tools/port/cave_drips.py) ----
+_s = _u.spec_from_file_location('cave_drips', pathlib.Path(__file__).with_name('cave_drips.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 _s = _u.spec_from_file_location('tool_parts', pathlib.Path(__file__).with_name('tool_parts.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 
 # ---- the lead: leads an animal, ties it to a fence post (sim/leads.cpp) ----

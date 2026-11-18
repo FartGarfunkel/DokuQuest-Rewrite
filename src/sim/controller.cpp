@@ -928,7 +928,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   // quenching (sim/heat.h): something hot used on water (a source, a cauldron) or held in it is cooled at once
   if (!fromOff && !repeat && !held.empty() && itemHeat(held) > 100) {
     bool water = p.inWater || p.contacts.water;
-    if (hit) { const ivec3 n = hit->block + hit->normal; water = water || reg().tLiquid[w.getBlock(n.x, n.y, n.z)] == 1 || reg().tLiquid[hit->id] == 1 || (reg().block(hit->id).has("cauldron") && (w.getMeta(hit->block.x, hit->block.y, hit->block.z) & 3)); }
+    if (hit) { const ivec3 n = hit->block + hit->normal; water = water || reg().tLiquid[w.getBlock(n.x, n.y, n.z)] == 1 || reg().tLiquid[hit->id] == 1 || (reg().block(hit->id).has("cauldron") && (w.getMeta(hit->block.x, hit->block.y, hit->block.z) & 3) && !(w.getMeta(hit->block.x, hit->block.y, hit->block.z) & 4)); }
     if (water && quench(held)) {
       const vec3 at = hit ? vec3(hit->block) + vec3(0.5f, 1, 0.5f) : p.pos + vec3(0, 1, 0);
       lv.fx->sound("fizz", at, 16); lv.fx->particles("campfire_smoke", at, 10, {{"spread", 0.3}, {"vel", {0, 1.4, 0}}, {"life", 1.2}, {"size", 0.14}, {"rise", true}});

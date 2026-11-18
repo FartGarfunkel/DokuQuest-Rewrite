@@ -7,6 +7,7 @@
 #include "render/env_layers.h"
 #include "render/distant.h"
 #include "render/clouds.h"
+#include "sim/cave_drips.h"
 #include "render/clouds_volume.h"
 #include "render/pack_geom.h"
 #include "render/particles.h"
@@ -553,10 +554,16 @@ void WeatherFxLayer::emitters(GameSession& s, double dt, double step) {
             // fire itself, inside the house and up through its roof)
             if (rnd() < step * 2) P.spawn("flame", vec3(x + 0.3f + rnd() * 0.4f, y + 0.3f, z + 0.3f + rnd() * 0.4f), 1);
             break;
-          case EM_DRIP_TIP:
-            if (rnd() > 0.1f * k * step || w.getBlock((int)x, (int)y - 1, (int)z) != AIR) break;   // (about one drop in ten seconds)
-            P.spawn("drip_water", vec3(x + 0.5f, y + 0.05f, z + 0.5f), 1);
+          case EM_DRIP_TIP: {   // a stalactite drips what lies over the stone it hangs from (sim/cave_drips.h), quicker the longer it is
+            if (w.getBlock((int)x, (int)y - 1, (int)z) != AIR) break;
+            const CaveDrip cd = caveDripAt(w, (int)x, (int)y, (int)z);
+            if (!cd.liquid) break;
+            const float per = (cd.liquid == 2 ? 0.06f : 0.12f) * (0.75f + 0.25f * std::min(cd.length, 5));   // drops a second
+            if (rnd() > per * k * step) break;
+            P.spawn(cd.liquid == 2 ? "drip_lava" : "drip_water", vec3(x + 0.5f, y + 0.05f, z + 0.5f), 1);
+            if (rnd() < 0.5f) s.level->fx->sound("drip", vec3(x + 0.5f, y, z + 0.5f), 10);
             break;
+          }
           case EM_DRIP_WATER: case EM_DRIP_LAVA: case EM_DRIP_LEAF: {
             if (kind == EM_DRIP_LEAF && !raining) break;
             float rate = kind == EM_DRIP_LAVA ? 0.22f : kind == EM_DRIP_LEAF ? 0.18f : 0.35f;

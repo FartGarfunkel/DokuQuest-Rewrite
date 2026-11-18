@@ -856,6 +856,10 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   if (b.has("machine")) { openScreen(lv, p, "machine", {{"pos", {x, y, z}}}); return true; }
   if (b.has("cauldron")) {
     std::string bk = def ? def->str("bucket") : "";
+    const bool lava = (meta & 4) && (meta & 3);   // (sim/cave_drips.h: a cauldron of lava)
+    if (bk == "lava" && (meta & 3) == 0) { w.setBlock(x, y, z, id, 4 | 3); if (!p.creative()) *held = ItemStack("bucket", 1); sfxUi(lv, p, "bucket"); return true; }
+    if (bk == "empty" && lava && (meta & 3) == 3) { w.setBlock(x, y, z, id, 0); ItemStack full("lava_bucket", 1); if (--held->n <= 0) *held = full; else giveItem(lv, p, full); sfxUi(lv, p, "bucket"); return true; }
+    if (lava) return false;
     if (bk == "water" && (meta & 3) < 3) { w.setBlock(x, y, z, id, 3); if (!p.creative()) *held = ItemStack("bucket", 1); sfxUi(lv, p, "bucket"); return true; }
     if (bk == "empty" && (meta & 3) == 3) { w.setBlock(x, y, z, id, 0); ItemStack full("water_bucket", 1); if (--held->n <= 0) *held = full; else giveItem(lv, p, full); sfxUi(lv, p, "bucket"); return true; }
     return false;
