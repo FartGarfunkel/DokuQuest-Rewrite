@@ -410,7 +410,7 @@ void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& d
     const FaceDef& F = FACES[f];
     BlockId nb = c.at(x + F.n[0], y + F.n[1], z + F.n[2]);
     u8 nmeta = c.metaAt(x + F.n[0], y + F.n[1], z + F.n[2]);
-    if (R.tOpaque[nb] && !c.carveAt(x + F.n[0], y + F.n[1], z + F.n[2]) && !stationModelOpen(nb)) continue;   // carved neighbour (or a station drawn from a model): face exposed, draw it
+    if (c.fillsCell(x + F.n[0], y + F.n[1], z + F.n[2]) && !c.carveAt(x + F.n[0], y + F.n[1], z + F.n[2])) continue;   // carved neighbour (or a station drawn from a model, an open chest): face exposed, draw it
     // a top under a shaped block standing on all of it (a stair, a bottom slab, a path, a carpet): out of sight, and its
     // relief poked out round the shape's foot (teal grass bumps along the bottom of every path stair)
     // (not under a shape that's never meshed: piles and pit kilns draw their own contents, so the ground must show)

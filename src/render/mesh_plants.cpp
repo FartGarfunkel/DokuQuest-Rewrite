@@ -642,10 +642,30 @@ static bool emitLathe3D(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int
   return true;
 }
 
+namespace {
+// the sunflower's head on its top half (tools/port/plant_heads.py: its own front and back pictures), turned to the east
+// where the sun comes up and tipped back to the sky; the stalk is the top half's own picture, drawn as ever
+void emitSunflowerHead(MeshCtx& c, std::vector<ChunkVertex>& d, int x, int y, int z) {
+  static const int front = c.R.tile("sunflower_front"), back = c.R.tile("sunflower_back");
+  if (front < 0) return;
+  const float sk = c.skyAt(x, y, z), bl = c.blAt(x, y, z), t = 0.35f, s = 0.36f;
+  const vec3 n(std::cos(t), std::sin(t), 0), up(-std::sin(t), std::cos(t), 0), side(0, 0, 1);
+  auto face = [&](int tile, float off, float sh) {
+    const vec3 ctr = vec3(x + 0.5f, y + 0.52f, z + 0.5f) + n * (0.1f + off);
+    MV v[4] = {{ctr - side * s - up * s, {0, 1}, sk, bl, sh, Sway::Plant}, {ctr + side * s - up * s, {1, 1}, sk, bl, sh, Sway::Plant},
+               {ctr + side * s + up * s, {1, 0}, sk, bl, sh, Sway::Plant}, {ctr - side * s + up * s, {0, 0}, sk, bl, sh, Sway::Plant}};
+    c.quad2(d, v, tile, NORMAL_NONE, PLANT_MAT);
+  };
+  face(front, 0.012f, 250 / 255.f);   // (both sides drawn: from the east the front is the nearer, from the west the back)
+  face(back >= 0 ? back : front, -0.012f, 205 / 255.f);
+}
+}
+
 void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y, int z, u8 meta) {
   const BlockDef& self = c.R.block(id);
   const BlockTraits& T = traits(id);
   const std::string& key = self.key;
+  if (key == "sunflower" && (meta & 1)) emitSunflowerHead(c, d, x, y, z);
   float yy = (float)y;
   if (c.R.tShape[c.at(x, y - 1, z)] == ShapeKind::Path) yy -= 1 / 16.f;   // crops sit down into farmland
   int tile = self.faces[0];
