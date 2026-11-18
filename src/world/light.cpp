@@ -379,14 +379,15 @@ void LightEngine::flush(World& world) {
   double t0 = nowSeconds();
   w = &world; cells = 0;
   for (auto& e : cache) e = CacheEnt();
-  // Both kinds of work get a few milliseconds a call, the rest waits for the next (the main thread runs this every
+  // Both kinds of work get a few milliseconds a call (2.5 and 2: at 4 and 3 a busy stream held frames past 7 ms on built-in
+  // graphics), the rest waits for the next (the main thread runs this every
   // frame). Block changes go first, so a torch you place lights up at once. In an old Nether land, fire and the
   // decoration of chunks coming in changed ~50 blocks a frame, each re-flooding a light-15 ball (~6000 cells): 150-300 ms
   // frames on an i5-6300U. A chunk's lava sea meeting its neighbours' was as bad.
   std::vector<ivec3> ch; ch.swap(changes);
   size_t ci = 0;
   for (; ci < ch.size(); ci++) {
-    if (ci > 0 && (nowSeconds() - t0) * 1000 > 4.0) break;
+    if (ci > 0 && (nowSeconds() - t0) * 1000 > 2.5) break;
     queued.erase(posKey(ch[ci]));
     applyChange(ch[ci]);
   }
@@ -395,7 +396,7 @@ void LightEngine::flush(World& world) {
   size_t ai = 0;
   const double t1 = nowSeconds();
   for (; ai < arr.size(); ai++) {
-    if (ai > 0 && (nowSeconds() - t1) * 1000 > 3.0) break;
+    if (ai > 0 && (nowSeconds() - t1) * 1000 > 2.0) break;
     Chunk* c = w->chunk(arr[ai].dim, arr[ai].cx, arr[ai].cz);
     if (!c) continue;
     mergeBorders(*c);

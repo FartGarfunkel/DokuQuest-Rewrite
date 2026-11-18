@@ -307,6 +307,7 @@ public:
   Level* lvp; int hitHandler = 0;
   const char* name() const override { return "gameplay"; }
   double clock = 0, mergeT = 0, randT = 0;
+  int randSlice = 0;   // the random ticks: the next share of the chunks this second (tick)
   std::unordered_map<std::string, std::shared_ptr<void>> slots;
   void tick(Level& lv, double dt) override {
     clock += dt;
@@ -326,11 +327,17 @@ public:
     }
     // random ticks near every player, once a second
     // (the players first: a random tick can add an entity, and the list it grows mustn't be the one being walked)
-    if ((randT += dt) > 1) {
-      randT = 0;
-      std::vector<Entity*> players;
-      for (auto& e : lv.entities()) if (e && e->isPlayer() && !e->removed) players.push_back(e.get());
-      for (Entity* e : players) randomTicks(lv, lv.world(e->realm), e->pos.x, e->pos.z);
+    // spread over the second: each tick does its share of the chunks (all of them once a second, as before; done at once
+    // it held one frame in thirty for 10-20 ms)
+    {
+      randT += dt;
+      const int slices = 30, upTo = std::min(slices, (int)(randT * slices));
+      if (randSlice < upTo) {
+        std::vector<Entity*> players;
+        for (auto& e : lv.entities()) if (e && e->isPlayer() && !e->removed) players.push_back(e.get());
+        for (; randSlice < upTo; randSlice++) for (Entity* e : players) randomTicks(lv, lv.world(e->realm), e->pos.x, e->pos.z, randSlice, slices);
+      }
+      if (randT > 1) { randT -= 1; randSlice = 0; }
     }
     tickFurnaces(lv, dt);
     tickSleep(lv, dt);

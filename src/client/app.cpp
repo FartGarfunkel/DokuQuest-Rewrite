@@ -2,12 +2,14 @@
 #include "assets/local_models.h"
 #include "client/app.h"
 #include "world/shapes.h"
+#include "client/bench.h"
 #include "assets/font_files.h"
 #include "render/ore_overlay.h"
 #include "ui/book_ui.h"
 #include "render/gpu_select.h"
 #include "render/weather_sprites.h"
 #include <algorithm>
+#include <thread>
 #include <cstdlib>
 #include <cstring>
 #include "render/particles.h"
@@ -384,6 +386,7 @@ void App::frameLoop() {
   double last = nowSeconds();
   double focusAt = last;   // losing focus waits 250 ms, and the first moments of a run do not count
   while (!quit) {
+    bench::frameBegin();
     double now = nowSeconds();
     dt = std::min(0.1, now - last); last = now;
     // a scripted playtest that asks for it ("fixedStep": true) gets 1/60 s of game time a frame, so its frame counts mean
@@ -426,8 +429,9 @@ void App::frameLoop() {
       wantCapture = !(topScreen() && topScreen()->wantsMouse()) && !(!mine.empty() && mine.back()->wantsMouse());
     }
     if (wantCapture != input.captured()) input.setCapture(window, wantCapture);
+    bench::mark(bench::Input); bench::inputSampled();
 
-    if (gfx.vulkan) gfxVulkanNewFrame();
+    if (gfx.vulkan) { gfxVulkanNewFrame(); bench::mark(bench::Wait); }
     ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplSDL2_NewFrame(); uiBeginFrame(*this); ImGui::NewFrame();
     ImGui::PushFont(fontUi);
     if (Screen* s = topScreen()) { s->update(*this, dt); }
@@ -435,8 +439,10 @@ void App::frameLoop() {
     netAfterFrame(*this);   // a joined world whose host went away is left (client/netplay.cpp)
     int dw, dh; SDL_GL_GetDrawableSize(window, &dw, &dh);
     glViewport(0, 0, dw, dh);
+    bench::mark(bench::Update);
     glClearColor(0.05f, 0.04f, 0.035f, 1); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    if (session && (!topScreen() || topScreen()->showsWorld())) { session->showReplicas(true); session->render(); if (session->split()) session->splitUi(); else if (!bookUiOn(*this)) session->drawHud(); session->showReplicas(false); }   // (the journal up before you: the HUD put away; guests drawn where they smoothly are)
+    if (session && (!topScreen() || topScreen()->showsWorld())) { session->showReplicas(true); session->render(); if (session->split()) session->splitUi(); else if (!bookUiOn(*this)) session->drawHud(); session->showReplicas(false); }
+    bench::mark(bench::Render);   // (the journal up before you: the HUD put away; guests drawn where they smoothly are)
     // screens draw back to front (an overlay may sit over another menu)
     // (in the book too the system pointer is the one pointer: ui/book_ui.cpp carries it onto the pages)
     if (session && !session->split() && !bookUiOn(*this)) session->uiWantsText = false;   // (only the journal's pages set it: off with them)
@@ -500,15 +506,28 @@ void App::frameLoop() {
       if (savePng(screenshotPath, dw, dh, flip.data())) DQ_LOG("screenshot saved: %s", screenshotPath.string().c_str());
       screenshotPending = false;
     }
-    if (gfx.vulkan) gfxVulkanPresent(window);
+    bench::mark(bench::Ui);
+    if (gfx.vulkan) { gfxVulkanPresent(window); bench::mark(bench::Swap); gfxVulkanWaitFrame(); bench::mark(bench::Sync); }   // (the wait for the GPU before the next input is read)
     else {
       SDL_GL_SwapWindow(window);
-      // at most three frames queued on the GPU: wait for the oldest. Where the driver throttles at the swap this
-      // is already done; where it doesn't (an offscreen surface, some drivers with vsync off) the CPU ran ahead until
-      // the driver's queue filled and then a frame stood still for ~450 ms (HD 520).
-      static GLsync fence[3] = {nullptr, nullptr, nullptr}; static int fi = 0;
-      if (fence[fi]) { glClientWaitSync(fence[fi], GL_SYNC_FLUSH_COMMANDS_BIT, 100000000ull); glDeleteSync(fence[fi]); }
-      fence[fi] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0); fi = (fi + 1) % 3;
+      bench::mark(bench::Swap);
+      // Frames waiting on the GPU: the newest (lowLatency, the default) or two, waited for here, before the next frame
+      // reads the input. Where the driver throttles at the swap this is already done; where it doesn't (an offscreen
+      // surface, vsync off) the CPU ran ahead until the driver's queue filled and then a frame stood still for ~450 ms
+      // (HD 520). It was three: built-in graphics then drew in bursts (frames of 1, 8, 1 and 16 ms in turn, the fps
+      // number jumping about) and the picture was ~3 frames behind the mouse.
+      // DQ_FRAMES_AHEAD=1..3 overrides it (benchmarks: tools/bench).
+      static const int envAhead = std::getenv("DQ_FRAMES_AHEAD") ? std::clamp(std::atoi(std::getenv("DQ_FRAMES_AHEAD")), 1, 3) : 0;
+      const int ahead = envAhead ? envAhead : settings.extra.value("lowLatency", true) ? 1 : 2;
+      static GLsync fence[4] = {nullptr, nullptr, nullptr, nullptr}; static u64 fn = 0;
+      if (fence[fn % 4]) glDeleteSync(fence[fn % 4]);   // (left by a deeper queue before the setting changed)
+      fence[fn % 4] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0); glFlush();
+      if (fn >= (u64)ahead) {
+        GLsync& old = fence[(fn - ahead) % 4];
+        if (old) { glClientWaitSync(old, GL_SYNC_FLUSH_COMMANDS_BIT, 100000000ull); glDeleteSync(old); old = nullptr; }
+      }
+      fn++;
+      bench::mark(bench::Sync);
     }
     frame++;
     // DQ_FRAME_STATS=1: average and worst frame time every 120 frames, to compare renderers
@@ -528,10 +547,20 @@ void App::frameLoop() {
       if ((int)frame == args.smokeFrames - 1 && !args.smokeShot.empty()) takeScreenshot(args.smokeShot);
       if ((int)frame >= args.smokeFrames) quit = true;
     }
+    // the frame limiter: frames start on an even beat (each deadline one frame after the last, not after this frame's
+    // end), waited out here, before the next frame reads the input. SDL_Delay alone rounds down to whole milliseconds
+    // (144 fps ran at ~160 with frames of 6 and 7 ms mixed), so the last stretch is a short spin.
     if (settings.fpsLimit > 0 && !settings.vsync) {
-      double target = 1.0 / settings.fpsLimit, spent = nowSeconds() - now;
-      if (spent < target) SDL_Delay((Uint32)((target - spent) * 1000));
+      const double target = 1.0 / settings.fpsLimit;
+      static double deadline = 0;
+      deadline = (deadline <= 0 || now - deadline > target) ? now + target : deadline + target;   // (fell behind: a new beat)
+      for (double left = deadline - nowSeconds(); left > 0; left = deadline - nowSeconds()) {
+        if (left > 0.002) SDL_Delay((Uint32)((left - 0.0015) * 1000));
+        else std::this_thread::yield();
+      }
     }
+    bench::mark(bench::Sleep);
+    bench::frameEnd(!gfx.vulkan);
   }
 }
 

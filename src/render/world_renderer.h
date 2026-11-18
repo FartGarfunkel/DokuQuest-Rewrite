@@ -112,6 +112,7 @@ private:
   std::unordered_set<SectionKey, SectionKeyHash> inFlight, again, parked;   // parked: another land's sections, meshed when needed
   std::unordered_set<SectionKey, SectionKeyHash> dirtyQ;   // changed sections waiting to be meshed (a time budget a frame)
   double parkT = 0;
+  double lastUpdateAt = 0;   // (update: the real time since the last one, for the half-second and quarter-second chores)
   bool wanted(const SectionKey& k) const;
   std::shared_ptr<Shared> shared = std::make_shared<Shared>();
   Shader shader;

@@ -85,10 +85,18 @@ public:
     job->ids.resize((size_t)job->n2.x * job->n2.y * job->n2.z);
     bool coloured = false;
     const Registry& R = reg();
+    // (each chunk looked up once per column of the box, not once per block: 690k map lookups were ~5 ms of a frame)
+    const int cx0 = job->lo2.x >> 4, cz0 = job->lo2.z >> 4, ncx = ((job->lo2.x + job->n2.x - 1) >> 4) - cx0 + 1, ncz = ((job->lo2.z + job->n2.z - 1) >> 4) - cz0 + 1;
+    std::vector<Chunk*> cols((size_t)ncx * ncz * DIM_COUNT, nullptr);
+    for (int d = 0; d < DIM_COUNT; d++) for (int a = 0; a < ncz; a++) for (int b = 0; b < ncx; b++) cols[((size_t)d * ncz + a) * ncx + b] = w.chunk(d, cx0 + b, cz0 + a);
     size_t i = 0;
     for (int z = 0; z < job->n2.z; z++) for (int y = 0; y < job->n2.y; y++) for (int x = 0; x < job->n2.x; x++, i++) {
-      const int gy = job->lo2.y + y;
-      const BlockId b = gy < 0 || gy >= WORLD_H ? AIR : w.getBlock(job->lo2.x + x, gy, job->lo2.z + z);
+      const int gy = job->lo2.y + y, gx = job->lo2.x + x, gz = job->lo2.z + z;
+      BlockId b = AIR;
+      if (gy >= 0 && gy < WORLD_H) {
+        const int d = dimOfY(gy);
+        if (d >= 0 && d < DIM_COUNT) if (const Chunk* c = cols[((size_t)d * ncz + ((gz >> 4) - cz0)) * ncx + ((gx >> 4) - cx0)]) b = c->get(gx & 15, gy & 255, gz & 15);
+      }
       job->ids[i] = b;
       if (b && R.tLight[b] > 0 && !coloured && !isWarm(lightColourOf(b))) coloured = true;
     }
