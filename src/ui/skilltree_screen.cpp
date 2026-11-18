@@ -143,17 +143,19 @@ public:
       if (best >= 0) { sel = best; const ImVec2 q = at(T.nodes[sel]); if (q.x < c0.x + 40 || q.x > c1.x - 40 || q.y < c0.y + 40 || q.y > c1.y - 40) { panX = -T.nodes[sel].x; panY = -T.nodes[sel].y; } }
       return best >= 0;
     };
-    const int NSTAT = 6;   // the six stats, then the reset (index NSTAT)
+    const int NSTAT = 6;   // the six stats, then the reset (index NSTAT: in creative; otherwise a Shrine of Renewal does it, sim/village_life.h)
+    const int NPICK = NSTAT + (p->creative() ? 1 : 0);
     if (zone == 0) {   // the tree: the d-pad picks nodes; right past the last one crosses to your stats
       if (a.input.pressed(Act::MenuLeft)) step(-1, 0);
-      if ((a.input.pressed(Act::MenuRight) && !step(1, 0)) || a.input.padButtonPressed(7)) { zone = 1; statSel = std::clamp(statSel, 0, NSTAT); resetAsk = 0; }
+      if ((a.input.pressed(Act::MenuRight) && !step(1, 0)) || a.input.padButtonPressed(7)) { zone = 1; statSel = std::clamp(statSel, 0, NPICK - 1); resetAsk = 0; }
       if (a.input.pressed(Act::MenuUp)) step(0, -1);
       if (a.input.pressed(Act::MenuDown)) step(0, 1);
       if (sel >= 0 && a.input.pressed(Act::MenuOk)) treeLearn(*p, T.key, T.nodes[sel].id);
     } else {           // your stats: up / down, A to spend a point (the reset asks for a second A), left back to the tree
       if (a.input.pressed(Act::MenuLeft) || a.input.padButtonPressed(6)) { zone = 0; resetAsk = 0; }
-      if (a.input.pressed(Act::MenuUp)) { statSel = (statSel + NSTAT) % (NSTAT + 1); resetAsk = 0; }
-      if (a.input.pressed(Act::MenuDown)) { statSel = (statSel + 1) % (NSTAT + 1); resetAsk = 0; }
+      statSel = std::clamp(statSel, 0, NPICK - 1);
+      if (a.input.pressed(Act::MenuUp)) { statSel = (statSel + NPICK - 1) % NPICK; resetAsk = 0; }
+      if (a.input.pressed(Act::MenuDown)) { statSel = (statSel + 1) % NPICK; resetAsk = 0; }
     }
     if (resetAsk > 0) resetAsk -= io.DeltaTime;
     const int show = hot >= 0 ? hot : zone == 0 ? sel : -1;
@@ -182,7 +184,8 @@ public:
     const int earned = treePointsEarned(*p), spent = treePointsSpent(*p);
     ImGui::Text("Tree points: %d of %d", earned - spent, earned);
     ImGui::TextDisabled("A point every 3 levels of your skills");
-    {   // (the pad's reset: picked last on this page, and a second A within a few seconds, so a stray press costs nothing)
+    if (!p->creative()) ImGui::TextDisabled("To learn again: a Shrine of Renewal, in any village square");
+    else {   // (creative: the pad's reset, picked last on this page, and a second A within a few seconds, so a stray press costs nothing)
       const bool on = zone == 1 && statSel == NSTAT;
       if (ImGui::SmallButton(on && resetAsk > 0 ? "Press A again to reset" : "Reset the tree")) treeReset(*p);
       if (on) {
