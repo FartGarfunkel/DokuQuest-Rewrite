@@ -5,6 +5,55 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.36 (November 2026)
+
+**Time keeps passing on your farms:**
+- **Your land keeps working while you're away.** Crops, melons and pumpkins, sugar cane, cactus, kelp, bamboo, saplings, mushrooms and vines keep growing; furnaces, smokers and brewing stands keep working through their fuel; hoppers keep moving items; cauldrons fill and young animals grow up. When you come back it's all caught up, a little at a time, so there's no stutter, even after a week away. Sleeping through the night counts too.
+- One **simulation distance** (a world rule, default 6) now sets how far around you the land grows and machines tick; the catch-up covers the rest. The **catchUp** rule turns it off.
+
+**Farms and machines that work as builders expect:**
+- **Running water carries dropped items and creatures** along its flow: water-stream collection works.
+- **Pistons breaking crops give the real drops** (ripe wheat gives wheat and seeds, a melon its slices).
+- **The crafter works:** a redstone pulse crafts its 3×3 grid; the result goes into the container in front or drops out; click an empty slot to switch it off; hoppers fill it evenly; a comparator reads it.
+- **Monsters spawn in dark rooms at any height** in loaded land, so spawner towers work.
+- **Dispensers' bone meal** grows saplings and sprouts flowers on grass, as your own does.
+- **Hoppers** pick up whole stacks from just above them. **Sculk sensors** give a redstone signal. **Farmland** gets wet near water or rain (crops grow twice as fast on it), dries out away from it, and is trampled by a hard landing.
+
+**Your skills, talents and stats mean something:**
+- **All 20 skill perks that did nothing now work**: Forester, Lumberjack and Heartwood; Patient Angler, Double Catch and Sea's Favour; Keen Edge, Cleave and Bloodthirst; Steady Aim, Retrieval and Eagle Eye; Bonded, Pack Leader and Beast Master; Quick Bite, Feast; Unbreakable; Pathfinder and Wayfarer.
+- **Every talent node does something** (148 gave nothing): stealth, bleeding, poison, slowing and burning blows, extra loot, arrows that come back, extra arrows, life drawn, rage, granted spells, longer effects and more. Keystones have real trade-offs, and each node says exactly what it gives.
+- **Points for your deeds:** each story chapter (side stories too) gives a talent point and a keepsake; the first time you beat each boss gives a stat point; the harder achievements give talent points.
+- **Skill experience from all the work:** smithing from knapping, kilns, the charcoal pit, the forge and bellows, the bloomery, casting and the anvil; taming from taming, riding, caring for and hatching; cooking from campfires and the crafting table.
+- **Village paths and the skill trees are one:** choosing the Knight's, Ranger's, Mage's or the new **Rogue's** path (the innkeeper teaches it) makes that tree's first node free.
+- **The skill book with a controller:** one page at a time. The d-pad picks nodes, A learns; RT (or right past the edge) goes to your stats, where A spends a point; LT goes back.
+- **Learning again** is done at the new **Shrine of Renewal** in every village square, for coins (cheaper the better the village thinks of you).
+
+**Villages give back:**
+- **Every trade asks for its own goods** (the fisher fish, the smith ingots, the healer potions, the librarian books…) and pays coins, standing and experience in that trade's skill. The quest board pins a few each day.
+- **Standing opens doors:** as a Friend, trainers give advanced lessons; Honoured, the elder offers you a home (its bed and chest are yours) and the guard has watch work; as a Hero the village raises your statue and its waystone is free to you.
+- **Townsfolk find their way better:** they climb ladders and vines that share a block, walk over shut hatches, don't freeze at a cliff's edge, wade shallow fords and reach their work. Half as many errands end up stuck.
+
+**Every drop has a use:**
+- **The minotaur horn** makes a **War Horn** that calls your tamed creatures to you, stronger and quicker for a while.
+- **Each of the seven dragons drops its own scale**, and each makes a **scale armour set** with its own power (healing in daylight, walking on frozen water, breath that never runs out, a jolt or fire for whoever hits you…).
+- **Barley, oats and rye** make breads, porridge and oatcakes, ale and mead in the barrel, and feed your animals.
+- **Capes do something:** the ember cape guards against fire, the frost cape against frost, the royal cape gets you better prices.
+
+**Finding your way:**
+- **What next:** a new journal page with a few things you could do now, most pressing first.
+- **How to Play** explains quests and villages, skills, talents and stats, and farming.
+- **First-time tips** the first time you get a stat or talent point, a perk, standing, a quest board or a tamed creature.
+
+**More things share a block:**
+- **Candles** stand on the floor of a ladder's or wall torch's block (up to four, lit with flint and steel), **chains** hang beside them, and **rails** go down under the torches and levers on a tunnel wall.
+
+**Fixes:**
+- A **pressure plate sharing a block** with a wall torch or lever is pressed when stepped on (it never went down).
+- In the journal and How to Play, the controller's next-bookmark button no longer gets stuck.
+- A Knight's extra hearts are no longer lost when the skill tree changes.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.35 (November 2026)
 
 **Sitting down:**
