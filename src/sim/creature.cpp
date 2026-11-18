@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include "sim/rpg.h"
 #include "sim/creature.h"
+#include "sim/worldsys.h"
 #include "sim/barrel.h"
 #include "sim/blockfx.h"
 #include "sim/rules.h"
@@ -31,6 +32,7 @@
 #include <cstring>
 
 namespace dq {
+vec3 flowAt(const World& w, int x, int y, int z);   // sim/gameplay.h (its dropItem is not this file's)
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
 void stormFalls(Level& lv, Creature& m);   // sim/wither.cpp
 bool stableCreatureDies(Level& lv, Entity& m);   // sim/stable.h (not included: its helpers clash with gameplay's here)
@@ -763,7 +765,11 @@ void Creature::tick(Level& lv, double dtd) {
       if (frand() < 0.25f) data["hat"] = frand() < 0.4f ? "jack_o_lantern" : "carved_pumpkin";
   }
   // nothing moves in a chunk that isn't there (it would fall out of the world)
-  if (!w.isLoaded(ifloor(pos.x), clampv(ifloor(pos.y), 0, WORLD_H - 1), ifloor(pos.z))) { age -= dt; return; }
+  if (!w.isLoaded(ifloor(pos.x), clampv(ifloor(pos.y), 0, WORLD_H - 1), ifloor(pos.z))) {
+    age -= dt;
+    if (baby && growT < 1e8f && !lv.isRemote()) growT = std::max(0.01f, growT - dt);   // the young grow up all the same (sim/catchup.h)
+    return;
+  }
   // pets.js: riding along in a vehicle is handled by the vehicle (mountedOn) — not ported yet
   // quarrels.js timers
   if (quarrelT > 0) quarrelT -= dt;
@@ -997,6 +1003,11 @@ void Creature::update(Level& lv, float dt) {
       if (drop >= 4) { tx = 0; tz = 0; dir = yaw + PI; }
     }
   }
+  if (c.water && !T->boss) {   // running water carries it along (a stream leads creatures to where it ends)
+    const vec3 fl = flowAt(wd, ifloor(pos.x), ifloor(pos.y + 0.1f), ifloor(pos.z));
+    tx += fl.x * 2.2f; tz += fl.z * 2.2f;
+    if (lockMove) { vel.x += fl.x * 4.f * dt; vel.z += fl.z * 4.f * dt; }
+  }
   float k = std::min(1.f, dt * (onGround ? 10 : 2));
   if (!lockMove) { vel.x += (tx - vel.x) * k; vel.z += (tz - vel.z) * k; }
   if (noGravity && hasFlyVy) vel.y += (flyVy - vel.y) * std::min(1.f, dt * 4);
@@ -1032,6 +1043,11 @@ void Creature::update(Level& lv, float dt) {
     onGround = r.onGround && vel.y <= 0.01f;
     if (onGround && vel.y < 0) vel.y = 0;
     if (!onGround && vel.y < 0) fallDist += before.y - pos.y;
+    if (onGround && fallDist > 1.1f && !lv.isRemote()) {   // a heavy landing on farmland tramples it back to dirt
+      static const BlockId farmland = reg().blockId("farmland");
+      const int bx = ifloor(pos.x), by = ifloor(pos.y - 0.2f), bz = ifloor(pos.z);
+      if (farmland && wd.getBlock(bx, by, bz) == farmland) trampleFarmland(lv, wd, bx, by, bz);
+    }
     if (onGround) fallDist = 0;
   }
   // walked into something: hop up only if it's a step it can get onto. (Next tick, as a wanted jump: set here, after the

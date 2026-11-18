@@ -23,7 +23,8 @@ class Player;
 namespace rs {
 // circuit roles (core/blocks.js T_RS)
 enum Role : u8 { NONE = 0, WIRE = 1, TORCH, TORCH_OFF, BLOCK, LEVER, BUTTON, PLATE, REPEATER, COMPARATOR, OBSERVER, LAMP, PISTON,
-  DISPENSER, DROPPER, HOPPER, NOTE, TNT, DOOR, TRAPDOOR, GATE, DAYLIGHT, TARGET, PRAIL, DRAIL, BELL, BULB, HOOK, CONDUIT, MATCHER, TIMER, MACHINE, LIFTSTOP };
+  DISPENSER, DROPPER, HOPPER, NOTE, TNT, DOOR, TRAPDOOR, GATE, DAYLIGHT, TARGET, PRAIL, DRAIL, BELL, BULB, HOOK, CONDUIT, MATCHER, TIMER, MACHINE, LIFTSTOP,
+  CRAFTER };
 // matcher: bit 6 (64) is the Y axis, else bits 0-1 are a horizontal facing (1 or 3 = X, 0 or 2 = Z). Bit 3 (8) means on.
 inline int matcherAxis(int m) { if (m & 64) return 1; int f = m & 3; return (f == 1 || f == 3) ? 0 : 2; }   // 0 X, 1 Y, 2 Z
 inline bool matcherPowersSide(int m, int d) {
@@ -50,7 +51,7 @@ struct Tables {
   BlockId conduitFlip[MAX_BLOCKS]{}; u8 conduitLit[MAX_BLOCKS]{};   // the Emberglass conduit: dark <-> lit
   BlockId wire = 0, torch = 0, torchOff = 0, lamp = 0, lampOn = 0, bulb = 0, bulbLit = 0, piston = 0, sticky = 0, pistonExt = 0,
     stickyExt = 0, reinf = 0, reinfExt = 0, head = 0, moving = 0, slime = 0, honey = 0, tripwire = 0, water = 0, lava = 0, fire = 0, ore = 0, oreLit = 0,
-    lily = 0, berryEmpty = 0;
+    lily = 0, berryEmpty = 0, sensor = 0;
   BlockId lampFlip[MAX_BLOCKS]{};   // any lamp: its lit or dark partner (coloured lamps, the inverted lamp)
   u8 lampLit[MAX_BLOCKS]{}, lampInv[MAX_BLOCKS]{};   // this one is the lit one; it shines without power (inverted)
 };
@@ -77,12 +78,19 @@ struct Container {
   json* items = nullptr;        // json array of ItemStack json / null
   Entity* cart = nullptr;       // a chest/hopper cart (or a chest boat)
   const json* table = nullptr;  // machines: input item -> [out, n]
+  int locked = -1;              // a crafter: the slots switched off (bit per slot; they take nothing); -1 not a crafter
   explicit operator bool() const { return kind != None; }
   int size() const { return items && items->is_array() ? (int)items->size() : 0; }
   ItemStack get(int i) const { return ItemStack::fromJson((*items)[i]); }
   void set(int i, const ItemStack& s) { (*items)[i] = s.empty() ? json(nullptr) : s.toJson(); }
 };
 int fillSignal(const json& items);   // how full a container looks to a comparator (0-15)
+// The crafter: nine slots in a 3 x 3 grid; on a rising redstone edge it crafts what the grid spells (the crafting table's own
+// recipes) and puts it out of its face, into a container there or onto the ground. A slot can be switched off (left empty
+// by hoppers, so a recipe's gaps stay gaps): an empty slot clicked with an empty hand. A comparator reads how many slots
+// are filled or switched off. Its block entity: {type:"chest", items:[9], locked: bits}.
+bool isCrafter(BlockId id);
+int crafterLocked(const json* be);   // the switched-off slots' bits (0 none)
 
 class Redstone : public WorldSystem {
 public:
@@ -123,6 +131,10 @@ public:
   void dropAttached(int x, int y, int z);
   void finishAnims();          // blocks in the middle of a piston move settle (before saving)
   bool pistonGuard = false;    // set while pistons change blocks (pistonPartBroken must not react)
+  // something moved or changed at `at` (a step, a block set or broken, a crop growing): every sculk sensor within 8 blocks
+  // gives a signal for a moment, the stronger the nearer (15 on it, 1 at 8 blocks), then rests a little before the next
+  void vibration(vec3 at);
+  bool hopperOnce(int x, int y, int z);   // one transfer tick of the hopper at (x,y,z) now (the catch-up, sim/catchup.h); true = something moved
 
 private:
   struct Sched { int x, y, z; i64 t; std::string kind; bool want; u64 seq, uid; };
@@ -134,6 +146,9 @@ private:
   std::unordered_set<u64> netDone;
   std::unordered_map<u64, u32> anims;   // piston -> its PistonAnim entity
   std::unordered_map<ChunkKey, std::unordered_set<int>, ChunkKeyHash> tickers;   // colIdx of timer blocks per chunk
+  std::unordered_map<ChunkKey, std::unordered_set<int>, ChunkKeyHash> sensors;   // colIdx of sculk sensors per chunk
+  std::unordered_map<u64, i64> sensorRest;   // a sensor that fired listens again from this tick
+  void sensorSteps();                        // moving bodies near sensors (every few ticks)
   struct EBox { vec3 lo, hi; int kind; };   // 0 mob, 1 item, 2 cart
   std::vector<EBox> ents; bool entsBuilt = false;
 
@@ -160,11 +175,12 @@ private:
   void hookTick(int x, int y, int z, BlockId id, int m);
   void detectorTick(int x, int y, int z, BlockId id, int m);
   void queueAround(int x, int y, int z);
-  void hopperTick(int x, int y, int z, BlockId id, int m);
+  bool hopperTick(int x, int y, int z, BlockId id, int m);   // true = something moved
   std::vector<int> insertSlots(Container& c, int from, const ItemStack& s);
   std::vector<int> extractSlots(Container& c, int to);
   bool moveSlot(Container& a, int slot, Container& b, int from);
   void dispense(int x, int y, int z);
+  void craft(int x, int y, int z);   // the crafter fires
   void spit(int x, int y, int z, int dir, const ItemStack& s);
   // pistons (sim/redstone_pistons.cpp)
   struct Plan { std::vector<std::array<int, 5>> move; std::vector<std::array<int, 4>> breaks; };   // move: x,y,z,id,meta

@@ -70,6 +70,8 @@ bool farmingUse(UseCtx& u) {
   for (int ox = -1; ox <= 1; ox++) for (int oz = -1; oz <= 1; oz++) for (int oy = -1; oy <= 1; oy++) {
     int x = hit.block.x + ox, y = hit.block.y + oy, z = hit.block.z + oz;
     BlockId id = w.getBlock(x, y, z);
+    static const BlockId farmland = reg().blockId("farmland");
+    if (farmland && id == farmland) { w.setBlock(x, y, z, id, (u8)(w.getMeta(x, y, z) | 7)); continue; }   // (the farmland is moist for a while)
     const BlockDef& b = reg().block(id);
     if (!b.props.contains("crop") || !b.props["crop"].is_object()) continue;
     int stages = b.props["crop"].value("stages", 1), m = w.getMeta(x, y, z) & 15;

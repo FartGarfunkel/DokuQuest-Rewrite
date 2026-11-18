@@ -231,12 +231,16 @@ add_test(NAME npc_paths COMMAND test_npc_paths)
 add_executable(test_attachments tools/test_attachments.cpp)
 target_link_libraries(test_attachments PRIVATE dqcore)
 add_test(NAME attachments COMMAND test_attachments)
+# Time keeps passing where nobody is: crops, machines, hoppers and the young catch up (headless, sim/catchup.h). Run: build/test_catchup
+add_executable(test_catchup tools/test_catchup.cpp)
+target_link_libraries(test_catchup PRIVATE dqcore)
+add_test(NAME catchup COMMAND test_catchup)
 # Redstone, rails/carts, boats/ships and machines test (headless). Run: build/test_redstone
 add_executable(test_redstone tools/test_redstone.cpp)
 target_link_libraries(test_redstone PRIVATE dqcore)
 
 # every program finds data/ and assets/ next to it
-foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_attachments test_piles test_immersive test_fire test_metal test_materials test_world test_life test_progression test_anim test_mesher test_weather test_balance test_npc_paths test_shapes)
+foreach(t dokuquest dokuquest-launcher dokuquest-server dq-gentool dq-creature-test dq-sweep dq-test-gameplay test_magic test_net dq-sfx test_content test_endstory test_villagers test_redstone test_attachments test_piles test_immersive test_fire test_metal test_materials test_world test_life test_progression test_anim test_mesher test_weather test_balance test_npc_paths test_shapes test_catchup)
   if(TARGET ${t})
     add_dependencies(${t} dq_runtime_data)
   endif()

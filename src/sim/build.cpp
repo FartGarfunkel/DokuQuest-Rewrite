@@ -449,12 +449,10 @@ bool PlayerController::plantItem(const ItemDef& def, const RayHit& hit, ItemStac
   return true;
 }
 
-// Bone meal: crops ripen, saplings grow, grass blooms.
-void PlayerController::useBonemeal(const RayHit& hit, ItemStack& held) {
-  World& w = world();
+// Bone meal: crops ripen, saplings grow, grass blooms. The player's hand and a dispenser both use this.
+bool applyBonemeal(Level& lv, World& w, int x, int y, int z) {
   const Registry& R = reg(); const KnownBlocks& B = KB();
-  int x = hit.block.x, y = hit.block.y, z = hit.block.z;
-  BlockId id = hit.id; const BlockDef& d = R.block(id);
+  BlockId id = w.getBlock(x, y, z); const BlockDef& d = R.block(id);
   u8 meta = w.getMeta(x, y, z);
   bool ok = false;
   if (bhas(id, BF::Crop)) {
@@ -505,10 +503,14 @@ void PlayerController::useBonemeal(const RayHit& hit, ItemStack& held) {
   } else if (id && id == B.sea_pickle && (meta & 3) < 3) { w.setBlock(x, y, z, id, meta + 1); ok = true; }
   else if (id && id == B.berry_bush_empty) { w.setBlock(x, y, z, B.berry_bush); ok = true; }
   if (!ok && lifeBonemeal(lv, w, x, y, z, id)) ok = true;   // a huge mushroom, a longer vine (sim/world_life.h)
-  if (!ok) return;
-  consumeHeld();
+  if (!ok) return false;
   lv.fx->particles("growth", vec3(x + 0.5f, y + 0.6f, z + 0.5f), 8);
-  sfxMaterial(lv, "grass", "place", vec3(x, y, z)); swingArm();
+  sfxMaterial(lv, "grass", "place", vec3(x, y, z));
+  return true;
+}
+void PlayerController::useBonemeal(const RayHit& hit, ItemStack& held) {
+  if (!applyBonemeal(lv, world(), hit.block.x, hit.block.y, hit.block.z)) return;
+  consumeHeld(); swingArm();
   (void)held;
 }
 

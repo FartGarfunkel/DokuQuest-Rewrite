@@ -60,6 +60,7 @@ public:
   // container info (refresh())
   std::string title;
   bool contIsPack = false;          // backpack contents: no backpacks inside
+  int contLocked = -1;              // a crafter: its switched-off slots (bits; -1 not a crafter): drawn crossed, take nothing
   std::string furnaceKind;          // furnace | smoker | blast
   StationResult staRes;             // station: what the two inputs make now
   std::vector<std::pair<std::string, int>> cutOpts;   // stonecutter: what the input cuts into

@@ -1,6 +1,7 @@
 // sim/blockfx.cpp — port of game/blockfx.js (FallingBlock, PrimedTNT, checkFall, checkHarden,
 // primeTNT, explode, trySleep) and game.js onBlockChanged.
 #include "sim/blockfx.h"
+#include "sim/catchup.h"
 #include "sim/endstory.h"
 #include "sim/rules.h"
 #include "world/carve_faces.h"
@@ -308,6 +309,7 @@ void tickSleep(Level& lv, double dt) {
     }
     if (woken) return;
   }
+  advanceSimClock(lv, playSecondsBetween(lv, lv.info.time, DAY_LEN * 0.02));   // the night slept away still passes (sim/catchup.h)
   lv.info.time = DAY_LEN * 0.02;
   lv.info.day++;
   for (Player* p : all) { riseFromBed(*p); p->sleeping = false; }
