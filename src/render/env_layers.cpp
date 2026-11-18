@@ -72,7 +72,10 @@ public:
   CloudRenderer clouds;
   VolumetricClouds vol;   // (render/clouds_volume.cpp: the heaps' place when it's on)
   const char* name() const override { return "clouds"; }
-  int order() const override { return -10; }
+  // last of the solid pass (after the creatures and everything else drawn solid), and nothing in the see-through one: the
+  // see-through blocks (stained glass, water, ice) don't mark the depth they're at, so clouds laid on after them covered
+  // them; drawn before them, those blend over the clouds behind them as they should
+  int order() const override { return 980; }
   void update(GameSession& s, double dt) override { clouds.update(*s.level, s.frame, skyOf(s.frame)); vol.update(*s.level, s.frame, skyOf(s.frame), dt); }
   void drawOpaque(GameSession&, const FrameCtx& f) override {
     // One line when the flag changes, so a sky shot can show whether these planes were drawn.
@@ -83,13 +86,9 @@ public:
       prev = (int)skip;
     }
     if (skip) return;
-    if (vol.active && f.portalDepth == 0) return;   // the volumetric layer goes over the land in the translucent pass
+    if (vol.active && f.portalDepth == 0) { vol.draw(f, skyOf(f)); return; }   // the volumetric layer (the voxel wisps were hard strips against it)
     clouds.drawOpaque(f, skyOf(f));
-  }
-  void drawTranslucent(GameSession&, const FrameCtx& f) override {
-    if (packSkipGameClouds()) return;
-    if (vol.active && f.portalDepth == 0) { vol.draw(f, skyOf(f)); return; }   // (the voxel wisps were hard strips against it)
-    clouds.drawWisps(f, skyOf(f));
+    clouds.drawWisps(f, skyOf(f));   // (their soft halo, see-through: still before the see-through blocks)
   }
 };
 
