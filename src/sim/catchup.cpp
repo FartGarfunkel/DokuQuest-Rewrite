@@ -44,6 +44,7 @@ struct Job {
 struct State {
   std::deque<Job> q;
   double scanT = 0;
+  int scanSlice = 0;
   CatchUpStats stats;
 };
 State& st(Level& lv) { return levelSlot<State>(lv, "catchUp"); }
@@ -329,7 +330,8 @@ public:
   }
 };
 
-void stampScan(Level& lv) {
+// slice / slices: only that share of the chunks (each chunk is in one): a second's look is spread over its ticks
+void stampScan(Level& lv, int slice = 0, int slices = 1) {
   State& S = st(lv);
   const double now = simClock(lv);
   const int R = simDistance(lv);
@@ -340,6 +342,7 @@ void stampScan(Level& lv) {
     std::vector<ivec2> centers;
     for (auto& e : lv.entities()) if (e && !e->removed && e->isPlayer() && e->realm == realm) centers.push_back({ifloor(e->pos.x) >> 4, ifloor(e->pos.z) >> 4});
     for (auto& [k, c] : w.chunks()) {
+      if (slices > 1 && ((k.cx * 7 + k.cz * 13) % slices + slices) % slices != slice) continue;
       if (!c->extra.is_object()) c->extra = json::object();
       json& x = c->extra;
       bool near = false;
@@ -378,18 +381,22 @@ void advanceSimClock(Level& lv, double secs) {
   lv.info.data["simClock"] = simClock(lv) + secs;
   // the young grow up with the time
   for (auto& e : lv.entities()) if (auto* c = dynamic_cast<Creature*>(e.get())) if (!c->removed && c->baby && c->growT < 1e8f) c->growT = std::max(0.01f, c->growT - (float)secs);
-  st(lv).scanT = 1;   // (the stamps are looked at on the next tick)
+  // (each chunk's stamp is looked at within the second, and what it owes is made up then)
 }
 
 void catchUpTick(Level& lv, double dt) {
   if (lv.isRemote()) return;
   lv.info.data["simClock"] = simClock(lv) + dt;
   State& S = st(lv);
-  if ((S.scanT += dt) >= 1) {
-    const double t0 = nowSeconds();
-    S.scanT = 0; stampScan(lv);
-    S.stats.maxScanMs = std::max(S.stats.maxScanMs, (nowSeconds() - t0) * 1000);
-  }
+  // the stamps: a share of the chunks each tick, every chunk once a second (all at once held a tick for a few
+  // milliseconds with a wide view's thousand-odd chunks loaded)
+  const int slices = 30;
+  S.scanT += dt;
+  const int upTo = std::min(slices, (int)(S.scanT * slices));
+  const double t0 = nowSeconds();
+  for (; S.scanSlice < upTo; S.scanSlice++) stampScan(lv, S.scanSlice, slices);
+  S.stats.maxScanMs = std::max(S.stats.maxScanMs, (nowSeconds() - t0) * 1000);
+  if (S.scanT >= 1) { S.scanT -= 1; S.scanSlice = 0; }
   runQueue(lv, BUDGET_MS);
 }
 
