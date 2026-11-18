@@ -1,6 +1,7 @@
 // render/terrain_fx.cpp — the terrain's RenderLayer: block selection outline (the block's real
 // select boxes), breaking-crack overlay, animated tiles, underwater/lava fog, keeping the mesher's
 // copy of the tiles current, and test hooks (DQ_RENDER_CAM / DQ_RENDER_TIME / DQ_RENDER_STATS).
+#include "world/attach.h"
 #include "sim/hands.h"
 #include "client/app.h"
 #include "client/session.h"
@@ -114,6 +115,10 @@ public:
     if (s.app.settings.handsStations) {   // (an open hands-on chest: its body and its raised lid, so the lid is plainly there to shut)
       std::vector<std::pair<vec3, vec3>> tb;
       if (handsChestOutline(w, b, tb)) { boxes.clear(); for (auto& [lo, hi] : tb) boxes.push_back({lo, hi}); return true; }
+    }
+    if (w.hasAttachments(b.x, b.y, b.z)) {   // a cell shared with attachments: the aimed part's own boxes (world/attach.h)
+      if (!partWorldBoxes(w, b.x, b.y, b.z, s.target.part, ShapePurpose::Select, boxes) || boxes.empty()) { boxes.clear(); boxes.push_back({vec3(b), vec3(b) + vec3(1)}); }
+      return true;
     }
     if (!blockShapeBoxes(w, b.x, b.y, b.z, ShapePurpose::Select, boxes)) { boxes.clear(); boxes.push_back({vec3(b), vec3(b) + vec3(1)}); }
     if (boxes.empty()) boxes.push_back({vec3(b), vec3(b) + vec3(1)});

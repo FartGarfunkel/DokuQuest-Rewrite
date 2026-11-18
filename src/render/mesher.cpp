@@ -214,9 +214,15 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
   if (!center) return false;
   in.dim = k.dim; in.cx = k.cx; in.sy = k.sy; in.cz = k.cz;
   in.potPlants.clear();
+  in.parts.clear();
   const Section* cs = center->section(k.sy);
   in.empty = !cs || cs->solidCount == 0;
   if (in.empty) return true;
+  if (!center->attach.empty()) for (auto& [ci, parts] : center->attach) {
+    const int ly = ci >> 8;
+    if ((ly >> 4) != k.sy) continue;
+    for (const Attachment& a : parts) in.parts.push_back({(i8)(ci & 15), (i8)(ly & 15), (i8)((ci >> 4) & 15), a.id, a.meta});
+  }
   std::memset(in.climate, 128, sizeof in.climate);
   const Registry& R = reg();
   int baseY = dimBase(k.dim) + k.sy * 16;
@@ -941,6 +947,20 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
       else if (R.tSolid[id] && R.tOpaque[id]) { int a = R.tLiquid[c.at(x, y + 1, z)]; if (a) out.fx.drips.push_back(ivec4(wp, a)); }
       else if (T.leaves) out.fx.drips.push_back(ivec4(wp, 3));
     }
+  }
+  // attachments (world/attach.h): each part drawn in its cell as the block would be alone; they never hide a neighbour's faces
+  for (const MeshInput::Part& pt : in.parts) {
+    const int x = pt.x, y = pt.y, z = pt.z;
+    const BlockId id = pt.id;
+    const u8 meta = pt.meta;
+    switch ((Render)R.tRender[id]) {
+      case Render::Torch: emitTorch(c, out.cutout, id, x, y, z, meta); break;
+      case Render::Model: emitModel(c, out.cutout, id, x, y, z, meta); break;
+      case Render::Shape: emitShapeBlock(c, R.tTrans[id] ? out.trans : out.cutout, id, x, y, z, meta); break;
+      case Render::Cross: emitCross(c, out.cutout, id, x, y, z, meta); break;
+      default: break;   // (signs: render/sign_layer.cpp)
+    }
+    if (traits(id).emitsParticles) out.fx.emitters.push_back({ivec3(c.wx0 + x, c.wy0 + y, c.wz0 + z), id});
   }
   if (gm) flushGreedy(c, *gm);
   out.ms = (nowSeconds() - t0) * 1000;

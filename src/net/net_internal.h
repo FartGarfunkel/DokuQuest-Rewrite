@@ -11,6 +11,7 @@ public:
   const char* name() const override { return "net"; }
   void onBlockChanged(World& w, int x, int y, int z, BlockId oldId, BlockId newId) override;
   void onBlockEntityChanged(World& w, int x, int y, int z) override;
+  void onAttachmentsChanged(World& w, int x, int y, int z) override;
   ServerHost& host;
 };
 

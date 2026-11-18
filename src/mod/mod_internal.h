@@ -30,6 +30,10 @@ json playerObj(ModLoader& L, const std::string& name);               // {name,x,
 json players(ModLoader& L);
 json getBlock(ModLoader& L, double x, double y, double z, int realm);  // key or null
 bool setBlock(ModLoader& L, double x, double y, double z, const std::string& key, int meta, int realm);
+// attachments (world/attach.h): the parts sharing a cell with its main block (getBlock stays the main block)
+json getAttachments(ModLoader& L, double x, double y, double z, int realm);   // [{key, meta}...] or null (not loaded)
+bool addAttachment(ModLoader& L, double x, double y, double z, const std::string& key, int meta, int realm);   // with the game's room and support rules
+bool removeAttachment(ModLoader& L, double x, double y, double z, int index, int realm);
 bool give(ModLoader& L, const std::string& name, const std::string& item, int n);
 u32 spawn(ModLoader& L, const std::string& type, double x, double y, double z);
 void say(ModLoader& L, const std::string& from, const std::string& text);

@@ -1,6 +1,7 @@
 // sim/redstone.cpp — circuits (game/redstone.js): power, dust, torches, repeaters, comparators, observers,
 // lamps, bulbs, note blocks, bells, TNT, doors, rails, timers (plates, hooks, detector rails, daylight),
 // hoppers, dispensers and droppers. Pistons live in sim/redstone_parts.cpp.
+#include "sim/attach_play.h"
 #include "sim/redstone.h"
 #include "sim/moving.h"
 #include "sim/minecart.h"
@@ -198,10 +199,10 @@ void Redstone::onBlockChanged(World&, int x, int y, int z, BlockId oldId, BlockI
     if (t.role[id]) {
       queue(nx, ny, nz);
       if (t.role[id] == OBSERVER && (w.getMeta(nx, ny, nz) & 7) == OPP6[d]) observe(nx, ny, nz);
-    }
+    } else if (w.hasAttachments(nx, ny, nz)) queue(nx, ny, nz);
     if (t.cond[id]) for (int e = 0; e < 6; e++) {
       int mx = nx + D6X[e], my = ny + D6Y[e], mz = nz + D6Z[e];
-      if (t.role[w.getBlock(mx, my, mz)]) queue(mx, my, mz);
+      if (t.role[w.getBlock(mx, my, mz)] || w.hasAttachments(mx, my, mz)) queue(mx, my, mz);
     }
   }
   // (game.js setBlock) levers, buttons and hooks lose what they were fixed to; pistons lose their other half
@@ -225,6 +226,21 @@ void Redstone::onBlockChanged(World&, int x, int y, int z, BlockId oldId, BlockI
   }
   const BlockDef& ob = R.block(oldId);
   if (!pistonGuard && oldId != newId && (ob.has("pistonHead") || ob.has("extended"))) pistonPartBroken(x, y, z, oldId);
+}
+
+void Redstone::onAttachmentsChanged(World&, int x, int y, int z) {
+  if (lv.isRemote()) return;
+  const Tables& t = T();
+  queue(x, y, z);
+  for (int d = 0; d < 6; d++) {
+    int nx = x + D6X[d], ny = y + D6Y[d], nz = z + D6Z[d];
+    BlockId id = w.getBlock(nx, ny, nz);
+    if (t.role[id] || w.hasAttachments(nx, ny, nz)) queue(nx, ny, nz);
+    if (t.cond[id]) for (int e = 0; e < 6; e++) {
+      int mx = nx + D6X[e], my = ny + D6Y[e], mz = nz + D6Z[e];
+      if (t.role[w.getBlock(mx, my, mz)] || w.hasAttachments(mx, my, mz)) queue(mx, my, mz);
+    }
+  }
 }
 
 void Redstone::step() {
@@ -311,6 +327,11 @@ int Redstone::blockPower(int x, int y, int z, bool strongOnly) {
     if (!strongOnly && r == WIRE) v = std::max(v, emit(nx, ny, nz, id, m, d));
     if (v > best) { best = v; if (best >= 15) return 15; }
   }
+  for (int e = 0; e < 6; e++) {   // a lever or button fixed to it as an attachment of the next cell (world/attach.h)
+    int nx = x + D6X[e], ny = y + D6Y[e], nz = z + D6Z[e];
+    if (const auto* parts = w.attachments(nx, ny, nz)) for (const Attachment& a : *parts)
+      if (t.role[a.id]) { int v = strong(nx, ny, nz, a.id, a.meta, OPP6[e]); if (v > best) { best = v; if (best >= 15) return 15; } }
+  }
   return best;
 }
 int Redstone::inputFrom(int x, int y, int z, int d) {
@@ -319,6 +340,8 @@ int Redstone::inputFrom(int x, int y, int z, int d) {
   BlockId id = w.getBlock(nx, ny, nz);
   int v = 0;
   if (t.role[id]) v = emit(nx, ny, nz, id, w.getMeta(nx, ny, nz), OPP6[d]);
+  if (const auto* parts = w.attachments(nx, ny, nz)) for (const Attachment& a : *parts)   // the parts sharing that cell
+    if (t.role[a.id] && t.role[a.id] != WIRE) v = std::max(v, emit(nx, ny, nz, a.id, a.meta, OPP6[d]));
   if (t.cond[id] && v < 15) v = std::max(v, blockPower(nx, ny, nz, false));
   return v;
 }
@@ -334,9 +357,37 @@ bool Redstone::supportPowered(int x, int y, int z) {
 }
 
 // ------------------------------------------------------------------------------------------ reacting
+void Redstone::updateAttachments(int x, int y, int z) {
+  const Tables& t = T();
+  const auto* parts = w.attachments(x, y, z);
+  if (!parts) return;
+  for (int s = 0; s < (int)parts->size(); s++) {
+    parts = w.attachments(x, y, z);
+    if (!parts || s >= (int)parts->size()) return;
+    const Attachment a = (*parts)[s];
+    const u8 r = t.role[a.id];
+    if (r == TRAPDOOR) {   // a trapdoor sharing a cell swings with power, unless something in the cell is in its way
+      const bool on = powerAt(x, y, z) > 0;
+      if (on == !!(a.meta & 0x20)) continue;
+      const u8 nm = (u8)((a.meta & ~(4 | 0x20)) | (on ? 4 | 0x20 : 0));
+      if (!!(nm & 4) != !!(a.meta & 4) && partBlocked(w, x, y, z, s, a.id, nm)) continue;
+      w.setAttachmentMeta(x, y, z, s, nm);
+      if (!!(a.meta & 4) != on) lv.fx->sound(doorSound(reg().block(a.id), on), vec3(x, y, z) + vec3(0.5f));
+    } else if (r == TORCH || r == TORCH_OFF) {   // a redstone torch on the wall of a shared cell goes out when what holds it is powered
+      const int sp = TORCH_SUP[(a.meta & 7) % 5];
+      const bool on = !supportPowered(x + D6X[sp], y + D6Y[sp], z + D6Z[sp]);
+      if ((r == TORCH) == on) continue;
+      std::vector<Attachment> v = *parts;
+      v[s].id = on ? t.torch : t.torchOff;
+      w.setAttachments(x, y, z, std::move(v));
+    }
+  }
+}
+
 void Redstone::update(int x, int y, int z) {
   const Tables& t = T();
   const Registry& R = reg();
+  if (w.hasAttachments(x, y, z)) updateAttachments(x, y, z);
   BlockId id = w.getBlock(x, y, z);
   u8 r = t.role[id];
   if (!r) return;

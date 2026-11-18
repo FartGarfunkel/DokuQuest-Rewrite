@@ -245,4 +245,21 @@ bool attachRayCell(const World& w, glm::dvec3 o, glm::dvec3 d, int x, int y, int
   return any;
 }
 
+json attachmentsToJson(const std::vector<Attachment>* parts) {
+  json l = json::array();
+  if (parts) for (const Attachment& a : *parts) { json e = json::array({reg().block(a.id).key, a.meta}); if (!a.be.is_null()) e.push_back(a.be); l.push_back(e); }
+  return l;
+}
+std::vector<Attachment> attachmentsFromJson(const json& j) {
+  std::vector<Attachment> v;
+  if (!j.is_array()) return v;
+  for (auto& e : j) {
+    if (!e.is_array() || e.size() < 2 || !e[0].is_string() || !e[1].is_number()) continue;
+    Attachment a; a.id = reg().blockId(e[0].get<std::string>()); a.meta = (u8)e[1].get<int>();
+    if (e.size() > 2) a.be = e[2];
+    if (a.id && (int)v.size() < MAX_ATTACH) v.push_back(std::move(a));
+  }
+  return v;
+}
+
 } // namespace dq

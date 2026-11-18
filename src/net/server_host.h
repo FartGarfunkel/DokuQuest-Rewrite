@@ -122,7 +122,7 @@ private:
   std::string storySig; double storyAt = -1e9;   // (sendEnv: the story's state, sent when it changes)
   bool logging = false;
   // queued for everyone
-  struct BlkQ { int realm, x, y, z; BlockId id; u8 meta; };
+  struct BlkQ { int realm, x, y, z; BlockId id; u8 meta; json att; };   // att (not null): the cell's attachments now (world/attach.h)
   std::vector<BlkQ> blockQ;
   std::map<std::tuple<int, int, int, int>, json> beQ;                       // realm,x,y,z -> e
   std::map<std::tuple<int, int, int, int>, std::map<u32, int>> beAck;      // which client changes each copy includes

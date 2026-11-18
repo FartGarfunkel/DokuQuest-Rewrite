@@ -74,7 +74,7 @@ static void onScreenOpen(App& a, const json& args) {
   }
   else if (kind == "stonecutter") { io.mode = "stonecutter"; io.kind = o.value("kind", ""); }   // kind "forge": the Tool Forge
   else if (kind == "machine") { io.mode = "machine"; if (!io.hasPos) return; }
-  else if (kind == "sign") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeSignScreen(p); }; }
+  else if (kind == "sign") { if (!io.hasPos) return; ivec3 p = io.pos; const int slot = o.value("slot", -1); make = [p, slot] { return makeSignScreen(p, slot); }; }
   else if (kind == "anvil_smith") { if (!io.hasPos) return; ivec3 p = io.pos; const int tier = o.value("tier", 0); make = [p, tier] { return makeAnvilScreen(p, tier); }; }
   else if (kind == "knapping") { std::string m = o.value("material", ""), it = o.value("item", ""); if (m.empty() || it.empty()) return; make = [m, it] { return makeKnappingScreen(m, it); }; }
   else if (kind == "lectern") { if (!io.hasPos) return; ivec3 p = io.pos; make = [p] { return makeLecternScreen(p); }; }

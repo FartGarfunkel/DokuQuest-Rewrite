@@ -32,4 +32,8 @@ bool partWorldBoxes(const World& w, int x, int y, int z, int slot, int purpose, 
 // false: the ray misses everything in the cell.
 bool attachRayCell(const World& w, glm::dvec3 o, glm::dvec3 d, int x, int y, int z, double maxDist, int& part, double& t, ivec3& n);
 
+// The wire/mod form of a cell's attachments: [[key, meta, entity?]...] (keys, never runtime ids)
+json attachmentsToJson(const std::vector<Attachment>* parts);
+std::vector<Attachment> attachmentsFromJson(const json& j);
+
 } // namespace dq

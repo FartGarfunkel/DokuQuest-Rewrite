@@ -248,6 +248,16 @@ static JSValue js_setBlock(JSContext* ctx, JSValueConst, int argc, JSValueConst*
   return JS_NewBool(ctx, modapi::setBlock(*M(ctx)->loader, jsNum(ctx, ARG(0)), jsNum(ctx, ARG(1)), jsNum(ctx, ARG(2)), jsStr(ctx, ARG(3)),
                                           (int)jsNum(ctx, ARG(4), 0), realmArg(ctx, argc, argv, 5)));
 }
+// DQ.getAttachments(x, y, z[, realm]) / addAttachment(x, y, z, key, meta[, realm]) / removeAttachment(x, y, z, index[, realm])
+static JSValue js_getAttachments(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv) {
+  return toJs(ctx, modapi::getAttachments(*M(ctx)->loader, jsNum(ctx, ARG(0)), jsNum(ctx, ARG(1)), jsNum(ctx, ARG(2)), realmArg(ctx, argc, argv, 3)));
+}
+static JSValue js_addAttachment(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv) {
+  return JS_NewBool(ctx, modapi::addAttachment(*M(ctx)->loader, jsNum(ctx, ARG(0)), jsNum(ctx, ARG(1)), jsNum(ctx, ARG(2)), jsStr(ctx, ARG(3)), (int)jsNum(ctx, ARG(4), 0), realmArg(ctx, argc, argv, 5)));
+}
+static JSValue js_removeAttachment(JSContext* ctx, JSValueConst, int argc, JSValueConst* argv) {
+  return JS_NewBool(ctx, modapi::removeAttachment(*M(ctx)->loader, jsNum(ctx, ARG(0)), jsNum(ctx, ARG(1)), jsNum(ctx, ARG(2)), (int)jsNum(ctx, ARG(3), 0), realmArg(ctx, argc, argv, 4)));
+}
 // timers and console, as a browser page had them
 static JSValue addTimer(JSContext* ctx, int argc, JSValueConst* argv, bool repeat) {
   JsMod* m = M(ctx);
@@ -297,6 +307,9 @@ static const JSCFunctionListEntry dqFuncs[] = {
 static const JSCFunctionListEntry worldFuncs[] = {
   JS_CFUNC_DEF("getBlock", 3, js_getBlock),
   JS_CFUNC_DEF("setBlock", 4, js_setBlock),
+  JS_CFUNC_DEF("getAttachments", 3, js_getAttachments),
+  JS_CFUNC_DEF("addAttachment", 5, js_addAttachment),
+  JS_CFUNC_DEF("removeAttachment", 4, js_removeAttachment),
 };
 static const JSCFunctionListEntry globalFuncs[] = {
   JS_CFUNC_DEF("setTimeout", 2, js_setTimeout),

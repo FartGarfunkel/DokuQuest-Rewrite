@@ -1,6 +1,7 @@
 // net/client.cpp — the guest side of net.js: join (hello / welcome / ckdone), guestMsg, guestTick, applyEntities,
 // chunkLoaded (checksums and stale chunks), plus what netsync.js does on a guest (block changes reported, things
 // made here handed to the server).
+#include "world/attach.h"
 #include <cstdio>
 #include "net/client.h"
 #include "core/tool_parts.h"
@@ -35,6 +36,11 @@ public:
     if (cl.applying || (w.changeFlags & (SetFlags::NoModify | SetFlags::FromNet))) return;
     std::string r = std::to_string(w.realm);
     cl.blkOut[r].push_back(json::array({x, y, z, cl.toServer(newId), w.getMeta(x, y, z)}));
+    cl.stats.blocksOut++;
+  }
+  void onAttachmentsChanged(World& w, int x, int y, int z) override {   // (in the blocks' stream, in order with them)
+    if (cl.applying || (w.changeFlags & (SetFlags::NoModify | SetFlags::FromNet))) return;
+    cl.blkOut[std::to_string(w.realm)].push_back(json::array({x, y, z, "a", attachmentsToJson(w.attachments(x, y, z))}));
     cl.stats.blocksOut++;
   }
   void onBlockEntityChanged(World& w, int x, int y, int z) override {
@@ -519,6 +525,11 @@ void NetClient::handle(u8 ty, json& m) {
         if (!b.is_array() || b.size() < 5) continue;
         int x = b[0], y = b[1], z = b[2];
         stats.blocksIn++;
+        if (b[3].is_string()) {   // the cell's attachments (world/attach.h)
+          if (w && w->isLoaded(x, y, z)) { applying = true; w->setAttachments(x, y, z, attachmentsFromJson(b[4]), SetFlags::FromNet | SetFlags::Urgent); applying = false; }
+          else if (inWorldY(y)) stale.insert(packChunkKey(r, dimOfY(y), x >> 4, z >> 4));
+          continue;
+        }
         if (w && w->isLoaded(x, y, z)) { applying = true; w->setBlock(x, y, z, toLocal(b[3].get<u32>()), (u8)b[4].get<int>(), SetFlags::FromNet | SetFlags::Urgent); applying = false; }
         else if (inWorldY(y)) stale.insert(packChunkKey(r, dimOfY(y), x >> 4, z >> 4));   // fetched fresh when it loads
       }

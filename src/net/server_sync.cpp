@@ -1,5 +1,6 @@
 // net/server_sync.cpp — what the server keeps each player's game in step with (net.js hostTick, flushBlocks,
 // updateRange/flushChunks, sendEntities, flushEffects, env; netsync.js netSnap), plus the server's chat commands.
+#include "world/attach.h"
 #include "sim/combat_rpg.h"
 #include "core/tool_parts.h"
 #include <chrono>
@@ -127,6 +128,10 @@ void NetWatch::onBlockChanged(World& w, int x, int y, int z, BlockId, BlockId ne
   if (w.changeFlags & SetFlags::NoModify) return;   // world generation: every game makes that itself
   host.blockQ.push_back({w.realm, x, y, z, newId, w.getMeta(x, y, z)});
 }
+void NetWatch::onAttachmentsChanged(World& w, int x, int y, int z) {
+  if (w.changeFlags & SetFlags::NoModify) return;
+  host.blockQ.push_back({w.realm, x, y, z, 0, 0, attachmentsToJson(w.attachments(x, y, z))});   // (in the blocks' stream: never ahead of the block it sits beside)
+}
 void NetWatch::onBlockEntityChanged(World& w, int x, int y, int z) {
   json* e = w.blockEntity(x, y, z);
   host.beQ[{w.realm, x, y, z}] = e ? *e : json();
@@ -144,6 +149,15 @@ void ServerHost::applyBlocks(Peer& p, const json& m) {
   const auto& R = reg();
   for (auto& b : m["l"]) {
     if (!b.is_array() || b.size() < 5) continue;
+    if (b[3].is_string()) {   // [x,y,z,"a",parts]: the cell's attachments (world/attach.h)
+      if (!b[0].is_number() || !b[1].is_number() || !b[2].is_number()) continue;
+      const int x = b[0], y = b[1], z = b[2];
+      if (!inWorldY(y) || !w.isLoaded(x, y, z)) continue;
+      const bool nearby = realm == p.pl->realm && glm::distance(vec3(x + 0.5f, y + 0.5f, z + 0.5f), p.pl->pos) <= 24;
+      if (!nearby) { fix.push_back(json::array({x, y, z, "a", attachmentsToJson(w.attachments(x, y, z))})); continue; }
+      w.setAttachments(x, y, z, attachmentsFromJson(b[4]), SetFlags::FromNet | SetFlags::Urgent);
+      continue;
+    }
     int x = b[0], y = b[1], z = b[2]; u32 id = b[3]; u8 meta = (u8)b[4].get<int>();
     if (id >= R.blocks.size() || !inWorldY(y)) continue;
     bool nearby = realm == p.pl->realm && glm::distance(vec3(x + 0.5f, y + 0.5f, z + 0.5f), p.pl->pos) <= 24;
@@ -180,7 +194,7 @@ void ServerHost::applyBlockEntity(Peer& p, const json& m) {
 void ServerHost::flushBlocks() {
   if (blockQ.empty()) return;
   std::map<int, json> byRealm;
-  for (auto& b : blockQ) byRealm[b.realm].push_back(json::array({b.x, b.y, b.z, b.id, b.meta}));
+  for (auto& b : blockQ) byRealm[b.realm].push_back(b.att.is_null() ? json::array({b.x, b.y, b.z, b.id, b.meta}) : json::array({b.x, b.y, b.z, "a", b.att}));
   blockQ.clear();
   for (auto& [r, l] : byRealm) toAll(BLK, {{"rl", r}, {"l", l}});
 }

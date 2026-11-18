@@ -337,7 +337,11 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   bool stepAside = false;
   if ((cur != AIR && !R.tReplaceable[cur]) || w.hasAttachments(x, y, z)) {   // an occupied cell: a part sharing it (sim/attach_play.h)
     const int r = placeAttachment(lv, &p, w, x, y, z, bid, meta);
-    if (r == 1) { consumeHeld(); swingArm(); return; }
+    if (r == 1) {
+      consumeHeld(); swingArm();
+      if (bhas(bid, BF::Sign)) if (const auto* parts = w.attachments(x, y, z)) openScreen(lv, p, "sign", {{"pos", {x, y, z}}, {"slot", (int)parts->size() - 1}});
+      return;
+    }
     if (r != 2) return;
     stepAside = true;
   }
