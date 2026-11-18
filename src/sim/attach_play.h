@@ -21,7 +21,7 @@ void registerAttachments();   // core/init.cpp: physics hooks and the level syst
 // meta: as the usual rules worked it out for that cell. Consumes nothing: the caller does.
 int placeAttachment(Level& lv, Player* p, World& w, int x, int y, int z, BlockId bid, u8 meta);
 void attachStepAside(World& w, int x, int y, int z);   // (placeAttachment said 2) the main block becomes an attachment
-// Use on an attachment (hit.part >= 0): levers, buttons, trapdoors, signs, item frames. false: nothing to do with it.
+// Use on an attachment (hit.part >= 0): levers, buttons, trapdoors, signs, item frames, candles. false: nothing to do with it.
 bool useAttachment(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack* held);
 // Break one part on its own: its own drops (drops false: none), sound and dust; the rest of the cell stays.
 void breakAttachment(Level& lv, Player* p, World& w, int x, int y, int z, int slot, bool drops, const ToolInfo* tool = nullptr);
