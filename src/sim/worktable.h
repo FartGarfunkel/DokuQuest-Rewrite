@@ -32,7 +32,10 @@ std::vector<ItemStack> worktableGrid(const json& be);
 void setWorktableGrid(vec4 rect);
 vec4 worktableGridRect();
 vec3 worktableCellCenter(ivec3 at, int cell);
-int worktableCell(const RayHit& hit);   // 0..8 (row-major from the north-west), -1 if not on the top
+int worktableCell(const RayHit& hit);   // 0..8 (row-major from the north-west), -1 if not on the grid
+bool worktableOffGrid(const RayHit& hit);   // on the top, but on the rim round the drawn squares
+// the made thing hovering over a table, met along a look before maxT (true: at = that table)
+bool worktableResultAlong(World& w, vec3 eye, vec3 dir, float maxT, float yaw, ivec3& at);
 // recipe slot (row-major, row 0 the side away from someone looking along yaw) -> the table's cell
 std::array<int, 9> worktableOrder(float yaw);
 }

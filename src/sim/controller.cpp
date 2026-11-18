@@ -806,6 +806,13 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   ItemStack& held = p.held();
   const ItemDef* def = held.empty() ? nullptr : R.item(held.id);
   Entity* te = targetEnt ? lv.entity(targetEnt) : nullptr;
+  // an empty hand on what a crafting table makes, hovering over it (sim/worktable.h): taken, whatever's behind it
+  if (!fromOff && !repeat && held.empty() && !te && !p.sneaking) {
+    const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z), dir = lookVector(p.yaw, p.pitch);
+    const float maxT = hit ? glm::distance(eye, hit->point) + 0.05f : 5.f;
+    ivec3 tab;
+    if (worktableResultAlong(w, eye, dir, maxT, p.yaw, tab) && worktableCraft(lv, p, w, tab)) { swingArm(); return; }
+  }
   // EventBus "itemUse" [player, item ("" = empty hand), x, y, z, face] for every use, before any default block or
   // item interaction (portals, redstone levers and buttons, minecarts, tables hook it); false = used up
   if (lv.events && (!repeat || (def && !def->block.empty()))) {

@@ -25,10 +25,19 @@ vec3 worktableCellCenter(ivec3 at, int cell) {
   const float w = (g_grid.z - g_grid.x) / 3, d = (g_grid.w - g_grid.y) / 3;
   return vec3(at) + vec3(g_grid.x + (cell % 3 + 0.5f) * w, 1.f, g_grid.y + (cell / 3 + 0.5f) * d);
 }
+bool worktableOffGrid(const RayHit& hit) {
+  if (!hit.hit || hit.normal.y != 1) return false;
+  const float fx = hit.point.x - std::floor(hit.point.x), fz = hit.point.z - std::floor(hit.point.z), e = 0.015f;
+  return fx < g_grid.x - e || fx > g_grid.z + e || fz < g_grid.y - e || fz > g_grid.w + e;
+}
+
 int worktableCell(const RayHit& hit) {
   if (!hit.hit || hit.normal.y != 1) return -1;
+  // the table's rim round the drawn squares is not a square: it takes what the grid makes (a full grid left nowhere to
+  // take it from: every spot was a square, and an empty hand on a filled square gives that piece back)
+  if (worktableOffGrid(hit)) return -1;
   const float fx = hit.point.x - std::floor(hit.point.x), fz = hit.point.z - std::floor(hit.point.z);
-  // the drawn squares (a click off the grid's edge takes the nearest square)
+  // the drawn squares (a click just on a line between two takes the nearer)
   const int cx = std::clamp((int)std::floor((fx - g_grid.x) / (g_grid.z - g_grid.x) * 3), 0, 2), cz = std::clamp((int)std::floor((fz - g_grid.y) / (g_grid.w - g_grid.y) * 3), 0, 2);
   return cz * 3 + cx;
 }
@@ -152,9 +161,13 @@ bool worktableCraft(Level& lv, Player& p, World& w, ivec3 at) {
 }
 
 bool worktableUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held) {
+  const ivec3 at = hit.block;
+  if (worktableOffGrid(hit)) {   // the rim: an empty hand takes what's made; anything else, the crafting screen as ever
+    if (!held.empty() || !worktableMatch(w, at, p.yaw, w.immersive)) return false;
+    return worktableCraft(lv, p, w, at);
+  }
   const int cell = worktableCell(hit);
   if (cell < 0) return false;
-  const ivec3 at = hit.block;
   std::vector<ItemStack> g = gridAt(w, at);
   bool empty = true; for (auto& s : g) if (!s.empty()) empty = false;
   if (!held.empty()) { if (!g[cell].empty()) toast(lv, p, "Something's on that square already"); else worktablePut(lv, p, w, at, cell, held); return true; }   // one piece onto the square
@@ -162,6 +175,19 @@ bool worktableUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& 
   if (empty) return false;   // nothing on it: the crafting screen
   worktableCraft(lv, p, w, at);
   return true;
+}
+
+bool worktableResultAlong(World& w, vec3 eye, vec3 dir, float maxT, float yaw, ivec3& at) {
+  // the made thing hovers 0.38 over the middle of the table's top (render/pile_layer.cpp): a ball of 0.3 round it
+  for (float t = 0.2f; t <= maxT; t += 0.05f) {
+    const vec3 q = eye + dir * t;
+    const ivec3 b((int)std::floor(q.x), (int)std::floor(q.y) - 1, (int)std::floor(q.z));
+    if (!reg().block(w.getBlock(b.x, b.y, b.z)).has("table")) continue;
+    if (glm::distance(q, vec3(b) + vec3(0.5f, 1.38f, 0.5f)) > 0.3f) continue;
+    if (!worktableMatch(w, b, yaw, w.immersive)) continue;
+    at = b; return true;
+  }
+  return false;
 }
 
 }  // namespace dq
