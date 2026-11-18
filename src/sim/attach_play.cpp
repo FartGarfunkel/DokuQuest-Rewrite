@@ -229,20 +229,16 @@ public:
 
 // collision and climbing (sim/physics.h): the attachments' own boxes
 void extraBoxes(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ, std::vector<DBox>& out) {
-  const Registry& R = reg();
   static thread_local std::vector<PixBox> pb;
   for (int y = (int)std::floor(minY); y <= (int)std::floor(maxY - 1e-7); y++)
     for (int z = (int)std::floor(minZ); z <= (int)std::floor(maxZ - 1e-7); z++)
       for (int x = (int)std::floor(minX); x <= (int)std::floor(maxX - 1e-7); x++) {
-        const auto* parts = w.attachments(x, y, z);
-        if (!parts) continue;
-        for (const Attachment& a : *parts) {
-          if (!R.tSolid[a.id] || !partBoxes(w, x, y, z, a.id, a.meta, ShapePurpose::Collide, pb)) continue;
-          for (auto& b : pb) {
-            DBox d{x + b.x0 / 16.0, y + b.y0 / 16.0, z + b.z0 / 16.0, x + b.x1 / 16.0, y + b.y1 / 16.0, z + b.z1 / 16.0};
-            if (d.x1 <= minX || d.x0 >= maxX || d.y1 <= minY || d.y0 >= maxY || d.z1 <= minZ || d.z0 >= maxZ) continue;
-            out.push_back(d);
-          }
+        if (!w.hasAttachments(x, y, z)) continue;
+        pb.clear(); attachCollideBoxes(w, x, y, z, pb);
+        for (auto& b : pb) {
+          DBox d{x + b.x0 / 16.0, y + b.y0 / 16.0, z + b.z0 / 16.0, x + b.x1 / 16.0, y + b.y1 / 16.0, z + b.z1 / 16.0};
+          if (d.x1 <= minX || d.x0 >= maxX || d.y1 <= minY || d.y0 >= maxY || d.z1 <= minZ || d.z0 >= maxZ) continue;
+          out.push_back(d);
         }
       }
 }
@@ -250,7 +246,7 @@ bool extraClimb(const World& w, const Entity& e) {
   const int x0 = ifloor(e.pos.x - e.w), x1 = ifloor(e.pos.x + e.w), z0 = ifloor(e.pos.z - e.w), z1 = ifloor(e.pos.z + e.w);
   const int y0 = ifloor(e.pos.y), y1 = ifloor(e.pos.y + e.h - 0.01f);
   for (int y = y0; y <= y1; y++) for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++)
-    if (const auto* parts = w.attachments(x, y, z)) for (const Attachment& a : *parts) if (bhas(a.id, BF::Climb)) return true;
+    if (attachClimb(w, x, y, z)) return true;
   return false;
 }
 } // namespace

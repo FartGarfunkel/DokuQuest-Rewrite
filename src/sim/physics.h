@@ -18,6 +18,9 @@ struct DBox { double x0, y0, z0, x1, y1, z1; };
 void gatherBoxes(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ,
                  std::vector<DBox>& out, double feet = NAN, bool sneak = false);
 bool collides(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ, bool creature = false);   // creature: pens stand taller (penBlock)
+// a cell a walker won't step into: open, with four or more open cells (not water) under it. The walkers' guard at an edge
+// (sim/creature.cpp) and the townsfolk's way finder's corners (sim/npc_path.cpp) ask the same.
+bool sheerDrop(const World& w, int x, int y, int z);
 // things that are solid but not blocks in the world (moving pieces, sim/moving.cpp): they add their boxes over the region
 using ExtraBoxesFn = void (*)(const World& w, double minX, double minY, double minZ, double maxX, double maxY, double maxZ, std::vector<DBox>& out);
 void setExtraBoxes(ExtraBoxesFn f);   // (adds one: moving pieces, rope bridges)
@@ -26,7 +29,7 @@ using ExtraClimbFn = bool (*)(const World& w, const Entity& e);
 void addExtraClimb(ExtraClimbFn f);
 extern thread_local bool t_noExtraBoxes;   // set: only the world's own blocks (is there room for something a piece pushes?)
 // Collision boxes of one block (compat helper).
-void blockBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out);
+void blockBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out);   // a cell's collision: main block + attachments
 
 // Move an entity by its velocity for dt, sliding along walls and stepping up onto slabs and
 // stairs (stepHeight; airStep = the little lip a body just off the ground may still step over).

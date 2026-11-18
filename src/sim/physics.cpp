@@ -99,7 +99,25 @@ bool collides(const World& w, double minX, double minY, double minZ, double maxX
   return false;
 }
 
+bool sheerDrop(const World& w, int x, int y, int z) {
+  const Registry& R = reg();
+  if (!w.isLoaded(x, std::max(y, 0), z) || R.tSolid[w.getBlock(x, y, z)]) return false;
+  int drop = 0;
+  while (drop < 5 && y - 1 - drop > 0 && !R.tSolid[w.getBlock(x, y - 1 - drop, z)] && !R.tLiquid[w.getBlock(x, y - 1 - drop, z)]) drop++;
+  return drop >= 4;
+}
+
+static void mainBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out);
+// a cell's collision as gatherBoxes meets it: its main block's boxes and its attachments' (world/attach.h)
 void blockBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out) {
+  mainBoxes(w, x, y, z, out);
+  if (!w.hasAttachments(x, y, z)) return;
+  static thread_local std::vector<PixBox> pb;
+  pb.clear(); attachCollideBoxes(w, x, y, z, pb);
+  const vec3 b(x, y, z);
+  for (auto& p : pb) out.push_back({b + vec3(p.x0, p.y0, p.z0) / 16.f, b + vec3(p.x1, p.y1, p.z1) / 16.f});
+}
+static void mainBoxes(const World& w, int x, int y, int z, std::vector<AABB>& out) {
   BlockId id = w.getBlockPhys(x, y, z);
   if (static const BlockId sp = reg().blockId("spike_trap"); sp && id == sp) {
     if (t_itemMove || (w.getMeta(x, y, z) & 1)) return;

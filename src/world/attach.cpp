@@ -117,6 +117,20 @@ bool partBoxes(const World& w, int x, int y, int z, BlockId id, u8 meta, int pur
   return true;
 }
 
+void attachCollideBoxes(const World& w, int x, int y, int z, std::vector<PixBox>& out) {
+  const auto* parts = w.attachments(x, y, z);
+  if (!parts) return;
+  static thread_local std::vector<PixBox> pb;
+  for (const Attachment& a : *parts) {
+    if (!reg().tSolid[a.id] || !partBoxes(w, x, y, z, a.id, a.meta, ShapePurpose::Collide, pb)) continue;
+    out.insert(out.end(), pb.begin(), pb.end());
+  }
+}
+bool attachClimb(const World& w, int x, int y, int z) {
+  if (const auto* parts = w.attachments(x, y, z)) for (const Attachment& a : *parts) if (bhas(a.id, BF::Climb)) return true;
+  return false;
+}
+
 bool partRoom(const World& w, int x, int y, int z, BlockId id, u8 meta, bool main, std::vector<PixBox>& out) {
   out.clear();
   const Registry& R = reg();

@@ -996,12 +996,7 @@ void Creature::update(Level& lv, float dt) {
   if (onGround && !noGravity && want > 0.05f && !T->swims && !T->flyer && !T->floaty && !(angryT > 0 && foe)) {
     World& wd = lv.world(realm);
     float ax = pos.x - std::sin(yaw) * (w + 0.45f), az = pos.z - std::cos(yaw) * (w + 0.45f);
-    int bx = ifloor(ax), bz = ifloor(az), by = ifloor(pos.y);
-    if (wd.isLoaded(bx, std::max(by, 0), bz) && !reg().tSolid[wd.getBlock(bx, by, bz)]) {
-      int drop = 0;
-      while (drop < 5 && by - 1 - drop > 0 && !reg().tSolid[wd.getBlock(bx, by - 1 - drop, bz)] && !reg().tLiquid[wd.getBlock(bx, by - 1 - drop, bz)]) drop++;
-      if (drop >= 4) { tx = 0; tz = 0; dir = yaw + PI; }
-    }
+    if (sheerDrop(wd, ifloor(ax), ifloor(pos.y), ifloor(az))) { tx = 0; tz = 0; dir = yaw + PI; }
   }
   if (c.water && !T->boss) {   // running water carries it along (a stream leads creatures to where it ends)
     const vec3 fl = flowAt(wd, ifloor(pos.x), ifloor(pos.y + 0.1f), ifloor(pos.z));

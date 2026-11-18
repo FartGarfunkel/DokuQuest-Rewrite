@@ -17,6 +17,11 @@ bool attachSupported(const World& w, int x, int y, int z, BlockId id, u8 meta);
 // One part's boxes in pixels (block-local), as the shape code gives them for that id/meta in that cell, with the
 // same sink and set-back the block would have. false = a plain full cube.
 bool partBoxes(const World& w, int x, int y, int z, BlockId id, u8 meta, int purpose, std::vector<PixBox>& out);
+// What a body meets of a cell's attachments: every solid part's collision boxes (pixels, block-local), added to out.
+// The one truth for players, creatures and the townsfolk's way finding (sim/physics.cpp, sim/npc_path.cpp).
+void attachCollideBoxes(const World& w, int x, int y, int z, std::vector<PixBox>& out);
+// Is one of the cell's attachments climbed (a ladder, a vine on the wall beside its main block)?
+bool attachClimb(const World& w, int x, int y, int z);
 // The room a part takes in its cell (Collide ∪ Draw, or Select for parts drawn on their own like torches and signs).
 // main: it's the cell's main block (its carve counts; a chest drawn from its model takes only the model's box).
 bool partRoom(const World& w, int x, int y, int z, BlockId id, u8 meta, bool main, std::vector<PixBox>& out);   // false: the whole cell
