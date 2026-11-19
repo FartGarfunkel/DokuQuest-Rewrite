@@ -64,7 +64,30 @@ queue of agreed work with enough detail to start each item.
 
 ## 4. The queue (agreed with the owner, in rough priority)
 
-### 4.1 Leaf litter and the Dappled Forest
+### 4.1 Leaf litter and the Dappled Forest — built on branch `leaf-litter` (26ecb7c9), NOT merged: fix first
+What the branch has: 5 litter colours (thin carpet, shovel, "leaves" footsteps, under canopy via
+`data/worldgen/ground_cover.json`), poplar log/planks/3 leaves/sapling (tall slim tree kind in `gen/trees.cpp`), red
+shrubs, hollow fallen poplar logs (+ fungus) from a `dappled:fallen_log` feature, the `dappled_forest` biome taking the
+humid part of each region's forest boxes in **terrain version 26** (old worlds unchanged, tested), ~2.4% of land.
+test_world 96/0, test_content 223/0, test_shapes clean. Why it wasn't merged, and what to do before merging:
+1. **Use the DokuQuest Base pack's own art** (it's primary), not the branch's drawn stand-ins
+   (`tools/port/dappled_forest.py` made `poplar_log_end`, `poplar_plank_boards`, `poplar_sprout`, its own leaves and
+   litter). The Base pack (`data/resourcepacks/DokuQuest Base/assets/.../textures/block/`) already has
+   `poplar_log`, `poplar_log_top`, `stripped_poplar_log(_top)`, `poplar_planks`, `yellow/orange/red_poplar_leaves`
+   and `dead_*` versions, `poplar_sapling`, door, trapdoor, fence, fence gate, button, sign, hanging sign, shelf,
+   `entity/poplar.png` (boat), plus `leaf_litter`, `coniferous_litter(_side)`, `bush`, `firefly_bush`. Map the blocks
+   to those names; keep drawn pictures only as `data/textures` fallbacks.
+2. **Make poplar a full wood** like aspen (23 blocks: bench, bookcase, branch, button, cabinet, chair, door, fence,
+   fence gate, leaves, log, planks, pressure plate, sapling, shelf, sign, slab, stairs, standing shelf, stool, table,
+   trapdoor, wood) + stripped log, boat, recipes, and its place in the wood tags (`#logs`, `#planks`…), so it works
+   everywhere other woods do. Use aspen's entries in `data/blocks.json`/`items.json`/`recipes.json`/`shapes.json` as the
+   template.
+3. Leaf litter: tint the Base pack's `leaf_litter` per colour; conifer forests get `coniferous_litter`; let a hoe pick
+   it up too; give it a use (compost); make its colour follow the seasons (`seasonal_leaves_autumn` exists).
+4. The hollow logs were never seen rendered (only generated in a test): screenshot them at ground level.
+5. Check: villagers path over litter, crops/saplings/building/attachments place on it, water and the farm catch-up
+   handle it, spawning and sleeping unaffected, multiplayer shows it, frame time in a dense dappled forest on PC and
+   on a phone's OpenGL ES path. Then the full suite, `test_net` alone.
 - Leaf litter: a thin, walkable ground layer of fallen leaves under deciduous trees, coloured from the tree above
   (green, red, orange, yellow, brown/dead), following seasons if simple; a dry crunch underfoot; hoe/shovel picks it up.
 - Dappled Forest: tall slim poplars (new log/planks/leaves, autumn yellow-orange-red), the ground carpeted in red and
