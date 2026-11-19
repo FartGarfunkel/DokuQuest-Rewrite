@@ -90,13 +90,12 @@ void mobApplyLevel(Entity& e, int lvl, bool elite, float base) {
 void mobLevelUpdate(Level& lv, Entity& e) {
   if (e.isPlayer() || e.hp <= 0) return;
   if (!petOwnerOf(e).empty()) return;   // (a pet or a summon: yours, not the world's)
-  int n = 0, best = 1, bestTier = 0; float sum = 0, tierSum = 0;
+  int n = 0, best = 1; float sum = 0;
   for (auto& up : lv.entities()) {
     if (!up->isPlayer() || up->removed || up->realm != e.realm) continue;
     const Player& q = static_cast<const Player&>(*up);
     if (q.dead || q.mode == "spectator" || std::hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) > 48) continue;
     const int l = playerCombatLevel(q); n++; sum += l; best = std::max(best, l);
-    const int t = progressTier(q); tierSum += t; bestTier = std::max(bestTier, t);
   }
   if (!n) return;
   const json& T = mobDef(e.type);
@@ -107,8 +106,8 @@ void mobLevelUpdate(Level& lv, Entity& e) {
     float base = e.maxHp;
     if (e.data.value("lvlHp", false)) base /= 1.f + 0.03f * (std::max(1, e.mobLevel) - 1);
     const int party = (int)std::lround((sum / n + best) * 0.5f);
-    const int pace = progressMobLevels((int)std::lround((tierSum / n + bestTier) * 0.5f));   // (how far they've come, not how far they walked)
-    int lvl = std::max(1, party + pace + (int)std::floor(rnd() * 4) - 1);   // (-1 .. +2)
+    // (no extra for progress here: the party's combat level already grows with the skills; progressTier only scales loot)
+    int lvl = std::max(1, party + (int)std::floor(rnd() * 4) - 1);   // (-1 .. +2)
     const bool elite = hostile && !boss && !e.data.value("boss", false) && rnd() < ELITE_CHANCE;
     if (elite) lvl += ELITE_LEVELS;
     if (e.data.value("lvlHp", false)) lvl = std::max(lvl, e.mobLevel);   // (never lower than an older save gave it)

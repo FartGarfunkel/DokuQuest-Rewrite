@@ -73,7 +73,8 @@ queue of agreed work with enough detail to start each item.
 
 ### 4.2 Rewards that grow with progress (not distance)
 A progress tier from story chapters, total skill level and bosses beaten scales structure loot (more rolls, better
-odds, capped, logarithmic) and nudges creature level bands, host-side, old saves fine. (Distance-based loot was
+odds, capped, logarithmic), host-side, old saves fine. DONE (merged): `progressTier`/`chestProgressLoot`; creature
+levels deliberately left to the existing party-level system. (Distance-based loot was
 rejected: players would just move far away.)
 
 ### 4.3 Variety in existing biomes and structures (owner said **no flooded and no "chunky" trees**)
@@ -124,6 +125,10 @@ pressure plates, a lighter, extra coin tiers (we keep our coins).
 - Occasional streaming spikes at high render distance; the `test_net` basket check and the direct-link smooth-walk
   check flake now and then — investigate if they recur.
 - On OpenGL ES 3.0 the UI library's one-time setup leaves one harmless GL error on the first frame.
+- `test_progression`'s immersive pickaxe checks (copper head + stick, bronze cast, mining gold/silver) failed once
+  under heavy CPU load and passed twice right after: a timing flake to find the cause of.
+- Progress-scaled rewards affect **loot only**. Creatures already level with the nearby players' combat level (which
+  grows with skills), so a second progress boost on creature levels was removed (it double-counted).
 
 ## 5. How work was organised (worked well)
 Parallel helper agents, one per subsystem, each in its own git worktree based on `moving-structures`, test-first,
