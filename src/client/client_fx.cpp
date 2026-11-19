@@ -95,6 +95,8 @@ public:
       if (stepAcc > 2.2f) {
         stepAcc = 0;
         BlockId id = w.getBlock((int)std::floor(p.pos.x), (int)std::floor(p.pos.y - 0.2f), (int)std::floor(p.pos.z));
+        const BlockId cover = w.getBlock((int)std::floor(p.pos.x), (int)std::floor(p.pos.y + 0.02f), (int)std::floor(p.pos.z));
+        if (cover != AIR && reg().block(cover).key.rfind("leaf_litter_", 0) == 0) id = cover;   // (leaf litter underfoot crunches)
         if (id != AIR) a->material(reg().block(id).sound, "step");
       }
     }

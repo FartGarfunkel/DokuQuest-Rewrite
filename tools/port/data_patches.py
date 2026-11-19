@@ -523,3 +523,9 @@ _s22 = _u.spec_from_file_location('stacking', pathlib.Path(__file__).with_name('
 # ---- every drop has a use: the War Horn, each dragon's own scales and armour, grain foods and feed, the capes' words
 #      (tools/port/item_uses.py; checked by tools/test_content.cpp) ----
 _s23 = _u.spec_from_file_location('item_uses', pathlib.Path(__file__).with_name('item_uses.py')); _m23 = _u.module_from_spec(_s23); _s23.loader.exec_module(_m23); _m23.main(d)
+
+# ---- poplar, a whole wood like aspen (tools/port/poplar_wood.py; before the Dappled Forest, whose trees it makes) ----
+_s25 = _u.spec_from_file_location('poplar_wood', pathlib.Path(__file__).with_name('poplar_wood.py')); _m25 = _u.module_from_spec(_s25); _s25.loader.exec_module(_m25); _m25.main(d)
+
+# ---- leaf litter, the poplar and the Dappled Forest (terrain version 26; tools/port/dappled_forest.py) ----
+_s24 = _u.spec_from_file_location('dappled_forest', pathlib.Path(__file__).with_name('dappled_forest.py')); _m24 = _u.module_from_spec(_s24); _s24.loader.exec_module(_m24); _m24.main(d)

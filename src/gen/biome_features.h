@@ -25,7 +25,7 @@ class LandBiomes;
 class BiomeFeatures {
 public:
   // dir: data/worldgen. False without the data.
-  bool load(const fs::path& dir, const LandBiomes& biomes, u64 seed);
+  bool load(const fs::path& dir, const LandBiomes& biomes, u64 seed, bool groundCover = false);   // groundCover (terrain 26): the leaf litter under the woods (data/worldgen/ground_cover.json)
   bool ok() const { return loaded_; }
   // a chunk's features. biome: each column's biome at its ground (LandBiomes index, z*16+x); builtOn: true where a
   // structure will stand (no bamboo or cactus columns poking through its roofs)

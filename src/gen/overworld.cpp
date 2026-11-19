@@ -45,13 +45,13 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
     static std::mutex mx; static std::map<std::tuple<i32, std::string, bool, int>, Shared> worlds;
     std::lock_guard<std::mutex> lk(mx);
     const bool q17 = o.genVersion >= 17;
-    Shared& w = worlds[{o.seed, prefix, sr, (int)q17 + (o.genVersion >= 18)}];
+    Shared& w = worlds[{o.seed, prefix, sr, (int)q17 + (o.genVersion >= 18) + (o.genVersion >= 26) * 2}];
     if (!w.g) {
       auto ng = std::make_shared<DensityGraph>();
       if (ng->load(dataDir() / (sr ? "worldgen" : "worldgen_base"), (u64)(i64)o.seed * 0x9E3779B97F4A7C15ull + 14, prefix)) w.g = ng;
       if (w.g && sr) {
         auto nb = std::make_shared<LandBiomes>(); auto nsu = std::make_shared<LandSurface>();
-        if (nb->load(dataDir() / "worldgen", (i64)o.seed, q17, o.genVersion >= 18) && nsu->load(dataDir() / "worldgen", *w.g, *nb, (u64)(i64)o.seed * 0x2545F4914F6CDD1Dull)) { w.b = nb; w.s = nsu; auto nf = std::make_shared<BiomeFeatures>(); if (nf->load(dataDir() / "worldgen", *nb, (u64)(i64)o.seed * 0xD1B54A32D192ED03ull)) w.f = nf; }
+        if (nb->load(dataDir() / "worldgen", (i64)o.seed, q17, o.genVersion >= 18, o.genVersion >= 26) && nsu->load(dataDir() / "worldgen", *w.g, *nb, (u64)(i64)o.seed * 0x2545F4914F6CDD1Dull)) { w.b = nb; w.s = nsu; auto nf = std::make_shared<BiomeFeatures>(); if (nf->load(dataDir() / "worldgen", *nb, (u64)(i64)o.seed * 0xD1B54A32D192ED03ull, o.genVersion >= 26)) w.f = nf; }
       }
     }
     if (w.g) {
@@ -91,7 +91,8 @@ OverworldGen::OverworldGen(const WorldGenOptions& o)
           lbCat_.push_back(cat);
           if (biomeLandKinds().size() == (size_t)i) {   // (our land kind: villages, structures and our trees by it)
             u8 v = BV_NONE;
-            if (has({"mushroom"})) v = BV_MUSHROOM;
+            if (has({"dappled"})) v = BV_DAPPLED;
+            else if (has({"mushroom"})) v = BV_MUSHROOM;
             else if (has({"badlands", "mesa", "red_rock", "outback", "ayers", "pinnacles"})) v = BV_REDLANDS;
             else if (has({"swamp", "marsh", "bog", "mangrove", "bayou", "fen", "wetland", "mire"})) v = BV_MOSSMIRE;
             else if (has({"ice_spikes", "glacier", "ice_cap", "glacial", "frozen_peaks"})) v = BV_GLACIER;

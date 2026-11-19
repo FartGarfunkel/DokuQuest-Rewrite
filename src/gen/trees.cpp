@@ -5,7 +5,7 @@
 namespace dq {
 
 static const char* TREE_NAMES[TREE_KIND_COUNT] = {"none", "oak", "birch", "spruce", "pine", "jungle", "aspen", "azalea",
-  "acacia", "dark_oak", "cherry", "mangrove", "crimson", "warped", "thorn", "palm", "shrub"};
+  "acacia", "dark_oak", "cherry", "mangrove", "crimson", "warped", "thorn", "palm", "shrub", "poplar", "red_shrub"};
 const char* treeKindName(u8 k) { return k < TREE_KIND_COUNT ? TREE_NAMES[k] : "none"; }
 u8 treeKindFromName(const std::string& s) { for (u8 k = 1; k < TREE_KIND_COUNT; k++) if (s == TREE_NAMES[k]) return k; return TREE_OAK; }
 
@@ -171,6 +171,30 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       leafBall(x, y + H - 0.5, z, 1.7 + t.h * 0.6, lf, 0.65);
       return;
     }
+    case TREE_POPLAR: {   // the Dappled Forest's poplar: tall and slim, a narrow crown of autumn leaves (yellow, orange, red) up its upper trunk
+      const int H = 11 + jsFloor(t.h * 5);
+      for (int k = 0; k < H; k++) put(x, y + k, z, B.poplar_log ? B.poplar_log : B.birch_log);
+      if (t.bare || !B.poplar_leaves_yellow) return;
+      const BlockId lv[3] = {B.poplar_leaves_yellow, B.poplar_leaves_orange ? B.poplar_leaves_orange : B.poplar_leaves_yellow, B.poplar_leaves_red ? B.poplar_leaves_red : B.poplar_leaves_yellow};
+      for (int k = H - 9; k <= H + 1; k++) {
+        const double u = (double)(k - (H - 9)) / 10.0;   // 0 at the crown's foot, 1 at its tip
+        const double rad = k >= H ? 0.8 : 0.9 + 1.1 * std::sin(u * 3.14159 * 0.85);   // swells in the middle, narrows to the tip
+        const int rr = (int)std::ceil(rad);
+        for (int dz = -rr; dz <= rr; dz++) for (int dx = -rr; dx <= rr; dx++) {
+          if (dx * dx + dz * dz > rad * rad + 0.3 || rnd() < 0.12) continue;
+          const double q = rnd();
+          put(x + dx, y + k, z + dz, q < 0.42 ? lv[0] : q < 0.78 ? lv[1] : lv[2], true);
+        }
+      }
+      return;
+    }
+    case TREE_RED_SHRUB: {   // a red shrub: a stub of poplar trunk in a low round bush of red leaves
+      const BlockId lf = B.red_shrub_leaves ? B.red_shrub_leaves : B.shrub_leaves ? B.shrub_leaves : B.leaves;
+      const int H = 1 + (t.h > 0.7 ? 1 : 0);
+      for (int k = 0; k < H; k++) put(x, y + k, z, B.poplar_log ? B.poplar_log : B.log);
+      leafBall(x, y + H - 0.5, z, 1.6 + t.h * 0.7, lf, 0.7);
+      return;
+    }
     case TREE_PALM: {   // a ringed trunk leaning one way, a crown of fronds drooping all round
       BlockId lg = B.palm_log ? B.palm_log : B.jungle_log, lf = B.palm_leaves ? B.palm_leaves : B.jungle_leaves;
       int H = 5 + jsFloor(t.h * 4), d = jsFloor(rnd() * 4), tx = x, tz = z;
@@ -309,6 +333,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
   if (landVariant(mid) == BV_THORNSCRUB) density = 2.5;   // thick with thorn trees
   if (landVariant(mid) == BV_HIGHLANDS) density = 6;      // close-grown spruce
   if (landVariant(mid) == BV_SEASONAL) density = 5;       // the Seasonal Forest
+  if (landVariant(mid) == BV_DAPPLED) density = 6;        // the Dappled Forest: poplars standing close
   bool bare = (mid.biome == BIOME_FOREST || mid.biome == BIOME_PLAINS) && hashFloat(cx, cz, seed_, 67) < 0.025;
   int n = jsFloor(density) + (rnd() < std::fmod(density, 1.0) ? 1 : 0) + (bare ? 3 : 0);
   for (int i = 0; i < n; i++) {
@@ -339,6 +364,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
     else if (bv == BV_HIGHLANDS) type = r < 0.85 ? TREE_SPRUCE : TREE_PINE;   // the boreal hills
     else if (bv == BV_TUNDRA) type = TREE_SPRUCE;                             // a lone stunted spruce
     else if (bv == BV_SEASONAL) type = r < 0.62 ? TREE_CHERRY : r < 0.85 ? TREE_OAK : TREE_BIRCH;   // the Seasonal Forest's cherry groves
+    else if (bv == BV_DAPPLED) type = r < 0.6 ? TREE_POPLAR : r < 0.92 ? TREE_RED_SHRUB : TREE_BIRCH;   // slim poplars, red shrubs between, a birch now and then
     bool bees = (type == TREE_OAK || type == TREE_BIRCH || type == TREE_CHERRY) && !bare && rnd() < (bv == BV_MEADOW || bv == BV_SEASONAL ? 0.12 : c.biome == BIOME_PLAINS ? 0.08 : c.biome == BIOME_FOREST ? 0.04 : 0.02);
     t.kind = type; t.bare = bare; t.bees = bees; t.mossy = bv == BV_MOSSMIRE; t.gum = bv == BV_REDLANDS; t.seasonal = bv == BV_SEASONAL;
     list.push_back(t);
