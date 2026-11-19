@@ -24,8 +24,9 @@ public:
     std::string grassModifier;              // "", "dark_forest", "swamp"
   };
   // dir: data/worldgen. False when the data isn't there.
+  // withDappled (terrain version 26): the humid part of each region's forests is the Dappled Forest instead (tall poplars, red leaf litter)
   // withExtras (terrain version 17): the extra region too (its Glimmering Weald; and the regions' weights with it)
-  bool load(const fs::path& dir, i64 worldSeed, bool withExtras = true, bool strongHash = true);   // strongHash (18): unstriped snow lines
+  bool load(const fs::path& dir, i64 worldSeed, bool withExtras = true, bool strongHash = true, bool withDappled = false);   // strongHash (18): unstriped snow lines
   bool ok() const { return !regions_.empty(); }
   int count() const { return (int)info_.size(); }
   const Info& info(int b) const { return info_[b]; }

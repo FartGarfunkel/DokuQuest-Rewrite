@@ -41,7 +41,7 @@ int modeOrRandom(Ctx& c, int a, int b, int cc, int d) {
 }
 } // namespace
 
-bool LandBiomes::load(const fs::path& dir, i64 worldSeed, bool withExtras, bool strongHash) {
+bool LandBiomes::load(const fs::path& dir, i64 worldSeed, bool withExtras, bool strongHash, bool withDappled) {
   strong_ = strongHash;
   auto j = readJson(dir / "biome_regions.json");
   if (!j || !j->contains("regions")) return false;
@@ -73,6 +73,18 @@ bool LandBiomes::load(const fs::path& dir, i64 worldSeed, bool withExtras, bool 
       b.lo[6] = b.hi[6] = e[12].get<i64>();
       b.biome = e[13].get<int>();
       r.boxes.push_back(b);
+    }
+    if (withDappled) {   // (terrain version 26: the forests' humid side, a good share of every wood, is the Dappled Forest)
+      const int forest = find("main:forest"), dappled = find("dappled:dappled_forest");
+      if (forest >= 0 && dappled >= 0) {
+        const size_t n = r.boxes.size(); const i64 cut = 200;
+        for (size_t i = 0; i < n; i++) {
+          if (r.boxes[i].biome != forest || r.boxes[i].hi[1] <= cut) continue;
+          Box d = r.boxes[i]; d.biome = dappled; d.lo[1] = std::max(d.lo[1], cut);
+          if (r.boxes[i].lo[1] > cut) r.boxes[i].biome = dappled;
+          else { r.boxes[i].hi[1] = cut - 1; r.boxes.push_back(d); }
+        }
+      }
     }
     build(r);
     regions_.push_back(std::move(r));

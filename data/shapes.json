@@ -16240,6 +16240,178 @@
     "side": "shrine_stone",
     "end": "shrine_top"
    }
+  ],
+  "hollow_poplar_log": [
+   {
+    "b": [
+     0,
+     0,
+     1,
+     16,
+     2,
+     15
+    ],
+    "side": "poplar_log_side",
+    "end": "poplar_log_side"
+   },
+   {
+    "b": [
+     0,
+     12,
+     1,
+     16,
+     14,
+     15
+    ],
+    "side": "poplar_log_side",
+    "end": "poplar_log_side"
+   },
+   {
+    "b": [
+     0,
+     2,
+     1,
+     16,
+     12,
+     3
+    ],
+    "side": "poplar_log_side",
+    "end": "poplar_log_side"
+   },
+   {
+    "b": [
+     0,
+     2,
+     13,
+     16,
+     12,
+     15
+    ],
+    "side": "poplar_log_side",
+    "end": "poplar_log_side"
+   },
+   {
+    "b": [
+     0,
+     2,
+     3,
+     16,
+     3,
+     13
+    ],
+    "side": "poplar_log_hollow",
+    "end": "poplar_log_hollow"
+   }
+  ],
+  "hollow_poplar_log_fungus": [
+   {
+    "b": [
+     0,
+     0,
+     1,
+     16,
+     2,
+     15
+    ],
+    "side": "poplar_log_side",
+    "end": "poplar_log_side"
+   },
+   {
+    "b": [
+     0,
+     12,
+     1,
+     16,
+     14,
+     15
+    ],
+    "side": "poplar_log_side",
+    "end": "poplar_log_side"
+   },
+   {
+    "b": [
+     0,
+     2,
+     1,
+     16,
+     12,
+     3
+    ],
+    "side": "poplar_log_side",
+    "end": "poplar_log_side"
+   },
+   {
+    "b": [
+     0,
+     2,
+     13,
+     16,
+     12,
+     15
+    ],
+    "side": "poplar_log_side",
+    "end": "poplar_log_side"
+   },
+   {
+    "b": [
+     0,
+     2,
+     3,
+     16,
+     3,
+     13
+    ],
+    "side": "poplar_log_hollow",
+    "end": "poplar_log_hollow"
+   },
+   {
+    "b": [
+     3,
+     14,
+     4,
+     7,
+     15,
+     8
+    ],
+    "side": "shelf_fungus",
+    "end": "shelf_fungus"
+   },
+   {
+    "b": [
+     9,
+     14,
+     7,
+     13,
+     15,
+     10
+    ],
+    "side": "shelf_fungus",
+    "end": "shelf_fungus"
+   },
+   {
+    "b": [
+     5,
+     4,
+     15,
+     10,
+     6,
+     16
+    ],
+    "side": "shelf_fungus",
+    "end": "shelf_fungus"
+   },
+   {
+    "b": [
+     4,
+     8,
+     0,
+     8,
+     10,
+     1
+    ],
+    "side": "shelf_fungus",
+    "end": "shelf_fungus"
+   }
   ]
  }
 }
