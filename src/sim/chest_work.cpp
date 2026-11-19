@@ -4,6 +4,8 @@
 #include "sim/gameplay.h"
 #include "sim/player.h"
 #include "core/registry.h"
+#include "sim/balance.h"
+#include "gen/structures_common.h"
 
 namespace dq {
 namespace {
@@ -260,4 +262,14 @@ bool chestLidClicked(World& w, ivec3 at, ivec3 normal, vec3 point) {
   return glm::dot(point - (vec3(at) + vec3(0.5f)), d) < -0.22f;   // the back of its top, under the raised lid
 }
 
+
+void chestProgressLoot(World& w, const Player& p, ivec3 at) {
+  json* e = w.blockEntity(at.x, at.y, at.z);
+  if (!e || !e->is_object() || !e->contains("lk")) return;
+  const std::string lk = (*e)["lk"].is_string() ? (*e)["lk"].get<std::string>() : "";
+  e->erase("lk");   // (once: the first to open it sets what it holds, a later, stronger player finds no more)
+  if (lk.empty() || !e->contains("items")) return;
+  Mulberry32 r(hash32(at.x, at.y, at.z, 0x7e11));
+  lootTopUp((*e)["items"], lk, progressTier(p), r);
+}
 } // namespace dq

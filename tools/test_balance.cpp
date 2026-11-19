@@ -5,6 +5,7 @@
 #include "core/init.h"
 #include "core/tool_parts.h"
 #include "sim/balance.h"
+#include "gen/structures_common.h"
 #include "sim/combat.h"
 #include "sim/combat_rpg.h"
 #include "sim/controller.h"
@@ -466,6 +467,30 @@ int main(int argc, char** argv) {
     check(f.ttd < 600, "adamantite and every skill at 99 vs a level-1 ghoul: it still hurts you (TTD " + std::to_string((int)f.ttd) + " s)");
     Fight g = fight(*lv, p, 0, 1, 60, true, 2);
     check(g.ttd < g.ttk, "bare hands, level 1 vs a level-60 elite: run (TTK " + std::to_string((int)g.ttk) + " s, TTD " + std::to_string((int)g.ttd) + " s)");
+  }
+
+  {   // progress, not distance: the tier rises with chapters, bosses and skills; the same chest gives more at a higher one; the creature band follows, capped
+    Player q;
+    const int t0 = progressTier(q);
+    for (int i = 0; i < 4; i++) q.data["deeds"]["got"]["ch:c" + std::to_string(i)] = 1;
+    const int t1 = progressTier(q);
+    q.data["deeds"]["got"]["boss:wither"] = 1; q.data["deeds"]["got"]["boss:dragon"] = 1;
+    const int t2 = progressTier(q);
+    for (const char* sk : {"melee", "mining", "defence", "archery", "exploring", "woodcutting"}) q.stats["skills"][sk] = skillXpFor(60);
+    const int t3 = progressTier(q);
+    check(t0 < t1 && t1 < t2 && t2 <= t3 && t3 <= bal::TIER_MAX, "tier rises with chapters (" + std::to_string(t0) + " -> " + std::to_string(t1) + "), bosses (" + std::to_string(t2) + ") and skills (" + std::to_string(t3) + ")");
+    long n0 = 0, n1 = 0; const int N = 400;
+    for (int i = 0; i < N; i++) {
+      Mulberry32 r(1000 + i); json a = structLoot("temple", r), b = a;
+      Mulberry32 r2(5000 + i); lootTopUp(b, "s:temple", t3, r2);
+      for (auto& s : a) if (s.is_object()) n0 += s.value("n", 1);
+      for (auto& s : b) if (s.is_object()) n1 += s.value("n", 1);
+    }
+    check(n1 > n0 * 1.1, "the same chest table is richer at tier " + std::to_string(t3) + " (" + std::to_string(n0 / N) + " -> " + std::to_string(n1 / N) + " items a chest)");
+    json z = json::array(); for (int i = 0; i < 27; i++) z.push_back(nullptr); Mulberry32 rz(1);
+    check(lootTopUp(z, "s:temple", 0, rz) == 0, "tier 0 adds nothing");
+    check(progressLootRolls(bal::TIER_MAX) < 3 && progressLootChance(1000) <= bal::LOOT_TIER_CHANCE_MAX, "the loot bonus is logarithmic and capped");
+    check(progressMobLevels(0) == 0 && progressMobLevels(3) > 0 && progressMobLevels(bal::TIER_MAX) <= bal::MOB_TIER_MAX && progressMobLevels(500) <= bal::MOB_TIER_MAX, "creature level band rises with tier, capped at +" + std::to_string(bal::MOB_TIER_MAX));
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);
