@@ -4,7 +4,9 @@
 underfoot), the poplar (tall and slim: log, planks, three autumn leaves, a sapling), the red shrub's leaves, the hollow
 poplar log lying on the ground (plain, and with shelf fungus on it), and their worldgen data: the Dappled Forest biome,
 the litter's and the logs' features, and which woods get which litter (data/worldgen/ground_cover.json).
-Pictures are ours, drawn here, written into the base pack (the art used) and data/textures (the fallback). Idempotent;
+Pictures: the DokuQuest Base pack's (its poplar leaves and sapling, its leaf litter: green tinted by the wood's foliage,
+the other colours made from it); ours, drawn here, are only data/textures fallbacks. Never writes into the pack. The poplar
+wood itself (log, planks and the rest) is tools/port/poplar_wood.py's: run that first. Idempotent;
 data_patches.py runs it.
 
   python3 tools/port/dappled_forest.py [data-dir]
@@ -124,36 +126,56 @@ def fungus_tile():
     return im
 
 
+def tint(im, c):
+    """the pack's grey leaf-litter picture in one colour (its shading kept)"""
+    im = im.convert('RGBA'); px = im.load()
+    for y in range(im.size[1]):
+        for x in range(im.size[0]):
+            r, g, b, a = px[x, y]
+            v = (r + g + b) / 3 / 255
+            px[x, y] = (min(255, int(c[0] * v * 1.35)), min(255, int(c[1] * v * 1.35)), min(255, int(c[2] * v * 1.35)), a)
+    return im
+
+
 def main(d):
     d = pathlib.Path(d)
     base = d / 'resourcepacks/DokuQuest Base/assets/minecraft/textures/block'
     items = json.loads((d / 'items.json').read_text()); tj = json.loads((d / 'tiles.json').read_text())
     bj = json.loads((d / 'blocks.json').read_text()); shp = json.loads((d / 'shapes.json').read_text())
     rj = json.loads((d / 'recipes.json').read_text()); pm = json.loads((d / 'packmap.json').read_text())
+    mj = json.loads((d / 'machines.json').read_text())
     tiles, files = tj['names'], tj['files']
     tj['res'] += [32] * max(0, tj['count'] - len(tj['res']))
-    (d / 'textures/block').mkdir(parents=True, exist_ok=True); base.mkdir(parents=True, exist_ok=True)
-    mapped = {e[0] for e in pm}
+    (d / 'textures/block').mkdir(parents=True, exist_ok=True)
+    entry = {e[0]: e for e in pm}
+    if 'poplar_log_side' not in tiles: raise SystemExit('dappled_forest.py: run tools/port/poplar_wood.py first (the poplar wood)')
 
-    def tile(name, im):
+    def tile(name, im, pack=None):
+        """a picture: the pack's (pack: its names there) first, ours (data/textures) the fallback; never written into the pack"""
         rel = 'textures/block/%s.png' % name
-        im.save(d / rel); im.save(base / (name + '.png'))
+        im.save(d / rel)
         if name not in tiles: tiles[name] = tj['count']; files.append(rel); tj['res'].append(32); tj['count'] += 1
-        if name not in mapped: pm.append([name, [name], [name]]); mapped.add(name)
+        e = [name, (pack or []) + [name], [name]]
+        if name in entry: pm[pm.index(entry[name])] = e
+        else: pm.append(e)
+        entry[name] = e
         return tiles[name]
 
     # ---- the pictures ----
     T = {}
-    for c, sh in LITTER.items(): T['leaf_litter_' + c] = tile('leaf_litter_' + c, litter_tile(sh, sum(map(ord, c))))
-    T['poplar_log_side'] = tile('poplar_log_side', bark_tile(41)); T['poplar_log_end'] = tile('poplar_log_end', log_top_tile())
-    T['poplar_plank_boards'] = tile('poplar_plank_boards', planks_tile()); T['poplar_log_hollow'] = tile('poplar_log_hollow', hollow_tile())
-    T['poplar_sprout'] = tile('poplar_sprout', sapling_tile()); T['shelf_fungus'] = tile('shelf_fungus', fungus_tile())
+    grey = base / 'leaf_litter.png'
+    for c, sh in LITTER.items():
+        # green: the pack's own litter, tinted by the wood's foliage colour (as its leaves are); the autumn colours and the
+        # dead brown: that picture in each colour (our drawn ones only when the pack has none)
+        im = tint(Image.open(grey), sh[0]) if grey.exists() else litter_tile(sh, sum(map(ord, c)))
+        T['leaf_litter_' + c] = tile('leaf_litter_' + c, im, ['leaf_litter'] if c == 'green' else None)
+    T['poplar_log_side'] = tiles['poplar_log_side']; T['poplar_log_hollow'] = tile('poplar_log_hollow', hollow_tile())
+    T['poplar_sapling'] = tile('poplar_sapling', sapling_tile(), ['poplar_sapling']); T['shelf_fungus'] = tile('shelf_fungus', fungus_tile())
     Y, O, R = LITTER['yellow'], LITTER['orange'], LITTER['red']
-    T['poplar_leaves_yellow'] = tile('poplar_leaves_yellow', leaves_tile(Y, [O[0], R[0]], 61))
-    T['poplar_leaves_orange'] = tile('poplar_leaves_orange', leaves_tile(O, [Y[0], R[0]], 62))
-    T['poplar_leaves_red'] = tile('poplar_leaves_red', leaves_tile(R, [O[0], Y[1]], 63))
-    T['red_shrub_leaves'] = tile('red_shrub_leaves', leaves_tile([R[1], R[0], R[3]], [R[2], O[3]], 64, 0.1))
-
+    T['poplar_leaves_yellow'] = tile('poplar_leaves_yellow', leaves_tile(Y, [O[0], R[0]], 61), ['yellow_poplar_leaves'])
+    T['poplar_leaves_orange'] = tile('poplar_leaves_orange', leaves_tile(O, [Y[0], R[0]], 62), ['orange_poplar_leaves'])
+    T['poplar_leaves_red'] = tile('poplar_leaves_red', leaves_tile(R, [O[0], Y[1]], 63), ['red_poplar_leaves'])
+    T['red_shrub_leaves'] = tile('red_shrub_leaves', leaves_tile([R[1], R[0], R[3]], [R[2], O[3]], 64, 0.1), ['dead_red_poplar_leaves', 'red_poplar_leaves'])
     # ---- the models: a hollow log lying along x (a quarter turn makes it lie along z), and the same with shelf fungus ----
     wall = lambda b: {'b': b, 'side': 'poplar_log_side', 'end': 'poplar_log_side'}
     log = [wall([0, 0, 1, 16, 2, 15]), wall([0, 12, 1, 16, 14, 15]), wall([0, 2, 1, 16, 12, 3]), wall([0, 2, 13, 16, 12, 15]),
@@ -162,50 +184,51 @@ def main(d):
     shp['shapes']['hollow_poplar_log'] = log
     shp['shapes']['hollow_poplar_log_fungus'] = log + [shf([3, 14, 4, 7, 15, 8]), shf([9, 14, 7, 13, 15, 10]), shf([5, 4, 15, 10, 6, 16]), shf([4, 8, 0, 8, 10, 1])]
 
-    # ---- the blocks ----
     blocks, faces = bj['blocks'], bj['faces']
     while len(faces) < len(blocks): faces.append(None)
-    have = {b['key'] for b in blocks}
+    byKey = {b['key']: b for b in blocks}
 
     def block(key, name, face, **kw):
-        if key in have: return
         b = {'id': len(blocks), 'render': 1, 'solid': True, 'opaque': True, 'replaceable': False, 'hardness': 0.2, 'tool': None, 'tier': 0, 'drop': key,
              'light': 0, 'lightAtt': 0, 'sound': 'leaves', 'key': key, 'name': name, 'natural': True}
-        b.update(kw); blocks.append(b); faces.append(face); have.add(key)
+        b.update(kw)
+        if key in byKey: b['id'] = byKey[key]['id']; blocks[b['id']] = b; faces[b['id']] = face
+        else: blocks.append(b); faces.append(face)
+        byKey[key] = b
 
     def item(key, name, icon, **kw):
         items[key] = dict({'key': key, 'name': name, 'maxStack': 64, 'icon': icon, 'block': key}, **kw)
 
-    for c in LITTER:   # leaf litter: a thin carpet (no height to stop you), replaceable, drops itself; a hoe or shovel lifts it
+    for c in LITTER:   # leaf litter: ground cover like fallen petals (not solid: the ground's height, spawning and building
+        # see the dirt under it), replaceable, drops itself; a hoe or shovel lifts it
         k = 'leaf_litter_' + c
-        block(k, c.capitalize() + ' Leaf Litter', [T[k]] * 6, render=7, opaque=False, replaceable=True, hardness=0.1, tool='shovel', shapeKind=10, needsSupport=True, tex=k, fuel=0.25)
+        extra = {'tint': 'foliage'} if c == 'green' else {}
+        block(k, c.capitalize() + ' Leaf Litter', [T[k]] * 6, render=7, solid=False, opaque=False, replaceable=True, hardness=0.1, tool='shovel', shapeKind=10, needsSupport=True, tex=k, fuel=0.25, **extra)
         item(k, c.capitalize() + ' Leaf Litter', 'block:' + k, fuel=0.25,
-             desc='Fallen leaves, a thin layer on the ground. They crunch underfoot. Lift them with a hoe or shovel.')
-    block('poplar_log', 'Poplar Log', [T['poplar_log_side'], T['poplar_log_side'], T['poplar_log_end'], T['poplar_log_end'], T['poplar_log_side'], T['poplar_log_side']],
-          hardness=2, tool='axe', sound='log', tex={'top': 'poplar_log_end', 'bottom': 'poplar_log_end', 'side': 'poplar_log_side'}, isLog=True, fuel=1.5, axisBlock=True)
-    item('poplar_log', 'Poplar Log', 'block:poplar_log', fuel=1.5)
-    block('poplar_planks', 'Poplar Planks', [T['poplar_plank_boards']] * 6, hardness=2, tool='axe', sound='wood', tex='poplar_plank_boards', fuel=1.5, natural=False)
-    item('poplar_planks', 'Poplar Planks', 'block:poplar_planks', fuel=1.5)
+             desc='Fallen leaves, a thin layer on the ground. They crunch underfoot. Lift them with a hoe or shovel; they compost.')
     for c in ('yellow', 'orange', 'red'):
         k = 'poplar_leaves_' + c
-        block(k, 'Poplar Leaves (%s)' % c, [T[k]] * 6, render=2, opaque=False, lightAtt=1, tex=k, isLeaves=True, sapling='poplar_sapling')
+        block(k, 'Poplar Leaves (%s)' % c, [T[k]] * 6, render=2, opaque=False, lightAtt=1, tex=k, isLeaves=True, sapling='poplar_sapling', drop='poplar_sapling', sound='leaves')
         item(k, 'Poplar Leaves (%s)' % c, 'block:' + k)
     block('red_shrub_leaves', 'Red Shrub Leaves', [T['red_shrub_leaves']] * 6, render=2, opaque=False, lightAtt=1, tex='red_shrub_leaves', isLeaves=True)
     item('red_shrub_leaves', 'Red Shrub Leaves', 'block:red_shrub_leaves')
-    block('poplar_sapling', 'Poplar Sapling', [T['poplar_sprout']] * 6, render=3, solid=False, opaque=False, hardness=0, sound='grass', tex='poplar_sprout',
+    block('poplar_sapling', 'Poplar Sapling', [T['poplar_sapling']] * 6, render=3, solid=False, opaque=False, hardness=0, sound='grass', tex='poplar_sapling',
           needsSupport=True, fuel=0.5, tree='poplar')
-    item('poplar_sapling', 'Poplar Sapling', 'poplar_sprout', fuel=0.5)
+    item('poplar_sapling', 'Poplar Sapling', 'poplar_sapling', fuel=0.5)
     for k, nm in (('hollow_poplar_log', 'Hollow Poplar Log'), ('hollow_poplar_log_fungus', 'Hollow Poplar Log with Shelf Fungus')):
         block(k, nm, [T['poplar_log_side']] * 6, render=6, opaque=False, hardness=2, tool='axe', sound='log', tex='poplar_log_side', shape=k, facingModel=True, drop='poplar_log', fuel=1.5)
+    if 'poplar_sapling' not in json.loads((d / 'itemshapes.json').read_text()).get('itemTiles', []):
+        ish = json.loads((d / 'itemshapes.json').read_text()); ish['itemTiles'].append('poplar_sapling')
+        (d / 'itemshapes.json').write_text(json.dumps(ish, separators=(',', ':'), ensure_ascii=False))
 
-    # ---- recipes, tags ----
-    if not any(r['out'] == 'poplar_planks' for r in rj['recipes']):
-        rj['recipes'].append({'out': 'poplar_planks', 'n': 4, 'items': ['#logs_poplar'], 'idx': max(r.get('idx', 0) for r in rj['recipes']) + 1, 'w': 1, 'h': 1})
+    # ---- tags, composting ----
     tags = rj['tags']
-    tags['#logs_poplar'] = ['poplar_log']
-    for t, ks in (('#log', ['poplar_log']), ('#planks', ['poplar_planks']), ('#leaves', ['poplar_leaves_yellow', 'poplar_leaves_orange', 'poplar_leaves_red', 'red_shrub_leaves']), ('#sapling', ['poplar_sapling'])):
+    for t, ks in (('#leaves', ['poplar_leaves_yellow', 'poplar_leaves_orange', 'poplar_leaves_red', 'red_shrub_leaves']), ('#sapling', ['poplar_sapling'])):
         for k in ks:
-            if k not in tags[t]: tags[t].append(k)
+            if t in tags and k not in tags[t]: tags[t].append(k)
+    comp = mj.setdefault('compost', {})
+    for k in ['leaf_litter_' + c for c in LITTER] + ['poplar_leaves_yellow', 'poplar_leaves_orange', 'poplar_leaves_red', 'red_shrub_leaves', 'poplar_sapling']:
+        comp[k] = comp.get('aspen_leaves' if 'sapling' not in k else 'aspen_sapling', 0.3)
 
     (d / 'shapes.json').write_text(json.dumps(shp, indent=1, ensure_ascii=False))
     (d / 'items.json').write_text(json.dumps(items, separators=(',', ':'), ensure_ascii=True))
@@ -213,6 +236,7 @@ def main(d):
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'recipes.json').write_text(json.dumps(rj, separators=(',', ':'), ensure_ascii=False))
     (d / 'packmap.json').write_text(json.dumps(pm, separators=(',', ':'), ensure_ascii=False))
+    (d / 'machines.json').write_text(json.dumps(mj, separators=(',', ':'), ensure_ascii=False))
     worldgen(d)
 
 
@@ -230,13 +254,16 @@ def worldgen(d):
     # the litter: patches of one colour lying on soil under a canopy (leaves somewhere above)
     canopy = {'type': 'main:any_of', 'predicates': [{'type': 'main:matching_block_tag', 'offset': [0, k, 0], 'tag': 'main:canopy'} for k in range(2, 11)]}
     for c in LITTER:
-        wjson(wg / ('configured_feature/dappled/leaf_litter_%s.json' % c), {'type': 'main:random_patch', 'config': {'tries': 56, 'xz_spread': 5, 'y_spread': 2, 'feature': {
-            'feature': {'type': 'main:simple_block', 'config': {'to_place': {'type': 'main:simple_state_provider', 'state': {'Name': 'main:leaf_litter_' + c}}}},
-            'placement': [{'type': 'main:block_predicate_filter', 'predicate': {'type': 'main:all_of', 'predicates': [
-                {'type': 'main:matching_blocks', 'offset': [0, 0, 0], 'blocks': ['main:air', 'main:grass', 'main:fern']},
-                {'type': 'main:matching_block_tag', 'offset': [0, -1, 0], 'tag': 'main:dirt'}, canopy]}}]}}})
-        for how, count in (('dense', 12), ('common', 3)):
-            wjson(wg / ('placed_feature/dappled/litter_%s_%s.json' % (c, how)), {'feature': 'dappled:leaf_litter_' + c, 'placement': [
+        # under a canopy (other woods: the litter lies under their trees), and anywhere on the floor (the Dappled Forest,
+        # carpeted: its poplars are slim, so few spots have leaves straight above them)
+        for name, extra, tries in (('leaf_litter_%s' % c, [canopy], 56), ('leaf_carpet_%s' % c, [], 96)):
+            wjson(wg / ('configured_feature/dappled/%s.json' % name), {'type': 'main:random_patch', 'config': {'tries': tries, 'xz_spread': 6, 'y_spread': 2, 'feature': {
+                'feature': {'type': 'main:simple_block', 'config': {'to_place': {'type': 'main:simple_state_provider', 'state': {'Name': 'main:leaf_litter_' + c}}}},
+                'placement': [{'type': 'main:block_predicate_filter', 'predicate': {'type': 'main:all_of', 'predicates': [
+                    {'type': 'main:matching_blocks', 'offset': [0, 0, 0], 'blocks': ['main:air', 'main:grass', 'main:fern']},
+                    {'type': 'main:matching_block_tag', 'offset': [0, -1, 0], 'tag': 'main:dirt'}] + extra}}]}}})
+        for how, count, feat in (('dense', 10, 'dappled:leaf_carpet_'), ('common', 3, 'dappled:leaf_litter_')):
+            wjson(wg / ('placed_feature/dappled/litter_%s_%s.json' % (c, how)), {'feature': feat + c, 'placement': [
                 {'type': 'main:count', 'count': count}, {'type': 'main:in_square'}, {'type': 'main:heightmap', 'heightmap': 'MOTION_BLOCKING'}, {'type': 'main:biome'}]})
         wjson(wg / ('placed_feature/dappled/litter_%s_sparse.json' % c), {'feature': 'dappled:leaf_litter_' + c, 'placement': [
             {'type': 'main:rarity_filter', 'chance': 2}, {'type': 'main:count', 'count': 2}, {'type': 'main:in_square'}, {'type': 'main:heightmap', 'heightmap': 'MOTION_BLOCKING'}, {'type': 'main:biome'}]})
@@ -253,7 +280,7 @@ def worldgen(d):
     forest['temperature'] = 0.6; forest['downfall'] = 0.7
     eff = forest.setdefault('effects', {}); eff['grass_color'] = 0xA6A83C; eff['foliage_color'] = 0xC8902A
     F = forest['features']
-    F[9] = ['dappled:litter_red_dense', 'dappled:litter_orange_dense', 'dappled:litter_yellow_common', 'dappled:fallen_log'] + [f for f in F[9] if 'tree' not in f]
+    F[9] = ['dappled:fallen_log', 'dappled:litter_red_dense', 'dappled:litter_orange_dense', 'dappled:litter_yellow_common'] + [f for f in F[9] if 'tree' not in f]   # (the logs first: the litter would take their ground)
     wjson(wg / 'biome/dappled/dappled_forest.json', forest)
     rg = json.loads((wg / 'biome_regions.json').read_text())
     if 'dappled:dappled_forest' not in rg['biomes']: rg['biomes'].append('dappled:dappled_forest')

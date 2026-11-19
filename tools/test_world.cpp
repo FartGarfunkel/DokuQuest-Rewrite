@@ -518,6 +518,7 @@ int main(int argc, char** argv) {
       for (int z = -3000; z < 3000 && wood.size() < 10; z += 48) for (int x = -3000; x < 3000 && wood.size() < 10; x += 48)
         if (og && og->landBiomeName(x, z) == "dappled:dappled_forest") wood.push_back(ivec2(x >> 4, z >> 4));
     }
+    for (ivec2 c : wood) printf("     (a Dappled Forest at x %d z %d)\n", c.x * 16 + 8, c.y * 16 + 8);
     check(wood.size() >= 10, "the Dappled Forest turns up across the land (" + std::to_string(wood.size()) + " places found)");
     auto count = [&](int ver, int& poplar, int& litter, int& logs, int& shrub) {
       WorldGenOptions o; o.seed = 4242; o.genVersion = ver; WorldGen g(o);

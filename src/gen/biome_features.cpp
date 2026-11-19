@@ -836,6 +836,8 @@ bool BiomeFeatures::placeConf(int fi, Ctx& c, Rng& r, int x, int y, int z) const
       static const BlockId plain = R.blockId("hollow_poplar_log"), fungus = R.blockId("hollow_poplar_log_fungus");
       if (!plain) return false;
       const int dir = r.nextInt(2), len = 3 + r.nextInt(3);
+      // (down through the ground cover - leaf litter, petals, grass - to the earth: the log lies on the ground, the cover goes)
+      for (BlockId u = c.get(x, y - 1, z); y > 1 && u != OUT && u != AIR && R.tReplaceable[u] && !R.tSolid[u]; u = c.get(x, y - 1, z)) y--;
       for (int i = 0; i < len; i++) {
         const int xx = x + (dir ? 0 : i), zz = z + (dir ? i : 0);
         const BlockId cur = c.get(xx, y, zz), g = c.get(xx, y - 1, zz);
