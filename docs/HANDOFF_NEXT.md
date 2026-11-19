@@ -4,6 +4,15 @@ You are picking up DokuQuest, a C++20 voxel sandbox RPG (this repository). Read 
 design facts), then this file. It lists the owner's rules, how to build/test/release, what was just finished, and the
 queue of agreed work with enough detail to start each item.
 
+**On the owner's PC you also have** (local only, not in git — read them too):
+- `docs/HANDOFF_2026-11-18.md` — the full record of alpha.33–36: every system with file pointers, test history, the
+  release traps, the flaky tests fixed and why, and the agent workflow.
+- `docs/DokuQuest Android build — handoff.md` — the Android build in depth.
+- Notes from earlier sessions in `~/.claude/projects/-home-matt/memory/` (one fact per file, index in `MEMORY.md`).
+- A working local Android toolchain (`~/Android/Sdk`, `~/Android/jdk17`, `~/Android/bin/zip`) and `adb` for the
+  owner's test phone; see the local-Android-build memory note for the exact commands. Branches `leaf-litter` and
+  `progress-rewards` may exist as worktrees under `.claude/worktrees/` if they weren't merged yet.
+
 ## 1. The owner's rules (all of them stand)
 - **Patch notes** (`docs/CHANGELOG.md` and `assets/news/news.dqn`, both updated every release): never mention
   Herobrine, except that every entry ends with the line `- Removed Herobrine.`
