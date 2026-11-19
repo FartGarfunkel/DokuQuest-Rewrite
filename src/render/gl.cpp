@@ -1,3 +1,4 @@
+#include <map>
 #include "render/gl.h"
 #include <SDL.h>
 #include <cstdio>
@@ -54,7 +55,8 @@ int reloadAllShaders() {
 }
 
 static void GLAD_API_PTR glDebugCb(GLenum, GLenum type, GLuint, GLenum severity, GLsizei, const GLchar* msg, const void*) {
-  if (severity == GL_DEBUG_SEVERITY_HIGH || type == GL_DEBUG_TYPE_ERROR) DQ_WARN("GL: %s", msg);
+  static int n = 0;   // (a driver can say the same each frame: the first 120)
+  if ((severity == GL_DEBUG_SEVERITY_HIGH || severity == GL_DEBUG_SEVERITY_MEDIUM || type == GL_DEBUG_TYPE_ERROR) && n < 120) { n++; DQ_WARN("GL: %s", msg); }
 }
 
 // ---- OpenGL ES 3 (Android phones without Vulkan 1.3): the Legacy renderer on the phone's GLES driver.
@@ -100,7 +102,42 @@ static bool esHasExtension(const char* name) {
   for (GLint i = 0; i < n; i++) if (const char* e = (const char*)glGetStringi(GL_EXTENSIONS, (GLuint)i)) if (std::strcmp(e, name) == 0) return true;
   return false;
 }
+// Copying the picture into a texture (glCopyTexSubImage2D: the water's view of the scene, the colour filter, the post
+// passes): ES allows it only between matching formats, and a phone's window has no alpha (RGB into the RGBA8 texture:
+// GL_INVALID_OPERATION, nothing copied, and the colour filter drew its empty texture over the whole world, grey on an
+// Adreno 640). Each source / texture pair is tried the plain way once; one the driver refuses is blitted instead
+// (glBlitFramebuffer converts between fixed-point formats).
+static PFNGLCOPYTEXSUBIMAGE2DPROC g_esRealCopyTexSub = nullptr;
+static void GLAD_API_PTR esCopyTexSubImage2D(GLenum target, GLint level, GLint xoff, GLint yoff, GLint x, GLint y, GLsizei w, GLsizei h) {
+  if (target != GL_TEXTURE_2D) { g_esRealCopyTexSub(target, level, xoff, yoff, x, y, w, h); return; }
+  GLint readFb = 0, tex = 0; glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFb); glGetIntegerv(GL_TEXTURE_BINDING_2D, &tex);
+  static std::map<std::pair<GLint, GLint>, int> way;   // 1: the plain copy works, 2: blitted
+  int& w0 = way[{readFb, tex}];
+  if (w0 != 2) {
+    if (w0 == 0) while (glGetError() != GL_NO_ERROR) {}
+    g_esRealCopyTexSub(target, level, xoff, yoff, x, y, w, h);
+    if (w0 == 1) return;
+    if (glGetError() == GL_NO_ERROR) { w0 = 1; return; }
+    w0 = 2;
+    static int told = 0;
+    if (told++ < 8) DQ_LOG("gles: picture %d into texture %d: formats differ, blitted instead", (int)readFb, (int)tex);
+  }
+  static GLuint fbo = 0;
+  if (!fbo) glGenFramebuffers(1, &fbo);
+  GLint drawFb = 0; glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFb);
+  const GLboolean sc = glIsEnabled(GL_SCISSOR_TEST);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+  glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, (GLuint)tex, level);
+  if (sc) glDisable(GL_SCISSOR_TEST);
+  glBlitFramebuffer(x, y, x + w, y + h, xoff, yoff, xoff + w, yoff + h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+  if (sc) glEnable(GL_SCISSOR_TEST);
+  glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, 0, 0);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint)drawFb);
+}
+
 static void esFixups(int glesVersion) {
+  g_esRealCopyTexSub = glad_glCopyTexSubImage2D;
+  glad_glCopyTexSubImage2D = esCopyTexSubImage2D;
   glad_glClearDepth = esClearDepth;
   glad_glPolygonMode = esPolygonMode;
   glad_glDrawBuffer = esDrawBuffer;
@@ -171,7 +208,8 @@ bool gfxInit(RendererKind kind) {
   if (es) { GLint comb = 0; glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &comb); if (comb >= 19) gfx.maxTexUnits = std::max(gfx.maxTexUnits, 19); }
   if (v >= 43 || GLAD_GL_KHR_debug) {
     GLint flags = 0; glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-    if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) { glEnable(GL_DEBUG_OUTPUT); glDebugMessageCallback(glDebugCb, nullptr); }
+    // (DQ_GL_DEBUG=1: a phone's driver says what it refuses, call by call; slow, so only when asked)
+    if ((flags & GL_CONTEXT_FLAG_DEBUG_BIT) || (es && std::getenv("DQ_GL_DEBUG"))) { glEnable(GL_DEBUG_OUTPUT); glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS); glDebugMessageCallback(glDebugCb, nullptr); DQ_LOG("gl: driver debug messages on"); }
   }
   if (es) DQ_LOG("%s (legacy path on OpenGL ES) — %s / %s", gfx.version.c_str(), gfx.vendor.c_str(), gfx.renderer.c_str());
   else DQ_LOG("OpenGL %d.%d (%s path) — %s / %s", gfx.major, gfx.minor, gfx.modern ? "modern" : "legacy", gfx.vendor.c_str(), gfx.renderer.c_str());

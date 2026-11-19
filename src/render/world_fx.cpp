@@ -32,6 +32,9 @@ Fx& fx() { static Fx f; return f; }
 
 GLuint makeTex(GLenum internal, GLenum format, GLenum type, int w, int h, GLenum filter, const void* data = nullptr) {
   GLuint t; glGenTextures(1, &t); glBindTexture(GL_TEXTURE_2D, t);
+  // OpenGL ES takes float depth data only into a float depth texture (24-bit refused: GL_INVALID_OPERATION, no texture,
+  // and a phone's world drawn grey); a PC's driver converts
+  if (gfx.gles && internal == GL_DEPTH_COMPONENT24 && type == GL_FLOAT) internal = GL_DEPTH_COMPONENT32F;
   glTexImage2D(GL_TEXTURE_2D, 0, (GLint)internal, w, h, 0, format, type, data);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint)filter); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint)filter);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);

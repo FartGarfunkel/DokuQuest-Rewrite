@@ -73,6 +73,24 @@ struct ProfScope {
   GLuint qa = 0;
   ProfScope(const char* a_, const char* b_ = "") : a(a_), b(b_), t0(prof().on ? nowSeconds() : 0) { if (prof().gpu) { glGenQueries(1, &qa); glQueryCounter(qa, GL_TIMESTAMP); } }
   ~ProfScope() {
+    // OpenGL ES (a phone's driver, stricter than a PC's): for the first frames, a pass that leaves a GL error is named, with
+    // what the driver says of the program it was drawing with (a world drawn grey on an Adreno 640)
+    if (gfx.gles && !gfx.vulkan) {
+      static int frames = 0, told = 0; static const char* lastA = nullptr;
+      if (a != lastA && std::string(a) == "world.fx") frames++;
+      lastA = a;
+      if (frames < 400 && told < 80) {
+        const GLenum e = glGetError();
+        if (e != GL_NO_ERROR) {
+          told++;
+          GLint prog = 0; glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
+          std::string why;
+          if (prog) { glValidateProgram((GLuint)prog); GLint ok = 0, len = 0; glGetProgramiv((GLuint)prog, GL_VALIDATE_STATUS, &ok); glGetProgramiv((GLuint)prog, GL_INFO_LOG_LENGTH, &len);
+            if (len > 1) { why.resize(len); glGetProgramInfoLog((GLuint)prog, len, nullptr, why.data()); } if (!ok) why = "invalid: " + why; while (glGetError() != GL_NO_ERROR) {} }
+          DQ_WARN("gles: pass %s%s left GL error 0x%x (frame %d, program %d) %s", a, b, (unsigned)e, frames, prog, why.c_str());
+        }
+      }
+    }
     if (prof().finish) glFinish();
     if (prof().gpu) { GLuint qb; glGenQueries(1, &qb); glQueryCounter(qb, GL_TIMESTAMP); prof().pend[prof().slot].push_back({std::string(a) + b, qa, qb}); }
     if (!prof().on) return;

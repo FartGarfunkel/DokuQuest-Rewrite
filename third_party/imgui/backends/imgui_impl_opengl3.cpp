@@ -311,7 +311,7 @@ bool    ImGui_ImplOpenGL3_Init(const char* glsl_version)
         sscanf(gl_version_str, "%d.%d", &major, &minor); // Query GL_VERSION in desktop GL 2.x, the string will start with "<major>.<minor>"
     bd->GlVersion = (GLuint)(major * 100 + minor * 10);
 #if defined(GL_CONTEXT_PROFILE_MASK)
-    if (bd->GlVersion >= 320)
+    if (bd->GlVersion >= 320 && strncmp(gl_version_str, "OpenGL ES", 9) != 0)   // (DokuQuest: ES has no profile mask: GL_INVALID_ENUM)
         glGetIntegerv(GL_CONTEXT_PROFILE_MASK, &bd->GlProfileMask);
     bd->GlProfileIsCompat = (bd->GlProfileMask & GL_CONTEXT_COMPATIBILITY_PROFILE_BIT) != 0;
 #endif
@@ -422,7 +422,7 @@ static void ImGui_ImplOpenGL3_SetupRenderState(ImDrawData* draw_data, int fb_wid
     glDisable(GL_STENCIL_TEST);
     glEnable(GL_SCISSOR_TEST);
 #ifdef IMGUI_IMPL_OPENGL_MAY_HAVE_PRIMITIVE_RESTART
-    if (bd->GlVersion >= 310)
+    if (bd->GlVersion >= 310 && !bd->GlProfileIsES3)   // (DokuQuest: ES 3 has no such state, its driver says GL_INVALID_ENUM)
         glDisable(GL_PRIMITIVE_RESTART);
 #endif
 #ifdef IMGUI_IMPL_OPENGL_MAY_HAVE_POLYGON_MODE
@@ -532,7 +532,7 @@ void    ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data)
     GLboolean last_enable_stencil_test = glIsEnabled(GL_STENCIL_TEST);
     GLboolean last_enable_scissor_test = glIsEnabled(GL_SCISSOR_TEST);
 #ifdef IMGUI_IMPL_OPENGL_MAY_HAVE_PRIMITIVE_RESTART
-    GLboolean last_enable_primitive_restart = (bd->GlVersion >= 310) ? glIsEnabled(GL_PRIMITIVE_RESTART) : GL_FALSE;
+    GLboolean last_enable_primitive_restart = (bd->GlVersion >= 310 && !bd->GlProfileIsES3) ? glIsEnabled(GL_PRIMITIVE_RESTART) : GL_FALSE;
 #endif
 
     // Setup desired GL state
@@ -651,7 +651,7 @@ void    ImGui_ImplOpenGL3_RenderDrawData(ImDrawData* draw_data)
     if (last_enable_stencil_test) glEnable(GL_STENCIL_TEST); else glDisable(GL_STENCIL_TEST);
     if (last_enable_scissor_test) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
 #ifdef IMGUI_IMPL_OPENGL_MAY_HAVE_PRIMITIVE_RESTART
-    if (bd->GlVersion >= 310) { if (last_enable_primitive_restart) glEnable(GL_PRIMITIVE_RESTART); else glDisable(GL_PRIMITIVE_RESTART); }
+    if (bd->GlVersion >= 310 && !bd->GlProfileIsES3) { if (last_enable_primitive_restart) glEnable(GL_PRIMITIVE_RESTART); else glDisable(GL_PRIMITIVE_RESTART); }
 #endif
 
 #ifdef IMGUI_IMPL_OPENGL_MAY_HAVE_POLYGON_MODE
