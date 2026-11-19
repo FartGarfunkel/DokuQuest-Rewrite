@@ -106,6 +106,7 @@ void mobLevelUpdate(Level& lv, Entity& e) {
     float base = e.maxHp;
     if (e.data.value("lvlHp", false)) base /= 1.f + 0.03f * (std::max(1, e.mobLevel) - 1);
     const int party = (int)std::lround((sum / n + best) * 0.5f);
+    // (no extra for progress here: the party's combat level already grows with the skills; progressTier only scales loot)
     int lvl = std::max(1, party + (int)std::floor(rnd() * 4) - 1);   // (-1 .. +2)
     const bool elite = hostile && !boss && !e.data.value("boss", false) && rnd() < ELITE_CHANCE;
     if (elite) lvl += ELITE_LEVELS;
