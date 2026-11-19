@@ -871,7 +871,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z), c = vec3(hit->block) + vec3(0.5f);
     if (!repeat) handsHoldAt = t;
     if (!chestLidOpen(w, hit->block)) {
-      if (!repeat) { containerEntity(w, hit->block.x, hit->block.y, hit->block.z); setChestLidOpen(w, hit->block, true); swingArm(); sfxAt(lv, isCabinet(w, hit->block) ? "door_open" : "chest", c); }
+      if (!repeat) { containerEntity(w, hit->block.x, hit->block.y, hit->block.z); chestProgressLoot(w, p, hit->block); setChestLidOpen(w, hit->block, true); swingArm(); sfxAt(lv, isCabinet(w, hit->block) ? "door_open" : "chest", c); }
       return;
     }
     if (!repeat && handsCabinetButtonRay(w, hit->block, eye, lookVector(p.yaw, p.pitch)) >= 0) { handsCabinetSort(lv, p, w, hit->block); swingArm(); return; }   // (its sort button, on the door)
@@ -1102,14 +1102,14 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       json pos = {hit->block.x, hit->block.y, hit->block.z};
       if (bhas(hit->id, BF::Container) && chestLids && chestHasLid(w, hit->block)) {   // lids left open (sim/chest_work.h): the lid first
         if (!chestLidOpen(w, hit->block)) {
-          containerEntity(w, hit->block.x, hit->block.y, hit->block.z);
+          containerEntity(w, hit->block.x, hit->block.y, hit->block.z); chestProgressLoot(w, p, hit->block);
           setChestLidOpen(w, hit->block, true); swingArm(); sfxAt(lv, "chest", vec3(hit->block) + vec3(0.5f));
           return;
         }
         if (chestLidClicked(w, hit->block, hit->normal, hit->point)) { setChestLidOpen(w, hit->block, false); swingArm(); sfxAt(lv, "chest", vec3(hit->block) + vec3(0.5f)); return; }
       }
       if (bhas(hit->id, BF::Container)) {
-        swingArm(); sfxAt(lv, b.has("remains") ? "bone" : "chest", vec3(hit->block) + vec3(0.5f)); containerEntity(w, hit->block.x, hit->block.y, hit->block.z);
+        swingArm(); sfxAt(lv, b.has("remains") ? "bone" : "chest", vec3(hit->block) + vec3(0.5f)); containerEntity(w, hit->block.x, hit->block.y, hit->block.z); chestProgressLoot(w, p, hit->block);
         if (b.has("remains")) fallenOpened(lv, p, w, hit->block.x, hit->block.y, hit->block.z);   // (sim/fallen.h: now and then a trap)
         openScreen(lv, p, "container", {{"pos", pos}}); return;
       }

@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include "sim/spell_items.h"
 #include "core/tool_parts.h"
+#include "sim/balance.h"
 #include "gen/structures_common.h"
 #include <mutex>
 
@@ -51,10 +52,10 @@ std::vector<std::string> strList(const json& j) {
 const std::vector<std::string>& loreKeys() { static const std::vector<std::string> k = strList(SD()["LORE_KEYS"]); return k; }
 
 // one pass of a loot table into 27 slots (the shared loop of structLoot / dungeonLoot / vLoot)
-static void rollTable(json& items, const json& table, Mulberry32& rnd) {
+static void rollTable(json& items, const json& table, Mulberry32& rnd, double chanceMul = 1) {
   for (const auto& e : table) {
     const std::string id = e[0].get<std::string>();
-    const int a = e[1].get<int>(), b = e[2].get<int>(); const double p = e[3].get<double>();
+    const int a = e[1].get<int>(), b = e[2].get<int>(); const double p = std::min(1.0, e[3].get<double>() * chanceMul);
     if (!hasItem(id) || rnd() > p) continue;
     int k = jsFloor(rnd() * 27); for (int t = 0; t < 27 && !items[k].is_null(); t++) k = (k + 1) % 27;
     items[k] = json{{"id", id}, {"n", a + jsFloor(rnd() * (b - a + 1))}};
@@ -124,12 +125,41 @@ json structLoot(const std::string& kind, Mulberry32& rnd) {
   return items;
 }
 
-json dungeonLoot(const std::string& kind, Mulberry32& rnd) {
-  json items = emptySlots();
+static json dungeonTable(const std::string& kind) {
   const json& L = SD()["DUNGEON_LOOT"];
   json table = L[kind];
   if (kind == "boss") for (auto& e : L["rare"]) table.push_back(e);
   else if (kind == "rare") for (int i = 0; i < 8 && i < (int)L["common"].size(); i++) table.push_back(L["common"][i]);
+  return table;
+}
+
+// a chest first opened by a player who has come far: more passes over its own table (sim/balance.h progress), the extras
+// into whatever slots are free; the place keeps its identity (no new kinds of find), it just gives more, and likelier the rare
+int lootTopUp(json& items, const std::string& tableKind, int tier, Mulberry32& rnd) {
+  if (tier <= 0 || !items.is_array() || tableKind.size() < 3) return 0;
+  const bool dungeon = tableKind.rfind("d:", 0) == 0;
+  const std::string kind = tableKind.substr(2);
+  json table;
+  if (dungeon) { if (!SD()["DUNGEON_LOOT"].contains(kind)) return 0; table = dungeonTable(kind); }
+  else { const json& L = SD()["STRUCT_LOOT"]; table = L.contains(kind) ? L[kind] : L["ruin"]; }
+  float passes = progressLootRolls(tier); int added = 0;
+  const double mul = progressLootChance(tier);
+  for (; passes > 0; passes -= 1) {
+    if (passes < 1 && rnd() >= passes) break;
+    json extra = emptySlots(); rollTable(extra, table, rnd, mul);
+    for (auto& s : extra) {
+      if (!s.is_object()) continue;
+      if (!dungeon && s["id"].is_string()) { const ItemStack p = proceduralOf(s["id"].get<std::string>(), s.value("n", 1)); if (p.id != s["id"].get<std::string>()) s = p.toJson(); }
+      for (size_t k = 0; k < items.size(); k++) if (items[k].is_null()) { items[k] = s; added++; break; }
+    }
+  }
+  return added;
+}
+
+json dungeonLoot(const std::string& kind, Mulberry32& rnd) {
+  json items = emptySlots();
+  const json& L = SD()["DUNGEON_LOOT"];
+  json table = dungeonTable(kind);
   rollTable(items, table, rnd);
   maybeScroll(items, rnd, kind == "boss" ? 0.85 : kind == "rare" ? 0.45 : 0.2, kind == "boss" ? 9 : kind == "rare" ? 6 : 3);
   return items;
@@ -165,7 +195,7 @@ void SP::fill(int x0, int y0, int z0, int x1, int y1, int z1, std::string_view k
 
 int SP::chest(int x, int y, int z, int f, const std::string& kind) {
   int i = put(x, y, z, "chest", (2 - f) & 3);   // the placing meta: 0 S, 1 E, 2 N, 3 W (east and west ran backwards)
-  if (i >= 0) { Mulberry32 r(hash32(x, y + S.hashDy, z, (i32)S.seed)); setEntity(i, json{{"type", "chest"}, {"items", structLoot(kind, r)}}); }
+  if (i >= 0) { Mulberry32 r(hash32(x, y + S.hashDy, z, (i32)S.seed)); setEntity(i, json{{"type", "chest"}, {"items", structLoot(kind, r)}, {"lk", "s:" + kind}}); }
   return i;
 }
 

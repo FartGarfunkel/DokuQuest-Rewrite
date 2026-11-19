@@ -290,7 +290,7 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
       }
       if (s.kind == VPK_CHEST) {
         Mulberry32 cr(hash32(x, y, z, (i32)S.seed));
-        P.setEntity(idx, json{{"type", "chest"}, {"items", structLoot("ruin", cr)}});
+        P.setEntity(idx, json{{"type", "chest"}, {"items", structLoot("ruin", cr)}, {"lk", "s:ruin"}});
       }
     }
     // (the audit) the land left standing inside the piece over its floor where its template has no block and no air: ground
