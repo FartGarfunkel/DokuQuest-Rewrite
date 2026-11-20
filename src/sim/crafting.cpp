@@ -84,6 +84,34 @@ std::string recolorKey(const std::string& key, const std::string& c) {
 // ---- matching ---------------------------------------------------------------------------------------------
 static CraftMatch special(const std::string& out, int n, int w = 1, int h = 1) { CraftMatch m; m.ok = true; m.out = out; m.n = n; m.w = w; m.h = h; return m; }
 
+// one procedural piece and one ingot of a metal in it: the same piece, a new quality
+static CraftMatch matchQualityReroll(const std::vector<ItemStack>& slots) {
+  const ItemStack* gear = nullptr; const ItemStack* ing = nullptr; int n = 0;
+  for (const ItemStack& s : slots) if (!s.empty()) {
+    n++;
+    if (isPartTool(s) || isPartArmor(s)) gear = &s;
+    else ing = &s;
+  }
+  if (n != 2 || !gear || !ing || ing->n < 1) return {};
+  const ToolMaterial* tm = toolMaterialOfStack(*ing);
+  if (!tm) return {};
+  const json& mats = isPartTool(*gear) ? gear->tag["pt"]["m"] : gear->tag["pa"]["m"];
+  bool own = false;
+  if (mats.is_array()) for (const json& m : mats) if (m.is_string() && m.get<std::string>() == tm->key) own = true;
+  if (!own) return {};
+  ItemStack out = *gear; out.n = 1;
+  const std::string had = out.tag.value("qual", "");
+  for (int i = 0; i < 8; i++) {
+    out.tag.erase("qual");
+    stampGearQuality(out);
+    if (out.tag.value("qual", "") != had) break;
+  }
+  CraftMatch c = special(out.id, 1);
+  c.extra = out.tag;
+  if (out.d) c.extra["d"] = out.d;
+  return c;
+}
+
 static CraftMatch matchBase(const std::vector<ItemStack>& slots, int W) {
   int x0 = W, y0 = W, x1 = -1, y1 = -1, count = 0;
   for (int i = 0; i < W * W && i < (int)slots.size(); i++) if (!slots[i].empty()) {
@@ -244,6 +272,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
 
 // game/dyeing.js: a dye and one block takes the colour; leather armour mixes any number of dyes
 static CraftMatch matchDye(const std::vector<ItemStack>& slots, int W) {
+  if (CraftMatch q = matchQualityReroll(slots); q.ok) return q;
   std::vector<const ItemStack*> dyes, rest;
   for (auto& s : slots) if (!s.empty()) { const ItemDef* d = s.def(); if (d && d->has("dye")) dyes.push_back(&s); else rest.push_back(&s); }
   if (!dyes.empty() && rest.size() == 1) {

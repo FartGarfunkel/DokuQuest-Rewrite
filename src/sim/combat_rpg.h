@@ -17,6 +17,8 @@ struct PlayerInput;
 
 void combatRpgTick(Level& lv, Player& p, float dt);
 void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt);
+float guardKeep(const Player& p);     // a shield keeps BLOCK_KEEP; a weapon keeps more of the blow
+float guardWindow(const Player& p);   // a shield's parry window; a weapon's is shorter
 float combatRpgIncoming(Level& lv, Player& p, float amount, DamageSource& src);
 bool combatRpgSecondChance(Level& lv, Player& p);
 float combatRpgOutgoing(Level& lv, Player& p, Entity& e, float dmg, bool& finishing);

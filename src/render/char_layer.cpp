@@ -785,6 +785,10 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.hasBodyYaw = true; ps.bodyYaw = st.bodyYaw + devTurn; ps.headTurn = wrapAngle(p.yaw - st.bodyYaw); ps.legTurn = st.legTurn;
   // the shield up, a dodge roll (sim/combat_rpg.h): the roll turns the body the way it goes (back to it on a step back)
   ps.block = st.block; ps.blockMain = isShieldItem(wear.held); ps.guardHit = st.guardHit;
+  if (const ItemDef* hd = reg().item(wear.held)) {
+    ps.twoHand = hd->num("hands") >= 2.f;
+    ps.pick = hd->hasTool && hd->tool.type == "pickaxe";
+  }
   ps.shieldArm = ps.blockMain ? -1 : isShieldItem(wear.off) ? 1 : 0;
   if (!wear.strap.empty()) { ps.blockMain = wear.strapRight; ps.shieldArm = wear.strapRight ? -1 : 1; }
   if (st.rollU > 0 && !fp && !p.dead && !p.riding && !p.swimming) {

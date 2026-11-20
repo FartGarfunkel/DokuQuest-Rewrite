@@ -283,7 +283,12 @@ CharAngles charAnimate(const CharPose& pose) {
   float at = pose.swing;
   if (pose.atkMove) attackPose(A, pose);   // an attack move (sim/attack_moves.h) drawn from its fitted keys, in step with its hits
   else if (at > 0 && pose.swingKind > 0) weaponSwing(A, pose);
-  else if (at > 0) {
+  else if (at > 0 && pose.pick) {
+    // a pick: the forearm pumps up and down at the elbow. The shoulder only nods.
+    const float f = std::sin(at * PI);
+    A.armR.x += f * 0.22f;
+    A.foreR.x += 0.35f + f * 1.15f;
+  } else if (at > 0) {
     float tw = std::sin(std::sqrt(at) * TAU) * 0.2f;
     float f = 1 - at; f *= f; f *= f; f = 1 - f;
     float f2 = std::sin(f * PI), f3 = std::sin(at * PI) * (pose.headPitch + 0.7f) * 0.75f;

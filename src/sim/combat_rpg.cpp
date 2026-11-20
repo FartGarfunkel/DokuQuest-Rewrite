@@ -6,6 +6,7 @@
 #include "sim/skills.h"
 #include "sim/gameplay.h"
 #include "sim/combat.h"
+#include "sim/attack_moves.h"
 #include "sim/creature.h"
 #include "core/registry.h"
 #include <algorithm>
@@ -37,6 +38,9 @@ void spend(Player& p, float n) {
   p.data["stamIdle"] = 0;
 }
 }
+
+static bool twoHandWeapon(const Player& p);
+static bool canWeaponGuard(const Player& p);
 
 void combatRpgTick(Level& lv, Player& p, float dt) {
   if (p.dead || dt <= 0) return;
@@ -140,11 +144,14 @@ void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt) {
   const ItemDef* md = mh.empty() ? nullptr : reg().item(mh.id);
   const bool mainShield = md && (mh.id == "shield" || md->has("shield"));
   const bool mainBusy = md && !mainShield && itemHasUse(*md);
-  const bool block = holdingShield(p) && !mainBusy && in.use && p.stamina > 0 && p.dodgeT <= 0;
+  const bool twoHand = twoHandWeapon(p);
+  const bool shieldGuard = holdingShield(p) && !twoHand;
+  const bool block = (shieldGuard || canWeaponGuard(p)) && !mainBusy && in.use && p.stamina > 0 && p.dodgeT <= 0;
   if (block) {
     if (p.blockT <= 0) p.blockT = 0.001f;
     else p.blockT += dt;
-    spend(p, BLOCK_COST * (1 - stunResist(p)) * dt);   // (stagger resistance: a steadier guard)
+    const float cost = shieldGuard ? BLOCK_COST : BLOCK_COST * 1.5f;
+    spend(p, cost * (1 - stunResist(p)) * dt);   // (a weapon's guard costs half again; a shield stays as it was)
     if (p.stamina <= 0) p.blockT = 0;
   } else p.blockT = 0;
 }
@@ -152,7 +159,7 @@ void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt) {
 float combatRpgIncoming(Level& lv, Player& p, float amount, DamageSource& src) {
   if (amount <= 0 || src.type == "void" || src.bypass) return amount;
   if (p.dodgeT > 0) return 0;
-  if (p.blockT > 0 && p.blockT < PARRY_WINDOW && p.stamina >= PARRY_COST && src.attacker) {
+  if (p.blockT > 0 && p.blockT < guardWindow(p) && p.stamina >= PARRY_COST && src.attacker) {
     spend(p, PARRY_COST);
     p.parryFlash = 0.35f;
     p.blockT = PARRY_WINDOW;
@@ -166,7 +173,7 @@ float combatRpgIncoming(Level& lv, Player& p, float amount, DamageSource& src) {
   }
   // a talent's chance to slip a creature's or player's blow outright
   if (src.attacker && src.type != "magic" && dodgeChance(p) > 0 && rnd() < dodgeChance(p)) { toast(lv, p, "Evaded", "good"); return 0; }
-  if (p.blockT > 0) { p.guardFlash = 0.35f; amount *= BLOCK_KEEP; }
+  if (p.blockT > 0) { p.guardFlash = 0.35f; amount *= guardKeep(p); }
   return amount * (1 - conReduction(p)) * damageTakenFactor(p);   // Constitution: toughness; the trees' damage reduction
 }
 
@@ -233,7 +240,7 @@ bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& t
   }
   if (!hit) return false;
   const vec3 at = from + step * best;
-  const bool parry = hit->blockT > 0 && hit->blockT < PARRY_WINDOW && hit->stamina >= PARRY_COST;
+  const bool parry = hit->blockT > 0 && hit->blockT < guardWindow(*hit) && hit->stamina >= PARRY_COST;
   if (parry) {
     hit->stamina = std::max(0.f, hit->stamina - PARRY_COST);
     hit->data["stamIdle"] = 0;
@@ -262,6 +269,31 @@ bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& t
   sfxAt(lv, "arrow_hit", at);
   arrow.removed = true;
   return true;
+}
+
+static bool twoHandWeapon(const Player& p) {
+  const ItemStack& h = p.inv[p.selected];
+  const ItemDef* d = h.empty() ? nullptr : h.def();
+  return d && d->num("hands") >= 2.f;
+}
+static bool canWeaponGuard(const Player& p) {
+  const ItemStack& h = p.inv[p.selected];
+  if (h.empty() || !h.def()) return false;
+  switch (movesetOf(h.def())) {
+    case Moveset::Sword: case Moveset::Dagger: case Moveset::Axe:
+    case Moveset::Greatsword: case Moveset::Spear: case Moveset::Mace: return true;
+    default: return false;
+  }
+}
+float guardKeep(const Player& p) {
+  if (holdingShield(p) && !twoHandWeapon(p)) return BLOCK_KEEP;
+  if (twoHandWeapon(p)) return BLOCK_KEEP + 0.25f * (1.f - BLOCK_KEEP);
+  return BLOCK_KEEP + 0.5f * (1.f - BLOCK_KEEP);
+}
+float guardWindow(const Player& p) {
+  if (holdingShield(p) && !twoHandWeapon(p)) return PARRY_WINDOW;
+  if (twoHandWeapon(p)) return PARRY_WINDOW * 0.8f;
+  return PARRY_WINDOW * 0.6f;
 }
 
 int shieldSide(const Player& p) {

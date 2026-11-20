@@ -321,7 +321,9 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
   (void)tool;
   const bool offPress = offStart || (in.attackPressed && offHandSwings(p, true, false));   // (the main hand empty: the attack button is the off hand's)
   if ((in.attackPressed || offStart) && allowStart) {
-    if (p.atkMove != MV_NONE && p.atkT < attackMove(p.atkMove).recovery) { p.data["atkQueue"] = true; p.data["atkQueueOff"] = offPress; }
+    const ItemStack& hand = offPress && !p.offhand.empty() ? p.offhand[0] : p.inv[p.selected];
+    if (!weaponSkillMet(p, hand)) toast(lv, p, "Needs more melee practice.", "info");
+    else if (p.atkMove != MV_NONE && p.atkT < attackMove(p.atkMove).recovery) { p.data["atkQueue"] = true; p.data["atkQueueOff"] = offPress; }
     else beginSwingOf(p, p.sprinting, !p.onGround, offPress);
   }
   if (p.atkMove == MV_NONE) { p.atkGap += dt; if (p.data.value("atkQueue", false)) beginSwingOf(p, p.sprinting, !p.onGround, p.data.value("atkQueueOff", false)); return; }

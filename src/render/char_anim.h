@@ -54,11 +54,13 @@ struct CharPose {
   float block = 0, xbowCharge = 0, throwCharge = 0, spearCharge = 0; bool xbowAim = false;
   bool atkOff = false;      // the attack move is the off hand's: drawn mirrored (render/attack_poses.cpp)
   bool blockMain = false;   // the shield in the main hand: the right arm raises it (block above is how far up)
+  bool twoHand = false;     // a greatsword or a spear: both hands on it, and the guard is the weapon's
   i8 shieldArm = 0;         // a shield strapped on a forearm (1: the left, -1: the right): carried with the forearm level
   // a dodge roll (sim/combat_rpg.h): 0..1 through it (0: none), tucked and over once about the middle; backwards when it
   // goes away from where they face (a step back), else forwards with the body turned the way it goes
   float roll = 0; bool rollBack = false;
   bool armed = false;
+  bool pick = false;        // mining with a pick: the forearm pumps, the shoulder stays quiet
   float runAmt = -1, sneakAmt = -1;   // eased amounts (-1: from sprint / sneak as they are)
   vec2 hurtDir{0, 1};             // the blow came from: x their right, y their front
   u8 swingKind = 0;               // 0 the classic swing; 1-3 a weapon combo's cuts (render/char_anim.cpp weaponSwing)       // a weapon or a shield in hand: standing, they keep a fighter's stance (render/char_anim.cpp)

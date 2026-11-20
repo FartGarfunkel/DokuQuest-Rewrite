@@ -1,5 +1,6 @@
 #include "sim/weapon_quality.h"
 #include "sim/attack_moves.h"
+#include "sim/skills.h"
 #include "core/tool_parts.h"
 
 namespace dq {
@@ -59,6 +60,14 @@ float gearQualityFactor(const ItemStack& s) {
   if (s.empty()) return 1.f;
   if (isPartTool(s) || isPartArmor(s)) return qualityDamageFactor(weaponQuality(s));
   return weaponQualityFactor(s);
+}
+
+bool weaponSkillMet(const Player& p, const ItemStack& s) {
+  if (!isPartTool(s)) return true;
+  const std::string kind = s.tag["pt"].value("t", "");
+  if (kind != "greatsword" && kind != "spear" && kind != "mace") return true;
+  if (toolOf(s).tier < 3) return true;
+  return skillLv(p, "melee") >= 15;
 }
 
 }  // namespace dq

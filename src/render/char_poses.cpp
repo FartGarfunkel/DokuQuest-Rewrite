@@ -122,7 +122,17 @@ void charMorePoses(CharAngles& A, const CharPose& pose) {
     arm = vec3(arm.x * 0.25f + 0.05f + CG[0], o * CG[1], o * (0.16f + CG[2]));
     fore = vec3(1.5f + CG[3], o * CG[4], o * CG[5]);
   }
-  if (pose.block > 0) {
+  if (pose.block > 0 && pose.shieldArm == 0) {
+    // a weapon raised, no shield: the shield guard's elbow, half the body twist, on the weapon arm
+    const float k = ease(pose.block), turn = 0.25f * k;
+    A.body.y -= turn; A.head.y += turn;
+    const vec3 sh(SH_X, -SH_Y, -SH_Z), sf(SF_X, -SF_Y, -SF_Z);
+    A.armR = mixv(A.armR, sh, k); A.foreR = mixv(A.foreR, sf, k);
+    if (pose.twoHand) {
+      A.armL = mixv(A.armL, vec3(SH_X, SH_Y * 0.55f, SH_Z), k);
+      A.foreL = mixv(A.foreL, vec3(SF_X, SF_Y, -SF_Z * 0.35f), k);
+    }
+  } else if (pose.block > 0) {
     // (the shield guard is a pose for the upper body laid over whatever the legs do: the body turned
     // shield shoulder forward about half a right angle, the head turned back to keep looking ahead, the shield arm's
     // elbow forward and low and the forearm level across the front of the chest, so the shield strapped on it stands

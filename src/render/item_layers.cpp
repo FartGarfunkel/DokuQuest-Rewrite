@@ -138,13 +138,20 @@ const vec3 FP_HAND(0.56f, -0.5f, -0.72f);   // where the first-person arms sit (
 inline float wrapA(float a) { return std::fmod(std::fmod(a + PI * 3, TAU) + TAU, TAU) - PI; }
 // the classic first-person swing, turned about the fist: the item chops forward and down and eases back
 // (an empty hand punches instead)
-mat4 armSwing(const mat4& am, float side, float sp, bool empty, bool mining = false) {
+mat4 armSwing(const mat4& am, float side, float sp, bool empty, bool mining = false, bool pick = false) {
   float r = std::sqrt(sp), f = std::sin(sp * sp * PI), f1 = std::sin(r * PI), D = PI / 180;
   float k = empty ? -0.3f : 0.35f;
   vec3 pv = vec3(am[1]) * k + vec3(am[3]);   // turn about the shoulder end
   mat4 S(1);
   if (empty) S = glm::translate(S, vec3(side * -0.3f * f1, 0.1f * std::sin(r * TAU) + 0.05f * f1, -0.38f * std::sin(sp * PI)));
-  else {
+  else if (mining && pick) {
+    // the elbow pumps. The shoulder only nods.
+    vec3 elbow = vec3(am[3]) + vec3(am[1]) * 0.12f;
+    S = glm::translate(S, elbow);
+    S = glm::rotate(S, std::sin(sp * PI) * -62.f * D, vec3(1, 0, 0));
+    S = glm::rotate(S, f1 * -8.f * D, vec3(1, 0, 0));
+    S = glm::translate(S, -elbow);
+  } else {
     S = glm::translate(S, vec3(side * -0.4f * f1, 0.2f * std::sin(r * TAU), -0.2f * std::sin(sp * PI)));
     S = glm::translate(S, pv);
     const float sideK = mining ? 0.45f : 1.f;   // mining: a straighter chop down into the block
@@ -409,7 +416,9 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       if (itemHook && im.ready()) over.push_back({stack, m});
       return;
     }
-    if (side > 0 && swing > 0) am = armSwing(am, 1, swing, false, s.breaking);
+    bool pickMine = false;
+    if (s.breaking) if (const ItemDef* pd = stack.def()) pickMine = pd->hasTool && pd->tool.type == "pickaxe";
+    if (side > 0 && swing > 0) am = armSwing(am, 1, swing, false, s.breaking, pickMine);
     if (side > 0 && wind > 0) { am = glm::translate(am, vec3(0, 0.1f * wind, 0.05f * wind)); am = glm::rotate(am, -0.75f * std::sin(wind * PI / 2), vec3(1, 0, 0)); }   // the rod comes back over the shoulder before the cast
     drawArm(am);
     // the fist, turned back to face the way you look

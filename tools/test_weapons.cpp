@@ -7,6 +7,8 @@
 #include "sim/crafting.h"
 #include "sim/inventory.h"
 #include "sim/player.h"
+#include "sim/combat_rpg.h"
+#include "sim/skills.h"
 #include "core/tool_parts.h"
 #include <cmath>
 #include <cstdio>
@@ -156,6 +158,46 @@ int main() {
   CHECK(std::fabs(sw.reach - 1.f) < 0.001f && std::fabs(sw.impact - 1.f) < 0.001f, "a sword's first cut is unchanged");
   CHECK(attackMoveFor(Moveset::Greatsword, 0, true, false) == MV_AXE2 && attackMoveFor(Moveset::Spear, 0, false, true) == MV_SWORD_AIR,
         "until their own poses, a dash reuses the axe and the air cut reuses the sword");
+
+  printf("who may hold one, and a new roll\n");
+  ItemStack ironGs, copperGs;
+  CHECK(makePartTool("greatsword", {"iron", "iron", "iron"}, "stick", ironGs), "iron greatsword");
+  CHECK(makePartTool("greatsword", {"copper", "copper", "copper"}, "stick", copperGs), "copper greatsword");
+  Player hand;
+  hand.inv.assign(9, ItemStack());
+  hand.selected = 0;
+  hand.stats["skills"] = json::object();
+  CHECK(weaponSkillMet(hand, ItemStack("iron_sword", 1)), "an iron sword needs no melee practice");
+  CHECK(weaponSkillMet(hand, copperGs), "a copper greatsword needs no melee practice (tier %d)", toolOf(copperGs).tier);
+  CHECK(!weaponSkillMet(hand, ironGs), "an iron greatsword needs melee 15");
+  hand.stats["skills"]["melee"] = skillXpFor(15);
+  CHECK(skillLv(hand, "melee") >= 15 && weaponSkillMet(hand, ironGs), "melee 15 can hold the iron greatsword");
+  ironGs.tag["qual"] = "poor";
+  std::vector<ItemStack> grid(9);
+  grid[0] = ironGs;
+  grid[1] = ItemStack("iron_ingot", 1);
+  CraftMatch rolled = matchGrid(grid, 3);
+  CHECK(rolled && rolled.result().id == "mixed_greatsword" && rolled.result().tag.value("qual", "") != "poor",
+        "an ingot of its metal rolls a new quality and keeps the weapon");
+
+  printf("a weapon guard is weaker than a shield\n");
+  Player guard;
+  guard.inv.assign(9, ItemStack());
+  guard.shield.assign(1, ItemStack());
+  guard.selected = 0;
+  guard.shield[0] = ItemStack("shield", 1);
+  const float shieldKeep = guardKeep(guard);
+  CHECK(std::fabs(shieldKeep - 0.35f) < 0.001f && std::fabs(guardWindow(guard) - 0.18f) < 0.001f, "a shield still keeps 0.35 inside 0.18s");
+  guard.shield[0].clear();
+  guard.inv[0] = ItemStack("iron_sword", 1);
+  const float oneKeep = guardKeep(guard);
+  CHECK(std::fabs(oneKeep - (0.35f + 0.5f * 0.65f)) < 0.001f && std::fabs(guardWindow(guard) - 0.18f * 0.6f) < 0.001f,
+        "a one-handed weapon keeps more of the blow");
+  guard.inv[0] = ironGs;
+  CHECK(std::fabs(guardKeep(guard) - (0.35f + 0.25f * 0.65f)) < 0.001f && std::fabs(guardWindow(guard) - 0.18f * 0.8f) < 0.001f,
+        "a two-handed weapon sits between the sword and the shield");
+  guard.shield[0] = ItemStack("shield", 1);
+  CHECK(std::fabs(guardKeep(guard) - (0.35f + 0.25f * 0.65f)) < 0.001f, "a shield on the back does not replace a two-handed guard");
 
   printf(fails ? "%d failed\n" : "all passed\n", fails);
   return fails ? 1 : 0;
