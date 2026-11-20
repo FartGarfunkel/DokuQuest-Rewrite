@@ -13,7 +13,9 @@ float qualityDamageFactor(WQual q);
 void rollWeaponQuality(ItemStack& s, uint32_t seed);
 // one roll onto a procedural tool or armour piece that does not already have a quality
 void stampGearQuality(ItemStack& s);
-// 1 for an empty hand, a tool, or anything that is not a weapon moveset.
+// 1 for an empty hand or a tool that is not a weapon moveset.
 float weaponQualityFactor(const ItemStack& s);
+// The same factor for a procedural tool, a procedural armour piece, and a weapon. A missing tag is 1.
+float gearQualityFactor(const ItemStack& s);
 
 }  // namespace dq

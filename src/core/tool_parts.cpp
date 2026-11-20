@@ -214,10 +214,12 @@ ToolInfo toolOf(const ItemStack& s) {
 int toolMaxDurability(const ItemStack& s) {
   const ItemDef* d = s.empty() ? nullptr : s.def();
   if (!d) return 0;
-  if (d->hasTool) return std::max(0, toolOf(s).durability);
-  if (isPartArmor(s)) return s.tag["pa"].value("dur", 0);
-  if (d->props.contains("armor") && d->props["armor"].is_object()) return d->props["armor"].value("durability", 0);
-  return 0;
+  int dur = 0;
+  if (d->hasTool) dur = std::max(0, toolOf(s).durability);
+  else if (isPartArmor(s)) dur = s.tag["pa"].value("dur", 0);
+  else if (d->props.contains("armor") && d->props["armor"].is_object()) dur = d->props["armor"].value("durability", 0);
+  if (dur > 0 && (isPartTool(s) || isPartArmor(s))) dur = std::max(1, (int)std::lround(dur * gearQualityFactor(s)));
+  return dur;
 }
 
 std::string stackName(const ItemStack& s) {

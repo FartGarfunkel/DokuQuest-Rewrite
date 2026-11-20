@@ -57,7 +57,7 @@ const ToolInfo* heldTool(const Player& p) {
   if (!h.tag.is_object()) return &d->tool;
   thread_local ToolInfo mixed; mixed = toolOf(h);   // a mixed tool's own stats, a gem's (core/tool_parts.h)
   if (isPartTool(h)) {
-    const float q = qualityDamageFactor(weaponQuality(h));
+    const float q = gearQualityFactor(h);
     mixed.speed *= q; mixed.damage *= q;
   }
   return &mixed;

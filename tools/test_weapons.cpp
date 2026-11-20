@@ -5,6 +5,8 @@
 #include "sim/attack_moves.h"
 #include "sim/weapon_quality.h"
 #include "sim/crafting.h"
+#include "sim/inventory.h"
+#include "sim/player.h"
 #include "core/tool_parts.h"
 #include <cmath>
 #include <cstdio>
@@ -91,6 +93,28 @@ int main() {
   CHECK(std::fabs(qualityDamageFactor(WQual::Great) - 1.28f) < 0.001f && std::fabs(qualityDamageFactor(WQual::Legendary) - 1.5f) < 0.001f,
         "great is 1.28 and legendary is 1.5");
   CHECK(std::fabs(weaponQualityFactor(poor) - 0.85f) < 0.001f, "a poor sword's blow is scaled");
+
+  printf("tools and armour use that same quality\n");
+  ItemStack pick;
+  CHECK(makePartTool("pickaxe", {"iron", "iron", "iron"}, "stick", pick), "an iron pick mixes");
+  const int pickBase = toolMaxDurability(pick);
+  pick.tag["qual"] = "poor";
+  CHECK(std::fabs(gearQualityFactor(pick) - 0.85f) < 0.001f, "a poor pick uses the poor factor");
+  CHECK(toolMaxDurability(pick) == (int)std::lround(pickBase * 0.85f), "a poor pick wears out sooner (%d vs %d)",
+        toolMaxDurability(pick), (int)std::lround(pickBase * 0.85f));
+  ItemStack helm;
+  CHECK(makePartArmor("helmet", std::vector<std::string>(5, "iron"), helm), "an iron helmet mixes");
+  const float orePts = armorPointsOf(helm);
+  helm.tag["qual"] = "legendary";
+  helm.tag["pa"]["fr"] = 0.2f;
+  pick.tag["qual"] = "legendary";
+  CHECK(std::fabs(gearQualityFactor(helm) - gearQualityFactor(pick)) < 0.001f && std::fabs(gearQualityFactor(helm) - 1.5f) < 0.001f,
+        "a legendary helmet and a legendary pick share the weapon factor");
+  Player wearer;
+  wearer.armor.assign(4, ItemStack());
+  wearer.armor[0] = helm;
+  CHECK(armorPoints(wearer) == (int)std::lround(orePts * 1.5f), "the helmet's protection is the ore mix times legendary");
+  CHECK(std::fabs(fireResist(wearer) - 0.3f) < 0.02f, "its fire resistance scales the same way");
 
   printf("procedural weapons\n");
   CHECK(reg().item("iron_greatsword") == nullptr && reg().item("mixed_greatsword") != nullptr, "a greatsword is not a fixed item");

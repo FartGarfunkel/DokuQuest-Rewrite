@@ -55,4 +55,10 @@ float weaponQualityFactor(const ItemStack& s) {
   }
 }
 
+float gearQualityFactor(const ItemStack& s) {
+  if (s.empty()) return 1.f;
+  if (isPartTool(s) || isPartArmor(s)) return qualityDamageFactor(weaponQuality(s));
+  return weaponQualityFactor(s);
+}
+
 }  // namespace dq
