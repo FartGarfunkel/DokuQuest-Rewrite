@@ -12,9 +12,12 @@
 namespace dq {
 
 // what a held thing fights with
-enum class Moveset : u8 { Fist, Sword, Dagger, Axe, Tool };
+enum class Moveset : u8 { Fist, Sword, Dagger, Axe, Tool, Greatsword, Spear, Mace };
+struct ItemDef;
 // toolType: the item's "tool" type (items.json; "" for an empty hand); key: the item's key
 Moveset movesetOf(const std::string& toolType, const std::string& itemKey);
+// an item's optional "moveset" field (greatsword, spear, mace). Missing or unknown keeps the old rule.
+Moveset movesetOf(const ItemDef* item);
 
 enum AttackMoveId : u8 {
   MV_NONE = 0,

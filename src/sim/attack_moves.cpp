@@ -1,6 +1,7 @@
 // sim/attack_moves.cpp — the moves' timings and the blade's path (see the header). Owner: claude (timings, path);
 // the rules using them: grok.
 #include "sim/attack_moves.h"
+#include "core/registry.h"
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -81,6 +82,15 @@ Moveset movesetOf(const std::string& toolType, const std::string& key) {
   return Moveset::Tool;
 }
 
+Moveset movesetOf(const ItemDef* it) {
+  if (!it) return Moveset::Fist;
+  const std::string ms = it->str("moveset");
+  if (ms == "greatsword") return Moveset::Greatsword;
+  if (ms == "spear") return Moveset::Spear;
+  if (ms == "mace") return Moveset::Mace;
+  return movesetOf(it->hasTool ? it->tool.type : std::string(), it->key);
+}
+
 int comboLength(Moveset m) { return m == Moveset::Axe || m == Moveset::Tool ? 2 : 3; }
 
 u8 attackMoveFor(Moveset m, int n, bool dash, bool air) {
@@ -91,6 +101,9 @@ u8 attackMoveFor(Moveset m, int n, bool dash, bool air) {
     case Moveset::Axe: return air ? MV_SWORD_AIR : dash ? MV_AXE2 : (u8)(MV_AXE1 + k);
     case Moveset::Fist: return dash || air ? MV_FIST2 : (u8)(MV_FIST1 + k);
     case Moveset::Tool: return dash || air ? MV_TOOL1 : (u8)(MV_TOOL1 + k);
+    case Moveset::Greatsword:
+    case Moveset::Spear:
+    case Moveset::Mace: break;   // no cuts yet
   }
   return MV_NONE;
 }

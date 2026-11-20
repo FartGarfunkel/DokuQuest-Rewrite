@@ -88,6 +88,10 @@ add_test(NAME creatures COMMAND dq-creature-test)
 add_executable(test_mobs tools/test_mobs.cpp)
 target_link_libraries(test_mobs PRIVATE dqcore)
 add_test(NAME mobs COMMAND test_mobs)
+# weapon families and quality (tools/test_weapons.cpp, headless). Run: build/test_weapons
+add_executable(test_weapons tools/test_weapons.cpp)
+target_link_libraries(test_weapons PRIVATE dqcore)
+add_test(NAME weapons COMMAND test_weapons)
 # weather particles, sprites, collision (tools/test/weather_test.cpp): pure parts of render/weather_*, no GL context
 add_executable(test_weather tools/test/weather_test.cpp)
 target_link_libraries(test_weather PRIVATE dqclient)
