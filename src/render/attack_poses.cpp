@@ -14,13 +14,25 @@ struct AtkKey { float t, bx, by, lift, legR, legL, shinR, shinL, ax, ay, az, fx,
 struct AtkClip { const AtkKey* k; int n; bool left; float pre, blend; };   // blend: in from the stance (the clip's own, at most 0.1 s)
 #include "render/attack_poses_data.inc"
 float sm(float u) { u = std::clamp(u, 0.f, 1.f); return u * u * (3 - 2 * u); }
+// new families borrow a drawn cut until they have their own. The sword samples stay where they are.
+int clipOf(u8 id) {
+  switch (id) {
+    case MV_GS1: return MV_SWORD1 - 1;
+    case MV_GS2: return MV_SWORD2 - 1;
+    case MV_SPEAR1: return MV_SWORD_DASH - 1;
+    case MV_SPEAR2: return MV_SWORD2 - 1;
+    case MV_MACE1: return MV_AXE1 - 1;
+    case MV_MACE2: return MV_AXE2 - 1;
+    default: return (int)id - 1;
+  }
+}
 }  // namespace
 
 float attackWeight(const CharPose& pose) {
   const u8 id = pose.atkMove;
   if (id == MV_NONE || id >= MV_COUNT) return 0;
   const AttackMove& M = attackMove(id);
-  const float t = pose.atkT, blend = CLIPS[id - 1].blend;
+  const float t = pose.atkT, blend = CLIPS[clipOf(id)].blend;
   const float out = M.len > M.recovery ? 1 - sm((t - M.recovery) / (M.len - M.recovery)) : 1.f;
   return std::max(0.f, std::min(sm(t / blend), out));
 }
@@ -56,7 +68,7 @@ static void attackPoseRaw(CharAngles& A, const CharPose& pose) {
   const u8 id = pose.atkMove;
   if (id == MV_NONE || id >= MV_COUNT) return;
   const AttackMove& M = attackMove(id);
-  const AtkClip& C = CLIPS[id - 1];
+  const AtkClip& C = CLIPS[clipOf(id)];
   // the keys' own time starts after the blend in; the move's live window is blend + the clip's contact (sim/attack_moves.cpp)
   const float blend = C.blend;
   const float t = pose.atkT, kt = t - blend;

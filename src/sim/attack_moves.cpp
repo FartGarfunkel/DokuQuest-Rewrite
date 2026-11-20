@@ -34,6 +34,13 @@ const AttackMove MOVES[MV_COUNT] = {
   {"fist_3",       0.58f, 0.05f, 0.13f, 0.23f, 0.45f, 0.40f, 1.3f, 1.2f, 1, true},
   {"tool_1",       0.60f, 0.06f, 0.15f, 0.18f, 0.40f, 0.10f, 1.0f, 1.0f, 1, false},
   {"tool_2",       0.62f, 0.06f, 0.15f, 0.18f, 0.42f, 0.10f, 1.0f, 1.0f, 1, false},
+  // timings copied from the borrowed cut so the drawn blade and the hit still agree; reach and impact are their own
+  {"greatsword_1", 0.60f, 0.05f, 0.13f, 0.20f, 0.40f, 0.25f, 1.0f, 1.4f, 2, false, 1.15f},
+  {"greatsword_2", 0.62f, 0.08f, 0.20f, 0.25f, 0.42f, 0.60f, 1.0f, 1.4f, 2, false, 1.15f},
+  {"spear_1",      0.75f, 0.10f, 0.25f, 0.35f, 0.60f, 1.30f, 1.0f, 1.1f, 2, false, 1.35f},
+  {"spear_2",      0.62f, 0.08f, 0.20f, 0.25f, 0.42f, 0.60f, 1.0f, 1.1f, 2, false, 1.35f},
+  {"mace_1",       0.85f, 0.08f, 0.16f, 0.25f, 0.70f, 0.45f, 1.0f, 1.6f, 1, false, 0.9f},
+  {"mace_2",       0.90f, 0.10f, 0.16f, 0.23f, 0.78f, 0.45f, 1.1f, 1.6f, 1, false, 0.9f},
 };
 
 constexpr float SHOULDER_Y = 1.35f, SHOULDER_X = 0.30f;
@@ -91,7 +98,9 @@ Moveset movesetOf(const ItemDef* it) {
   return movesetOf(it->hasTool ? it->tool.type : std::string(), it->key);
 }
 
-int comboLength(Moveset m) { return m == Moveset::Axe || m == Moveset::Tool ? 2 : 3; }
+int comboLength(Moveset m) {
+  return m == Moveset::Axe || m == Moveset::Tool || m == Moveset::Greatsword || m == Moveset::Spear || m == Moveset::Mace ? 2 : 3;
+}
 
 u8 attackMoveFor(Moveset m, int n, bool dash, bool air) {
   const int k = ((n % comboLength(m)) + comboLength(m)) % comboLength(m);
@@ -101,14 +110,27 @@ u8 attackMoveFor(Moveset m, int n, bool dash, bool air) {
     case Moveset::Axe: return air ? MV_SWORD_AIR : dash ? MV_AXE2 : (u8)(MV_AXE1 + k);
     case Moveset::Fist: return dash || air ? MV_FIST2 : (u8)(MV_FIST1 + k);
     case Moveset::Tool: return dash || air ? MV_TOOL1 : (u8)(MV_TOOL1 + k);
-    case Moveset::Greatsword:
-    case Moveset::Spear:
-    case Moveset::Mace: break;   // no cuts yet
+    case Moveset::Greatsword: return air ? (u8)MV_SWORD_AIR : dash ? (u8)MV_AXE2 : (u8)(MV_GS1 + k);
+    case Moveset::Spear: return air ? (u8)MV_SWORD_AIR : dash ? (u8)MV_AXE2 : (u8)(MV_SPEAR1 + k);
+    case Moveset::Mace: return air ? (u8)MV_SWORD_AIR : dash ? (u8)MV_AXE2 : (u8)(MV_MACE1 + k);
   }
   return MV_NONE;
 }
 
+static u8 borrowedBlade(u8 id) {
+  switch (id) {
+    case MV_GS1: return MV_SWORD1;
+    case MV_GS2: return MV_SWORD2;
+    case MV_SPEAR1: return MV_SWORD_DASH;
+    case MV_SPEAR2: return MV_SWORD2;
+    case MV_MACE1: return MV_AXE1;
+    case MV_MACE2: return MV_AXE2;
+    default: return id;
+  }
+}
+
 void bladeAt(u8 id, float t, vec3& hilt, vec3& tip) {
+  if (keysOf(id).empty()) id = borrowedBlade(id);
   const auto& K = keysOf(id);
   if (K.empty()) { hilt = tip = vec3(SHOULDER_X, SHOULDER_Y, 0); return; }
   if (t <= K.front().t) { hilt = K.front().hilt; tip = K.front().tip; return; }

@@ -51,7 +51,7 @@ static const CharModel& bladeModel() {
 static float bladeLen(u8 id) {
   if (id >= MV_FIST1 && id <= MV_FIST3) return 0.18f;
   if (id >= MV_DAGGER1 && id <= MV_DAGGER3) return 0.55f;
-  if (id == MV_AXE1 || id == MV_AXE2) return 0.85f;
+  if (id == MV_AXE1 || id == MV_AXE2 || id == MV_MACE1 || id == MV_MACE2) return 0.85f;
   if (id == MV_TOOL1 || id == MV_TOOL2) return 0.70f;
   return 0.95f;
 }

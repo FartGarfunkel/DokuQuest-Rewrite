@@ -288,10 +288,8 @@ bool offHandSwings(const Player& p, bool attackPressed, bool usePressed) {
 static void beginSwingOf(Player& p, bool sprint, bool air, bool off);
 static void beginSwing(Player& p, bool sprint, bool air) { beginSwingOf(p, sprint, air, false); }
 static void beginSwingRaw(Player& p, bool sprint, bool air) {
-  const ToolInfo* tool = heldTool(p);
-  const std::string type = tool ? tool->type : "";
-  const std::string key = p.inv[p.selected].empty() ? "" : p.inv[p.selected].id;
-  const Moveset ms = movesetOf(type, key);
+  const ItemStack& held = p.inv[p.selected];
+  const Moveset ms = movesetOf(held.empty() ? nullptr : held.def());
   const int n = p.atkGap < COMBO_WINDOW ? (int)p.atkCombo : 0;
   const u8 id = attackMoveFor(ms, n, sprint && p.onGround, air);
   if (id == MV_NONE) return;
@@ -359,7 +357,7 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
       vec3 ep = e->pos;
       if (p.atkOff) { const vec3 right(std::cos(p.atkYaw), 0, -std::sin(p.atkYaw)); ep -= right * (2 * glm::dot(ep - p.pos, right)); }   // (the off hand: its sweep the mirror of the main hand's)
       const vec3 lo = ep - vec3(e->w, 0.05f, e->w), hi = ep + vec3(e->w, e->h, e->w);
-      if (!bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, lo, hi)) continue;
+      if (!bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, lo, hi, m.reach)) continue;
       const bool swapIn = p.atkOff && !p.offhand.empty();
       if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);   // (the blow is the off hand's weapon's: its damage, its wear)
       attackEntity(lv, p, *e, m.dmg, m.impact, p.atkMove == MV_SWORD_AIR, false);

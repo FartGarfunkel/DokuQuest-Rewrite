@@ -26,6 +26,9 @@ enum AttackMoveId : u8 {
   MV_AXE1, MV_AXE2,                                               // chop down right to left, backhand chop
   MV_FIST1, MV_FIST2, MV_FIST3,                                   // left jab, right cross, left hook
   MV_TOOL1, MV_TOOL2,                                             // a tool's two blows (pickaxe, shovel, hoe, staff...)
+  MV_GS1, MV_GS2,                                                 // greatsword: the sword's two cuts, longer reach, until its own drawing
+  MV_SPEAR1, MV_SPEAR2,                                           // spear: a thrust, then the return
+  MV_MACE1, MV_MACE2,                                             // mace: the axe's two chops, shorter and heavier
   MV_COUNT
 };
 
@@ -40,6 +43,7 @@ struct AttackMove {
   float impact;     // x the knockback / stagger
   u8 strikes;       // most targets one move lands on
   bool leftHand;    // the blow is the left fist's (jab, hook)
+  float reach = 1;  // x the drawn blade (a spear past 1, a mace under it)
 };
 const AttackMove& attackMove(u8 id);   // MV_NONE / out of range: a zeroed move
 
