@@ -4,6 +4,8 @@
 #include "core/registry.h"
 #include "sim/attack_moves.h"
 #include "sim/weapon_quality.h"
+#include "sim/crafting.h"
+#include "core/tool_parts.h"
 #include <cmath>
 #include <cstdio>
 
@@ -76,54 +78,48 @@ int main() {
   rollWeaponQuality(a, 42);
   rollWeaponQuality(b, 42);
   CHECK(a.tag.is_object() && a.tag["qual"] == b.tag["qual"], "the same seed rolls the same quality");
-  int nPoor = 0, nNormal = 0, nFine = 0;
+  int nPoor = 0, nNormal = 0, nFine = 0, nGreat = 0, nLegend = 0;
   for (uint32_t seed = 0; seed < 100; seed++) {
     ItemStack s("iron_sword", 1);
     rollWeaponQuality(s, seed);
     const std::string q = s.tag.value("qual", "");
-    nPoor += q == "poor"; nNormal += q == "normal"; nFine += q == "fine";
+    nPoor += q == "poor"; nNormal += q == "normal"; nFine += q == "fine"; nGreat += q == "great"; nLegend += q == "legendary";
   }
-  CHECK(nPoor == 25 && nNormal == 55 && nFine == 20, "a hundred seeds are 25 poor, 55 normal, 20 fine (got %d %d %d)",
-        nPoor, nNormal, nFine);
-  ItemStack pick("stone_pickaxe", 1);
-  pick.tag = json::object();
-  pick.tag["qual"] = "poor";
-  CHECK(std::fabs(weaponQualityFactor(pick) - 1.f) < 0.001f, "a pick ignores weapon quality");
+  CHECK(nPoor == 18 && nNormal == 42 && nFine == 25 && nGreat == 12 && nLegend == 3,
+        "a hundred seeds are 18 poor, 42 normal, 25 fine, 12 great, 3 legendary (got %d %d %d %d %d)",
+        nPoor, nNormal, nFine, nGreat, nLegend);
+  CHECK(std::fabs(qualityDamageFactor(WQual::Great) - 1.28f) < 0.001f && std::fabs(qualityDamageFactor(WQual::Legendary) - 1.5f) < 0.001f,
+        "great is 1.28 and legendary is 1.5");
   CHECK(std::fabs(weaponQualityFactor(poor) - 0.85f) < 0.001f, "a poor sword's blow is scaled");
 
-  printf("new weapons on the table\n");
-  const Recipe* oldSword = nullptr;
-  int oldShaped = 0;
-  for (const Recipe& r : reg().recipes) {
-    if (r.out == "iron_sword" && r.shaped()) { oldShaped++; if (r.props.value("classicOnly", false)) oldSword = &r; }
-  }
-  CHECK(oldShaped >= 1 && oldSword && oldSword->shape.size() == 3 && oldSword->shape[0] == "M" && oldSword->shape[1] == "M" && oldSword->shape[2] == "S"
-        && oldSword->key.at('M') == "iron_ingot" && oldSword->key.at('S') == "stick",
-        "the iron sword is still two ingots over a stick");
-  auto family = [&](const char* key, Moveset want, double hands, int ingots, const char* mat) {
-    const ItemDef* it = reg().item(key);
-    CHECK(it && movesetOf(it) == want && it->num("hands") == hands, "%s is that family in %g hands", key, hands);
-    const Recipe* rec = nullptr;
-    for (const Recipe& r : reg().recipes) if (r.out == key && r.shaped()) rec = &r;
-    int metals = 0, sticks = 0;
-    if (rec) for (const std::string& row : rec->shape) for (char ch : row) {
-      if (ch == 'M') metals++;
-      if (ch == 'S') sticks++;
-    }
-    CHECK(rec && !rec->props.value("classicOnly", false) && metals == ingots && sticks == 1
-          && rec->key.at('M') == mat && rec->key.at('S') == "stick"
-          && rec->out.find("mold") == std::string::npos && rec->out.find("_head") == std::string::npos,
-          "%s is a shaped table recipe of %s and a stick", key, mat);
+  printf("procedural weapons\n");
+  CHECK(reg().item("iron_greatsword") == nullptr && reg().item("mixed_greatsword") != nullptr, "a greatsword is not a fixed item");
+  ItemStack plainSword, plainGreat;
+  CHECK(makePartTool("sword", {"iron", "iron"}, "stick", plainSword) && makePartTool("greatsword", {"iron", "iron", "iron"}, "stick", plainGreat),
+        "iron mixes into a sword and a greatsword");
+  CHECK(plainGreat.id == "mixed_greatsword" && movesetOf(plainGreat.def()) == Moveset::Greatsword && plainGreat.def()->num("hands") == 2,
+        "the greatsword uses both hands");
+  CHECK(toolOf(plainGreat).damage > toolOf(plainSword).damage, "the same iron hits harder as a greatsword");
+  auto gridOf = [](std::vector<std::pair<int, ItemStack>> cells) {
+    std::vector<ItemStack> g(9);
+    for (auto& c : cells) g[c.first] = c.second;
+    return matchGrid(g, 3);
   };
-  family("iron_greatsword", Moveset::Greatsword, 2, 3, "iron_ingot");
-  family("iron_spear", Moveset::Spear, 2, 2, "iron_ingot");
-  family("iron_mace", Moveset::Mace, 1, 2, "iron_ingot");
-  family("wood_greatsword", Moveset::Greatsword, 2, 3, "#planks");
-  family("wood_spear", Moveset::Spear, 2, 2, "#planks");
-  family("wood_mace", Moveset::Mace, 1, 2, "#planks");
-  family("flint_greatsword", Moveset::Greatsword, 2, 3, "flint");
-  family("flint_spear", Moveset::Spear, 2, 2, "flint");
-  family("flint_mace", Moveset::Mace, 1, 2, "flint");
+  const ItemStack ingot("iron_ingot", 1), stick("stick", 1);
+  CraftMatch gsGrid = gridOf({{0, ingot}, {1, ingot}, {2, ingot}, {4, stick}});
+  CraftMatch spGrid = gridOf({{0, ingot}, {1, ingot}, {2, stick}});
+  CraftMatch mcGrid = gridOf({{0, ingot}, {1, ingot}, {4, stick}});
+  auto qualOk = [](const ItemStack& s) {
+    const std::string q = s.tag.value("qual", "");
+    return q == "poor" || q == "normal" || q == "fine" || q == "great" || q == "legendary";
+  };
+  CHECK(gsGrid && gsGrid.result().id == "mixed_greatsword" && qualOk(gsGrid.result()), "three irons over a stick make a mixed greatsword with a quality");
+  CHECK(spGrid && spGrid.result().id == "mixed_spear" && spGrid.result().def()->num("hands") == 2, "two irons and a stick in a line make a spear");
+  CHECK(mcGrid && mcGrid.result().id == "mixed_mace" && mcGrid.result().def()->num("hands") == 1, "two irons over a stick make a mace");
+  ItemStack again = gsGrid.result();
+  const std::string kept = again.tag["qual"];
+  stampGearQuality(again);
+  CHECK(again.tag["qual"] == kept, "a quality already on the piece stays");
   CHECK(comboLength(Moveset::Greatsword) == 2 && comboLength(Moveset::Spear) == 2 && comboLength(Moveset::Mace) == 2,
         "the new families chain two cuts");
   const AttackMove& g1 = attackMove(attackMoveFor(Moveset::Greatsword, 0, false, false));

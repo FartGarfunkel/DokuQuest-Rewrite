@@ -1,5 +1,6 @@
 #include "core/tool_parts.h"
 #include "sim/inventory.h"
+#include "sim/weapon_quality.h"
 #include "sim/item_uses.h"
 #include "sim/player.h"
 #include "sim/quiver.h"
@@ -116,7 +117,7 @@ int playerRemoveTag(Player& p, const std::string& key, int n) {
 }
 int armorPoints(const Player& p) {
   float pts = 0;
-  for (auto& s : p.armor) if (!s.empty()) pts += armorPointsOf(s);   // (a mixed piece's own, core/tool_parts.h), summed before rounding
+  for (auto& s : p.armor) if (!s.empty()) pts += armorPointsOf(s) * qualityDamageFactor(weaponQuality(s));   // ore mix, then its quality
   return (int)std::lround(pts);
 }
 float charmBonus(const Player& p, const std::string& kind) {

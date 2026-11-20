@@ -12,6 +12,7 @@
 #include "sim/combat_rpg.h"
 #include "sim/attack_moves.h"
 #include "sim/weapon_quality.h"
+#include "core/tool_parts.h"
 #include "sim/magic.h"
 #include "sim/gameplay.h"
 #include "sim/rules.h"
@@ -55,6 +56,10 @@ const ToolInfo* heldTool(const Player& p) {
   if (!d || !d->hasTool) return nullptr;
   if (!h.tag.is_object()) return &d->tool;
   thread_local ToolInfo mixed; mixed = toolOf(h);   // a mixed tool's own stats, a gem's (core/tool_parts.h)
+  if (isPartTool(h)) {
+    const float q = qualityDamageFactor(weaponQuality(h));
+    mixed.speed *= q; mixed.damage *= q;
+  }
   return &mixed;
 }
 std::string heldToolElement(const Player& p) {
@@ -228,7 +233,7 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
   dmg = spellbladeHit(lv, p, e, dmg, src.element);   // a spell carried on the blade (sim/magic_hands.cpp)
   dmg *= pathMeleeFactor(p);                          // the Knight's Heavy Blows (sim/villager_quests.cpp)
   dmg *= skillHitFactor(p, "melee", p.inv[p.selected]);   // the Melee skill and a well-used weapon (sim/skills.h)
-  dmg *= weaponQualityFactor(p.inv[p.selected]);          // poor / normal / fine, before a stagger's extra
+  if (!isPartTool(p.inv[p.selected])) dmg *= weaponQualityFactor(p.inv[p.selected]);   // a plain sword's tag; a mixed tool already carries it in its stats
   const float hpBefore = e.hp;
   bool finishing = false;
   dmg = combatRpgOutgoing(lv, p, e, dmg, finishing);

@@ -73,7 +73,13 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
   const ItemDef* d = s.def();
   if (!d) { L.push_back({s.id, TN}); if (out) *out = L; return s.id; }
   std::string rar = d->str("rarity");
-  L.push_back({stackName(s) + (s.n > 1 ? " \xC3\x97" + std::to_string(s.n) : ""), rar == "rare" ? 0x8fe3ff : rar == "epic" ? 0xc88cff : isPartTool(s) ? 0xffd27a : TN});
+  std::string title = stackName(s);
+  if (s.tag.is_object() && s.tag.contains("qual") && s.tag["qual"].is_string()) {
+    const std::string q = s.tag["qual"].get<std::string>();
+    const char* label = q == "poor" ? "Poor " : q == "normal" ? "Normal " : q == "fine" ? "Fine " : q == "great" ? "Great " : q == "legendary" ? "Legendary " : "";
+    if (*label) title = label + title;
+  }
+  L.push_back({title + (s.n > 1 ? " \xC3\x97" + std::to_string(s.n) : ""), rar == "rare" ? 0x8fe3ff : rar == "epic" ? 0xc88cff : isPartTool(s) ? 0xffd27a : TN});
   { std::vector<std::pair<std::string, u32>> en; if (tooltipEnchantLines(s, en)) { L[0].second = 0x8fe8ff; L.insert(L.end(), en.begin(), en.end()); } }   // .tn.enchanted
   tooltipEffectLines(s, L);
   if (d->has("food") && d->props["food"].is_object()) { double h = d->props["food"].value("heal", 0.0); L.push_back({"Heals " + num(h / 2) + (h == 2 ? " heart" : " hearts") + " instantly", TS}); }

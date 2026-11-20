@@ -6,6 +6,7 @@
 #include "core/tool_parts.h"
 #include <algorithm>
 #include "sim/crafting.h"
+#include "sim/weapon_quality.h"
 #include <unordered_set>
 
 namespace dq {
@@ -184,6 +185,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
       ItemStack out;
       if (tm && metalDef(tm->key) && makePartTool(kind, std::vector<std::string>(partToolSections(kind), tm->key), hf->id, out)) {
         CraftMatch m = special(out.id, 1, bw, bh); m.extra = out.tag;
+        stampGearQuality(out); m.extra = out.tag;
         return m;
       }
     }
@@ -195,6 +197,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
         if (h->tag.is_object() && h->tag.value("q", 0) > 0) out.tag["pt"]["dur"] = (int)std::lround(out.tag["pt"].value("dur", 0) * 1.05);   // quenched (sim/heat)
         if (h->tag.is_object() && h->tag.contains("ql")) out.tag["pt"]["dur"] = (int)std::lround(out.tag["pt"].value("dur", 0) * h->tag.value("ql", 1.0));   // the smith's work (sim/anvil)
         CraftMatch m = special(out.id, 1, bw, bh); m.extra = out.tag;
+        stampGearQuality(out); m.extra = out.tag;
         return m;
       }
     }
@@ -216,6 +219,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
       if (same && haft == "stick" && m0 && reg().item(m0->prefix + "_" + P.kind) && !metalDef(m0->key) && !(m0->key.size() && m0->key[0] == '@')) return {};
       ItemStack out;
       if (!makePartTool(P.kind, mats, haft, out)) continue;
+      stampGearQuality(out);
       CraftMatch m = special(out.id, 1, P.w, P.h); m.extra = out.tag;
       return m;
     }
@@ -231,6 +235,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
     }
     ItemStack out;
     if (!makePartArmor(P.piece, mats, out)) continue;
+    stampGearQuality(out);
     CraftMatch m = special(out.id, 1, P.w, P.h); m.extra = out.tag;
     return m;
   }
