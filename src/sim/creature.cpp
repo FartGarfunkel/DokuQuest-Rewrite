@@ -21,6 +21,7 @@
 #include "sim/mob_combat.h"
 #include "sim/physics.h"
 #include "sim/player.h"
+#include "sim/blockinfo.h"
 #include "sim/skills.h"
 #include "sim/balance.h"
 #include "sim/combat_rpg.h"
@@ -490,7 +491,7 @@ void Creature::adoptDataOwner() {
 bool Creature::isPetOf(const Entity* who) const { auto* p = dynamic_cast<const Player*>(who); return p && !owner.empty() && owner == p->name; }
 
 // ------------------------------------------------------------------ contacts (physics.js sampleContacts)
-struct MobContacts { bool water = false, lava = false, cactus = false, acid = false; };
+struct MobContacts { bool water = false, lava = false, cactus = false, acid = false, leaves = false; };
 static MobContacts contacts(World& w, const Entity& e) {
   MobContacts c;
   static BlockId cactus = reg().blockId("cactus");
@@ -499,6 +500,7 @@ static MobContacts contacts(World& w, const Entity& e) {
     BlockId id = w.getBlock(x, y, z);
     u8 l = reg().tLiquid[id];
     if (l == 1) c.water = true; else if (l == 2) c.lava = true; else if (l == 3) c.water = c.acid = true;
+    if (bhas(id, BF::IsLeaves)) c.leaves = true;
   }
   // cactus: touching the sides
   if (cactus) for (int z = ifloor(e.pos.z - e.w - 0.05f); z <= ifloor(e.pos.z + e.w + 0.05f); z++) for (int x = ifloor(e.pos.x - e.w - 0.05f); x <= ifloor(e.pos.x + e.w + 0.05f); x++)
@@ -826,6 +828,14 @@ void Creature::tick(Level& lv, double dtd) {
   }
 }
 
+// Java's fall_damage_immune, for the kinds this world has. Flyers never land a fall. Floaty ones
+// (chickens, and the animals that flutter down like them) are slowed and take none.
+static bool shrugsOffFalls(const Creature& m) {
+  if (m.T->flyer || m.T->floaty || m.T->ai == "flyer" || m.noGravity) return true;
+  const std::string& t = m.type;
+  return t == "cat" || t == "ocelot" || t == "iron_golem" || t == "shulker" || t == "magma_slime";
+}
+
 OptMove Creature::brainHook(Level& lv, Entity* p, float dist, float dyp, float toPlayer, float dt) {
   const CreatureHooks* H = creatureHooks(type);
   return H && H->brain ? H->brain(lv, *this, p, dist, dyp, toPlayer, dt) : std::nullopt;
@@ -1023,6 +1033,7 @@ void Creature::update(Level& lv, float dt) {
   }
   else if (!noGravity) vel.y -= 28 * dt;
   if (T->floaty && !noFloaty && vel.y < -2.2f) vel.y = -2.2f;
+  if (c.leaves) { vel.y = std::max(vel.y, -5.f); fallDist = 0; }   // the branches break the fall, as they do for you
   if (T->farm) farmTick(lv, dt);
   bool wasGround = onGround;
   if (wantJump) { if (onGround && !noGravity) vel.y = T->hopper ? 6 : 7.8f; wantJump = false; }
@@ -1037,11 +1048,27 @@ void Creature::update(Level& lv, float dt) {
     if (r.hitY) vel.y = vel.y < 0 ? 0 : std::min(0.f, vel.y);
     onGround = r.onGround && vel.y <= 0.01f;
     if (onGround && vel.y < 0) vel.y = 0;
-    if (!onGround && vel.y < 0) fallDist += before.y - pos.y;
-    if (onGround && fallDist > 1.1f && !lv.isRemote()) {   // a heavy landing on farmland tramples it back to dirt
+    // water, lava and a climb forget the fall. The distance is only the way down, same as a player's.
+    if (c.water || c.lava || c.leaves || climbing || noGravity) fallDist = 0;
+    else if (!onGround && vel.y < 0) fallDist += before.y - pos.y;
+    if (onGround && fallDist > 1.1f && !lv.isRemote()) {
       static const BlockId farmland = reg().blockId("farmland");
       const int bx = ifloor(pos.x), by = ifloor(pos.y - 0.2f), bz = ifloor(pos.z);
-      if (farmland && wd.getBlock(bx, by, bz) == farmland) trampleFarmland(lv, wd, bx, by, bz);
+      const BlockId landId = wd.getBlock(bx, by, bz);
+      if (farmland && landId == farmland) trampleFarmland(lv, wd, bx, by, bz);   // a heavy landing on farmland tramples it back to dirt
+      // the player's landing: safe for 3 blocks, then one heart's worth per block. Beds, slime, honey and a cloud
+      // catch you; hay leaves a fifth of it. Armour does not soften a fall.
+      if (!ghost && rule(lv, "fallDamage") && !shrugsOffFalls(*this)) {
+        const float soft = (bhas(landId, BF::Bed) || bhas(landId, BF::Bouncy) || bhas(landId, BF::Sticky) || R.block(landId).has("cloud") ||
+                            R.block(wd.getBlock(bx, ifloor(pos.y + 0.1f), bz)).has("softLanding") ? 0.f
+                            : startsWith(R.block(landId).key, "hay") ? 0.2f : 1.f);
+        const int dmg = (int)std::floor((fallDist - 3.f) * soft);
+        if (fallDist > 3.4f && dmg > 0) {
+          DamageSrc s; s.type = "fall"; s.bypassArmor = true; s.knock = 0;
+          hurt(lv, (float)dmg, s);
+          if (!alive()) { fallDist = 0; return; }
+        }
+      }
     }
     if (onGround) fallDist = 0;
   }

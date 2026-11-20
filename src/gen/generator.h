@@ -48,7 +48,7 @@ public:
 
 struct WorldGenOptions {
   i32 seed = 0;
-  int genVersion = 25;                 // 4: bigger biomes, 5: heightfield Nether, 6: cave Nether (climate, sea, spawns), 7: the classic Nether, exact, 8: the classic Nether on the open land of 5,
+  int genVersion = 26;                 // 4: bigger biomes, 5: heightfield Nether, 6: cave Nether (climate, sea, spawns), 7: the classic Nether, exact, 8: the classic Nether on the open land of 5,
                                        // 9: villages of jigsaw pieces (data/villages: ours, tools/port/village_builder.py),
                                        // 10: villages in every style, chosen by the land (gen/structures_villages.cpp villageStyle10),
                                        // 11: the village plan's fixes: real water for the streets' levels, the deep town mine

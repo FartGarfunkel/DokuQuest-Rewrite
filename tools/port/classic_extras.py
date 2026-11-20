@@ -318,7 +318,7 @@ def main(d):
     if ol is not None:
         lp = recolour(ol, 0x8A6A2A, 1.3); lp[..., 3] = np.where(ol[..., 3] > 0, 255, 0)   # autumn's: russet and gold (carpets take no tint)
         tile('leaf_pile', lp)
-        block('leaf_pile', 'Leaf Pile', {'render': 7, 'opaque': False, 'hardness': 0.1, 'tool': None, 'drop': 'leaf_pile', 'sound': 'leaves', 'shapeKind': 10, 'needsSupport': True, 'fuel': 0.25}, 'leaf_pile')
+        block('leaf_pile', 'Leaf Pile', {'render': 7, 'solid': False, 'opaque': False, 'hardness': 0.1, 'tool': None, 'drop': 'leaf_pile', 'sound': 'leaves', 'shapeKind': 10, 'needsSupport': True, 'fuel': 0.25}, 'leaf_pile')
         blocks[at['leaf_pile']].pop('tint', None)
         shaped('leaf_pile', 6, ['LLL'], {'L': '#leaves'} if '#leaves' in R['tags'] else {'L': 'leaves'})
     if 'candle' in at:

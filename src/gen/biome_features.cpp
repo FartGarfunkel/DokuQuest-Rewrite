@@ -23,7 +23,7 @@ enum : u8 { B_TRUE, B_BLOCKS, B_FLUIDS, B_SURVIVE, B_REPLACEABLE, B_SOLID, B_STU
 enum : u8 { M_COUNT, M_RARITY, M_SQUARE, M_HEIGHTMAP, M_BIOME, M_FILTER, M_WATERDEPTH, M_RELATIVE, M_NOISECOUNT, M_NOISEBASED, M_OFFSET,
             M_HEIGHT, M_SCAN, M_NONE };
 enum : u8 { F_NONE, F_PATCH, F_SIMPLE, F_SELECT, F_SIMPLESELECT, F_BOOL, F_COLUMN, F_VEGPATCH, F_VINES, F_SEAGRASS, F_KELP, F_PICKLE,
-            F_BAMBOO, F_DISK, F_ROCK, F_ICEBERG, F_BLUEICE, F_FREEZE, F_BIGBLOCK, F_POND };
+            F_BAMBOO, F_DISK, F_ROCK, F_ICEBERG, F_BLUEICE, F_FREEZE, F_BIGBLOCK, F_POND, F_FALLEN };
 enum : u8 { HM_WORLD, HM_OCEAN, HM_MOTION, HM_NOLEAVES };
 constexpr BlockId OUT = 0xFFFF;
 constexpr int DATA_MIN_Y = -64, DATA_TOP_Y = 319;   // (the imported data's Overworld: height anchors count from these)
@@ -416,6 +416,7 @@ int BiomeFeatures::parseConf(const json& j) {
   else if (t == "nature:large_pumpkin_feature") { C.t = F_BIGBLOCK; C.prov = parseProv(g["state_provider"]); }
   else if (t == "nature:water_delta_feature") { C.t = F_POND; C.st = state(g["contents"]); C.st2 = state(g["rim"]); C.ia = parseInt(g["size"]); C.ib = parseInt(g["rim_size"]); }
   else if (t == "nature:turnip_root_feature" && g.contains("feature")) { C.t = F_SIMPLESELECT; C.kids.push_back(parsePlaced(g["feature"])); }   // (its turnip, without the roots)
+  else if (t == "dappled:fallen_log") C.t = F_FALLEN;
   else C.t = F_NONE;   // (trees are ours; ores, lakes, springs, fossils, geodes, dungeons, the caves' and the Nether's are left out)
   confs_.push_back(std::move(C));
   return (int)confs_.size() - 1;
@@ -460,11 +461,12 @@ int BiomeFeatures::reachOf(int f, int depth) const {   // how far from its origi
     case F_FREEZE: return 0;
     case F_POND: return 16;
     case F_BIGBLOCK: return 2;
+    case F_FALLEN: return 6;
     default: return 1;
   }
 }
 
-bool BiomeFeatures::load(const fs::path& dir, const LandBiomes& biomes, u64 seed) {
+bool BiomeFeatures::load(const fs::path& dir, const LandBiomes& biomes, u64 seed, bool groundCover) {
   dir_ = dir; bio_ = &biomes; seed_ = seed;
   if (auto t = readJson(dir / "block_tags.json"); t && t->is_object()) for (auto& [k, v] : t->items()) tags_[k] = v.get<std::vector<std::string>>();
   else return false;
@@ -486,12 +488,22 @@ bool BiomeFeatures::load(const fs::path& dir, const LandBiomes& biomes, u64 seed
   // each biome's features by step; the steps' order: as first listed
   for (int s = 0; s < STEPS; s++) has_[s].assign(biomes.count(), {});
   std::set<int> seen[STEPS];
+  json cover; if (groundCover) { if (auto cj = readJson(dir / "ground_cover.json")) cover = *cj; }
   for (int b = 0; b < biomes.count(); b++) {
     const std::string& name = biomes.info(b).name;
     const size_t c = name.find(':');
     auto j = readJson(dir / "biome" / name.substr(0, c) / (name.substr(c + 1) + ".json"));
     if (!j || !j->contains("features")) continue;
-    const json& F = (*j)["features"];
+    json F = (*j)["features"];
+    if (cover.is_object() && cover.contains("groups") && F.size() > 9) {   // (the leaf litter: the first group naming this biome)
+      for (auto& g : cover["groups"]) {
+        bool hit = false;
+        for (auto& m : g["match"]) if (name.find(m.get<std::string>()) != std::string::npos) { hit = true; break; }
+        if (!hit) continue;
+        for (auto& f : g["features"]) F[9].push_back(f);
+        break;
+      }
+    }
     for (int s = 0; s < STEPS && s < (int)F.size(); s++) {
       for (auto& e : F[s]) {
         if (!e.is_string()) continue;
@@ -617,6 +629,10 @@ bool BiomeFeatures::placeConf(int fi, Ctx& c, Rng& r, int x, int y, int z) const
     case F_SIMPLE: {
       const State s = provide(C.prov, r, x, y, z, c);
       if (s.id == OUT || !c.in(x, y, z)) return false;
+      // Leaf litter is a carpet. On a house, a road or a windmill it sits in the way:
+      // Thorngate's miller never rode the lift while it was placed there. Fallen logs
+      // already stay off built ground; the carpet does too.
+      if (s.id != AIR && c.builtOn(x, z) && R.block(s.id).key.rfind("leaf_litter_", 0) == 0) return false;
       if (s.id != AIR && !survives(s.id, c, x, y, z)) return false;
       return setState(c, x, y, z, s);
     }
@@ -818,6 +834,20 @@ bool BiomeFeatures::placeConf(int fi, Ctx& c, Rng& r, int x, int y, int z) const
         const BlockId cur = c.get(x + ax, py + ay, z + az);
         if (cur == AIR || (cur != OUT && R.tReplaceable[cur])) c.set(x + ax, py + ay, z + az, s.id, s.meta);
       }
+      return true;
+    }
+    case F_FALLEN: {   // (the Dappled Forest's fallen hollow poplar logs: three to five lying end to end, some with shelf fungus)
+      static const BlockId plain = R.blockId("hollow_poplar_log"), fungus = R.blockId("hollow_poplar_log_fungus");
+      if (!plain) return false;
+      const int dir = r.nextInt(2), len = 3 + r.nextInt(3);
+      // (down through the ground cover - leaf litter, petals, grass - to the earth: the log lies on the ground, the cover goes)
+      for (BlockId u = c.get(x, y - 1, z); y > 1 && u != OUT && u != AIR && R.tReplaceable[u] && !R.tSolid[u]; u = c.get(x, y - 1, z)) y--;
+      for (int i = 0; i < len; i++) {
+        const int xx = x + (dir ? 0 : i), zz = z + (dir ? i : 0);
+        const BlockId cur = c.get(xx, y, zz), g = c.get(xx, y - 1, zz);
+        if (cur == OUT || !(cur == AIR || R.tReplaceable[cur]) || g == OUT || !(g < dirt_.size() && dirt_[g]) || c.builtOn(xx, zz)) return false;
+      }
+      for (int i = 0; i < len; i++) c.set(x + (dir ? 0 : i), y, z + (dir ? i : 0), r.nextFloat() < 0.35f && fungus ? fungus : plain, (u8)dir);
       return true;
     }
     case F_POND: {   // (the ponds and deltas: a round of still water in the ground, a rim of its mud or stone)

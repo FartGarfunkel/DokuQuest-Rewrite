@@ -174,7 +174,7 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
     auto chest = [&](int x, int y, int z, const char* kind, bool mimic) {
       const int meta = jsFloor(rr() * 4);
       const int i = P.put(x, y, z, "chest", meta);
-      if (i >= 0) { json be{{"type", "chest"}, {"items", dungeonLoot(kind, rr)}}; if (mimic) be["mimic"] = 1; P.setEntity(i, be); }
+      if (i >= 0) { json be{{"type", "chest"}, {"items", dungeonLoot(kind, rr)}, {"lk", std::string("d:") + kind}}; if (mimic) be["mimic"] = 1; P.setEntity(i, be); }
     };
     if (r.kind == "hall") {
       for (auto [sx, sz] : {std::pair{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}) for (int y = r.y; y < r.y + r.H; y++) P.put(r.x + sx * 2, y, r.z + sz * 2, th.pillar);
@@ -314,7 +314,7 @@ static void lairBuild(ChunkWriter& w, const StructurePlan& S) {
   for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) P.put(L.x + dx, Ly + 1, L.z + dz, sea ? "dark_prismarine" : deep ? "magma_block" : L.type == "frost" ? "snow_block" : "hay_bale");
   P.put(L.x, Ly + 2, L.z, "dragon_egg_" + L.type);
   const int ci = P.put(L.x + 4, Ly + 1, L.z - 3, "chest", 2);
-  if (ci >= 0) { Mulberry32 r(S.seed); P.setEntity(ci, json{{"type", "chest"}, {"items", dungeonLoot("rare", r)}}); }
+  if (ci >= 0) { Mulberry32 r(S.seed); P.setEntity(ci, json{{"type", "chest"}, {"items", dungeonLoot("rare", r)}, {"lk", "d:rare"}}); }
 }
 
 void registerStructureDungeons() {

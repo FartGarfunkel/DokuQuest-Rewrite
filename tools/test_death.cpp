@@ -57,6 +57,33 @@ int main(int argc, char** argv) {
   P->hasLastSafe = true; P->lastSafe = P->pos;
   check(rule(*L, "graves"), "the graves rule is on by default");
 
+  // a landing deals the same fall as a player's: one point per block past the third. A chicken flutters and takes none.
+  // Water forgets the fall. Hay leaves a fifth of it.
+  {
+    auto drop = [&](const char* kind, float x, float z, float blocks) {
+      Creature* c = spawnCreature(*L, REALM_MAIN, kind, vec3(x, Y + 1.f + blocks, z));
+      if (c) { c->calm = true; c->data["lvlSet"] = true; }   // a nearby player would otherwise scale its health mid-fall
+      return c;
+    };
+    Creature* pig = drop("pig", 4.5f, 20.5f, 8.f);
+    Creature* hen = drop("chicken", 4.5f, 24.5f, 8.f);
+    const BlockId hay = reg().blockId("hay_bale"), water = reg().blockId("water");
+    if (hay) for (int x = 19; x <= 21; x++) for (int z = 11; z <= 13; z++) w.setBlock(x, Y, z, hay);
+    Creature* onHay = hay ? drop("pig", 20.5f, 12.5f, 8.f) : nullptr;
+    if (water) for (int x = 19; x <= 21; x++) for (int z = 3; z <= 5; z++) for (int y = Y - 4; y <= Y; y++) w.setBlock(x, y, z, y == Y - 4 ? stone : water);
+    Creature* wet = water ? drop("pig", 20.5f, 4.5f, 8.f) : nullptr;
+    const float pig0 = pig ? pig->hp : 0, hen0 = hen ? hen->hp : 0, hay0 = onHay ? onHay->hp : 0, wet0 = wet ? wet->hp : 0;
+    tick(6);
+    check(pig && pig->alive() && pig->hp < pig0 && pig->hp > 0, "a pig falling 8 blocks takes fall damage (" + std::to_string(pig0) + " -> " + std::to_string(pig ? pig->hp : -1) + ")");
+    check(hen && hen->alive() && hen->hp == hen0, "a chicken falling the same way does not");
+    check(!onHay || (onHay->alive() && pig && (hay0 - onHay->hp) < (pig0 - pig->hp)), "hay leaves only a fifth of that fall (" + std::to_string(hay0) + " -> " + std::to_string(onHay ? onHay->hp : -1) + ")");
+    check(!wet || (wet->alive() && wet->hp == wet0), "water forgets the fall");
+    for (Creature* c : {pig, hen, onHay, wet}) if (c) c->removed = true;
+    if (hay) for (int x = 19; x <= 21; x++) for (int z = 11; z <= 13; z++) w.setBlock(x, Y, z, stone);
+    if (water) for (int x = 19; x <= 21; x++) for (int z = 3; z <= 5; z++) for (int y = Y - 4; y <= Y; y++) w.setBlock(x, y, z, y == Y ? stone : AIR);
+    tick(0.1);
+  }
+
   // ------------------------------------------------------------ one death: every slot kept, every slot given back
   struct Put { std::vector<ItemStack> Player::* v; int i; ItemStack s; };
   std::vector<Put> puts = {

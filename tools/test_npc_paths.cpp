@@ -319,7 +319,7 @@ int main(int argc, char** argv) {
     for (int round = 0; round < errands; round++) {
       // (who's still about: a creature gone from the level is gone from memory with it, so they're looked up by id)
       { std::vector<Creature*> still; for (Creature* c : folk) if (auto* q = dynamic_cast<Creature*>(L->entity(folkIds[c]))) if (q == c && !c->removed) still.push_back(c); folk = still; }
-      struct Trip { Creature* c; Errand e; double limit = 0, t = 0, lastMove = 0; vec3 last; bool done = false, stuck = false, late = false, over = false; int rescued = 0; };
+      struct Trip { Creature* c; Errand e; u32 id = 0; double limit = 0, t = 0, lastMove = 0; vec3 last; bool done = false, stuck = false, late = false, over = false; int rescued = 0; };
       std::vector<Trip> trips;
       std::set<size_t> taken;   // (one to a spot at a time: not a crowd round the same doorstep)
       for (Creature* c : folk) {
@@ -343,7 +343,7 @@ int main(int argc, char** argv) {
         NpcMind& M = S->mind(c->id);
         M.sent = true; M.sentTo = e.to; M.hasPath = false; M.navT = 0;
         // (time enough at their walk, a street's turns and all: 25 s and 2.2 s a block as the crow flies)
-        trips.push_back({c, e, 25 + 2.2 * std::hypot(e.to.x - c->pos.x, e.to.z - c->pos.z), 0, 0, c->pos});
+        trips.push_back({c, e, 0, 25 + 2.2 * std::hypot(e.to.x - c->pos.x, e.to.z - c->pos.z), 0, 0, c->pos}); trips.back().id = c->id;
       }
       for (double t = 0; t < 400; t += 0.05) {
         L->tick(0.05);
@@ -392,6 +392,7 @@ int main(int argc, char** argv) {
         }
       }
       for (auto& tr : trips) {
+        if (tr.c && L->entity(tr.id) != tr.c) tr.c = nullptr;   // (gone from the world meanwhile: its pointer is no longer safe)
         if (!tr.c) continue;
         S->mind(tr.c->id).sent = false;
         Tally& K = byKind[tr.e.kind];
@@ -416,7 +417,8 @@ int main(int argc, char** argv) {
             for (int dy = -1; dy <= 1; dy++) { r += " y" + std::to_string(dy) + ":"; for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) r += " " + reg().block(w.getBlock(tx + dx, ty + dy, tz + dz)).key; }
             printf("      (about the spot:%s; stands there %.2f)\n", r.c_str(), npcStandAt(w, tx, ty, tz) - v->y);
           }
-          printf("    miss: %s %s to %s (%.0f %.0f %.0f) from %.1f %.1f %.1f%s%s\n", tr.c->type.c_str(), npcOf(*tr.c)->value("j", std::string("")).c_str(), tr.e.kind.c_str(),
+          const json* nj = tr.c->removed ? nullptr : npcOf(*tr.c);   // (a villager gone or no longer a villager: no job to name; read it, it crashed)
+          printf("    miss: %s %s to %s (%.0f %.0f %.0f) from %.1f %.1f %.1f%s%s\n", tr.c->type.c_str(), nj ? nj->value("j", std::string("")).c_str() : "?", tr.e.kind.c_str(),
                  tr.e.to.x - v->x, tr.e.to.y - v->y, tr.e.to.z - v->z, p.x - v->x, p.y - v->y, p.z - v->z, tr.stuck ? " stuck" : tr.late ? " late" : "", tr.rescued ? " moved" : "");
         }
       }
@@ -427,7 +429,7 @@ int main(int argc, char** argv) {
       if (b.type != "windmill") continue;
       ivec3 sl; if (!npcLiftIn(w, std::min(b.x0, b.x1), b.y - 1, std::min(b.z0, b.z1), std::max(b.x0, b.x1), b.y + 1, std::max(b.z0, b.z1), sl)) { printf("  (the windmill at %d %d has no lift)\n", b.x0 - v->x, b.z0 - v->z); continue; }
       Creature* miller = nullptr;
-      for (Creature* c : folk) if (!c->removed && npcOf(*c)->value("j", std::string()) == "miller") miller = c;
+      for (Creature* c : folk) if (!c->removed && npcOf(*c) && npcOf(*c)->value("j", std::string()) == "miller") miller = c;
       if (!miller) { printf("  (no miller)\n"); continue; }
       villageStock(*L, *v)["wheat"] = 40;
       L->info.time = std::floor(L->info.time / DAY_LEN) * DAY_LEN + 0.1 * DAY_LEN;   // (the morning's work)

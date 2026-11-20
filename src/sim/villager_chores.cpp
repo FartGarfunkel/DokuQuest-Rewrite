@@ -342,7 +342,11 @@ OptMove npcChore(Level& lv, Creature& e, NpcMind& M, const Village& v, const VFo
         const vec3 at = vec3(ms) + vec3(0.5f, 0, 0.5f);
         if (!by(e, at, 2.0f)) {
           M.jobT += dt;
-          if (liftOk && at.y - e.pos.y > 2.5f && M.jobT < 70) {   // (the stones are up in the loft: the lift, then the last steps)
+          // The stones sit above him from anywhere in the town. The ride is only from inside the mill, on a
+          // floor of the lift. Started from the street, the minute ran out on the walk (or he was not at a
+          // floor's height) and he then left the lift alone and took the ladder.
+          const bool atLift = liftOk && inMill && npcLiftFloorOf(w, M.workLift, e.pos.y) >= 0;
+          if (liftOk && atLift && at.y - e.pos.y > 2.5f && M.jobT < 70) {
             bool gave = false;
             if (OptMove m = npcRideLift(lv, e, M, M.workLift, LL.stops.back().second, dt, &gave)) return m;
             if (gave) M.workLiftT = 600;   // (it wouldn't take him: the ladder, for a while)

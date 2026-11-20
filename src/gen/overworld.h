@@ -22,7 +22,7 @@ struct OwColumn {
 // Biome variants (our own designs), carved out of the climate: the hottest, driest
 // savanna turns to Redlands (red sand, spinifex, pale gum trees), the coldest taiga and peaks to Glacier (packed and
 // blue ice, ice spires), mild damp plains to Meadow (flowers everywhere), wet lowland to Mossmire (moss, mud, dark trees).
-enum LandVariant : u8 { BV_NONE = 0, BV_REDLANDS, BV_GLACIER, BV_MEADOW, BV_MOSSMIRE, BV_THORNSCRUB, BV_HIGHLANDS, BV_TUNDRA, BV_SEASONAL, BV_MUSHROOM };
+enum LandVariant : u8 { BV_NONE = 0, BV_REDLANDS, BV_GLACIER, BV_MEADOW, BV_MOSSMIRE, BV_THORNSCRUB, BV_HIGHLANDS, BV_TUNDRA, BV_SEASONAL, BV_MUSHROOM, BV_DAPPLED };
 // terrain version 15: each of the land biomes as one of our land kinds, by its name (OverworldGen fills it once; the same
 // data gives every world the same list)
 inline std::vector<u8>& biomeLandKinds() { static std::vector<u8> v; return v; }

@@ -150,7 +150,12 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
     s.tex = {"entity/bee/bee_angry_nectar", "entity/bee/bee_angry", "entity/bee/bee", "entity/bee"}; M["bee#angry_nectar"] = s; }
   { PMSpec s; s.tex = {"entity/silverfish"}; s.parts = {P("head", {0, 0, 3, 2, 2}), P("seg1", {0, 4, 4, 3, 2}), P("seg2", {0, 9, 6, 4, 3}), P("seg3", {0, 16, 3, 3, 3}), P("seg4", {0, 22, 2, 2, 3}), P("seg5", {11, 0, 2, 1, 2})}; M["stone_mite"] = s; }
   { PMSpec s; s.tex = {"entity/cow/temperate_cow", "entity/cow_temperate", "entity/cow/cow", "entity/cow"}; s.parts = pmQuad({0, 0, 8, 8, 6}, {18, 4, 12, 18, 10}, {0, 16, 4, 12, 4});
-    s.parts.push_back(P("hornR", {22, 0, 1, 3, 1})); s.parts.push_back(P("hornL", {22, 0, 1, 3, 1}, mir)); s.parts.push_back(P("udder", {52, 0, 4, 6, 1}, ly)); s.parts.push_back(P("tail", {0, 16, 4, 12, 4}));
+    s.parts.push_back(P("hornR", {22, 0, 1, 3, 1})); s.parts.push_back(P("hornL", {22, 0, 1, 3, 1}, mir)); s.parts.push_back(P("udder", {52, 0, 4, 6, 1}, ly));
+    // CowModel (1.21.5): the muzzle is its own cube, texOffs(1, 33), 6 wide, 3 tall, 1 deep.
+    // That patch is the nose on temperate, cold and warm. The face stays the head.
+    s.parts.push_back(P("snout", {1, 33, 6, 3, 1}));
+    // That model has no tail cube. The hanging tail wears the body's own hide, not the nose.
+    s.parts.push_back(P("tail", {20, 18, 2, 8, 1}));
     M["cow"] = s;
     // the climate looks (the pack's cold and warm cows; a pack without them keeps the temperate one)
     s.tex = {"entity/cow/cold_cow", "entity/cow_cold", "entity/cow/temperate_cow", "entity/cow_temperate", "entity/cow/cow", "entity/cow"}; M["cow#cold"] = s;
@@ -178,6 +183,165 @@ static const std::unordered_map<std::string, PMSpec>& packMobs() {
   { PMSpec s; s.tex = {"entity/wolf/wolf"}; s.parts = pmQuad({0, 0, 6, 6, 4}, {18, 14, 6, 9, 6}, {0, 18, 2, 8, 2});
     s.parts.push_back(P("mane", {21, 0, 8, 6, 7}, ly)); s.parts.push_back(P("snout", {0, 10, 3, 3, 4})); s.parts.push_back(P("earR", {16, 14, 2, 2, 1})); s.parts.push_back(P("earL", {16, 14, 2, 2, 1}, mir)); s.parts.push_back(P("tail", {9, 18, 2, 8, 2}));
     M["wolf"] = s; }
+  // The quadrupeds below were modelled on their own boxes. The pack still draws them with the vanilla cuboid unwrap
+  // (the same fit the skeleton and the iron golem already use): the picture is stretched onto whatever box the part has.
+  PMo wh; wh.whole = true;
+  auto put = [&](PMSpec& s, const char* key, std::initializer_list<const char*> tex) {
+    s.tex.assign(tex.begin(), tex.end()); M[key] = s;
+  };
+  { // cat and ocelot: 64x32. The body box is authored upright and turned onto its side.
+    PMSpec s; s.texW = 64;
+    s.parts = {P("head", {0, 0, 5, 4, 5}), P("snout", {0, 24, 3, 2, 2}),   // FelineModel's nose, in front of the face
+      P("body", {20, 0, 4, 16, 6}, ly), P("tail", {0, 15, 1, 8, 1}),
+      P("earR", {0, 10, 1, 1, 2}), P("earL", {6, 10, 1, 1, 2}),
+      P("legFR", {40, 0, 2, 10, 2}, wh), P("legFL", {40, 0, 2, 10, 2}, wh), P("legBR", {8, 13, 2, 6, 2}, wh), P("legBL", {8, 13, 2, 6, 2}, wh)};
+    put(s, "cat_tabby", {"entity/cat_tabby", "entity/cat/tabby"});
+    put(s, "cat_black", {"entity/cat_black", "entity/cat_all_black", "entity/cat_tabby"});
+    put(s, "cat_calico", {"entity/cat_calico", "entity/cat_tabby"});
+    put(s, "cat_ginger", {"entity/cat_red", "entity/cat_tabby"});
+    put(s, "cat_siamese", {"entity/cat_siamese", "entity/cat_tabby"});
+    put(s, "cat_tuxedo", {"entity/cat_black", "entity/cat_tabby"});
+    put(s, "cat_shipcat", {"entity/cat_white", "entity/cat_tabby"});
+    put(s, "ocelot", {"entity/ocelot", "entity/cat/ocelot"});
+    put(s, "ocelot_jungle", {"entity/ocelot", "entity/cat/ocelot"});
+  }
+  { // fox: 48x32. Hind and front legs are different patches. The snow fox is the pack's fox_snow.
+    PMSpec s; s.texW = 48;
+    s.parts = {P("head", {1, 5, 8, 6, 6}), P("body", {24, 15, 6, 11, 6}, ly), P("tail", {30, 0, 4, 9, 5}), P("snout", {6, 18, 4, 2, 3}),
+      P("earR", {8, 1, 2, 2, 1}), P("earL", {15, 1, 2, 2, 1}),
+      P("legFR", {4, 24, 2, 6, 2}, wh), P("legFL", {4, 24, 2, 6, 2}, wh), P("legBR", {13, 24, 2, 6, 2}, wh), P("legBL", {13, 24, 2, 6, 2}, wh)};
+    put(s, "fox", {"entity/fox/fox", "entity/fox"});
+    put(s, "fox_cross", {"entity/fox/fox", "entity/fox"});
+    put(s, "fox_silver", {"entity/fox/fox", "entity/fox"});
+    put(s, "snow_fox", {"entity/fox_snow", "entity/fox/fox_snow", "entity/fox"});
+    put(s, "snow_fox_blue", {"entity/fox_snow", "entity/fox/fox_snow", "entity/fox"});
+  }
+  { // horse and donkey: 64x64. The body is already long along Z, so it is not turned. Left legs mirror.
+    PMSpec s; s.texW = 64;
+    PM lg{48, 21, 4, 11, 4};
+    s.parts = {P("body", {0, 32, 10, 10, 22}), P("neck", {0, 35, 4, 12, 7}), P("head", {0, 13, 6, 5, 7}),
+      P("snout", {0, 25, 4, 5, 5}),   // AbstractHorseModel's muzzle, in front of the skull
+      P("earR", {19, 16, 2, 3, 1}), P("earL", {19, 16, 2, 3, 1}), P("mane", {56, 36, 2, 16, 2}), P("tail", {42, 36, 3, 14, 4}),
+      P("legFR", lg, up), P("shinFR", lg, lo), P("hoofFR", lg, lo), P("legBR", lg, up), P("shinBR", lg, lo), P("hoofBR", lg, lo),
+      P("legFL", lg, upM), P("shinFL", lg, loM), P("hoofFL", lg, loM), P("legBL", lg, upM), P("shinBL", lg, loM), P("hoofBL", lg, loM)};
+    put(s, "horse_chestnut", {"entity/horse_chestnut", "entity/horse/horse_chestnut", "entity/horse_brown"});
+    put(s, "horse_black", {"entity/horse_black", "entity/horse/horse_black", "entity/horse_chestnut"});
+    put(s, "horse_white", {"entity/horse_white", "entity/horse/horse_white", "entity/horse_chestnut"});
+    put(s, "horse_dun", {"entity/horse_creamy", "entity/horse/horse_creamy", "entity/horse_chestnut"});
+    put(s, "horse_draft", {"entity/horse_darkbrown", "entity/horse/horse_darkbrown", "entity/horse_chestnut"});
+    put(s, "horse_painted", {"entity/horse_white", "entity/horse/horse_white", "entity/horse_chestnut"});
+    put(s, "horse_warhorse", {"entity/horse_black", "entity/horse/horse_black", "entity/horse_chestnut"});
+    // The donkey skin leaves the ear patch empty. Mapping it erased the ears. They keep the model's own ears.
+    std::vector<PMPart> noEar;
+    for (const PMPart& p : s.parts) if (p.name != "earR" && p.name != "earL") noEar.push_back(p);
+    s.parts = std::move(noEar);
+    put(s, "donkey", {"entity/donkey", "entity/horse/donkey"});
+    put(s, "donkey_grey", {"entity/donkey", "entity/horse/donkey"});
+    put(s, "donkey_packed", {"entity/donkey", "entity/horse/donkey"});
+  }
+  { // bat: the pack's picture is the flat 32x32 bat. Its clear pixels were carving the body and the wings
+    // into scraps, so every part takes a solid patch of that brown and keeps the shape it already had.
+    PMSpec s; s.texW = 32;
+    PM fur{0, 11, 3, 4, 2};
+    s.parts = {P("body", fur), P("head", fur), P("earR", fur), P("earL", fur),
+      P("wingR", fur), P("wingR2", fur), P("wingL", fur), P("wingL2", fur)};
+    put(s, "bat", {"entity/bat"});
+    put(s, "bat_fruit", {"entity/bat"});
+    put(s, "bat_pale", {"entity/bat"});
+  }
+  { // squid and glow squid: 64x32. Eight arms, one patch.
+    PMSpec s; s.texW = 64;
+    s.parts = {P("body", {0, 0, 12, 16, 12})};
+    for (int i = 0; i < 8; i++) s.parts.push_back(P("tent" + std::to_string(i), {48, 0, 2, 18, 2}));
+    put(s, "squid", {"entity/squid/squid", "entity/squid"});
+    put(s, "squid_red", {"entity/squid/squid", "entity/squid"});
+    put(s, "glow_squid", {"entity/glow_squid", "entity/squid/glow_squid"});
+    put(s, "glow_squid_deep", {"entity/glow_squid", "entity/squid/glow_squid"});
+  }
+  { // llama: 128x64. The body is turned onto its side. The neck and ears take the head's wool.
+    PMSpec s; s.texW = 128;
+    PM hd{0, 0, 4, 4, 9}, lg{29, 29, 4, 14, 4}, bd{29, 0, 12, 18, 10};
+    s.parts = {P("head", hd), P("neck", hd), P("earR", hd), P("earL", hd), P("body", bd, ly), P("tail", bd, ly),
+      P("legFR", lg, up), P("shinFR", lg, lo), P("legBR", lg, up), P("shinBR", lg, lo),
+      P("legFL", lg, upM), P("shinFL", lg, loM), P("legBL", lg, upM), P("shinBL", lg, loM)};
+    put(s, "llama_cream", {"entity/llama_creamy", "entity/llama/creamy"});
+    put(s, "llama_brown", {"entity/llama_brown", "entity/llama/brown", "entity/llama_creamy"});
+    put(s, "llama_white", {"entity/llama_white", "entity/llama/white", "entity/llama_creamy"});
+    put(s, "llama_gray", {"entity/llama_gray", "entity/llama/gray", "entity/llama_creamy"});
+    put(s, "llama_caravan", {"entity/llama_creamy", "entity/llama/creamy"});
+    put(s, "llama_tasseled", {"entity/llama_creamy", "entity/llama/creamy"});
+  }
+  { // rabbit. This pack's rabbit picture keeps the body unwrap and not the usual head patch, so the head and ears wear body fur.
+    PMSpec s; s.texW = 64;
+    PM bd{0, 0, 6, 5, 10}, lg{16, 15, 2, 4, 5}, ear{40, 18, 4, 6, 1};
+    s.parts = {P("body", bd), P("head", bd), P("tail", bd), P("earR", ear), P("earL", ear),
+      P("legFR", lg, wh), P("legFL", lg, wh), P("legBR", lg, wh), P("legBL", lg, wh)};
+    put(s, "rabbit", {"entity/rabbit_brown", "entity/rabbit/brown"});
+    put(s, "rabbit_white", {"entity/rabbit_white", "entity/rabbit/white", "entity/rabbit_brown"});
+    put(s, "rabbit_black", {"entity/rabbit_black", "entity/rabbit/black", "entity/rabbit_brown"});
+    put(s, "rabbit_gold", {"entity/rabbit_gold", "entity/rabbit/gold", "entity/rabbit_brown"});
+    put(s, "rabbit_saltpepper", {"entity/rabbit_salt", "entity/rabbit/salt", "entity/rabbit_brown"});
+    put(s, "rabbit_dutch", {"entity/rabbit_white_splotched", "entity/rabbit_toast", "entity/rabbit_brown"});
+    put(s, "rabbit_jackalope", {"entity/rabbit_brown", "entity/rabbit/brown"});
+  }
+  { // panda: 64x64. Legs are the black patch. The shoulder band is the body's own stripe, so it is not drawn again.
+    PMSpec s; s.texW = 64; s.hide = {"band"};
+    PM lg{40, 0, 6, 9, 6};
+    s.parts = {P("head", {0, 6, 13, 10, 9}), P("snout", {24, 13, 5, 3, 3}), P("body", {0, 25, 13, 16, 10}, ly), P("tail", {0, 25, 13, 16, 10}, ly),
+      P("earR", {26, 6, 3, 3, 1}), P("earL", {26, 6, 3, 3, 1}),
+      P("legFR", lg, up), P("shinFR", lg, lo), P("legBR", lg, up), P("shinBR", lg, lo),
+      P("legFL", lg, upM), P("shinFL", lg, loM), P("legBL", lg, upM), P("shinBL", lg, loM)};
+    put(s, "panda", {"entity/panda/panda", "entity/panda"});
+    put(s, "panda_brown", {"entity/panda_brown", "entity/panda/panda_brown", "entity/panda"});
+    put(s, "panda_bamboo", {"entity/panda/panda", "entity/panda"});
+  }
+  { // polar bear: 128x64.
+    PMSpec s; s.texW = 128;
+    PM hd{0, 0, 7, 7, 7}, bd{0, 19, 14, 14, 11}, lg{50, 22, 4, 10, 8};
+    s.parts = {P("head", hd), P("snout", hd), P("earR", hd), P("earL", hd), P("body", bd, ly), P("tail", bd, ly),
+      P("legFR", lg, up), P("shinFR", lg, lo), P("legBR", lg, up), P("shinBR", lg, lo),
+      P("legFL", lg, upM), P("shinFL", lg, loM), P("legBL", lg, upM), P("shinBL", lg, loM)};
+    put(s, "polar_bear", {"entity/bear/polarbear", "entity/polarbear"});
+    put(s, "polar_bear_scarred", {"entity/bear/polarbear", "entity/polarbear"});
+    put(s, "polar_bear_snowcap", {"entity/bear/polarbear", "entity/polarbear"});
+  }
+  { // turtle: 128x64. Flippers take the head's hide so they are not left on the old tiles.
+    PMSpec s; s.texW = 128;
+    PM bd{7, 37, 12, 20, 6}, hd{3, 0, 6, 5, 6};
+    s.parts = {P("body", bd, ly), P("belly", bd, ly), P("head", hd),
+      P("flipFR", hd), P("flipFL", hd), P("flipBR", hd), P("flipBL", hd)};
+    put(s, "turtle", {"entity/turtle/big_sea_turtle", "entity/turtle"});
+    put(s, "turtle_mossy", {"entity/turtle/big_sea_turtle", "entity/turtle"});
+    put(s, "turtle_barnacled", {"entity/turtle/big_sea_turtle", "entity/turtle"});
+  }
+  { // dolphin: 64x64. The fins and the tail share the body's grey, which is where their patches sit in this picture.
+    PMSpec s; s.texW = 64;
+    PM bd{22, 0, 8, 7, 13};
+    s.parts = {P("body", bd), P("beak", {0, 0, 4, 2, 6}), P("tail", bd), P("dorsal", bd), P("finR", bd), P("finL", bd)};
+    put(s, "dolphin", {"entity/dolphin"});
+    put(s, "dolphin_spotted", {"entity/dolphin"});
+  }
+  { // axolotl: 64x64. The pink one is the pack's leucistic. Gills and the tail wear the body so a clear fin does not erase them.
+    PMSpec s; s.texW = 64;
+    PM bd{0, 11, 8, 4, 10}, hd{0, 1, 8, 5, 5}, lg{2, 20, 2, 3, 2};
+    s.parts = {P("body", bd), P("tail", bd), P("head", hd), P("gillT", hd), P("gillL", hd), P("gillR", hd),
+      P("legFR", lg, wh), P("legFL", lg, wh), P("legBR", lg, wh), P("legBL", lg, wh)};
+    put(s, "axolotl_pink", {"entity/axolotl_lucy", "entity/axolotl/axolotl_lucy"});
+    put(s, "axolotl_leucistic", {"entity/axolotl_lucy", "entity/axolotl/axolotl_lucy"});
+    put(s, "axolotl_blue", {"entity/axolotl_blue", "entity/axolotl/axolotl_blue", "entity/axolotl_lucy"});
+    put(s, "axolotl_gold", {"entity/axolotl_gold", "entity/axolotl/axolotl_gold", "entity/axolotl_lucy"});
+    put(s, "axolotl_wild", {"entity/axolotl_wild", "entity/axolotl/axolotl_wild", "entity/axolotl_lucy"});
+  }
+  { // frog: 48x48.
+    PMSpec s; s.texW = 48;
+    PM bd{3, 1, 7, 3, 9}, hd{23, 13, 7, 3, 9}, ey{0, 0, 3, 2, 3}, lg{14, 25, 4, 3, 3};
+    s.parts = {P("body", bd), P("throat", bd), P("head", hd), P("eyeL", ey), P("eyeR", ey),
+      P("legFL", lg, wh), P("legFR", lg, wh), P("legBL", lg, wh), P("legBR", lg, wh)};
+    put(s, "frog", {"entity/frog_temperate", "entity/frog/temperate_frog"});
+    put(s, "frog_warm", {"entity/frog_warm", "entity/frog/warm_frog", "entity/frog_temperate"});
+    put(s, "frog_cold", {"entity/frog_cold", "entity/frog/cold_frog", "entity/frog_temperate"});
+    put(s, "frog_lilypad", {"entity/frog_temperate", "entity/frog/temperate_frog"});
+  }
   return M;
 }
 

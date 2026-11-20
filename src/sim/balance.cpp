@@ -9,6 +9,7 @@
 #include "core/registry.h"
 #include <algorithm>
 #include <cstring>
+#include <cmath>
 
 namespace dq {
 using namespace bal;
@@ -79,6 +80,20 @@ float rageFactor(const Player& p) {
 float mobEffLevel(int lvl) { lvl = std::max(1, lvl); return lvl <= MOB_SOFT_LEVEL ? (float)lvl : MOB_SOFT_LEVEL + (lvl - MOB_SOFT_LEVEL) * MOB_SOFT_SLOPE; }
 float mobLevelHp(int lvl) { return 1.f + MOB_HP_PER_LEVEL * (mobEffLevel(lvl) - 1); }
 float mobLevelDmg(int lvl) { return 1.f + MOB_DMG_PER_LEVEL * (mobEffLevel(lvl) - 1); }
+
+int progressTier(const Player& p) {
+  float score = totalLevel(p) / (float)TIER_SKILL_PER;
+  const json& D = p.data.contains("deeds") && p.data["deeds"].is_object() ? p.data["deeds"] : json::object();
+  if (D.contains("got") && D["got"].is_object())
+    for (auto it = D["got"].begin(); it != D["got"].end(); ++it) {
+      if (it.key().rfind("ch:", 0) == 0) score += TIER_PER_CHAPTER;
+      else if (it.key().rfind("boss:", 0) == 0) score += TIER_PER_BOSS;
+    }
+  return std::clamp((int)(score / TIER_DIV), 0, TIER_MAX);
+}
+float progressLootRolls(int tier) { return LOOT_TIER_ROLLS * std::log2(1.f + std::max(0, std::min(tier, TIER_MAX))); }
+float progressLootChance(int tier) { return std::min(LOOT_TIER_CHANCE_MAX, 1.f + LOOT_TIER_CHANCE * std::log2(1.f + std::max(0, std::min(tier, TIER_MAX)))); }
+int progressMobLevels(int tier) { return std::min(MOB_TIER_MAX, (int)std::lround(MOB_TIER_LEVELS * std::log2(1.f + std::max(0, std::min(tier, TIER_MAX))))); }
 
 MobLoot mobLoot(int level, bool elite, const Player* killer) {
   MobLoot l;

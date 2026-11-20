@@ -29,6 +29,7 @@ const std::string& blockKey(BlockId id);
 
 // loot: 27 slots of null | {id, n}
 json structLoot(const std::string& kind, Mulberry32& rnd);
+int lootTopUp(json& items, const std::string& tableKind, int tier, Mulberry32& rnd);   // tableKind "s:<kind>" / "d:<kind>"; returns items added
 json dungeonLoot(const std::string& kind, Mulberry32& rnd);
 json vLoot(const std::string& kind, Mulberry32& rnd);
 const std::vector<std::string>& loreKeys();

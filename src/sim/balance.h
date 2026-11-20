@@ -130,6 +130,16 @@ inline constexpr const char* GEAR_TIERS[] = {"copper", "bronze", "iron", "steel"
 inline constexpr const char* GEAR_PIECES[] = {"sword", "axe", "helmet", "chestplate", "leggings", "boots"};
 constexpr float GEAR_WORN_MIN = 0.2f, GEAR_WORN_MAX = 0.6f;              // dropped gear comes this worn
 
+// ---- progress: what the world gives and asks follows how far YOU have come, never how far from spawn you walk ----------------
+// tier = (total skill levels / TIER_SKILL_PER + chapters done x TIER_PER_CHAPTER + bosses beaten x TIER_PER_BOSS) / TIER_DIV, at most TIER_MAX.
+// Everything it feeds grows with log2(1 + tier), so the first steps matter most and it flattens out.
+constexpr int TIER_SKILL_PER = 20; constexpr float TIER_PER_CHAPTER = 1.f, TIER_PER_BOSS = 2.f, TIER_DIV = 2.f; constexpr int TIER_MAX = 10;
+// a structure chest, first opened: LOOT_TIER_ROLLS x log2(1+tier) more passes over its own table (a fraction is a chance), each
+// entry's chance x (1 + LOOT_TIER_CHANCE x log2(1+tier)): the same kind of find, more of it and likelier the good ones
+constexpr float LOOT_TIER_ROLLS = 0.3f, LOOT_TIER_CHANCE = 0.08f, LOOT_TIER_CHANCE_MAX = 1.4f;
+// a creature's level band: + MOB_TIER_LEVELS x log2(1+tier) levels, at most MOB_TIER_MAX
+constexpr float MOB_TIER_LEVELS = 1.f; constexpr int MOB_TIER_MAX = 4;
+
 // ---- skill perks (data/magic.json "perks": each description says what its number here does; sim/skills.h) -------------------
 constexpr float PERK_LUMBERJACK = 0.2f;          // Woodcutting 60: a fifth more logs (a felled tree's, and a log chopped alone)
 constexpr float PERK_HEARTWOOD = 0.5f;           // Woodcutting 90: an axe's wear from felling x this
@@ -202,6 +212,10 @@ float mobLevelHp(int lvl);
 float mobLevelDmg(int lvl);
 // what a creature's death adds to its drop table: rolls of the table, each entry's chance multiplier, the chance of one
 // more of an entry that drops, and a chance at a piece of gear of a tier fitting its level
+int progressTier(const Player& p);               // 0..TIER_MAX from chapters, bosses and skills (an old save: just what it has now)
+float progressLootRolls(int tier);               // extra passes over a structure chest's table
+float progressLootChance(int tier);              // multiplier on each entry's chance in those passes
+int progressMobLevels(int tier);                 // levels added to a creature's band
 struct MobLoot { int rolls = 1; float chanceMul = 1, extra = 0, gearChance = 0, twice = 0; int gearTier = 0; };   // twice: the chance of one more roll (loot_double)
 MobLoot mobLoot(int level, bool elite, const Player* killer);
 ItemStack mobGearRoll(const MobLoot& l, double r1, double r2, double r3);   // r* in [0,1): which piece, its tier, its wear

@@ -16,6 +16,7 @@
 #include "world/world.h"
 #include "world/dims.h"
 #include "gen/generator.h"
+#include "gen/overworld.h"
 #include "gen/nether_painted.h"
 #include "sim/dyntree.h"
 #include "sim/blockinfo.h"
@@ -499,6 +500,49 @@ int main(int argc, char** argv) {
     check(b22 > 500, "terrain 22 here: a lump of rock hanging in the air (" + std::to_string(b22) + " blocks)");
     check(b23 < 20, "terrain 23: none (the biggest piece left " + std::to_string(b23) + " blocks)");
     setWorldLayout(1, 4);
+  }
+  printf("[the Dappled Forest and leaf litter (terrain 26)]\n");
+  {
+    const Registry& R = reg();
+    const char* colours[5] = {"green", "red", "orange", "yellow", "brown"};
+    bool thin = true;
+    for (const char* c : colours) {
+      const BlockId id = R.blockId(std::string("leaf_litter_") + c);
+      const BlockDef& d = R.block(id);
+      thin = thin && id && d.shapeKind == 10 && d.replaceable && d.hardness <= 0.2f && d.drop == d.key && d.sound == "leaves";
+    }
+    check(thin, "leaf litter in five colours: a thin carpet, replaceable, quick to break, drops itself");
+    std::vector<ivec2> wood;   // chunks inside a Dappled Forest (found by its biome, in a terrain 26 world)
+    {
+      WorldGenOptions o; o.seed = 4242; o.genVersion = 26; WorldGen g(o); auto* og = dynamic_cast<OverworldGen*>(g.forDim(DIM_OVERWORLD));
+      for (int z = -3000; z < 3000 && wood.size() < 10; z += 48) for (int x = -3000; x < 3000 && wood.size() < 10; x += 48)
+        if (og && og->landBiomeName(x, z) == "dappled:dappled_forest") wood.push_back(ivec2(x >> 4, z >> 4));
+    }
+    for (ivec2 c : wood) printf("     (a Dappled Forest at x %d z %d)\n", c.x * 16 + 8, c.y * 16 + 8);
+    check(wood.size() >= 10, "the Dappled Forest turns up across the land (" + std::to_string(wood.size()) + " places found)");
+    auto count = [&](int ver, int& poplar, int& litter, int& logs, int& shrub) {
+      WorldGenOptions o; o.seed = 4242; o.genVersion = ver; WorldGen g(o);
+      const BlockId lg = R.blockId("poplar_log"), h1 = R.blockId("hollow_poplar_log"), h2 = R.blockId("hollow_poplar_log_fungus"), sh = R.blockId("red_shrub_leaves");
+      BlockId lit[5]; for (int k = 0; k < 5; k++) lit[k] = R.blockId(std::string("leaf_litter_") + colours[k]);
+      poplar = litter = logs = shrub = 0;
+      for (ivec2 cc : wood) {
+        const int cx = cc.x, cz = cc.y;
+        auto ch = std::make_unique<Chunk>(DIM_OVERWORLD, cx, cz); g.forDim(DIM_OVERWORLD)->generate(*ch);
+        for (int y = 0; y < DIM_H; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+          const BlockId b = ch->get(x, y, z);
+          if (b == lg) poplar++; else if (b == h1 || b == h2) logs++; else if (b == sh) shrub++;
+          else for (BlockId l : lit) if (b == l) litter++;
+        }
+      }
+    };
+    int p26, l26, g26, s26, p25, l25, g25, s25;
+    count(26, p26, l26, g26, s26); count(25, p25, l25, g25, s25);
+    printf("     (terrain 26: %d poplar logs, %d litter, %d hollow logs, %d shrub leaves)\n", p26, l26, g26, s26);
+    check(p26 > 20, "terrain 26: Dappled Forests grow poplars");
+    check(l26 > 200, "terrain 26: leaf litter lies under the woods");
+    check(g26 > 0, "terrain 26: fallen hollow poplar logs");
+    check(s26 > 0, "terrain 26: red shrubs");
+    check(p25 == 0 && l25 == 0 && g25 == 0 && s25 == 0, "terrain 25 (an old world) has none of it: its land is unchanged");
   }
   printf("\n%d passed, %d failed\n", passes, fails);
   rg.lv->close();
