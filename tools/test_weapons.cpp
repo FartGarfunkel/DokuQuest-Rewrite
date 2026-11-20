@@ -3,6 +3,8 @@
 #include "core/init.h"
 #include "core/registry.h"
 #include "sim/attack_moves.h"
+#include "sim/weapon_quality.h"
+#include <cmath>
 #include <cstdio>
 
 using namespace dq;
@@ -61,6 +63,33 @@ int main() {
   unknown.props["moveset"] = "halberd";
   CHECK(movesetOf(&unknown) == Moveset::Sword, "an unknown moveset keeps the old sword rule (got %s)",
         movesetName(movesetOf(&unknown)));
+
+  printf("quality\n");
+  ItemStack plain("iron_sword", 1);
+  CHECK(weaponQuality(plain) == WQual::Normal && qualityDamageFactor(weaponQuality(plain)) == 1.f,
+        "an untagged sword deals its normal damage");
+  ItemStack poor("iron_sword", 1);
+  poor.tag = json::object();
+  poor.tag["qual"] = "poor";
+  CHECK(std::fabs(qualityDamageFactor(weaponQuality(poor)) - 0.85f) < 0.001f, "a poor sword deals 0.85");
+  ItemStack a("iron_sword", 1), b("iron_sword", 1);
+  rollWeaponQuality(a, 42);
+  rollWeaponQuality(b, 42);
+  CHECK(a.tag.is_object() && a.tag["qual"] == b.tag["qual"], "the same seed rolls the same quality");
+  int nPoor = 0, nNormal = 0, nFine = 0;
+  for (uint32_t seed = 0; seed < 100; seed++) {
+    ItemStack s("iron_sword", 1);
+    rollWeaponQuality(s, seed);
+    const std::string q = s.tag.value("qual", "");
+    nPoor += q == "poor"; nNormal += q == "normal"; nFine += q == "fine";
+  }
+  CHECK(nPoor == 25 && nNormal == 55 && nFine == 20, "a hundred seeds are 25 poor, 55 normal, 20 fine (got %d %d %d)",
+        nPoor, nNormal, nFine);
+  ItemStack pick("stone_pickaxe", 1);
+  pick.tag = json::object();
+  pick.tag["qual"] = "poor";
+  CHECK(std::fabs(weaponQualityFactor(pick) - 1.f) < 0.001f, "a pick ignores weapon quality");
+  CHECK(std::fabs(weaponQualityFactor(poor) - 0.85f) < 0.001f, "a poor sword's blow is scaled");
 
   printf(fails ? "%d failed\n" : "all passed\n", fails);
   return fails ? 1 : 0;

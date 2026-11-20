@@ -11,6 +11,7 @@
 #include "sim/mob_carry.h"
 #include "sim/combat_rpg.h"
 #include "sim/attack_moves.h"
+#include "sim/weapon_quality.h"
 #include "sim/magic.h"
 #include "sim/gameplay.h"
 #include "sim/rules.h"
@@ -227,6 +228,7 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
   dmg = spellbladeHit(lv, p, e, dmg, src.element);   // a spell carried on the blade (sim/magic_hands.cpp)
   dmg *= pathMeleeFactor(p);                          // the Knight's Heavy Blows (sim/villager_quests.cpp)
   dmg *= skillHitFactor(p, "melee", p.inv[p.selected]);   // the Melee skill and a well-used weapon (sim/skills.h)
+  dmg *= weaponQualityFactor(p.inv[p.selected]);          // poor / normal / fine, before a stagger's extra
   const float hpBefore = e.hp;
   bool finishing = false;
   dmg = combatRpgOutgoing(lv, p, e, dmg, finishing);
