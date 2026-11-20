@@ -540,14 +540,14 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
   // ahead from the bottom of the view (the upper arms, right by the eye, aren't drawn: render/char_layer.cpp)
   if (pose.swim && pose.fp && !pose.glide) base = glm::translate(base, vec3(0, -0.3f, -0.4f));
   if (pose.swim) { base = glm::translate(base, vec3(0, 0.32f, 0.55f)); base = glm::rotate(base, -PI / 2 + pose.swimPitch * 0.8f, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
-  else if (pose.crawl && !pose.fp) {   // flat on the ground, the chest on it (its plane 2 px in front of the middle)
+  else if (pose.crawl) {   // flat on the ground, the chest on it (its plane 2 px in front of the middle). First person lies the same way the others see, the eye at the head
     base = glm::translate(base, vec3(0, 2.3f * CHAR_PX, 0.5f)); base = glm::rotate(base, -PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0));
   }
   if (pose.sleep && pose.bed < 0) { base = glm::rotate(base, PI, vec3(0, 1, 0)); base = glm::translate(base, vec3(0, 0.3f, 0)); base = glm::rotate(base, PI / 2, vec3(1, 0, 0)); base = glm::translate(base, vec3(0, -0.9f, 0)); }
   // an attack move in first person is the third-person body's twist and arms (on their shoulders doing the cut): the
   // first-person damping below eases away while it shows (the body stays just behind the eyes)
   const float fpK = pose.fp && pose.bed < 0 ? 1 - attackWeight(pose) : 0.f;
-  if (pose.fp && pose.bed < 0) base = glm::translate(base, vec3(0, 0, 0.25f));   // FP_BODY: just behind the eyes (in bed the view is the head's own: client/play.cpp); kept in a swing (else looking down you look into your own neck)
+  if (pose.fp && pose.bed < 0 && !pose.crawl) base = glm::translate(base, vec3(0, 0, 0.25f));   // FP_BODY: just behind the eyes (in bed the view is the head's own: client/play.cpp); kept in a swing (else looking down you look into your own neck). Crawling is already laid out from the eye
   CharAngles A = charAnimate(pose);
   R.toolR = A.toolR; R.toolL = A.toolL;
   if (pose.fp && pose.bed < 0) {
@@ -555,11 +555,11 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     A.body.x *= 0.25f; A.body.y *= 0.5f;   // (the chest's lean and turn held down: the eyes don't ride them. The arms are the third person's)
     if (fpK < 1) A.body = A0.body + (A.body - A0.body) * fpK;
   }
-  R.fpTorso = pose.fp && !pose.swim && !pose.crawl && (!pose.sleep || pose.bed >= 0) && pose.deathT <= 0;
+  R.fpTorso = pose.fp && !pose.swim && (!pose.sleep || pose.bed >= 0) && pose.deathT <= 0;   // (crawling too: your chest, legs and own arms, as when you stand or sit)
   // the body shape: leg length lifts everything above the hips, build widens, the head its own size
   const BodyShape& S = M.body;
   float kl = S.legs, b = S.build, hip = 12 * kl;
-  if (pose.crawl && !pose.fp && !pose.swim && pose.deathT <= 0) crawlLimbs(A, pose, M, b, kl, hip);
+  if (pose.crawl && !pose.swim && pose.deathT <= 0) crawlLimbs(A, pose, M, b, kl, hip);
   else if (pose.bow > 0 && !pose.fp && !pose.swim && !pose.sleep && pose.deathT <= 0) bowDrawArms(A, pose, M, b, hip);
   if (pose.reach) {   // the hands where the work is (render space -> model pixels -> body space), the elbows bent down and out
     const mat4 rootInv = glm::inverse(glm::scale(glm::translate(base, vec3(0, A.lift, 0)), vec3(CHAR_PX)));

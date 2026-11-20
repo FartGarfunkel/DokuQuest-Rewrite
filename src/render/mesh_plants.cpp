@@ -3,8 +3,8 @@
 //   * a plant's picture is pushed out into a voxel slab one to three micro-voxels thick each side,
 //     as thick as each part is wide (a stem stays a thin stalk, a flower head is chunky), with the
 //     steps between thicknesses filled in, all coloured pixel-for-voxel from the tile (any pack);
-//   * flowers are built in 3D (stalk, leaves, a fan/cup/ball/bells of petals), short grass and ferns
-//     are clumps of thick blades, sugar cane real stalks, kelp a swaying stem with leaves;
+//   * flowers are built in 3D (stalk, leaves, a fan/cup/ball/bells of petals), short grass is a clump
+//     of thick blades, a fern is its whole picture as two thick crossed slabs, sugar cane real stalks, kelp a swaying stem with leaves;
 //   * vines and lily pads are voxel plates; settings.plantDetail decides near/all/off (flat planes).
 #include "render/mesh_ctx.h"
 #include "common/noise.h"
@@ -693,9 +693,10 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   }
   bool detail = c.opt.detail && c.tiles;
   if (!detail && !T.hangs && key != "kelp" && key != "sugar_cane") { emitCrossFlat(c, d, id, x, y, z, meta, tile, yy); return; }
-  // (grass only: a fern's picture is one bush of fronds, and cut into blade strips it came out as solid panels;
-  // ferns stand as the whole picture crossed, further down)
-  bool isGrass = T.tint && keyHas(key, {"grass"}) && key.find("fern") == std::string::npos && key.find("sea") == std::string::npos;
+  // A fern's picture is one bush of fronds. Cut into grass blades it came out as solid panels. A flat
+  // cross has no thickness, so with detail on the whole picture is two voxel slabs (below, with the tint kept).
+  const bool fern = key.find("fern") != std::string::npos;
+  bool isGrass = T.tint && keyHas(key, {"grass"}) && !fern && key.find("sea") == std::string::npos;
   if (detail) {
     if ((T.flower || keyHas(key, {"flower_", "tulip", "daisy", "orchid", "allium", "bluet", "cornflower", "lily_of_the", "poppy", "dandelion"})) && !T.dbl && !T.hangs && !T.tint) {
       if (emitFlower3D(c, d, id, x, y, z)) return;
@@ -713,7 +714,7 @@ void emitCross(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   // seagrass and coral are solid too (an extension of the original, which drew them flat)
   // vines that hang or climb in strands are drawn as planes round the stem (as solid voxels they were most of the
   // Nether's terrain memory, thousands of little faces a block)
-  bool voxPlant = !T.fire && !T.tint && key != "cobweb" && key != "kelp" && !T.stackPlant && !T.hangs;
+  bool voxPlant = !T.fire && (!T.tint || fern) && key != "cobweb" && key != "kelp" && !T.stackPlant && !T.hangs;
   int ly = c.in.sy * 16 + y;
   // vines, roots and strands, hanging or climbing: 3D as kelp is (a thin stem and its leaves in the picture's own
   // colours), a few quads a block (they come in thousands: as voxel slabs they cost the Nether another 12 million)

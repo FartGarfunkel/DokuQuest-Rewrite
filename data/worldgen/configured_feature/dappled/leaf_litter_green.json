@@ -1,0 +1,139 @@
+{
+  "type": "main:random_patch",
+  "config": {
+    "tries": 56,
+    "xz_spread": 6,
+    "y_spread": 2,
+    "feature": {
+      "feature": {
+        "type": "main:simple_block",
+        "config": {
+          "to_place": {
+            "type": "main:simple_state_provider",
+            "state": {
+              "Name": "main:leaf_litter_green"
+            }
+          }
+        }
+      },
+      "placement": [
+        {
+          "type": "main:block_predicate_filter",
+          "predicate": {
+            "type": "main:all_of",
+            "predicates": [
+              {
+                "type": "main:matching_blocks",
+                "offset": [
+                  0,
+                  0,
+                  0
+                ],
+                "blocks": [
+                  "main:air",
+                  "main:grass",
+                  "main:fern"
+                ]
+              },
+              {
+                "type": "main:matching_block_tag",
+                "offset": [
+                  0,
+                  -1,
+                  0
+                ],
+                "tag": "main:dirt"
+              },
+              {
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      2,
+                      0
+                    ],
+                    "tag": "main:canopy"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      3,
+                      0
+                    ],
+                    "tag": "main:canopy"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      4,
+                      0
+                    ],
+                    "tag": "main:canopy"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      5,
+                      0
+                    ],
+                    "tag": "main:canopy"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      6,
+                      0
+                    ],
+                    "tag": "main:canopy"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      7,
+                      0
+                    ],
+                    "tag": "main:canopy"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      8,
+                      0
+                    ],
+                    "tag": "main:canopy"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      9,
+                      0
+                    ],
+                    "tag": "main:canopy"
+                  },
+                  {
+                    "type": "main:matching_block_tag",
+                    "offset": [
+                      0,
+                      10,
+                      0
+                    ],
+                    "tag": "main:canopy"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

@@ -165,10 +165,11 @@ def main(d):
     T = {}
     grey = base / 'leaf_litter.png'
     for c, sh in LITTER.items():
-        # green: the pack's own litter, tinted by the wood's foliage colour (as its leaves are); the autumn colours and the
-        # dead brown: that picture in each colour (our drawn ones only when the pack has none)
+        # each colour is the pack's grey litter painted that colour, and that picture is what is drawn (flat, like the
+        # others). Green used to take the pack's untinted grey leaf_litter and a foliage tint; the tint also built it as a
+        # raised plate, so it read as grey stone and stood up off the ground.
         im = tint(Image.open(grey), sh[0]) if grey.exists() else litter_tile(sh, sum(map(ord, c)))
-        T['leaf_litter_' + c] = tile('leaf_litter_' + c, im, ['leaf_litter'] if c == 'green' else None)
+        T['leaf_litter_' + c] = tile('leaf_litter_' + c, im)
     T['poplar_log_side'] = tiles['poplar_log_side']; T['poplar_log_hollow'] = tile('poplar_log_hollow', hollow_tile())
     T['poplar_sapling'] = tile('poplar_sapling', sapling_tile(), ['poplar_sapling']); T['shelf_fungus'] = tile('shelf_fungus', fungus_tile())
     Y, O, R = LITTER['yellow'], LITTER['orange'], LITTER['red']
@@ -202,8 +203,7 @@ def main(d):
     for c in LITTER:   # leaf litter: ground cover like fallen petals (not solid: the ground's height, spawning and building
         # see the dirt under it), replaceable, drops itself; a hoe or shovel lifts it
         k = 'leaf_litter_' + c
-        extra = {'tint': 'foliage'} if c == 'green' else {}
-        block(k, c.capitalize() + ' Leaf Litter', [T[k]] * 6, render=7, solid=False, opaque=False, replaceable=True, hardness=0.1, tool='shovel', shapeKind=10, needsSupport=True, tex=k, fuel=0.25, **extra)
+        block(k, c.capitalize() + ' Leaf Litter', [T[k]] * 6, render=7, solid=False, opaque=False, replaceable=True, hardness=0.1, tool='shovel', shapeKind=10, needsSupport=True, tex=k, fuel=0.25)
         item(k, c.capitalize() + ' Leaf Litter', 'block:' + k, fuel=0.25,
              desc='Fallen leaves, a thin layer on the ground. They crunch underfoot. Lift them with a hoe or shovel; they compost.')
     for c in ('yellow', 'orange', 'red'):

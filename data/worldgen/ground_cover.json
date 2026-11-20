@@ -1,0 +1,42 @@
+{
+  "groups": [
+    {
+      "match": [
+        "autumnal",
+        "maple",
+        "boreal_forest_red",
+        "boreal_forest_yellow",
+        "beech"
+      ],
+      "features": [
+        "dappled:litter_red_common",
+        "dappled:litter_orange_common",
+        "dappled:litter_yellow_common"
+      ]
+    },
+    {
+      "match": [
+        "main:forest",
+        "birch_forest",
+        "flower_forest",
+        "dark_forest",
+        "cool_forest",
+        "forest_edge",
+        "windswept_forest",
+        "tangled_forest",
+        "warm_birch",
+        "aspen",
+        "temperate_rainforest",
+        "wisteria",
+        "sakura",
+        "cherry",
+        "phantasmal",
+        "spring_flower"
+      ],
+      "features": [
+        "dappled:litter_green_sparse",
+        "dappled:litter_brown_sparse"
+      ]
+    }
+  ]
+}

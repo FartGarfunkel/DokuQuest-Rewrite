@@ -629,6 +629,10 @@ bool BiomeFeatures::placeConf(int fi, Ctx& c, Rng& r, int x, int y, int z) const
     case F_SIMPLE: {
       const State s = provide(C.prov, r, x, y, z, c);
       if (s.id == OUT || !c.in(x, y, z)) return false;
+      // Leaf litter is a carpet. On a house, a road or a windmill it sits in the way:
+      // Thorngate's miller never rode the lift while it was placed there. Fallen logs
+      // already stay off built ground; the carpet does too.
+      if (s.id != AIR && c.builtOn(x, z) && R.block(s.id).key.rfind("leaf_litter_", 0) == 0) return false;
       if (s.id != AIR && !survives(s.id, c, x, y, z)) return false;
       return setState(c, x, y, z, s);
     }

@@ -5,6 +5,31 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.37 (November 2026)
+
+**The Dappled Forest and fallen leaves:**
+- **A new wood, the Dappled Forest:** tall slim poplars in red, orange and yellow, the floor carpeted in fallen leaves, red shrubs, and hollow poplar logs lying on the ground, some grown over with shelf fungus. It's found among the temperate woods, as often as an ordinary forest. (New land only: the worlds you have keep their land as it is.)
+- **Fallen leaves** lie under the trees of the other woods too: red, orange and yellow under the autumn woods, a little green and brown under the rest. You walk through them, they crunch underfoot, a hoe or shovel picks them up, and they go in the composter.
+- **Poplar is a whole wood** like the others: log, wood, stripped log, planks, stairs, slabs, fences and gates, doors and trapdoors, buttons, pressure plates, signs, branches, chairs, stools, benches, tables, shelves, bookcases and cabinets, all in the DokuQuest Base pack's own poplar look.
+
+**Treasure that keeps up with you:**
+- **Chests in dungeons, temples and other structures hold more and better loot the further you've come:** story chapters done, skill levels and bosses beaten all count, so a chest you open late in your journey is richer than one you open on your first day. Each chest still keeps its own kind of treasure. Walking far from where you started gains nothing by itself. Creatures keep levelling with you as before.
+
+**Townsfolk:** fewer of them get stuck on their errands.
+
+**Fixes:**
+- Green fallen leaves lie flat and match the painted green of the other colours.
+- A pile of leaves no longer hides the block under it.
+- Poplar crowns meet the top of the trunk, and trees in the Dappled Forest are not bare.
+- Crawling in first person shows your whole body, the way swimming and sitting do.
+- Cows, horses, donkeys and cats have their noses. A cow's tail hangs out behind it. A donkey's ears stand apart.
+- Llamas no longer wear a red carpet. A scarred lioness no longer has a black patch over one eye.
+- Bats keep a whole coat. Ferns are thick crossed plants again when plant detail is on.
+- Nether wart blocks and warped wart blocks are solid cubes and stay still.
+- Creatures take fall damage the way you do. Water, hay and leaves soften a fall the same way, and chickens and other creatures that flutter or fly still land softly.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.36 (November 2026)
 
 **Time keeps passing on your farms:**

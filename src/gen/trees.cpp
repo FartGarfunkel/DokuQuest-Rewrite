@@ -178,10 +178,15 @@ void treeParts(const GenBlocks& B, i32 seed, const TreeSpec& t, std::vector<Tree
       const BlockId lv[3] = {B.poplar_leaves_yellow, B.poplar_leaves_orange ? B.poplar_leaves_orange : B.poplar_leaves_yellow, B.poplar_leaves_red ? B.poplar_leaves_red : B.poplar_leaves_yellow};
       for (int k = H - 9; k <= H + 1; k++) {
         const double u = (double)(k - (H - 9)) / 10.0;   // 0 at the crown's foot, 1 at its tip
-        const double rad = k >= H ? 0.8 : 0.9 + 1.1 * std::sin(u * 3.14159 * 0.85);   // swells in the middle, narrows to the tip
+        // the block on the top log, and the four against the trunk up there, are always leaves: a skipped
+        // cell left the crown floating off the top of the trunk
+        const double rad = k > H ? 0.6 : k == H ? 1.2 : 0.9 + 1.1 * std::sin(u * 3.14159 * 0.85);
         const int rr = (int)std::ceil(rad);
         for (int dz = -rr; dz <= rr; dz++) for (int dx = -rr; dx <= rr; dx++) {
-          if (dx * dx + dz * dz > rad * rad + 0.3 || rnd() < 0.12) continue;
+          const bool onTop = k >= H && dx == 0 && dz == 0;
+          const bool hug = k >= H - 1 && std::abs(dx) + std::abs(dz) == 1;
+          if (dx * dx + dz * dz > rad * rad + 0.3) continue;
+          if (!onTop && !hug && rnd() < 0.12) continue;
           const double q = rnd();
           put(x + dx, y + k, z + dz, q < 0.42 ? lv[0] : q < 0.78 ? lv[1] : lv[2], true);
         }
@@ -334,7 +339,8 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
   if (landVariant(mid) == BV_HIGHLANDS) density = 6;      // close-grown spruce
   if (landVariant(mid) == BV_SEASONAL) density = 5;       // the Seasonal Forest
   if (landVariant(mid) == BV_DAPPLED) density = 6;        // the Dappled Forest: poplars standing close
-  bool bare = (mid.biome == BIOME_FOREST || mid.biome == BIOME_PLAINS) && hashFloat(cx, cz, seed_, 67) < 0.025;
+  // a few ordinary woods stand dead. The Dappled Forest's poplars are not among them: a bare one is only a pole.
+  bool bare = landVariant(mid) != BV_DAPPLED && (mid.biome == BIOME_FOREST || mid.biome == BIOME_PLAINS) && hashFloat(cx, cz, seed_, 67) < 0.025;
   int n = jsFloor(density) + (rnd() < std::fmod(density, 1.0) ? 1 : 0) + (bare ? 3 : 0);
   for (int i = 0; i < n; i++) {
     int x = cx * 16 + jsFloor(rnd() * 16), z = cz * 16 + jsFloor(rnd() * 16);
@@ -366,7 +372,7 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
     else if (bv == BV_SEASONAL) type = r < 0.62 ? TREE_CHERRY : r < 0.85 ? TREE_OAK : TREE_BIRCH;   // the Seasonal Forest's cherry groves
     else if (bv == BV_DAPPLED) type = r < 0.6 ? TREE_POPLAR : r < 0.92 ? TREE_RED_SHRUB : TREE_BIRCH;   // slim poplars, red shrubs between, a birch now and then
     bool bees = (type == TREE_OAK || type == TREE_BIRCH || type == TREE_CHERRY) && !bare && rnd() < (bv == BV_MEADOW || bv == BV_SEASONAL ? 0.12 : c.biome == BIOME_PLAINS ? 0.08 : c.biome == BIOME_FOREST ? 0.04 : 0.02);
-    t.kind = type; t.bare = bare; t.bees = bees; t.mossy = bv == BV_MOSSMIRE; t.gum = bv == BV_REDLANDS; t.seasonal = bv == BV_SEASONAL;
+    t.kind = type; t.bare = bare && bv != BV_DAPPLED; t.bees = bees; t.mossy = bv == BV_MOSSMIRE; t.gum = bv == BV_REDLANDS; t.seasonal = bv == BV_SEASONAL;
     list.push_back(t);
   }
   // no trees growing through the floors of surface structures
