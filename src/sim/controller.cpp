@@ -154,18 +154,9 @@ void PlayerController::update(float dt, const PlayerInput& in) {
   };
   auto hotbar = [&] {
     if (p.carrying.is_null()) {
-      auto may = [&](int slot) {
-        if (slot < 0 || slot >= (int)p.inv.size() || weaponSkillMet(p, p.inv[slot])) return true;
-        toastMsg("Needs more melee practice.", "info");
-        return false;
-      };
-      if (in.slot >= 0 && in.slot < 9 && may(in.slot)) p.selected = in.slot;
-      if (in.wheel) { const int n = floormod(p.selected + in.wheel, 9); if (may(n)) p.selected = n; }
-      if (in.swap) {
-        const ItemStack incoming = p.offhand.empty() ? ItemStack() : p.offhand[0];
-        if (!weaponSkillMet(p, incoming)) toastMsg("Needs more melee practice.", "info");
-        else { std::swap(p.inv[p.selected], p.offhand[0]); sfxUi(lv, p, "swap"); p.equip = 0.4f; }
-      }
+      if (in.slot >= 0 && in.slot < 9) p.selected = in.slot;
+      if (in.wheel) p.selected = floormod(p.selected + in.wheel, 9);
+      if (in.swap) { std::swap(p.inv[p.selected], p.offhand[0]); sfxUi(lv, p, "swap"); p.equip = 0.4f; }
       if (in.hotRow && p.inv.size() >= 36) {   // hotbar <- first bag row <- second <- third <- hotbar
         std::vector<ItemStack> hot(p.inv.begin(), p.inv.begin() + 9);
         for (int r = 0; r < 3; r++) for (int i = 0; i < 9; i++) p.inv[r * 9 + i] = p.inv[(r + 1) * 9 + i];
