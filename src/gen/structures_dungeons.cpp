@@ -5,6 +5,7 @@
 // Both are placed per region with the original's own seeds; the dragons and keepers themselves are the creatures
 // workstream's (the plan's data: boss, spawners, lair type).
 #include "gen/structures_common.h"
+#include "gen/structures_vault.h"
 #include "core/registry.h"
 #include <algorithm>
 
@@ -332,6 +333,7 @@ void registerStructureDungeons() {
     t.treeOff = [](const StructurePlan&, int, int) { return true; };
     registerStructure(std::move(t));
   }
+  registerStructureVaults();   // after the lairs, so those two indices stay
 }
 
 } // namespace dq

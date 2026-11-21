@@ -11,6 +11,7 @@
 #include "world/world.h"
 #include "world/dims.h"
 #include "world/light.h"
+#include "gen/structures_vault.h"
 #include <thread>
 #include <cstdio>
 #include <map>
@@ -52,6 +53,41 @@ int main(int argc, char** argv) {
     check(landFloorAt(dimBase(DIM_UNDER4)) && !landFloorAt(dimBase(DIM_OVERWORLD)) && !landFloorAt(dimBase(DIM_UNDER1)) && landRoofAt(dimBase(DIM_SKY2) + 255), "the seams between worlds: under the Underworld and over the open sky, not inside the Overworld's land");
     setWorldLayout(1);
     check(WORLD_H == 1024 && dimOfY(600) == DIM_OVERWORLD && dimBase(DIM_SKYLANDS) == 768 && displayY(512 + 64) == 64, "back to layout 1: exactly as before");
+  }
+
+  printf("[a wayvault]\n");
+  {
+    auto inside = [](const Wayvault::Room& r, int x, int z) {
+      int dx = x - r.x; if (dx < 0) dx = -dx;
+      int dz = z - r.z; if (dz < 0) dz = -dz;
+      return dx <= r.rx && dz <= r.rz;
+    };
+    for (uint32_t seed = 1; seed <= 3; seed++) {
+      Wayvault v;
+      const std::string s = "seed " + std::to_string(seed);
+      if (!planWayvault(seed, v) || v.rooms.size() != 3) { check(false, s + " has three rooms"); continue; }
+      const Wayvault::Room *ante = nullptr, *hall = nullptr, *vault = nullptr;
+      for (const auto& r : v.rooms) {
+        if (r.role == "ante") ante = &r;
+        else if (r.role == "hall") hall = &r;
+        else if (r.role == "vault") vault = &r;
+      }
+      check(ante && hall && vault && ante->rx == 2 && ante->rz == 2 && hall->rx == 6 && hall->rz == 2 && vault->rx == 4 && vault->rz == 4,
+            s + ": ante 2,2, hall 6,2, vault 4,4, three different footprints");
+      if (!ante || !hall || !vault) continue;
+      const int lx = v.lever[0], ly = v.lever[1], lz = v.lever[2];
+      const int dx = v.door[0], dy = v.door[1], dz = v.door[2];
+      const int cx = v.chest[0], cy = v.chest[1], cz = v.chest[2];
+      const int sx = v.spawner[0], sz = v.spawner[2];
+      const int adx = lx > dx ? lx - dx : dx - lx, adz = lz > dz ? lz - dz : dz - lz;
+      check(inside(*ante, lx, lz) && inside(*hall, lx, lz) && ly == dy && ((adx == 1 && adz == 0) || (adx == 0 && adz == 1)),
+            s + ": lever inside the ante and the hall, sharing a side with the door");
+      const int pastX = dx + (dx - lx), pastZ = dz + (dz - lz);
+      check(!inside(*hall, dx, dz) && inside(*vault, pastX, pastZ), s + ": door on the shared face, vault just past it");
+      check(inside(*vault, cx, cz), s + ": chest inside the vault");
+      check(inside(*hall, sx, sz), s + ": spawner inside the hall");
+      check(!(dx == cx && dy == cy && dz == cz), s + ": door is not the chest cell");
+    }
   }
 
   ThreadPool pool{2}; EventBus bus;

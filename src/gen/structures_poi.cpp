@@ -347,6 +347,7 @@ void registerStructurePois() {
   StructureType t;
   t.key = "poi"; t.name = "a place of note";
   t.region = 112; t.margin = 16; t.chance = 0.9; t.clearance = 8;   // (about three for every one of our own places)
+  t.jsIndex = 30;   // the index before the wayvault was registered ahead of this: seeds and ids stay
   t.flags = SF_SURFACE;
   t.plan = [](const TerrainQuery& tq, int x, int z, Mulberry32& rnd, StructurePlan& out) -> bool {
     const PoiPack* pk = poiPack();
