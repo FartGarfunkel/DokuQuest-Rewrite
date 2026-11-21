@@ -34,11 +34,11 @@ const AttackMove MOVES[MV_COUNT] = {
   {"fist_3",       0.58f, 0.05f, 0.13f, 0.23f, 0.45f, 0.40f, 1.3f, 1.2f, 1, true},
   {"tool_1",       0.60f, 0.06f, 0.15f, 0.18f, 0.40f, 0.10f, 1.0f, 1.0f, 1, false},
   {"tool_2",       0.62f, 0.06f, 0.15f, 0.18f, 0.42f, 0.10f, 1.0f, 1.0f, 1, false},
-  // timings copied from the borrowed cut so the drawn blade and the hit still agree; reach and impact are their own
-  {"greatsword_1", 0.60f, 0.05f, 0.13f, 0.20f, 0.40f, 0.25f, 1.0f, 1.4f, 2, false, 1.15f},
-  {"greatsword_2", 0.62f, 0.08f, 0.20f, 0.25f, 0.42f, 0.60f, 1.0f, 1.4f, 2, false, 1.15f},
-  {"spear_1",      0.75f, 0.10f, 0.25f, 0.35f, 0.60f, 1.30f, 1.0f, 1.1f, 2, false, 1.35f},
-  {"spear_2",      0.62f, 0.08f, 0.20f, 0.25f, 0.42f, 0.60f, 1.0f, 1.1f, 2, false, 1.35f},
+  // a heavy diagonal, then the return, quicker than a slow-motion chop and still slower than a sword. The other hand is on the haft.
+  {"greatsword_1", 0.86f, 0.09f, 0.36f, 0.54f, 0.66f, 0.32f, 1.0f, 1.4f, 2, false, 1.15f},
+  {"greatsword_2", 0.78f, 0.08f, 0.30f, 0.46f, 0.60f, 0.24f, 1.0f, 1.4f, 2, false, 1.15f},
+  {"spear_1",      0.85f, 0.08f, 0.28f, 0.42f, 0.58f, 0.90f, 1.0f, 1.1f, 2, false, 1.35f},
+  {"spear_2",      0.75f, 0.08f, 0.22f, 0.36f, 0.52f, 0.40f, 1.0f, 1.1f, 2, false, 1.35f},
   {"mace_1",       0.85f, 0.08f, 0.16f, 0.25f, 0.70f, 0.45f, 1.0f, 1.6f, 1, false, 0.9f},
   {"mace_2",       0.90f, 0.10f, 0.16f, 0.23f, 0.78f, 0.45f, 1.1f, 1.6f, 1, false, 0.9f},
 };

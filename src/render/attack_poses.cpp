@@ -64,23 +64,14 @@ void attackPose(CharAngles& A, const CharPose& pose) {
   if (!pose.atkOff) { attackPoseRaw(A, pose); return; }
   mirrorAngles(A); attackPoseRaw(A, pose); mirrorAngles(A);
 }
-static void attackPoseRaw(CharAngles& A, const CharPose& pose) {
-  const u8 id = pose.atkMove;
-  if (id == MV_NONE || id >= MV_COUNT) return;
-  const AttackMove& M = attackMove(id);
-  const AtkClip& C = CLIPS[clipOf(id)];
-  // the keys' own time starts after the blend in; the move's live window is blend + the clip's contact (sim/attack_moves.cpp)
-  const float blend = C.blend;
-  const float t = pose.atkT, kt = t - blend;
-  // the keys at kt (before the first: the first, being blended in)
+// lay one fitted clip on the body. kt is the clip's own time (after its blend).
+static void applyClip(CharAngles& A, const CharPose& pose, const AtkClip& C, float kt, float k) {
+  if (k <= 0) return;
   const AtkKey* K = C.k;
   int i = 0; while (i < C.n - 2 && kt > K[i + 1].t) i++;
   const AtkKey &a = K[i], &b = K[std::min(i + 1, C.n - 1)];
   const float w = b.t > a.t ? std::clamp((kt - a.t) / (b.t - a.t), 0.f, 1.f) : 1.f;
   auto L = [&](float AtkKey::*f) { return a.*f + (b.*f - a.*f) * w; };
-  // how much of the move shows: in over the blend, out after the recovery
-  const float k = attackWeight(pose);
-  if (k <= 0) return;
   auto mixv = [](vec3 x, vec3 y, float u) { return x + (y - x) * u; };
   const float walk = std::clamp(pose.walkAmt * 1.5f, 0.f, 1.f), st = k * (1 - walk);   // (walking keeps its stride)
   A.body.x += L(&AtkKey::bx) * k; A.body.y += L(&AtkKey::by) * k;
@@ -97,6 +88,35 @@ static void attackPoseRaw(CharAngles& A, const CharPose& pose) {
     A.armL = mixv(A.armL, arm, k); A.foreL.x += (L(&AtkKey::fx) - A.foreL.x) * k; A.toolL = grip * k;
     A.armR = mixv(A.armR, other, k * 0.85f); A.foreR.x += (L(&AtkKey::ofx) - A.foreR.x) * k * 0.85f;
   }
+}
+
+// a heavy cut plays a measured arc, retimed so the part that is already in front fills this move's own live window.
+// The wind-up (the cock over the shoulder) stays before the window. c0..c1 are clip times, not move times.
+static float heavyClipTime(float t, float hitFrom, float hitTo, float c0, float c1) {
+  if (hitFrom <= 1e-4f || t <= hitFrom) return c0 * (hitFrom > 1e-4f ? std::clamp(t / hitFrom, 0.f, 1.f) : 1.f);
+  if (t >= hitTo) return c1;
+  return c0 + (c1 - c0) * ((t - hitFrom) / (hitTo - hitFrom));
+}
+static void attackPoseRaw(CharAngles& A, const CharPose& pose) {
+  const u8 id = pose.atkMove;
+  if (id == MV_NONE || id >= MV_COUNT) return;
+  const float k = attackWeight(pose);
+  float kt;
+  const AtkClip* C;
+  if (id == MV_GS1 || id == MV_GS2 || id == MV_SPEAR1 || id == MV_SPEAR2) {
+    const AttackMove& M = attackMove(id);
+    const bool spear = id == MV_SPEAR1 || id == MV_SPEAR2;
+    // spear: the thrust, both cuts. greatsword: the diagonal, then the return. Times are where that arc is in front.
+    C = spear ? &CLIPS[MV_SWORD_DASH - 1] : &CLIPS[(id == MV_GS2 ? MV_SWORD2 : MV_SWORD1) - 1];
+    const float c0 = spear ? 0.105f : id == MV_GS2 ? 0.105f : 0.055f;
+    const float c1 = spear ? 0.250f : id == MV_GS2 ? 0.200f : 0.105f;
+    kt = heavyClipTime(pose.atkT, M.hitFrom, M.hitTo, c0, c1);
+  } else {
+    C = &CLIPS[clipOf(id)];
+    // the keys' own time starts after the blend in; the move's live window is blend + the clip's contact (sim/attack_moves.cpp)
+    kt = pose.atkT - C->blend;
+  }
+  applyClip(A, pose, *C, kt, k);
   // the blow follows the look up and down: the chest pitches with it (pitch squared over 30 degrees, at most 30)
   const float pitch = std::clamp(pose.headPitch, -1.2f, 1.2f), cp = std::copysign(std::min(pitch * pitch / 0.52f, 0.52f), pitch);
   A.body.x += cp * 0.6f * k;

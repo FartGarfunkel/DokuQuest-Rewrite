@@ -1,6 +1,7 @@
 // render/char_anim.cpp — avatarAnim (render/skins.js) with game/anim.js's livelier bodies, and the part matrices
 // of avatarDraws / gearDraws.
 #include "render/char_anim.h"
+#include "sim/attack_moves.h"
 #include <cstdio>
 #include <cstdlib>
 
@@ -579,6 +580,11 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
   }
   vec3 hs = vec3(S.head);
   if (S.headShape == "long") hs.y *= 1.12f; else if (S.headShape == "wide") { hs.x *= 1.12f; hs.z *= 1.05f; }
+  // a two-handed cut faces the blow. The borrowed sword twists the chest so far that the off shoulder
+  // sits behind the hilt and the other hand cannot take it.
+  if (pose.twoHand && !pose.swim && !pose.crawl && pose.deathT <= 0 &&
+      (pose.atkMove == MV_GS1 || pose.atkMove == MV_GS2 || pose.atkMove == MV_SPEAR1 || pose.atkMove == MV_SPEAR2))
+    A.body.y *= 0.4f;
   mat4 root = glm::translate(base, vec3(0, A.lift, 0));
   root = glm::scale(root, vec3(CHAR_PX));   // model pixels from here on
   auto child = [](const mat4& parent, vec3 off, vec3 r) { return rot(glm::translate(parent, off), r); };
@@ -600,12 +606,69 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     R.scale[up] = R.scale[dn] = glm::scale(mat4(1), vec3(b, 1, b));
     R.scale[lu] = R.scale[ld] = glm::scale(mat4(1), vec3(b, kl, b));
   }
-  // a two-handed weapon: the free hand reaches across and takes the haft, just below the hand that holds it
+  // a two-handed weapon: the free hand reaches across and takes the haft, just below the hand that holds it.
+  // A greatsword or spear cut keeps that haft in front of the chest. The borrowed sword arm is fully out, and the
+  // other arm cannot reach it; the hilt comes back to where both hands can hold it, and the blade keeps the cut's direction.
   if (pose.twoHand && !pose.swim && !pose.crawl && pose.deathT <= 0) {
     const bool leftWeapon = pose.atkOff;
-    const int wDn = (leftWeapon ? CP_ARML_U : CP_ARMR_U) + 1;
+    const int wUp = leftWeapon ? CP_ARML_U : CP_ARMR_U, wDn = wUp + 1;
     const int oUp = leftWeapon ? CP_ARMR_U : CP_ARML_U, oDn = oUp + 1;
-    const vec3 grip = vec3(R.part[wDn] * vec4(0, -3.2f, -0.6f, 1));
+    const bool heavy = pose.atkMove == MV_GS1 || pose.atkMove == MV_GS2 || pose.atkMove == MV_SPEAR1 || pose.atkMove == MV_SPEAR2;
+    const vec2 wTool = leftWeapon ? R.toolL : R.toolR;
+    if (heavy) {
+      const mat4 G0 = gripTurn(R.part[wDn], wTool);
+      const vec3 B = glm::normalize(mat3(G0) * vec3(0.f, 0.472f, -1.448f));
+      const vec3 puW = M.pivot[wUp], puO = M.pivot[oUp];
+      const vec3 Sw(puW.x * b, puW.y - 12, puW.z), So(puO.x * b, puO.y - 12, puO.z);
+      const float l1w = glm::length(M.pivot[wDn] - puW);
+      const float lim = l1w + BOW_FIST - 1.1f;
+      const vec3 fistBody = vec3(glm::inverse(bodyM) * vec4(vec3(G0 * vec4(0, -6, -1, 1)), 1));
+      const vec3 anchor(0.f, 8.5f, -5.2f);
+      auto fits = [&](vec3 p) { return glm::length(p - Sw) <= lim && glm::length(p - So) <= lim; };
+      vec3 hb = anchor;
+      if (fits(fistBody)) hb = fistBody;
+      else {
+        vec3 lo = anchor, hi = fistBody;
+        for (int i = 0; i < 14; i++) { const vec3 mid = (lo + hi) * 0.5f; if (fits(mid)) lo = mid; else hi = mid; }
+        hb = lo;
+      }
+      vec3& wArm = leftWeapon ? A.armL : A.armR;
+      vec3& wFore = leftWeapon ? A.foreL : A.foreR;
+      // the borrowed grip turn swings the blade off the forearm; with it cleared, a twist can put the blade back on the cut
+      if (leftWeapon) { A.toolL = vec2(0); R.toolL = vec2(0); }
+      else { A.toolR = vec2(0); R.toolR = vec2(0); }
+      reachArm(Sw, hb, l1w, BOW_FIST, vec3(leftWeapon ? -1.f : 1.f, -0.2f, 0.15f), wArm, wFore);
+      const vec3 armOffW(puW.x * b, puW.y - 12, puW.z);
+      R.part[wUp] = child(bodyM, armOffW, wArm);
+      R.part[wDn] = child(R.part[wUp], M.pivot[wDn] - puW, wFore);
+      // one twist about the forearm keeps the fist and aims the blade along the borrowed cut
+      const vec3 elbow = vec3(R.part[wDn][3]);
+      const vec3 fistNow = vec3(R.part[wDn] * vec4(0, -6, -1, 1));
+      const vec3 axis = fistNow - elbow;
+      if (glm::length(axis) > 1e-4f) {
+        const vec3 axn = glm::normalize(axis);
+        const mat4 base = R.part[wDn];
+        float bestD = -2.f;
+        mat4 bestM = base;
+        for (int i = 0; i < 180; i++) {
+          const float ang = (i / 179.f) * TAU - PI;
+          mat4 spin(1.f);
+          spin = glm::translate(spin, elbow);
+          spin = glm::rotate(spin, ang, axn);
+          spin = glm::translate(spin, -elbow);
+          R.part[wDn] = spin * base;
+          const vec3 dir = glm::normalize(mat3(R.part[wDn]) * vec3(0.f, 0.472f, -1.448f));
+          const float d = glm::dot(dir, B);
+          if (d > bestD) { bestD = d; bestM = R.part[wDn]; }
+        }
+        R.part[wDn] = bestM;
+      }
+    }
+    const vec2 heldTool = leftWeapon ? R.toolL : R.toolR;
+    const mat4 Gw = gripTurn(R.part[wDn], heldTool);
+    const vec3 along = glm::normalize(mat3(Gw) * vec3(0.f, 0.472f, -1.448f));
+    const vec3 onHaft = vec3(Gw * vec4(0, -6, -1, 1)) - along * (2.8f * CHAR_PX);   // down the grip from the fist, not up the blade
+    const vec3 grip = heavy ? onHaft : vec3(R.part[wDn] * vec4(0, -9.2f, -1.3f, 1));   // past the fist, on the haft, not on the forearm
     const vec3 inBody = vec3(glm::inverse(bodyM) * vec4(grip, 1));
     const vec3 pu = M.pivot[oUp];
     const vec3 S(pu.x * b, pu.y - 12, pu.z);

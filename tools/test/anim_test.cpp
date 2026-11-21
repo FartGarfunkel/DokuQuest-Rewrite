@@ -52,11 +52,14 @@ static float bladeLen(u8 id) {
   if (id >= MV_FIST1 && id <= MV_FIST3) return 0.18f;
   if (id >= MV_DAGGER1 && id <= MV_DAGGER3) return 0.55f;
   if (id == MV_AXE1 || id == MV_AXE2 || id == MV_MACE1 || id == MV_MACE2) return 0.85f;
+  if (id == MV_GS1 || id == MV_GS2) return 1.40f;   // the greatsword's blade is longer than a sword's (0.95)
+  if (id == MV_SPEAR1 || id == MV_SPEAR2) return 1.15f;
   if (id == MV_TOOL1 || id == MV_TOOL2) return 0.70f;
   return 0.95f;
 }
 static void drawnBlade(u8 id, float t, vec3& hilt, vec3& tip) {
   CharPose p; p.atkMove = id; p.atkT = std::max(t, 0.0001f); p.held = true;
+  p.twoHand = id == MV_GS1 || id == MV_GS2 || id == MV_SPEAR1 || id == MV_SPEAR2;
   CharRig R; charRig(bladeModel(), p, mat4(1), R, false, false);
   const bool left = attackMove(id).leftHand;
   const mat4 G = gripTurn(R.part[left ? CP_ARML_D : CP_ARMR_D], left ? R.toolL : R.toolR);
@@ -395,6 +398,64 @@ int main(int argc, char** argv) {
     bool sane = true;
     for (u8 id = MV_SWORD1; id < MV_COUNT; id++) { const AttackMove& m = attackMove(id); sane &= m.turnLock <= m.hitFrom && m.hitFrom < m.hitTo && m.hitTo <= m.recovery && m.recovery <= m.len; }
     CHECK(sane, "every move: lock <= hitFrom < hitTo <= recovery <= len");
+  }
+  {   // a greatsword at its own live hit: both hands on the haft, the blade further from the body than a sword.
+      // Times stay the live cuts (about 0.86s, then 0.78s), not a retune back to 0.7s.
+    auto fist = [](const CharRig& R, bool left) {
+      const mat4 G = gripTurn(R.part[left ? CP_ARML_D : CP_ARMR_D], left ? R.toolL : R.toolR);
+      const vec3 f(G * vec4(0, -6, -1, 1));
+      return vec3(f.x, f.y, -f.z);   // attacker frame: right, up, ahead
+    };
+    auto rig = [](u8 id, float t, bool two) {
+      CharPose p; p.atkMove = id; p.atkT = std::max(t, 0.0001f); p.held = true; p.twoHand = two;
+      CharRig R; charRig(bladeModel(), p, mat4(1), R, false, false);
+      return R;
+    };
+    const AttackMove& g1 = attackMove(MV_GS1);
+    const AttackMove& g2 = attackMove(MV_GS2);
+    const AttackMove& s1 = attackMove(MV_SWORD1);
+    const AttackMove& sp = attackMove(MV_SPEAR1);
+    const vec3 chest(0.f, 1.15f, 0.f);
+    auto fromBody = [&](vec3 p) { return glm::length(p - chest); };
+    CHECK(std::fabs(g1.len - 0.86f) < 0.001f && std::fabs(g1.hitFrom - 0.36f) < 0.001f && std::fabs(g1.hitTo - 0.54f) < 0.001f
+          && std::fabs(g2.len - 0.78f) < 0.001f && std::fabs(g2.hitFrom - 0.30f) < 0.001f && std::fabs(g2.hitTo - 0.46f) < 0.001f
+          && g1.hitFrom > s1.hitTo && g1.reach > s1.reach,
+          "the greatsword's live cuts are 0.86s then 0.78s, hitting later and reaching further than a sword");
+    auto handsOn = [&](u8 id, float t, vec3& main, vec3& off) {
+      const CharRig R = rig(id, t, true);
+      main = fist(R, false); off = fist(R, true);
+      const bool ahead = main.z > 0.10f && off.z > 0.10f && main.y > 0.55f && off.y > 0.55f && main.y < 1.85f && off.y < 1.85f;
+      const CharRig lone = rig(id, t, false);
+      const float on = glm::length(main - off), free = glm::length(fist(lone, true) - main);
+      return ahead && on < 0.35f && on + 0.05f < free;
+    };
+    vec3 r1, l1, r2, l2;
+    const float g1t = 0.5f * (g1.hitFrom + g1.hitTo), g2t = 0.5f * (g2.hitFrom + g2.hitTo);
+    const bool cut1 = handsOn(MV_GS1, g1t, r1, l1), cut2 = handsOn(MV_GS2, g2t, r2, l2);
+    CHECK(cut1, "the first cut, at the hit: both hands in front of the chest and on the haft (R %.2f %.2f %.2f L %.2f %.2f %.2f, apart %.2f)",
+          r1.x, r1.y, r1.z, l1.x, l1.y, l1.z, glm::length(r1 - l1));
+    CHECK(cut2, "the return cut, at the hit: both hands in front of the chest and on the haft (R %.2f %.2f %.2f L %.2f %.2f %.2f, apart %.2f)",
+          r2.x, r2.y, r2.z, l2.x, l2.y, l2.z, glm::length(r2 - l2));
+    vec3 sh, st, gh, gt, g2h, g2tip;
+    drawnBlade(MV_SWORD1, 0.5f * (s1.hitFrom + s1.hitTo), sh, st);
+    drawnBlade(MV_GS1, g1t, gh, gt);
+    drawnBlade(MV_GS2, g2t, g2h, g2tip);
+    const float swOut = fromBody(st), gsOut = fromBody(gt), gs2Out = fromBody(g2tip);
+    vec3 shSame, stSame, sh2, st2;
+    drawnBlade(MV_SWORD1, g1t, shSame, stSame);
+    drawnBlade(MV_SWORD2, g2t, sh2, st2);
+    const float same1 = fromBody(stSame), same2 = fromBody(st2);
+    CHECK(gsOut > swOut + 0.03f && gs2Out > swOut + 0.03f && gsOut > same1 && gs2Out > same2 && glm::length(gt - g2tip) > 0.25f,
+          "at the hit the greatsword's blade is further from the body than a sword, and the return is its own sweep (%.2f, %.2f vs %.2f; same time %.2f, %.2f)",
+          gsOut, gs2Out, swOut, same1, same2);
+    vec3 sr, sl;
+    const float spt = 0.5f * (sp.hitFrom + sp.hitTo);
+    const bool spearHands = handsOn(MV_SPEAR1, spt, sr, sl);
+    vec3 sph, sptp; drawnBlade(MV_SPEAR1, spt, sph, sptp);
+    const vec3 dir = sptp - sph;
+    CHECK(spearHands && dir.z > 0.45f && dir.z > std::fabs(dir.x) && dir.z > std::fabs(dir.y),
+          "a spear thrusts along the look with both hands on the shaft (hands %.2f apart, tip %.2f %.2f %.2f)",
+          glm::length(sr - sl), sptp.x, sptp.y, sptp.z);
   }
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails;
