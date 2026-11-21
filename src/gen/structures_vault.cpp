@@ -10,8 +10,7 @@ constexpr int kReg = 192;
 constexpr int kFloor = 0;     // mossy cobblestone
 constexpr int kAir0 = 1;      // lever, door lower, chest, spawner
 constexpr int kAir1 = 4;
-constexpr int kCeil = 5;      // cobblestone
-constexpr int kCover = 6;     // land left over the ceiling
+constexpr int kCover = 6;     // land left over the ceiling, before the shaft opens it
 
 // Closed door is a full slab on +Z when facing 0. Turn that slab onto the vault side of the cell
 // so the passage (lever -> door -> vault) is the thin axis.
@@ -43,6 +42,9 @@ bool planWayvault(uint32_t seed, Wayvault& out) {
   out.door[0] = X(7); out.door[1] = kAir0; out.door[2] = Z(2);
   out.chest[0] = X(12); out.chest[1] = kAir0; out.chest[2] = Z(0);
   out.spawner[0] = X(-3); out.spawner[1] = kAir0; out.spawner[2] = Z(0);   // off the hall's centre, still inside it
+  // The column stands on the ante. Its top is relative here (no world surface yet): at least 4 above the ceiling.
+  // place raises shaft[1] to the land it sampled.
+  out.shaft[0] = ante.x; out.shaft[1] = kWayvaultCeil + 4; out.shaft[2] = ante.z;
   return true;
 }
 
@@ -71,8 +73,11 @@ static bool wayvaultPlace(const StructureIndex& idx, const TerrainQuery& t, int 
     if (vk >= 0) idx.near(mx, mz, 48, near, vk);
     if (!near.empty()) return false;
   }
-  const int y = col.y - (kCeil + kCover);
-  if (y < 2 || y + kCeil >= col.y) return false;
+  const int y = col.y - (kWayvaultCeil + kCover);
+  if (y < 2 || y + kWayvaultCeil >= col.y) return false;
+  // shaft[1] is local to the floor. The sampled surface is at least 4 above the ante ceiling, or we lift it there.
+  v.shaft[1] = std::max(v.shaft[1], kWayvaultCeil + 4);
+  v.shaft[1] = std::max(v.shaft[1], col.y - y);
   S.id = "wv" + std::to_string(rx) + "_" + std::to_string(rz);
   S.seed = layout;   // build replans with this, so the world matches planWayvault
   S.x0 = x0; S.z0 = z0; S.x1 = x1; S.z1 = z1;
@@ -80,7 +85,7 @@ static bool wayvaultPlace(const StructureIndex& idx, const TerrainQuery& t, int 
   S.y = y;
   S.name = "a wayvault";
   const int sx = ox + v.spawner[0], sy = y + v.spawner[1], sz = oz + v.spawner[2];
-  S.data = {{"spawners", json::array({mobAt(sx, sy, sz, "skeleton")})}};
+  S.data = {{"spawners", json::array({mobAt(sx, sy, sz, "skeleton")})}, {"shaftTop", v.shaft[1]}};
   return true;
 }
 
@@ -93,7 +98,7 @@ static void wayvaultBuild(ChunkWriter& w, const StructurePlan& S) {
     const int x0 = ox + r.x - r.rx, x1 = ox + r.x + r.rx, z0 = oz + r.z - r.rz, z1 = oz + r.z + r.rz;
     for (int z = z0 - 1; z <= z1 + 1; z++) for (int x = x0 - 1; x <= x1 + 1; x++) {
       if (!P.in(x, z)) continue;
-      for (int y = kFloor; y <= kCeil; y++) P.put(x, oy + y, z, "cobblestone");
+      for (int y = kFloor; y <= kWayvaultCeil; y++) P.put(x, oy + y, z, "cobblestone");
     }
   };
   auto carveRoom = [&](const Wayvault::Room& r) {
@@ -118,6 +123,34 @@ static void wayvaultBuild(ChunkWriter& w, const StructurePlan& S) {
     P.setEntity(ci, json{{"type", "chest"}, {"items", dungeonLoot("rare", r)}, {"lk", "d:rare"}});
   }
   P.spawner(ox + v.spawner[0], oy + v.spawner[1], oz + v.spawner[2], "skeleton");
+  // Air from the ante ceiling up through the shaft top, cobblestone around it. The sleeve starts at the
+  // ceiling, so it does not fill the ante. place stored the sampled surface; a higher column is opened too.
+  const Wayvault::Room* ante = nullptr;
+  for (const auto& r : v.rooms) if (r.role == "ante") ante = &r;
+  int topLocal = v.shaft[1];
+  if (S.data.contains("shaftTop") && S.data["shaftTop"].is_number_integer())
+    topLocal = std::max(topLocal, S.data["shaftTop"].get<int>());
+  if (topLocal < kWayvaultCeil + 4) topLocal = kWayvaultCeil + 4;
+  const int sx = ox + v.shaft[0], sz = oz + v.shaft[2];
+  int y1 = oy + topLocal;
+  const int g = P.ground(sx, sz);
+  if (g > y1) y1 = g;
+  const int y0 = oy + kWayvaultCeil;
+  auto anteInside = [&](int x, int y, int z) {
+    if (!ante) return false;
+    const int ly = y - oy;
+    if (ly < kAir0 || ly > kAir1) return false;
+    int dx = x - (ox + ante->x); if (dx < 0) dx = -dx;
+    int dz = z - (oz + ante->z); if (dz < 0) dz = -dz;
+    return dx <= ante->rx && dz <= ante->rz;
+  };
+  for (int y = y0; y <= y1; y++) for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
+    const int x = sx + dx, z = sz + dz;
+    if (!P.in(x, z)) continue;
+    if (dx == 0 && dz == 0) { P.put(x, y, z, "air"); continue; }
+    if (anteInside(x, y, z)) continue;
+    P.put(x, y, z, "cobblestone");
+  }
 }
 
 void registerStructureVaults() {

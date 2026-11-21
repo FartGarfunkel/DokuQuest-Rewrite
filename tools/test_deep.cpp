@@ -87,6 +87,8 @@ int main(int argc, char** argv) {
       check(inside(*vault, cx, cz), s + ": chest inside the vault");
       check(inside(*hall, sx, sz), s + ": spawner inside the hall");
       check(!(dx == cx && dy == cy && dz == cz), s + ": door is not the chest cell");
+      check(inside(*ante, v.shaft[0], v.shaft[2]) && v.shaft[1] >= kWayvaultCeil + 4,
+            s + ": shaft on the ante, at least 4 above the ceiling");
     }
   }
 
