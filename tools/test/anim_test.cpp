@@ -484,20 +484,21 @@ int main(int argc, char** argv) {
     const vec3 r = fist(two, false), l = fist(two, true);
     const float apart = glm::length(r - l);
     const vec3 chest(0.f, 1.15f, 0.f);
-    CHECK(apart < 0.42f, "idle: both hands meet on the grip (apart %.2f)", apart);
+    CHECK(apart < 0.28f, "idle: both hands meet on the hilt (apart %.2f)", apart);
     CHECK(r.z > 0.08f && l.z > 0.08f, "idle: the grip is in front of the chest (R z %.2f, L z %.2f)", r.z, l.z);
-    CHECK(r.y > 0.85f && r.y < 1.45f && l.y > 0.85f && l.y < 1.45f,
-          "idle: the hands sit at the chest, not the hip (R y %.2f, L y %.2f)", r.y, l.y);
-    CHECK(std::fabs(r.x) < 0.45f, "idle: the main hand stays near the middle (x %.2f)", r.x);
+    CHECK(r.y > 0.82f && r.y < 1.22f && l.y > 0.82f && l.y < 1.28f,
+          "idle: the hands sit at mid-chest, not up by the shoulder (R y %.2f, L y %.2f)", r.y, l.y);
+    CHECK(std::fabs(r.x) < 0.40f, "idle: the main hand stays near the middle (x %.2f)", r.x);
     const CharAngles A = charAnimate([]{ CharPose p; p.held = true; p.twoHand = true; p.greatsword = true; return p; }());
-    CHECK(A.foreR.x > 0.55f && A.foreL.x > 0.55f, "idle: both elbows stay bent (foreR %.2f, foreL %.2f)", A.foreR.x, A.foreL.x);
-    CHECK(glm::length(r - chest) < 0.85f, "idle: the grip stays on the chest (%.2f from centre)", glm::length(r - chest));
+    CHECK(A.foreR.x > 1.15f && A.foreL.x > 1.15f, "idle: both elbows stay bent (foreR %.2f, foreL %.2f)", A.foreR.x, A.foreL.x);
+    CHECK(glm::length(r - chest) < 0.70f, "idle: the grip stays on the chest (%.2f from centre)", glm::length(r - chest));
     const mat4 G = gripTurn(two.part[CP_ARMR_D], two.toolR);
     const vec3 f(G * vec4(0, -6, -1, 1));
     const vec3 d = glm::normalize(mat3(G) * vec3(0, 0.472f, -1.448f));
     const vec3 tip(f + d * 1.40f);
     const vec3 tipA(tip.x, tip.y, -tip.z), fistA(f.x, f.y, -f.z);
-    CHECK(tipA.y > fistA.y + 0.35f, "idle: the blade stands up from the grip, not along the arm (tip y %.2f, fist y %.2f)", tipA.y, fistA.y);
+    CHECK(tipA.y > fistA.y + 0.10f && tipA.y < 2.00f,
+          "idle: the blade is a diagonal from the hilt, not a pole over the head (tip y %.2f fist y %.2f z %.2f x %.2f)", tipA.y, fistA.y, tipA.z, tipA.x);
     CHECK(tipA.z > 0.05f, "idle: the blade is ahead, not resting on the shoulder (tip z %.2f)", tipA.z);
     CharPose cut; cut.atkMove = MV_GS1; cut.atkT = 0.45f; cut.held = true; cut.twoHand = true;
     CharRig C; charRig(bladeModel(), cut, mat4(1), C, false, false);

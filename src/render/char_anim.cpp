@@ -547,11 +547,12 @@ CharAngles charAnimate(const CharPose& pose) {
       && pose.bow <= 0.f && pose.eat <= 0.f && !pose.gui && !pose.scope && !pose.carry
       && !pose.swim && !pose.crawl && !pose.air && !pose.sleep && pose.spellR <= 0.f && pose.roll <= 0.f) {
     if (pose.greatsword) {
-      A.armR = vec3(0.72f, -0.38f, 0.04f);
-      A.foreR = vec3(1.28f, 0.58f, 0.22f);
-      A.armL = vec3(0.74f, 0.42f, -0.02f);
-      A.foreL = vec3(1.30f, -0.50f, -0.16f);
-      A.toolR = vec2(-1.05f, 0.12f);
+      // mid-chest, left arm across, elbows folded: both fists stacked on the hilt, blade a diagonal ahead
+      A.armR = vec3(0.00f, -0.38f, 0.04f);
+      A.foreR = vec3(1.78f, 0.48f, 0.14f);
+      A.armL = vec3(0.04f, 0.64f, 0.04f);
+      A.foreL = vec3(1.80f, -0.46f, -0.10f);
+      A.toolR = vec2(-1.45f, 0.25f);
     } else {
       A.armR = vec3(0.82f, -0.22f, -0.08f);
       A.foreR = vec3(1.22f, 0.40f, 0.16f);
@@ -699,14 +700,15 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     const mat4 G = gripTurn(R.part[wDn], turn);
     const vec3 fist = vec3(G * vec4(0, -6, -1, 1));
     const vec3 along = glm::normalize(mat3(G) * vec3(0, 0.472f, -1.448f));
-    const vec3 grip = fist - along * 0.16f;   // the off hand on the handle, toward the pommel
+    const vec3 grip = pose.greatsword ? fist : fist - along * 0.16f;   // both fists on the hilt; a spear keeps a little shaft
     const vec3 inBody = vec3(glm::inverse(bodyM) * vec4(grip, 1));
     const vec3 pu = M.pivot[oUp];
     const vec3 S(pu.x * b, pu.y - 12, pu.z);
     const float l1 = glm::length(M.pivot[oDn] - pu);
+    const float l2 = glm::length(vec3(0.f, -6.f, -1.f));   // the same fist the blade is drawn from
     vec3& arm = leftWeapon ? A.armR : A.armL;
     vec3& fore = leftWeapon ? A.foreR : A.foreL;
-    reachArm(S, inBody, l1, BOW_FIST, vec3(leftWeapon ? 1.2f : -1.2f, -0.15f, 0.45f), arm, fore);
+    reachArm(S, inBody, l1, l2, vec3(leftWeapon ? 1.2f : -1.2f, -0.15f, 0.45f), arm, fore);
     const vec3 armOff(pu.x * b, pu.y - 12, pu.z);
     R.part[oUp] = child(bodyM, armOff, arm);
     R.part[oDn] = child(R.part[oUp], M.pivot[oDn] - pu, fore);
