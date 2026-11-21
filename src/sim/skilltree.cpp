@@ -18,7 +18,7 @@ int SkillTree::find(const std::string& id) const {
 const std::vector<SkillTree>& skillTrees() {
   static const std::vector<SkillTree> T = [] {
     std::vector<SkillTree> out;
-    auto j = readJson(dataDir() / "local_models" / "skilltree.json");
+    auto j = readJson(dataDir() / "skilltree.json");
     if (!j || !j->contains("trees")) return out;
     for (const char* k : {"warrior", "ranger", "rogue", "mage"}) {
       if (!(*j)["trees"].contains(k)) continue;

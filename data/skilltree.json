@@ -1,0 +1,1925 @@
+{
+  "trees": {
+    "warrior": {
+      "name": "Knight",
+      "limits": {
+        "Keystone": 1
+      },
+      "nodes": [
+        {
+          "id": "warrior",
+          "title": "Knight",
+          "desc": "A practiced stance: harder blows and a little more blood to spend.",
+          "x": 0.0,
+          "y": 0.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "damage",
+              "v": 2.0,
+              "op": 0
+            },
+            {
+              "attr": "health",
+              "v": 4.0,
+              "op": 0
+            }
+          ],
+          "links": [
+            "w_might1",
+            "w_guard1",
+            "w_wound1"
+          ],
+          "one": [],
+          "tags": [],
+          "start": true,
+          "col": "ebd93b"
+        },
+        {
+          "id": "w_might1",
+          "title": "Deeper Cut",
+          "desc": "Your blows bite deeper.",
+          "x": 56.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "damage",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_might2",
+            "warrior"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "c45c26"
+        },
+        {
+          "id": "w_might2",
+          "title": "Quick Hands",
+          "desc": "You recover into the next swing sooner.",
+          "x": 112.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "attack_speed",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_might1",
+            "w_might3"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "c45c26"
+        },
+        {
+          "id": "w_might3",
+          "title": "Guard Break",
+          "desc": "Hits shake a stance harder.",
+          "x": 168.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "posture_damage",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_might2",
+            "w_might4"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "c45c26"
+        },
+        {
+          "id": "w_might4",
+          "title": "Planted Hit",
+          "desc": "A blow that lands also shoves.",
+          "x": 224.0,
+          "y": 0.0,
+          "size": 1,
+          "bonus": [
+            {
+              "attr": "damage",
+              "v": 0.12,
+              "op": 1
+            },
+            {
+              "attr": "knockback",
+              "v": 0.15,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_might3",
+            "w_might5"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "c45c26"
+        },
+        {
+          "id": "w_might5",
+          "title": "Faster Follow",
+          "desc": "The next cut comes quicker still.",
+          "x": 280.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "attack_speed",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_might4",
+            "w_might6"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "c45c26"
+        },
+        {
+          "id": "w_might6",
+          "title": "Breaker",
+          "desc": "You crack a guard open and the blow hits harder.",
+          "x": 336.0,
+          "y": 0.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "damage",
+              "v": 0.15,
+              "op": 1
+            },
+            {
+              "attr": "posture_damage",
+              "v": 0.2,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_might5"
+          ],
+          "one": [],
+          "tags": [
+            "Keystone"
+          ],
+          "start": false,
+          "col": "c45c26"
+        },
+        {
+          "id": "w_guard1",
+          "title": "Long Breath",
+          "desc": "More stamina to spend.",
+          "x": 0.0,
+          "y": 56.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "stamina",
+              "v": 10.0,
+              "op": 0
+            }
+          ],
+          "links": [
+            "w_guard2",
+            "warrior"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "6a8ad0"
+        },
+        {
+          "id": "w_guard2",
+          "title": "Thick Hide",
+          "desc": "A little less of every blow reaches you.",
+          "x": 0.0,
+          "y": 112.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "damage_reduction",
+              "v": 0.04,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_guard1",
+            "w_guard3"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "6a8ad0"
+        },
+        {
+          "id": "w_guard3",
+          "title": "Set Feet",
+          "desc": "You are harder to shove.",
+          "x": 0.0,
+          "y": 168.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "knock_resist",
+              "v": 0.15,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_guard2",
+            "w_guard4"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "6a8ad0"
+        },
+        {
+          "id": "w_guard4",
+          "title": "Mail",
+          "desc": "Armour sits better and stamina comes back.",
+          "x": 0.0,
+          "y": 224.0,
+          "size": 1,
+          "bonus": [
+            {
+              "attr": "armor",
+              "v": 2.0,
+              "op": 0
+            },
+            {
+              "attr": "stamina_regen",
+              "v": 0.1,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_guard3",
+            "w_guard5"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "6a8ad0"
+        },
+        {
+          "id": "w_guard5",
+          "title": "Steady Head",
+          "desc": "Stuns and chills bite less.",
+          "x": 0.0,
+          "y": 280.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "stun_armor",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_guard4",
+            "w_guard6"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "6a8ad0"
+        },
+        {
+          "id": "w_guard6",
+          "title": "Bulwark",
+          "desc": "Less harm, and more of you to take it.",
+          "x": 0.0,
+          "y": 336.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "damage_reduction",
+              "v": 0.08,
+              "op": 1
+            },
+            {
+              "attr": "health",
+              "v": 0.1,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_guard5"
+          ],
+          "one": [],
+          "tags": [
+            "Keystone"
+          ],
+          "start": false,
+          "col": "6a8ad0"
+        },
+        {
+          "id": "w_wound1",
+          "title": "Nick",
+          "desc": "Blows sometimes open a bleed.",
+          "x": -56.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "bleed_chance",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_wound2",
+            "warrior"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "a03030"
+        },
+        {
+          "id": "w_wound2",
+          "title": "Wider Cut",
+          "desc": "That bleed comes more often.",
+          "x": -112.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "bleed_chance",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_wound1",
+            "w_wound3"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "a03030"
+        },
+        {
+          "id": "w_wound3",
+          "title": "Take It Back",
+          "desc": "A share of the harm you deal returns as health.",
+          "x": -168.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "lifesteal",
+              "v": 0.04,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_wound2",
+            "w_wound4"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "a03030"
+        },
+        {
+          "id": "w_wound4",
+          "title": "Open Veins",
+          "desc": "Bleeding is a habit of your blade.",
+          "x": -224.0,
+          "y": 0.0,
+          "size": 1,
+          "bonus": [
+            {
+              "attr": "bleed_chance",
+              "v": 0.16,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_wound3",
+            "w_wound5"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "a03030"
+        },
+        {
+          "id": "w_wound5",
+          "title": "Cornered",
+          "desc": "The lower you are, the harder you hit.",
+          "x": -280.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "rage",
+              "v": 0.2,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_wound4",
+            "w_wound6"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "a03030"
+        },
+        {
+          "id": "w_wound6",
+          "title": "Last Stand",
+          "desc": "Low health hits harder still, and more of the harm comes back.",
+          "x": -336.0,
+          "y": 0.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "rage",
+              "v": 0.25,
+              "op": 1
+            },
+            {
+              "attr": "lifesteal",
+              "v": 0.06,
+              "op": 1
+            }
+          ],
+          "links": [
+            "w_wound5"
+          ],
+          "one": [],
+          "tags": [
+            "Keystone"
+          ],
+          "start": false,
+          "col": "a03030"
+        }
+      ]
+    },
+    "ranger": {
+      "name": "Ranger",
+      "limits": {
+        "Keystone": 1
+      },
+      "nodes": [
+        {
+          "id": "ranger_1",
+          "title": "Ranger",
+          "desc": "The bow comes up quicker and the shot hits harder.",
+          "x": 0.0,
+          "y": 0.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "arrow_damage",
+              "v": 0.08,
+              "op": 1
+            },
+            {
+              "attr": "draw_speed",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_shot1",
+            "r_hunt1",
+            "r_gift1"
+          ],
+          "one": [],
+          "tags": [],
+          "start": true,
+          "col": "6ac08a"
+        },
+        {
+          "id": "r_shot1",
+          "title": "Heavier Shaft",
+          "desc": "Arrows hit harder.",
+          "x": 56.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "arrow_damage",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_shot2",
+            "ranger_1"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "4a8a50"
+        },
+        {
+          "id": "r_shot2",
+          "title": "True Flight",
+          "desc": "Arrows fly faster.",
+          "x": 112.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "arrow_speed",
+              "v": 0.1,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_shot1",
+            "r_shot3"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "4a8a50"
+        },
+        {
+          "id": "r_shot3",
+          "title": "Nocked",
+          "desc": "The string comes back sooner.",
+          "x": 168.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "draw_speed",
+              "v": 0.1,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_shot2",
+            "r_shot4"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "4a8a50"
+        },
+        {
+          "id": "r_shot4",
+          "title": "Spent Shafts",
+          "desc": "Sometimes the arrow is still yours after the shot.",
+          "x": 224.0,
+          "y": 0.0,
+          "size": 1,
+          "bonus": [
+            {
+              "attr": "arrow_return",
+              "v": 0.15,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_shot3",
+            "r_shot5"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "4a8a50"
+        },
+        {
+          "id": "r_shot5",
+          "title": "Split Nock",
+          "desc": "A second arrow sometimes flies with the first.",
+          "x": 280.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "multishot",
+              "v": 0.1,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_shot4",
+            "r_shot6"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "4a8a50"
+        },
+        {
+          "id": "r_shot6",
+          "title": "Twin Flight",
+          "desc": "Two arrows more often, and they hit harder.",
+          "x": 336.0,
+          "y": 0.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "multishot",
+              "v": 0.15,
+              "op": 1
+            },
+            {
+              "attr": "arrow_damage",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_shot5"
+          ],
+          "one": [],
+          "tags": [
+            "Keystone"
+          ],
+          "start": false,
+          "col": "4a8a50"
+        },
+        {
+          "id": "r_hunt1",
+          "title": "Downwind",
+          "desc": "Sneaking, creatures notice you later.",
+          "x": 0.0,
+          "y": 56.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "stealth",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_hunt2",
+            "ranger_1"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "8a6a3a"
+        },
+        {
+          "id": "r_hunt2",
+          "title": "Easy Stride",
+          "desc": "You move a little quicker.",
+          "x": 0.0,
+          "y": 112.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "speed",
+              "v": 0.05,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_hunt1",
+            "r_hunt3"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "8a6a3a"
+        },
+        {
+          "id": "r_hunt3",
+          "title": "Drawn Walk",
+          "desc": "You keep more speed with a bow drawn.",
+          "x": 0.0,
+          "y": 168.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "use_move",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_hunt2",
+            "r_hunt4"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "8a6a3a"
+        },
+        {
+          "id": "r_hunt4",
+          "title": "Quiet Draw",
+          "desc": "Harder to spot, and you still walk with the string back.",
+          "x": 0.0,
+          "y": 224.0,
+          "size": 1,
+          "bonus": [
+            {
+              "attr": "stealth",
+              "v": 0.12,
+              "op": 1
+            },
+            {
+              "attr": "use_move",
+              "v": 0.1,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_hunt3",
+            "r_hunt5"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "8a6a3a"
+        },
+        {
+          "id": "r_hunt5",
+          "title": "Spring",
+          "desc": "You jump a little higher.",
+          "x": 0.0,
+          "y": 280.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "jump",
+              "v": 0.05,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_hunt4",
+            "r_hunt6"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "8a6a3a"
+        },
+        {
+          "id": "r_hunt6",
+          "title": "Soft Step",
+          "desc": "Very hard to notice, and quicker on your feet.",
+          "x": 0.0,
+          "y": 336.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "stealth",
+              "v": 0.15,
+              "op": 1
+            },
+            {
+              "attr": "speed",
+              "v": 0.06,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_hunt5"
+          ],
+          "one": [],
+          "tags": [
+            "Keystone"
+          ],
+          "start": false,
+          "col": "8a6a3a"
+        },
+        {
+          "id": "r_gift1",
+          "title": "Finders",
+          "desc": "Drops come a little more often.",
+          "x": -56.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "luck",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_gift2",
+            "ranger_1"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "6ab04a"
+        },
+        {
+          "id": "r_gift2",
+          "title": "Double Pouch",
+          "desc": "A kill sometimes drops its loot twice.",
+          "x": -112.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "loot_double",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_gift1",
+            "r_gift3"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "6ab04a"
+        },
+        {
+          "id": "r_gift3",
+          "title": "Lessons Stick",
+          "desc": "You gain a little more experience.",
+          "x": -168.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "xp_gain",
+              "v": 0.05,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_gift2",
+            "r_gift4"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "6ab04a"
+        },
+        {
+          "id": "r_gift4",
+          "title": "Full Bag",
+          "desc": "Luckier finds, and more of them.",
+          "x": -224.0,
+          "y": 0.0,
+          "size": 1,
+          "bonus": [
+            {
+              "attr": "luck",
+              "v": 0.1,
+              "op": 1
+            },
+            {
+              "attr": "loot_double",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_gift3",
+            "r_gift5"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "6ab04a"
+        },
+        {
+          "id": "r_gift5",
+          "title": "Kind Rest",
+          "desc": "Healing you take goes further.",
+          "x": -280.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "heal_received",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_gift4",
+            "r_gift6"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "6ab04a"
+        },
+        {
+          "id": "r_gift6",
+          "title": "Root the Foe",
+          "desc": "You learn Entangle, and luck still favours you.",
+          "x": -336.0,
+          "y": 0.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "grant_spell.entangle",
+              "v": 1.0,
+              "op": 0
+            },
+            {
+              "attr": "luck",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "r_gift5"
+          ],
+          "one": [],
+          "tags": [
+            "Keystone"
+          ],
+          "start": false,
+          "col": "6ab04a"
+        }
+      ]
+    },
+    "rogue": {
+      "name": "Rogue",
+      "limits": {
+        "Keystone": 1
+      },
+      "nodes": [
+        {
+          "id": "rogue_1",
+          "title": "Rogue",
+          "desc": "A cut that finds the gap.",
+          "x": 0.0,
+          "y": 0.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "crit_chance",
+              "v": 0.04,
+              "op": 1
+            },
+            {
+              "attr": "attack_speed",
+              "v": 0.05,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_edge1",
+            "g_shad1",
+            "g_fort1"
+          ],
+          "one": [],
+          "tags": [],
+          "start": true,
+          "col": "9a6ad8"
+        },
+        {
+          "id": "g_edge1",
+          "title": "Through Cloth",
+          "desc": "More of a blow ignores armour.",
+          "x": 56.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "armor_pierce",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_edge2",
+            "rogue_1"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "d84a3a"
+        },
+        {
+          "id": "g_edge2",
+          "title": "Flick",
+          "desc": "Cuts come quicker.",
+          "x": 112.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "attack_speed",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_edge1",
+            "g_edge3"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "d84a3a"
+        },
+        {
+          "id": "g_edge3",
+          "title": "Numb",
+          "desc": "Blows sometimes slow what they hit.",
+          "x": 168.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "slow_chance",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_edge2",
+            "g_edge4"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "d84a3a"
+        },
+        {
+          "id": "g_edge4",
+          "title": "Through the Seam",
+          "desc": "Armour counts for less.",
+          "x": 224.0,
+          "y": 0.0,
+          "size": 1,
+          "bonus": [
+            {
+              "attr": "armor_pierce",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_edge3",
+            "g_edge5"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "d84a3a"
+        },
+        {
+          "id": "g_edge5",
+          "title": "Night Oil",
+          "desc": "Blows sometimes poison.",
+          "x": 280.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "poison_chance",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_edge4",
+            "g_edge6"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "d84a3a"
+        },
+        {
+          "id": "g_edge6",
+          "title": "Grave Oil",
+          "desc": "Poison more often, and it takes on the undead.",
+          "x": 336.0,
+          "y": 0.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "poison_chance",
+              "v": 0.18,
+              "op": 1
+            },
+            {
+              "attr": "venom_undead",
+              "v": 1.0,
+              "op": 0
+            }
+          ],
+          "links": [
+            "g_edge5"
+          ],
+          "one": [],
+          "tags": [
+            "Keystone"
+          ],
+          "start": false,
+          "col": "d84a3a"
+        },
+        {
+          "id": "g_shad1",
+          "title": "Low Profile",
+          "desc": "Sneaking, you are noticed later.",
+          "x": 0.0,
+          "y": 56.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "stealth",
+              "v": 0.1,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_shad2",
+            "rogue_1"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "4a4a6a"
+        },
+        {
+          "id": "g_shad2",
+          "title": "Slip",
+          "desc": "A chance to evade a blow outright.",
+          "x": 0.0,
+          "y": 112.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "dodge",
+              "v": 0.04,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_shad1",
+            "g_shad3"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "4a4a6a"
+        },
+        {
+          "id": "g_shad3",
+          "title": "Light Feet",
+          "desc": "You move a little quicker.",
+          "x": 0.0,
+          "y": 168.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "speed",
+              "v": 0.04,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_shad2",
+            "g_shad4"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "4a4a6a"
+        },
+        {
+          "id": "g_shad4",
+          "title": "Sidestep",
+          "desc": "Harder to hit and harder to see.",
+          "x": 0.0,
+          "y": 224.0,
+          "size": 1,
+          "bonus": [
+            {
+              "attr": "dodge",
+              "v": 0.06,
+              "op": 1
+            },
+            {
+              "attr": "stealth",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_shad3",
+            "g_shad5"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "4a4a6a"
+        },
+        {
+          "id": "g_shad5",
+          "title": "Bound",
+          "desc": "You jump a little higher.",
+          "x": 0.0,
+          "y": 280.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "jump",
+              "v": 0.05,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_shad4",
+            "g_shad6"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "4a4a6a"
+        },
+        {
+          "id": "g_shad6",
+          "title": "Afterimage",
+          "desc": "You duck more blows and cut faster.",
+          "x": 0.0,
+          "y": 336.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "dodge",
+              "v": 0.08,
+              "op": 1
+            },
+            {
+              "attr": "attack_speed",
+              "v": 0.1,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_shad5"
+          ],
+          "one": [],
+          "tags": [
+            "Keystone"
+          ],
+          "start": false,
+          "col": "4a4a6a"
+        },
+        {
+          "id": "g_fort1",
+          "title": "Telling Blow",
+          "desc": "Critical hits a little more often.",
+          "x": -56.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "crit_chance",
+              "v": 0.05,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_fort2",
+            "rogue_1"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "d8a04a"
+        },
+        {
+          "id": "g_fort2",
+          "title": "Meaner Crit",
+          "desc": "Those hits hurt more.",
+          "x": -112.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "crit_damage",
+              "v": 0.1,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_fort1",
+            "g_fort3"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "d8a04a"
+        },
+        {
+          "id": "g_fort3",
+          "title": "Cut Purse",
+          "desc": "A kill sometimes drops loot twice.",
+          "x": -168.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "loot_double",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_fort2",
+            "g_fort4"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "d8a04a"
+        },
+        {
+          "id": "g_fort4",
+          "title": "Loaded Dice",
+          "desc": "Luckier, and more criticals.",
+          "x": -224.0,
+          "y": 0.0,
+          "size": 1,
+          "bonus": [
+            {
+              "attr": "luck",
+              "v": 0.1,
+              "op": 1
+            },
+            {
+              "attr": "crit_chance",
+              "v": 0.05,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_fort3",
+            "g_fort5"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "d8a04a"
+        },
+        {
+          "id": "g_fort5",
+          "title": "Quick Study",
+          "desc": "You gain a little more experience.",
+          "x": -280.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "xp_gain",
+              "v": 0.06,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_fort4",
+            "g_fort6"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "d8a04a"
+        },
+        {
+          "id": "g_fort6",
+          "title": "High Stakes",
+          "desc": "Criticals hit much harder, and loot comes twice more often.",
+          "x": -336.0,
+          "y": 0.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "crit_damage",
+              "v": 0.2,
+              "op": 1
+            },
+            {
+              "attr": "loot_double",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "g_fort5"
+          ],
+          "one": [],
+          "tags": [
+            "Keystone"
+          ],
+          "start": false,
+          "col": "d8a04a"
+        }
+      ]
+    },
+    "mage": {
+      "name": "Mage",
+      "limits": {
+        "Keystone": 1
+      },
+      "nodes": [
+        {
+          "id": "mage",
+          "title": "Mage",
+          "desc": "A deeper breath before the word.",
+          "x": 0.0,
+          "y": 0.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "mana",
+              "v": 10.0,
+              "op": 0
+            },
+            {
+              "attr": "mana_regen",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_fire1",
+            "m_frost1",
+            "m_word1"
+          ],
+          "one": [],
+          "tags": [],
+          "start": true,
+          "col": "6a8ad8"
+        },
+        {
+          "id": "m_fire1",
+          "title": "Ember",
+          "desc": "Fire spells hit harder.",
+          "x": 56.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "spell_power.fire",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_fire2",
+            "mage"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "ff7a2a"
+        },
+        {
+          "id": "m_fire2",
+          "title": "Spark",
+          "desc": "Blows and spells sometimes set a foe alight.",
+          "x": 112.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "burn_chance",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_fire1",
+            "m_fire3"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "ff7a2a"
+        },
+        {
+          "id": "m_fire3",
+          "title": "Hotter Word",
+          "desc": "Fire spells hit harder still.",
+          "x": 168.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "spell_power.fire",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_fire2",
+            "m_fire4"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "ff7a2a"
+        },
+        {
+          "id": "m_fire4",
+          "title": "Kindling",
+          "desc": "Flame takes more often, and fire spells bite.",
+          "x": 224.0,
+          "y": 0.0,
+          "size": 1,
+          "bonus": [
+            {
+              "attr": "burn_chance",
+              "v": 0.18,
+              "op": 1
+            },
+            {
+              "attr": "spell_power.fire",
+              "v": 0.1,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_fire3",
+            "m_fire5"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "ff7a2a"
+        },
+        {
+          "id": "m_fire5",
+          "title": "Short Rest",
+          "desc": "Spells ready a little sooner.",
+          "x": 280.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "cooldown",
+              "v": 0.06,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_fire4",
+            "m_fire6"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "ff7a2a"
+        },
+        {
+          "id": "m_fire6",
+          "title": "The Great Spark",
+          "desc": "You learn Fireball, and fire spells hit harder.",
+          "x": 336.0,
+          "y": 0.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "grant_spell.fireball",
+              "v": 1.0,
+              "op": 0
+            },
+            {
+              "attr": "spell_power.fire",
+              "v": 0.15,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_fire5"
+          ],
+          "one": [],
+          "tags": [
+            "Keystone"
+          ],
+          "start": false,
+          "col": "ff7a2a"
+        },
+        {
+          "id": "m_frost1",
+          "title": "Rime",
+          "desc": "Frost spells hit harder.",
+          "x": 0.0,
+          "y": 56.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "spell_power.frost",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_frost2",
+            "mage"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "8ad8ff"
+        },
+        {
+          "id": "m_frost2",
+          "title": "Numb Air",
+          "desc": "Hits sometimes slow a foe.",
+          "x": 0.0,
+          "y": 112.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "slow_chance",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_frost1",
+            "m_frost3"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "8ad8ff"
+        },
+        {
+          "id": "m_frost3",
+          "title": "Deeper Cold",
+          "desc": "Frost spells hit harder still.",
+          "x": 0.0,
+          "y": 168.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "spell_power.frost",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_frost2",
+            "m_frost4"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "8ad8ff"
+        },
+        {
+          "id": "m_frost4",
+          "title": "Ice Mail",
+          "desc": "You take less from spells, and frost bites.",
+          "x": 0.0,
+          "y": 224.0,
+          "size": 1,
+          "bonus": [
+            {
+              "attr": "spell_resist",
+              "v": 0.08,
+              "op": 1
+            },
+            {
+              "attr": "spell_power.frost",
+              "v": 0.1,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_frost3",
+            "m_frost5"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "8ad8ff"
+        },
+        {
+          "id": "m_frost5",
+          "title": "Quick Tongue",
+          "desc": "Spells leave your mouth sooner.",
+          "x": 0.0,
+          "y": 280.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "cast_time",
+              "v": 0.06,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_frost4",
+            "m_frost6"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "8ad8ff"
+        },
+        {
+          "id": "m_frost6",
+          "title": "Shatter",
+          "desc": "You learn Ice Nova, and frost spells hit harder.",
+          "x": 0.0,
+          "y": 336.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "grant_spell.icenova",
+              "v": 1.0,
+              "op": 0
+            },
+            {
+              "attr": "spell_power.frost",
+              "v": 0.15,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_frost5"
+          ],
+          "one": [],
+          "tags": [
+            "Keystone"
+          ],
+          "start": false,
+          "col": "8ad8ff"
+        },
+        {
+          "id": "m_word1",
+          "title": "Louder Word",
+          "desc": "Spells of every school hit a little harder.",
+          "x": -56.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "spell_power",
+              "v": 0.08,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_word2",
+            "mage"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "9a6ad8"
+        },
+        {
+          "id": "m_word2",
+          "title": "Ready Again",
+          "desc": "Cooldowns shrink a little.",
+          "x": -112.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "cooldown",
+              "v": 0.06,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_word1",
+            "m_word3"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "9a6ad8"
+        },
+        {
+          "id": "m_word3",
+          "title": "Deep Breath",
+          "desc": "More mana to spend.",
+          "x": -168.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "mana",
+              "v": 15.0,
+              "op": 0
+            }
+          ],
+          "links": [
+            "m_word2",
+            "m_word4"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "9a6ad8"
+        },
+        {
+          "id": "m_word4",
+          "title": "Afterglow",
+          "desc": "Healing past full becomes a ward, and mana returns faster.",
+          "x": -224.0,
+          "y": 0.0,
+          "size": 1,
+          "bonus": [
+            {
+              "attr": "overheal",
+              "v": 0.1,
+              "op": 1
+            },
+            {
+              "attr": "mana_regen",
+              "v": 0.12,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_word3",
+            "m_word5"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "9a6ad8"
+        },
+        {
+          "id": "m_word5",
+          "title": "Called Aid",
+          "desc": "Summoned allies hit harder.",
+          "x": -280.0,
+          "y": 0.0,
+          "size": 0,
+          "bonus": [
+            {
+              "attr": "summon_damage",
+              "v": 0.15,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_word4",
+            "m_word6"
+          ],
+          "one": [],
+          "tags": [],
+          "start": false,
+          "col": "9a6ad8"
+        },
+        {
+          "id": "m_word6",
+          "title": "Hearth Ward",
+          "desc": "You learn Stoneskin, and all spells hit a little harder.",
+          "x": -336.0,
+          "y": 0.0,
+          "size": 2,
+          "bonus": [
+            {
+              "attr": "grant_spell.stoneskin",
+              "v": 1.0,
+              "op": 0
+            },
+            {
+              "attr": "spell_power",
+              "v": 0.1,
+              "op": 1
+            }
+          ],
+          "links": [
+            "m_word5"
+          ],
+          "one": [],
+          "tags": [
+            "Keystone"
+          ],
+          "start": false,
+          "col": "9a6ad8"
+        }
+      ]
+    }
+  }
+}

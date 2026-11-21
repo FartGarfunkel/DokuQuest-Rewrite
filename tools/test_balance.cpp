@@ -164,7 +164,7 @@ int main(int argc, char** argv) {
     for (auto& r : bal::TALENTS) known.insert(r.attr);
     std::set<std::string> unread; int nodes = 0, bonuses = 0;
     for (const SkillTree& t : skillTrees()) for (const TreeNode& n : t.nodes) { nodes++; for (auto& b : n.bonus) { bonuses++; if (!known.count(b.attr) && b.attr.rfind("spell_power.", 0) != 0 && !(b.attr.rfind("grant_spell.", 0) == 0 && magicData().spell(b.attr.substr(12)))) unread.insert(b.attr); } }
-    if (skillTrees().empty()) printf("     (no skill-tree data here: data/local_models/skilltree.json is local only; checking the rules alone)\n");
+    if (skillTrees().empty()) printf("     (no skill-tree data here: data/skilltree.json is missing; checking the rules alone)\n");
     std::string list; for (auto& u : unread) list += " " + u;
     // every node does something and says what: a bonus, and words for it (no "(stealth)"-style stand-ins left by the import)
     {
@@ -335,7 +335,7 @@ int main(int argc, char** argv) {
       none();
       bool viaNode = true;
       if (!skillTrees().empty()) {
-        p.stats["tree"] = json{{"nodes", json::array({"mage-ks_utility-ice"})}};
+        p.stats["tree"] = json{{"nodes", json::array({"m_frost6"})}};
         const auto kn = knownSpells(p);
         viaNode = std::find(kn.begin(), kn.end(), "icenova") != kn.end();
         treeReset(p);

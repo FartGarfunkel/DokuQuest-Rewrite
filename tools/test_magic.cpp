@@ -27,6 +27,7 @@ namespace dq { struct FishCatch { std::string id, kind; int cm = 0; }; FishCatch
 #include <functional>
 #include <map>
 #include <cstdio>
+#include <cmath>
 #include <thread>
 
 using namespace dq;
@@ -292,12 +293,31 @@ int main(int argc, char** argv) {
   std::string r = runCommand(*lv, cs, "/learn all");
   check(knownSpells(p).size() == 29, "/learn all (" + r + ")");
 
-  // ---- the passive skill trees (sim/skilltree.h; only once the trees are imported: tools/local/skilltree_import.py) ----
+  // ---- the passive skill trees (sim/skilltree.h; data/skilltree.json) ----
   if (!skillTrees().empty()) {
     const SkillTree* W = nullptr; for (auto& t : skillTrees()) if (t.key == "warrior") W = &t;
-    check(W && W->nodes.size() > 100, "the warrior tree is there");
+    const TreeNode* start = nullptr; if (W) for (auto& n : W->nodes) if (n.start) start = &n;
+    check(W && W->nodes.size() >= 18 && W->nodes.size() <= 22, "the Knight tree is short");
+    check(start && start->id == "warrior", "Knight start id stays warrior");
+    int nTrees = 0, keystones = 0; bool fat = true, named = true;
+    for (const SkillTree& t : skillTrees()) {
+      nTrees++;
+      for (const TreeNode& n : t.nodes) {
+        if (n.title.empty() || n.desc.empty() || n.desc.find('(') != std::string::npos) named = false;
+        for (const std::string& tg : n.tags) if (tg == "Keystone") keystones++;
+        for (auto& b : n.bonus) {
+          if (b.attr.rfind("grant_spell.", 0) == 0) continue;
+          if (b.attr == "venom_undead" || b.attr == "venom_lethal") continue;
+          if (b.pct && std::fabs(b.v) + 1e-5f < 0.04f) fat = false;
+          if (!b.pct && std::fabs(b.v) + 1e-5f < 1.f) fat = false;
+        }
+      }
+    }
+    check(nTrees == 4, "four path trees");
+    check(keystones == 12, "three keystones on each tree");
+    check(named, "every node has a title and plain words");
+    check(fat, "every bonus is fat enough to feel");
     if (W) {
-      const TreeNode* start = nullptr; for (auto& n : W->nodes) if (n.start) start = &n;
       treeReset(p);
       const int before = treePointsEarned(p);
       for (auto& sk : magicData().skills) skillGain(*lv, p, sk.key, 200000);
