@@ -76,7 +76,7 @@ void combatRpgTick(Level& lv, Player& p, float dt) {
 // best, so a newcomer's friend doesn't make the world trivial or impossible), give or take a little; one in fourteen hostile
 // ones is an elite, three levels up, tougher and richer. Each level: +8% health, +5% damage, +6% experience. With more
 // players about, its health grows (40% for each beyond the first, while they stay near) so a party has a fight too.
-int playerCombatLevel(const Player& p) { return std::max(1, totalLevel(p) / 8); }
+int playerCombatLevel(const Player& p) { return std::max(1, totalLevel(p) / 12 + progressMobLevels(progressTier(p))); }
 namespace {
 float levelHp(int lvl) { return mobLevelHp(lvl); }
 float levelDmg(int lvl) { return mobLevelDmg(lvl); }
@@ -110,7 +110,7 @@ void mobLevelUpdate(Level& lv, Entity& e) {
     float base = e.maxHp;
     if (e.data.value("lvlHp", false)) base /= 1.f + 0.03f * (std::max(1, e.mobLevel) - 1);
     const int party = (int)std::lround((sum / n + best) * 0.5f);
-    // (no extra for progress here: the party's combat level already grows with the skills; progressTier only scales loot)
+    // (progress adds at most MOB_TIER_MAX on top of skills/12, so a spent tree still pulls ahead of the land)
     int lvl = std::max(1, party + (int)std::floor(rnd() * 4) - 1);   // (-1 .. +2)
     const bool elite = hostile && !boss && !e.data.value("boss", false) && rnd() < ELITE_CHANCE;
     if (elite) lvl += ELITE_LEVELS;

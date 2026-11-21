@@ -461,6 +461,17 @@ int main(int argc, char** argv) {
     }
   }
   check(bandsOk, "every geared fight inside its band" + why);
+  {
+    dress(p, 1, 25);
+    const int land = playerCombatLevel(p);
+    p.stats.erase("attrBonus");
+    Fight empty = fight(*lv, p, 1, 25, land, false, 6);
+    p.stats["attrBonus"] = json{{"damage", {2.5f, 0.15f}}, {"health", {5.f, 0.f}}};
+    Fight spent = fight(*lv, p, 1, 25, land, false, 6);
+    p.stats.erase("attrBonus");
+    check(spent.ttk < empty.ttk * 0.85, "a spent tree kills a same-level ghoul faster (" + std::to_string(empty.ttk) + " -> " + std::to_string(spent.ttk) + ")");
+    check(spent.ttd > empty.ttd, "...and lasts longer (" + std::to_string(empty.ttd) + " -> " + std::to_string(spent.ttd) + ")");
+  }
   {   // never immune, either way: the best gear and every stat against a level-1 ghoul still hurts; an ungeared novice vs a high level falls fast
     dress(p, 4, 99);
     Fight f = fight(*lv, p, 4, 99, 1, false, 3);

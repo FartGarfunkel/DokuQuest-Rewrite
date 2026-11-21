@@ -503,7 +503,9 @@ int main(int argc, char** argv) {
     const json keepSkills = p.stats.value("skills", json::object());
     json sk = json::object(); for (auto& d : magicData().skills) sk[d.key] = skillXpFor(20); p.stats["skills"] = sk;
     const int L = playerCombatLevel(p);
-    check(L == 14 * 20 / 8, "all fourteen skills at 20: combat level " + std::to_string(L));
+    const int want = 14 * 20 / 12 + progressMobLevels(progressTier(p));
+    check(L == want, "all fourteen skills at 20: combat level " + std::to_string(L));
+    check(L < 14 * 20 / 8, "the land trails a matching-every-eight-levels formula (" + std::to_string(L) + ")");
     int lo = 999, hi = 0, elites = 0, plain = 0, plainOk = 0; float base = 0;
     for (int i = 0; i < 300; i++) {
       Entity* z = spawnCreature(*lv, "skeleton", 0, p.pos + vec3(3, 0, 3));
