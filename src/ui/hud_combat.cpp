@@ -79,7 +79,7 @@ void drawCombatHud(GameSession& s, ImDrawList* dl, float z, float W, float H) {
   }
   // ---- the shield up, and a parry's flash
   if (p.blockT > 0) {
-    const bool parry = p.blockT < 0.18f;   // (PARRY_WINDOW: a hit now is parried)
+    const bool parry = p.blockT < guardWindow(p);   // a shield's window is 0.18; a weapon's is shorter
     const ImVec2 b0(c.x - 7 * z, c.y + 13 * z);
     const ImVec2 pts[5] = {b0, ImVec2(b0.x + 14 * z, b0.y), ImVec2(b0.x + 14 * z, b0.y + 7 * z), ImVec2(b0.x + 7 * z, b0.y + 13 * z), ImVec2(b0.x, b0.y + 7 * z)};
     dl->AddConvexPolyFilled(pts, 5, parry ? IM_COL32(255, 245, 200, 230) : IM_COL32(200, 200, 210, 170));
