@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "sim/crafting.h"
 #include "sim/weapon_quality.h"
+#include "sim/attack_moves.h"
 #include <unordered_set>
 
 namespace dq {
@@ -84,6 +85,46 @@ std::string recolorKey(const std::string& key, const std::string& c) {
 // ---- matching ---------------------------------------------------------------------------------------------
 static CraftMatch special(const std::string& out, int n, int w = 1, int h = 1) { CraftMatch m; m.ok = true; m.out = out; m.n = n; m.w = w; m.h = h; return m; }
 
+// A new weapon, tool, or armour piece. One that already has qual is left alone.
+// The seed mixes the craft tick with the item key and a craft count, so two crafts in one tick can differ.
+static bool craftedGear(const ItemStack& s) {
+  if (s.empty()) return false;
+  if (isPartTool(s) || isPartArmor(s)) return true;
+  switch (movesetOf(s.def())) {
+    case Moveset::Sword: case Moveset::Dagger: case Moveset::Axe:
+    case Moveset::Greatsword: case Moveset::Spear: case Moveset::Mace: return true;
+    default: return false;
+  }
+}
+static uint32_t craftQualSeed(const std::string& key) {
+  static uint32_t n = 0xA341316Cu;
+  n = n * 1664525u + 1013904223u;
+  const uint32_t tick = (uint32_t)(nowSeconds() * 30.0);
+  uint32_t h = n ^ (tick * 0x9E3779B9u);
+  for (unsigned char c : key) h = h * 16777619u ^ c;
+  return h;
+}
+static void giveCraftQuality(ItemStack& s) {
+  if (!craftedGear(s)) return;
+  if (s.tag.is_object() && s.tag.contains("qual") && s.tag["qual"].is_string()) return;
+  rollWeaponQuality(s, craftQualSeed(s.id));
+}
+static CraftMatch finishCraft(CraftMatch m) {
+  if (!m.ok) return m;
+  ItemStack s(m.out, m.n);
+  if (m.extra.is_object()) for (auto& [k, v] : m.extra.items()) {
+    if (k == "d") s.d = v.get<int>();
+    else { if (!s.tag.is_object()) s.tag = json::object(); s.tag[k] = v; }
+  }
+  const bool had = s.tag.is_object() && s.tag.contains("qual") && s.tag["qual"].is_string();
+  giveCraftQuality(s);
+  if (!had && s.tag.is_object() && s.tag.contains("qual") && s.tag["qual"].is_string()) {
+    if (!m.extra.is_object()) m.extra = json::object();
+    m.extra["qual"] = s.tag["qual"];
+  }
+  return m;
+}
+
 // one procedural piece and one ingot of a metal in it: the same piece, a new quality
 static CraftMatch matchQualityReroll(const std::vector<ItemStack>& slots) {
   const ItemStack* gear = nullptr; const ItemStack* ing = nullptr; int n = 0;
@@ -149,7 +190,7 @@ static CraftMatch matchBase(const std::vector<ItemStack>& slots, int W) {
           if (ch == ' ') { if (!s.empty()) ok = false; }
           else { auto k = r.key.find(ch); if (s.empty() || k == r.key.end() || !tagMatch(k->second, s.id)) ok = false; }
         }
-        if (ok) { CraftMatch m; m.ok = true; m.out = r.out; m.n = r.n; m.idx = (int)ri; m.recipe = &r; recipeDims(r, m.w, m.h); return m; }
+        if (ok) { CraftMatch m; m.ok = true; m.out = r.out; m.n = r.n; m.idx = (int)ri; m.recipe = &r; recipeDims(r, m.w, m.h); return finishCraft(m); }
       }
     } else if ((int)r.items.size() == count) {
       std::vector<std::string> left = r.items;
@@ -159,7 +200,7 @@ static CraftMatch matchBase(const std::vector<ItemStack>& slots, int W) {
         auto k = std::find_if(left.begin(), left.end(), [&](const std::string& want) { return tagMatch(want, s.id); });
         if (k == left.end()) ok = false; else left.erase(k);
       }
-      if (ok && left.empty()) { CraftMatch m; m.ok = true; m.out = r.out; m.n = r.n; m.idx = (int)ri; m.recipe = &r; recipeDims(r, m.w, m.h); return m; }
+      if (ok && left.empty()) { CraftMatch m; m.ok = true; m.out = r.out; m.n = r.n; m.idx = (int)ri; m.recipe = &r; recipeDims(r, m.w, m.h); return finishCraft(m); }
     }
   }
   return {};
@@ -213,7 +254,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
       ItemStack out;
       if (tm && metalDef(tm->key) && makePartTool(kind, std::vector<std::string>(partToolSections(kind), tm->key), hf->id, out)) {
         CraftMatch m = special(out.id, 1, bw, bh); m.extra = out.tag;
-        stampGearQuality(out); m.extra = out.tag;
+        giveCraftQuality(out); m.extra = out.tag;
         return m;
       }
     }
@@ -225,7 +266,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
         if (h->tag.is_object() && h->tag.value("q", 0) > 0) out.tag["pt"]["dur"] = (int)std::lround(out.tag["pt"].value("dur", 0) * 1.05);   // quenched (sim/heat)
         if (h->tag.is_object() && h->tag.contains("ql")) out.tag["pt"]["dur"] = (int)std::lround(out.tag["pt"].value("dur", 0) * h->tag.value("ql", 1.0));   // the smith's work (sim/anvil)
         CraftMatch m = special(out.id, 1, bw, bh); m.extra = out.tag;
-        stampGearQuality(out); m.extra = out.tag;
+        giveCraftQuality(out); m.extra = out.tag;
         return m;
       }
     }
@@ -247,7 +288,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
       if (same && haft == "stick" && m0 && reg().item(m0->prefix + "_" + P.kind) && !metalDef(m0->key) && !(m0->key.size() && m0->key[0] == '@')) return {};
       ItemStack out;
       if (!makePartTool(P.kind, mats, haft, out)) continue;
-      stampGearQuality(out);
+      giveCraftQuality(out);
       CraftMatch m = special(out.id, 1, P.w, P.h); m.extra = out.tag;
       return m;
     }
@@ -263,7 +304,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
     }
     ItemStack out;
     if (!makePartArmor(P.piece, mats, out)) continue;
-    stampGearQuality(out);
+    giveCraftQuality(out);
     CraftMatch m = special(out.id, 1, P.w, P.h); m.extra = out.tag;
     return m;
   }

@@ -7,6 +7,8 @@
 #include "sim/rpg.h"
 #include "core/tool_parts.h"
 #include "core/registry.h"
+#include "sim/weapon_quality.h"
+#include "sim/attack_moves.h"
 #include <algorithm>
 #include <cstring>
 #include <cmath>
@@ -112,12 +114,30 @@ MobLoot mobLoot(int level, bool elite, const Player* killer) {
   return l;
 }
 
+static bool foundGear(const ItemStack& s) {
+  if (s.empty()) return false;
+  if (isPartTool(s) || isPartArmor(s)) return true;
+  switch (movesetOf(s.def())) {
+    case Moveset::Sword: case Moveset::Dagger: case Moveset::Axe:
+    case Moveset::Greatsword: case Moveset::Spear: case Moveset::Mace: return true;
+    default: return false;
+  }
+}
+// proceduralOf may already have written a qual from its own counter. A drop uses this call's r1, r2, r3.
+static uint32_t lootQualSeed(const std::string& id, double r1, double r2, double r3) {
+  uint32_t h = 2166136261u;
+  auto mix = [&](double r) { h = (h ^ (uint32_t)std::llround(std::fabs(r) * 1000003.0)) * 16777619u; };
+  mix(r1); mix(r2); mix(r3);
+  for (unsigned char c : id) h = (h ^ c) * 16777619u;
+  return h;
+}
 ItemStack mobGearRoll(const MobLoot& l, double r1, double r2, double r3) {
   const int tiers = (int)(sizeof GEAR_TIERS / sizeof GEAR_TIERS[0]), pieces = (int)(sizeof GEAR_PIECES / sizeof GEAR_PIECES[0]);
   int tier = std::clamp(l.gearTier + (r2 < 0.15 ? 1 : 0), 0, tiers - 1);   // now and then a tier better
   const std::string id = std::string(GEAR_TIERS[tier]) + "_" + GEAR_PIECES[std::clamp((int)(r1 * pieces), 0, pieces - 1)];
   if (!reg().item(id)) return {};
   ItemStack s = proceduralOf(id, 1);
+  if (foundGear(s)) rollWeaponQuality(s, lootQualSeed(s.id, r1, r2, r3));
   if (const int max = toolMaxDurability(s); max > 0) s.d = (int)(max * (GEAR_WORN_MIN + r3 * (GEAR_WORN_MAX - GEAR_WORN_MIN)));
   return s;
 }

@@ -10,6 +10,7 @@
 #include "sim/combat_rpg.h"
 #include "sim/skills.h"
 #include "core/tool_parts.h"
+#include "sim/balance.h"
 #include <cmath>
 #include <cstdio>
 
@@ -141,12 +142,43 @@ int main() {
     return q == "poor" || q == "normal" || q == "fine" || q == "great" || q == "legendary";
   };
   CHECK(gsGrid && gsGrid.result().id == "mixed_greatsword" && qualOk(gsGrid.result()), "three irons over a stick make a mixed greatsword with a quality");
+  CraftMatch ironCraft = gridOf({{0, ingot}, {3, ingot}, {6, stick}});
+  ItemStack ironMade = ironCraft ? ironCraft.result() : ItemStack();
+  CHECK(ironCraft && ironMade.id == "mixed_sword" && ironMade.id == ironCraft.out && ironMade.n == 1 && qualOk(ironMade),
+        "the old iron sword craft keeps its id and count and gains a quality (%s x%d %s)",
+        ironMade.id.c_str(), ironMade.n, ironMade.tag.value("qual", "").c_str());
+  const ItemStack plank("planks", 1);
+  CraftMatch woodCraft = gridOf({{0, plank}, {3, plank}, {6, stick}});
+  ItemStack woodMade = woodCraft ? woodCraft.result() : ItemStack();
+  CHECK(woodCraft && woodMade.id == "wood_sword" && woodMade.n == 1 && qualOk(woodMade),
+        "an old fixed sword recipe keeps its id and count and gains a quality (%s x%d %s)",
+        woodMade.id.c_str(), woodMade.n, woodMade.tag.value("qual", "").c_str());
   CHECK(spGrid && spGrid.result().id == "mixed_spear" && spGrid.result().def()->num("hands") == 2, "two irons and a stick in a line make a spear");
   CHECK(mcGrid && mcGrid.result().id == "mixed_mace" && mcGrid.result().def()->num("hands") == 1, "two irons over a stick make a mace");
   ItemStack again = gsGrid.result();
   const std::string kept = again.tag["qual"];
   stampGearQuality(again);
   CHECK(again.tag["qual"] == kept, "a quality already on the piece stays");
+  again.tag["qual"] = "fine";
+  stampGearQuality(again);
+  CHECK(again.id == "mixed_greatsword" && again.n == 1 && again.tag.value("qual", "") == "fine", "a pre-set qual fine stays fine");
+  ItemStack fineSword("iron_sword", 1);
+  fineSword.tag = json::object();
+  fineSword.tag["qual"] = "fine";
+  fineSword.d = 40;
+  ItemStack fineSwordB = fineSword;
+  fineSwordB.d = 15;
+  std::vector<ItemStack> fineGrid(9);
+  fineGrid[0] = fineSword;
+  fineGrid[1] = fineSwordB;
+  CraftMatch fineCraft = matchGrid(fineGrid, 3);
+  ItemStack fineOut = fineCraft ? fineCraft.result() : ItemStack();
+  CHECK(fineCraft && fineOut.id == "iron_sword" && fineOut.n == 1 && fineOut.tag.value("qual", "") == "fine",
+        "a second craft of an iron sword that already has qual fine leaves it fine");
+  MobLoot found; found.gearTier = 2;
+  ItemStack dropA = mobGearRoll(found, 0.25, 0.4, 0.5), dropB = mobGearRoll(found, 0.25, 0.4, 0.5);
+  CHECK(!dropA.empty() && qualOk(dropA) && dropA.tag.value("qual", "") == dropB.tag.value("qual", ""),
+        "found gear rolls a quality from the loot rolls (%s)", dropA.tag.value("qual", "").c_str());
   CHECK(comboLength(Moveset::Greatsword) == 2 && comboLength(Moveset::Spear) == 2 && comboLength(Moveset::Mace) == 2,
         "the new families chain two cuts");
   const AttackMove& g1 = attackMove(attackMoveFor(Moveset::Greatsword, 0, false, false));
