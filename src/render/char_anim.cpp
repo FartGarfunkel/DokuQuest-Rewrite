@@ -540,15 +540,16 @@ CharAngles charAnimate(const CharPose& pose) {
   spellArm(A.armR, A.foreR, pose.spellR, pose.thrustR, 1.f);
   spellArm(A.armL, A.foreL, pose.spellL, pose.thrustL, -1.f);
   charMorePoses(A, pose);
-  // a two-hand rest: the sword stays seated in the main fist the original way (no extra turn).
-  // Both arms fold so the fists can meet on that handle. The off hand then reaches it in charRig.
+  // two-hand rest like a vertical guard: both fists on the handle in front of the waist, blade up, elbows bent.
+  // The sword stays seated in the fist (no extra turn). A cut and a block keep their own poses.
   if (pose.twoHand && pose.held && !pose.atkMove && pose.swing <= 0.f && pose.block <= 0.f
       && pose.bow <= 0.f && pose.eat <= 0.f && !pose.gui && !pose.scope && !pose.carry
       && !pose.swim && !pose.crawl && !pose.air && !pose.sleep && pose.spellR <= 0.f && pose.roll <= 0.f) {
-    A.armR = vec3(0.08f, -0.42f, 0.06f);
-    A.foreR = vec3(1.70f, 0.35f, 0.10f);
-    A.armL = vec3(0.12f, 0.60f, 0.04f);
-    A.foreL = vec3(1.65f, -0.40f, -0.08f);
+    A.armR = vec3(0.18f, -0.48f, 0.10f);
+    A.foreR = vec3(1.58f, 0.42f, 0.16f);
+    A.armL = vec3(0.22f, 0.52f, 0.06f);
+    A.foreL = vec3(1.55f, -0.38f, -0.12f);
+    A.toolR = vec2(-0.35f, 0.f);   // a little pitch so the blade stands in front, not over the shoulder
   }
   // two swords while running: the off hand is the right arm half a stride later, mirrored.
   // They alternate like a run, each on the path that already stays off the face. A swing
@@ -681,23 +682,25 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     R.scale[lu] = R.scale[ld] = glm::scale(mat4(1), vec3(b, kl, b));
   }
   // a two-handed weapon: the free hand reaches across and takes the haft, just below the hand that holds it.
-  // The arm that holds the weapon keeps the cut. Pulling that arm back and spinning the forearm laid the blade out flat.
+  // Idle: past the fist, on the haft (the original carry). A cut: down the grip from the fist.
   if (pose.twoHand && !pose.swim && !pose.crawl && pose.deathT <= 0) {
     const bool leftWeapon = pose.atkOff;
     const int wDn = (leftWeapon ? CP_ARML_U : CP_ARMR_U) + 1;
     const int oUp = leftWeapon ? CP_ARMR_U : CP_ARML_U, oDn = oUp + 1;
-    const vec2 turn = leftWeapon ? R.toolL : R.toolR;
-    const mat4 G = gripTurn(R.part[wDn], turn);
-    const vec3 fist = vec3(G * vec4(0, -6, -1, 1));
-    const vec3 grip = fist;   // the off fist on the same handle the main hand already holds
+    const bool heavy = pose.atkMove == MV_GS1 || pose.atkMove == MV_GS2 || pose.atkMove == MV_SPEAR1 || pose.atkMove == MV_SPEAR2;
+    const vec2 heldTool = leftWeapon ? R.toolL : R.toolR;
+    const mat4 Gw = gripTurn(R.part[wDn], heldTool);
+    const vec3 along = glm::normalize(mat3(Gw) * vec3(0.f, 0.472f, -1.448f));
+    const vec3 onHaft = vec3(Gw * vec4(0, -6, -1, 1)) - along * (2.8f * CHAR_PX);
+    const vec3 grip = onHaft;   // both idle and a cut: the off hand on the handle, from the fist toward the pommel
+    (void)heavy;
     const vec3 inBody = vec3(glm::inverse(bodyM) * vec4(grip, 1));
     const vec3 pu = M.pivot[oUp];
     const vec3 S(pu.x * b, pu.y - 12, pu.z);
     const float l1 = glm::length(M.pivot[oDn] - pu);
-    const float l2 = glm::length(vec3(0.f, -6.f, -1.f));   // the same fist the blade is drawn from
     vec3& arm = leftWeapon ? A.armR : A.armL;
     vec3& fore = leftWeapon ? A.foreR : A.foreL;
-    reachArm(S, inBody, l1, l2, vec3(leftWeapon ? 1.2f : -1.2f, -0.15f, 0.45f), arm, fore);
+    reachArm(S, inBody, l1, BOW_FIST, vec3(leftWeapon ? 1.f : -1.f, -0.35f, 0.15f), arm, fore);
     const vec3 armOff(pu.x * b, pu.y - 12, pu.z);
     R.part[oUp] = child(bodyM, armOff, arm);
     R.part[oDn] = child(R.part[oUp], M.pivot[oDn] - pu, fore);

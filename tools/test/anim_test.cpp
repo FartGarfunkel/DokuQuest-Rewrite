@@ -483,10 +483,20 @@ int main(int argc, char** argv) {
     const CharRig two = holdRig();
     const vec3 r = fist(two, false), l = fist(two, true);
     const float apart = glm::length(r - l);
-    CHECK(apart < 0.28f, "idle: both hands meet on the hilt (apart %.2f)", apart);
+    CHECK(apart < 0.32f, "idle: both hands stacked on the grip (apart %.2f)", apart);
+    CHECK(r.z > 0.06f && l.z > 0.06f, "idle: the grip is in front of the body (R z %.2f, L z %.2f)", r.z, l.z);
+    CHECK(r.y > 0.80f && r.y < 1.30f && l.y > 0.80f && l.y < 1.30f,
+          "idle: the hands sit at the waist, not on the shoulder (R y %.2f, L y %.2f)", r.y, l.y);
     const CharAngles A = charAnimate([]{ CharPose p; p.held = true; p.twoHand = true; p.greatsword = true; return p; }());
-    CHECK(std::fabs(A.toolR.x) < 0.05f && std::fabs(A.toolR.y) < 0.05f, "idle: the sword stays in the original fist, unturned");
+    CHECK(std::fabs(A.toolR.y) < 0.05f, "idle: the sword is not rolled off the grip");
     CHECK(A.foreR.x > 1.10f && A.foreL.x > 1.10f, "idle: both elbows stay bent (foreR %.2f, foreL %.2f)", A.foreR.x, A.foreL.x);
+    const mat4 G = gripTurn(two.part[CP_ARMR_D], two.toolR);
+    const vec3 f(G * vec4(0, -6, -1, 1));
+    const vec3 d = glm::normalize(mat3(G) * vec3(0, 0.472f, -1.448f));
+    const vec3 tip(f + d * 1.40f);
+    const vec3 tipA(tip.x, tip.y, -tip.z), fistA(f.x, f.y, -f.z);
+    CHECK(tipA.y > fistA.y + 0.35f, "idle: the blade points up from the grip (tip y %.2f, fist y %.2f)", tipA.y, fistA.y);
+    CHECK(tipA.z > -0.15f, "idle: the blade stays in front, not on the shoulder (tip z %.2f)", tipA.z);
     CharPose cut; cut.atkMove = MV_GS1; cut.atkT = 0.45f; cut.held = true; cut.twoHand = true;
     CharRig C; charRig(bladeModel(), cut, mat4(1), C, false, false);
     const vec3 cr = fist(C, false), cl = fist(C, true);
