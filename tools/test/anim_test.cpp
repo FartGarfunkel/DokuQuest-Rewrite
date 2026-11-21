@@ -57,7 +57,8 @@ static float bladeLen(u8 id) {
   if (id == MV_TOOL1 || id == MV_TOOL2) return 0.70f;
   return 0.95f;
 }
-static void drawnBlade(u8 id, float t, vec3& hilt, vec3& tip) {
+static constexpr float SWORD_BLADE = 0.95f;   // sword dump length; greatsword and spear samples use this and let reach scale
+static void drawnBlade(u8 id, float t, vec3& hilt, vec3& tip, float lenOverride = -1.f) {
   CharPose p; p.atkMove = id; p.atkT = std::max(t, 0.0001f); p.held = true;
   p.twoHand = id == MV_GS1 || id == MV_GS2 || id == MV_SPEAR1 || id == MV_SPEAR2;
   CharRig R; charRig(bladeModel(), p, mat4(1), R, false, false);
@@ -66,7 +67,7 @@ static void drawnBlade(u8 id, float t, vec3& hilt, vec3& tip) {
   const vec3 f(G * vec4(0, -6, -1, 1));
   const bool fist = id >= MV_FIST1 && id <= MV_FIST3;
   const vec3 d = glm::normalize(mat3(G) * (fist ? vec3(0, -1, 0) : vec3(0, 0.472f, -1.448f)));
-  const vec3 tp = f + d * bladeLen(id);
+  const vec3 tp = f + d * (lenOverride > 0 ? lenOverride : bladeLen(id));
   hilt = vec3(f.x, f.y, -f.z); tip = vec3(tp.x, tp.y, -tp.z);
 }
 
@@ -79,7 +80,10 @@ int main(int argc, char** argv) {
     for (u8 id = MV_SWORD1; id < MV_COUNT; id++) {
       const float len = attackMove(id).len;
       for (int i = 0; i <= (int)std::ceil(len * 120); i++) {
-        const float t = std::min(len, i / 120.f); vec3 h, tp; drawnBlade(id, t, h, tp);
+        const float t = std::min(len, i / 120.f); vec3 h, tp;
+        // moves 16–19 were dumped at 1.40 and 1.15 and then scaled again by reach. Sword length only; reach is the scale.
+        const float sample = (id >= MV_GS1 && id <= MV_SPEAR2) ? SWORD_BLADE : -1.f;
+        drawnBlade(id, t, h, tp, sample);
         std::fprintf(f, "{%d,%.4ff,%.3ff,%.3ff,%.3ff,%.3ff,%.3ff,%.3ff},\n", id, t, h.x, h.y, h.z, tp.x, tp.y, tp.z);
       }
     }
@@ -344,6 +348,7 @@ int main(int argc, char** argv) {
     for (u8 id = MV_SWORD1; id < MV_COUNT; id++)
       for (float t = 0.007f; t < attackMove(id).len; t += 0.023f) {
         vec3 h0, t0, h1, t1; drawnBlade(id, t, h0, t0); bladeAt(id, t, h1, t1);
+        if (id >= MV_GS1 && id <= MV_SPEAR2) t0 = h0 + (t0 - h0) * (SWORD_BLADE / bladeLen(id));   // the table is sword length; reach scales the hit
         const float d = std::max(glm::length(h0 - h1), glm::length(t0 - t1));
         if (d > worst) { worst = d; at = attackMove(id).name; }
       }
