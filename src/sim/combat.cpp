@@ -390,6 +390,7 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
   if ((in.attackPressed || offStart) && p.atkT < m.recovery) {
     const ItemStack& qHand = offPress && !p.offhand.empty() ? p.offhand[0] : p.inv[p.selected];
     if (weaponSkillMet(p, qHand)) { p.data["atkQueue"] = true; p.data["atkQueueOff"] = offPress; }
+    else toast(lv, p, "Needs more melee practice.", "info");
   }
   if (p.atkT >= m.len) {
     p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = 0; p.atkOff = false;
