@@ -88,6 +88,13 @@ const VoxelModel* localPlayerArm() {
   return skinArmModel(*resolveCharacter(a.session->player->skin));
 }
 
+vec3 carryClear(const vec3* face, vec3 fist) {
+  if (!face) return vec3(0);
+  const vec3 d = fist - *face;
+  if (glm::length(d) < 1e-4f) return vec3(0);
+  return glm::normalize(d) * 0.18f;
+}
+
 namespace {
 float clampf(float v, float a, float b) { return v < a ? a : v > b ? b : v; }
 float turnTo(float a, float b, float k) { return a + wrapAngle(b - a) * std::min(1.f, k); }
@@ -186,8 +193,21 @@ void shieldInHand(const CharRig& R, int part, const std::string& id, float side,
   if (!im.ready()) return;
   voxelRenderer().draw(im.gl, shieldPlacement(R, part, side, k) * im.matrix(), light, tint, glint ? 1.f : 0.f);
 }
+// sword, dagger, greatsword, spear, axe or mace — and a part-tool whose pt.t (the model key's kind) is one of those
+bool carryBlade(const std::string& id, const std::string& modelKey) {
+  auto kind = [](const std::string& t) {
+    return t == "sword" || t == "dagger" || t == "greatsword" || t == "spear" || t == "axe" || t == "mace";
+  };
+  if (const ItemDef* d = reg().item(id); d && d->hasTool && kind(d->tool.type)) return true;
+  if (modelKey.rfind("pt:", 0) == 0 && (modelKey.size() < 4 || modelKey[3] != '=')) {
+    const size_t c = modelKey.find(':', 3);
+    if (kind(modelKey.substr(3, c == std::string::npos ? std::string::npos : c - 3))) return true;
+  }
+  return id.find("sword") != std::string::npos || id.find("dagger") != std::string::npos || id.find("mace") != std::string::npos
+      || id.find("spear") != std::string::npos || id.find("greatsword") != std::string::npos;
+}
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
-void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "", vec3* headOut = nullptr, const float* fpYaw = nullptr) {
+void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "", vec3* headOut = nullptr, const float* fpYaw = nullptr, const vec3* face = nullptr) {
   if (id == "fishing_rod") id = "fishing_rod_tp";
   const VoxelModel& im0 = itemModel(modelKey.empty() ? id : modelKey);
   if (!im0.ready()) return;
@@ -264,6 +284,11 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
     hm = glm::scale(hm, vec3((1 + T[2]) / CHAR_PX)) * heldMat(id);
   }
   (void)side;
+  // the mesh only: the arm stays. A null face (swing, block, attack) is a zero shift.
+  if (carryBlade(id, modelKey)) {
+    const vec3 off = carryClear(face, vec3(hm[3]));
+    if (off != vec3(0)) hm = glm::translate(mat4(1), off) * hm;
+  }
   if (id.find("mace") != std::string::npos || modelKey.rfind("pt:mace", 0) == 0) {
     // the head is a ball on a chain: it hangs from the top of the haft and lags the hand
     const vec3 fist = vec3(hm[3]);
@@ -1266,6 +1291,8 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   if (!fp || fpArmR || fpArmL) {
     const bool mainOn = !fp || fpArmR, offOn = !fp || fpArmL;
     const float fpYawV[2] = {ps.yaw, ps.headPitch / 0.8f};   // (the body's facing, as charRig's base turns, and the look's pitch)
+    const vec3 faceC = vec3(R.part[CP_HEAD] * vec4(0, 4.f, 0, 1));
+    const vec3* face = (!ps.atkMove && ps.block <= 0 && ps.swing <= 0) ? &faceC : nullptr;
     bool bowDraw = ps.bow > 0 && wear.held.rfind("bow", 0) == 0;
     if (bowDraw) { if (!fp) drawnBow(R, light, tint, wear.heldGlint); }   // (first person: render/fp_bow.cpp)
     else if (!mainOn) {}
@@ -1273,7 +1300,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     else if (isShieldItem(wear.held)) shieldInHand(R, CP_ARMR_D, wear.held, 1.f, ps.blockMain ? ps.block : 0.f, light, tint, wear.heldGlint);
     else if (!wear.held.empty()) {
       vec3 head;
-      heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, fp ? &head : nullptr, fp && !ps.atkMove ? fpYawV : nullptr);
+      heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, fp ? &head : nullptr, fp && !ps.atkMove ? fpYawV : nullptr, face);
       if (fp) { HeldItemLayer::torchTip[0] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[0] = true; }   // (your own torch's flame, at its head)
     }
     // a two-handed block puts the off forearm on the haft: the strap stays off it, and an off-hand shield is not raised there
@@ -1284,7 +1311,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     else if (!wear.off.empty() && isShieldItem(wear.off) && !twoHandBlock) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
     else if (!wear.off.empty()) {
       vec3 head;
-      heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, 0, glm::dvec3(0), wear.offModel, fp ? &head : nullptr, fp ? fpYawV : nullptr);
+      heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, 0, glm::dvec3(0), wear.offModel, fp ? &head : nullptr, fp ? fpYawV : nullptr, face);
       if (fp) { HeldItemLayer::torchTip[1] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[1] = true; }
     }
   }

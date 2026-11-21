@@ -3,6 +3,7 @@
 // poses (drink, hurt flinch, death crumple, sleep, jump lead leg, shield, crossbow, trident, spear) do what they say,
 // and nothing produces NaN. Pure functions only, no GL. Run: ./build/test_anim (exit code = failures)
 #include "render/char_anim.h"
+#include "render/char_layer.h"
 #include "render/char_blend.h"
 #include "render/fp_motion.h"
 #include "render/place_pop.h"
@@ -479,6 +480,19 @@ int main(int argc, char** argv) {
     CHECK(lookAt(MV_GS1, g1t, chest1, head1, left1) && lookAt(MV_GS2, g2t, chest2, head2, left2),
           "at the hit the head tracks the scaled chest, not the borrowed sword twist (chest %.2f/%.2f, head %.2f/%.2f, leftover %.2f/%.2f)",
           chest1, chest2, head1, head2, left1, left2);
+  }
+  printf("[carry clear]\n");
+  {
+    const vec3 fist(0.f, 1.6f, 0.4f);
+    CHECK(carryClear(nullptr, fist) == vec3(0), "a null face does not nudge");
+    const vec3 face(0.f);
+    const vec3 n = carryClear(&face, fist);
+    const vec3 want = glm::normalize(fist - face) * 0.18f;
+    CHECK(glm::length(n - want) < 1e-5f, "the nudge points from the face toward the fist (%.4f %.4f %.4f)", n.x, n.y, n.z);
+    CHECK(std::fabs(glm::length(n) - 0.18f) < 1e-5f, "and its length is 0.18 (%.5f)", glm::length(n));
+    CHECK(glm::length(fist + n - face) > glm::length(fist - face), "adding it to the fist increases the distance from the face");
+    const vec3 close = fist + vec3(5e-5f, 0.f, 0.f);
+    CHECK(carryClear(&fist, close) == vec3(0), "points under 1e-4 apart are not nudged");
   }
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails;

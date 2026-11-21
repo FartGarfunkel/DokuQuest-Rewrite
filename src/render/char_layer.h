@@ -114,5 +114,8 @@ struct FpGuard { mat4 shield{1}, upper{1}, fore{1}; vec3 shieldFist{0}, shieldEl
 // draw one of the local player's own skin limb parts (CP_*) at m (part * scale, view space), the voxel renderer begun
 void drawFpLimb(const Player& p, int part, const mat4& m, VoxelLight light);
 bool fpGuardFrames(const Player& p, bool shieldLeft, const std::string& weapon, FpGuard& out, float k = 1);   // k: how far on guard (0: carried at the side)
+// a carried blade's fist, moved off the face along that line (0.18). Null face (a swing, a block, an attack)
+// returns 0, and so do two points under 1e-4 apart.
+vec3 carryClear(const vec3* face, vec3 fist);
 
 } // namespace dq
