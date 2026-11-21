@@ -112,6 +112,9 @@ std::string model3dKind(const std::string& key, const ItemDef* def) {
   if (t == "hoe") return "hoe";
   if (key == "ogre_club") return "club";
   if (key.find("dagger") != std::string::npos) return "dagger";
+  if (t == "greatsword" || key.find("greatsword") != std::string::npos) return "greatsword";
+  if (t == "spear" || key.find("spear") != std::string::npos) return "spear";
+  if (t == "mace" || key.find("mace") != std::string::npos) return "mace";
   if (t == "sword") return "sword";
   if (def->has("staff") || t == "staff") return "staff";
   if (t == "shears") return "shears";
@@ -223,8 +226,26 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     m.sseg(diag(0.84f), diag(0.98f), 0.07f, 0.16f, 0.05f, 0.06f, 1.02f, 0.04f);
     m.sseg(diag(0.98f), diag(1.14f), 0.16f, 0.02f, 0.06f, 0.02f, 1.1f, 0.04f);
     depth = 0.05f;
-  } else if (k == "sword" || k == "dagger") {
-    depth = k == "sword" ? sword(m) : sword(m, 0.92f, 0.13f, 0.16f);
+  } else if (k == "sword" || k == "dagger" || k == "greatsword") {
+    // a greatsword is the same sword, much longer and broader, a long grip for two hands
+    depth = k == "dagger" ? sword(m, 0.92f, 0.13f, 0.16f) : k == "greatsword" ? sword(m, 1.72f, 0.26f, 0.38f) : sword(m);
+    if (k == "greatsword") m.sseg(diag(0.04f), diag(0.42f), 0.08f, 0.08f, 0.08f, 0.08f);   // the grip runs on, so the other hand has it
+  } else if (k == "spear") {
+    handle(m, 1.35f, 0.065f);
+    m.sseg(diag(1.32f), diag(1.52f), 0.08f, 0.18f, 0.045f, 0.06f, 1.04f, 0.04f);
+    m.sseg(diag(1.52f), diag(1.78f), 0.18f, 0.02f, 0.06f, 0.02f, 1.12f, 0.04f);
+    depth = 0.05f;
+  } else if (k == "mace") {
+    handle(m, 0.58f, 0.08f);
+    m.sseg(diag(0.56f), diag(0.66f), 0.07f, 0.05f, 0.07f, 0.05f, 0.9f);   // the ring the chain hangs from
+    for (int i = 0; i < 4; i++) {
+      const float y0 = 0.66f - i * 0.09f;
+      m.sseg(diag(y0, 0.02f), diag(y0 - 0.08f, 0.f), 0.04f, 0.03f, 0.025f, 0.02f, 0.82f);
+    }
+    const vec3 c = diag(0.22f);
+    m.cbox(c.x - 0.12f, c.y - 0.12f, -0.12f, c.x + 0.12f, c.y + 0.12f, 0.12f, 1.08f);   // the ball
+    m.cbox(c.x - 0.06f, c.y - 0.06f, -0.14f, c.x + 0.06f, c.y + 0.06f, 0.14f, 1.15f);
+    depth = 0.14f;
   }
   else if (k == "club") {
     m.sseg(diag(-0.02f), diag(0.32f), 0.09f, 0.1f, 0.09f, 0.1f);
@@ -408,7 +429,7 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     depth = 0.09f;
   } else return false;
   // (the tools and weapons the same on both faces: an axe's head, a sword's blade, a hoe's...)
-  static const std::set<std::string> SYM = {"pickaxe", "axe", "shovel", "hoe", "sword", "dagger", "saw", "scythe", "javelin", "club", "hammer"};
+  static const std::set<std::string> SYM = {"pickaxe", "axe", "shovel", "hoe", "sword", "dagger", "greatsword", "spear", "mace", "saw", "scythe", "javelin", "club", "hammer"};
   if (SYM.count(k)) {   // both faces alike: the grid has no middle layer (its centres sit half a voxel either side of the blade's plane),
         // so where the blade thins to its edges one layer was left on one side: that face flat, the other stepped
       VoxelGrid& G = b.P.g; const int Z = G.size.z;

@@ -132,9 +132,9 @@ int main() {
     return matchGrid(g, 3);
   };
   const ItemStack ingot("iron_ingot", 1), stick("stick", 1);
-  CraftMatch gsGrid = gridOf({{0, ingot}, {1, ingot}, {2, ingot}, {4, stick}});
-  CraftMatch spGrid = gridOf({{0, ingot}, {1, ingot}, {2, stick}});
-  CraftMatch mcGrid = gridOf({{0, ingot}, {1, ingot}, {4, stick}});
+  CraftMatch gsGrid = gridOf({{0, ingot}, {1, ingot}, {3, ingot}, {6, stick}});   // a long blade, wide at the tip
+  CraftMatch spGrid = gridOf({{0, ingot}, {1, ingot}, {3, stick}, {6, stick}});     // a point on a long shaft
+  CraftMatch mcGrid = gridOf({{0, ingot}, {1, ingot}, {2, ingot}, {4, stick}});     // a heavy head over a short haft
   auto qualOk = [](const ItemStack& s) {
     const std::string q = s.tag.value("qual", "");
     return q == "poor" || q == "normal" || q == "fine" || q == "great" || q == "legendary";

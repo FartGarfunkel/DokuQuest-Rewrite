@@ -264,6 +264,30 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
     hm = glm::scale(hm, vec3((1 + T[2]) / CHAR_PX)) * heldMat(id);
   }
   (void)side;
+  if (id.find("mace") != std::string::npos || modelKey.rfind("pt:mace", 0) == 0) {
+    // the head is a ball on a chain: it hangs from the top of the haft and lags the hand
+    const vec3 fist = vec3(hm[3]);
+    vec3 axis = vec3(fore[0]);
+    if (glm::length(axis) < 1e-4f) axis = vec3(1, 0, 0);
+    axis = glm::normalize(axis);
+    struct Flail { vec3 at, vel; float ang, av; double t; };
+    static std::vector<Flail> F;
+    const double tnow = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    Flail* me = nullptr;
+    for (auto& q : F) if (glm::length(q.at - fist) < 0.8f && tnow - q.t < 0.5) { me = &q; break; }
+    if (!me) { F.erase(std::remove_if(F.begin(), F.end(), [&](const Flail& q) { return tnow - q.t > 1.0; }), F.end()); F.push_back({fist, vec3(0), 0, 0, tnow}); me = &F.back(); }
+    const float dt = (float)std::clamp(tnow - me->t, 0.0, 0.05);
+    if (dt > 0) {
+      const vec3 vel = (fist - me->at) / dt;
+      const vec3 acc = (vel - me->vel) / dt;
+      const float push = glm::dot(acc, glm::normalize(vec3(fore[2]) + vec3(0, 0.01f, 0)));
+      me->av += (-me->ang * 28.f - me->av * 4.5f + push * 0.02f) * dt;
+      me->ang = std::clamp(me->ang + me->av * dt, -0.9f, 0.9f);
+      me->vel = vel;
+    }
+    me->at = fist; me->t = tnow;
+    hm = glm::translate(mat4(1), fist) * glm::rotate(mat4(1), me->ang, axis) * glm::translate(mat4(1), -fist) * hm;
+  }
   if (headOut) *headOut = vec3(hm * vec4(0, 0.15f, 0, 1));   // (a torch's head, where its flame burns: render/held_light_fx.cpp)
   if (rodOwner && (id == "fishing_rod_tp" || id == "fishing_rod_cast")) setRodTip(rodOwner, camPos + glm::dvec3(hm * vec4(0.47f, 0.47f, 0, 1)), now);
   if (g_dials && isInstrument(id) && im.kind != VoxelModel::Block) g_dials->push_back({id, hm, vec2(light.sky, light.block)});

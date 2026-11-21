@@ -109,10 +109,12 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
       if (!k.empty()) L.push_back({k, 0xc88cff});
       if (const double rg = st.value("regen", 0.0); rg > 0) L.push_back({"+" + num(rg) + " mana a second while held", 0xc88cff});
     }
-    if (isPartTool(s)) {   // what it's made of (core/tool_parts.h)
+    if (isPartTool(s)) {   // what it's made of (core/tool_parts.h). A weapon is not a harvesting tool.
       std::string mk; const json& m = s.tag["pt"]["m"];
       for (size_t i = 0; i < m.size(); i++) { const ToolMaterial* tm = toolMaterial(m[i].get<std::string>()); mk += (i ? " \xC2\xB7 " : "") + (tm ? tm->name : m[i].get<std::string>()); }
-      L.push_back({"Head: " + mk + " \xC2\xB7 harvest tier " + std::to_string(t.tier), TS});
+      const std::string kind = s.tag["pt"].value("t", "");
+      const bool harvest = digs && kind != "sword" && kind != "greatsword" && kind != "spear" && kind != "mace" && kind != "dagger" && kind != "knife";
+      L.push_back({(harvest ? "Head: " + mk + " \xC2\xB7 harvest tier " + std::to_string(t.tier) : (kind == "mace" ? "Head: " : "Blade: ") + mk), TS});
     }
     if (s.tag.is_object() && s.tag.contains("gem") && s.tag["gem"].is_string()) if (const char* ge = gemEffect(s.tag["gem"].get<std::string>())) {
       const ItemDef* gd = reg().item(s.tag["gem"].get<std::string>());

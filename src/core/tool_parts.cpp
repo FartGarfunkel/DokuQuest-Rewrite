@@ -27,7 +27,7 @@ const Weights* weightsOf(const std::string& kind) {
   static const Weights V{{1.f}, {1.f}, {1.f}, {1.f}};                                                               // shovel
   static const Weights GS{{0.35f, 0.30f, 0.35f}, {0.25f, 0.50f, 0.25f}, {0.40f, 0.20f, 0.40f}, {0.34f, 0.32f, 0.34f}};   // greatsword: edge, middle, edge
   static const Weights SP{{0.65f, 0.35f}, {0.35f, 0.65f}, {0.70f, 0.30f}, {0.6f, 0.4f}};                                 // spear: tip, base
-  static const Weights MC{{0.5f, 0.5f}, {0.4f, 0.6f}, {0.7f, 0.3f}, {0.5f, 0.5f}};                                       // mace: head, neck
+  static const Weights MC{{0.3f, 0.4f, 0.3f}, {0.3f, 0.4f, 0.3f}, {0.35f, 0.3f, 0.35f}, {0.34f, 0.32f, 0.34f}};   // mace: left, middle, right of the head
   if (kind == "knife" || kind == "hammer" || kind == "saw" || kind == "scythe" || kind == "javelin" || kind == "propick" || kind == "chisel") return &V;   // (one-piece heads)
   if (kind == "greatsword") return &GS;
   if (kind == "spear") return &SP;
@@ -134,7 +134,7 @@ std::string partToolBaseKind(const std::string& k) {
 std::string partToolBaseItem(const std::string& k) {
   if (k == "knife" || k == "hammer" || k == "scythe" || k == "javelin" || k == "saw") return "flint_" + k;   // (their models: assets/item_parts.cpp)
   if (k == "propick") return "iron_pickaxe";
-  if (k == "greatsword" || k == "spear" || k == "mace") return "iron_sword";
+  if (k == "greatsword" || k == "spear" || k == "mace") return "mixed_" + k;   // its own shape, not the sword's
   return "iron_" + k;
 }
 int partToolSections(const std::string& k) { const Weights* W = weightsOf(k); return W ? (int)W->speed.size() : 0; }
@@ -344,9 +344,9 @@ const std::vector<ToolPattern>& toolPatterns() {
     {"axe", 2, 3, {{0, 0}, {1, 0}, {0, 1}}, {{1, 1}, {1, 2}}},
     {"shovel", 1, 3, {{0, 0}}, {{0, 1}, {0, 2}}},
     {"sword", 1, 3, {{0, 0}, {0, 1}}, {{0, 2}}},
-    {"greatsword", 3, 2, {{0, 0}, {1, 0}, {2, 0}}, {{1, 1}}},
-    {"spear", 3, 1, {{0, 0}, {1, 0}}, {{2, 0}}},
-    {"mace", 2, 2, {{0, 0}, {1, 0}}, {{1, 1}}},
+    {"greatsword", 2, 3, {{0, 0}, {1, 0}, {0, 1}}, {{0, 2}}},   // a long blade, wide at the tip, stick at the grip
+    {"spear", 2, 3, {{0, 0}, {1, 0}}, {{0, 1}, {0, 2}}},         // a broad point on a long shaft
+    {"mace", 3, 2, {{0, 0}, {1, 0}, {2, 0}}, {{1, 1}}},          // a heavy head over a short haft
     {"hoe", 2, 3, {{0, 0}, {1, 0}}, {{1, 1}, {1, 2}}},
   };
   return P;

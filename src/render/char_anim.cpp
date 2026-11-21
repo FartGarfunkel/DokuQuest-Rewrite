@@ -600,6 +600,23 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     R.scale[up] = R.scale[dn] = glm::scale(mat4(1), vec3(b, 1, b));
     R.scale[lu] = R.scale[ld] = glm::scale(mat4(1), vec3(b, kl, b));
   }
+  // a two-handed weapon: the free hand reaches across and takes the haft, just below the hand that holds it
+  if (pose.twoHand && !pose.swim && !pose.crawl && pose.deathT <= 0) {
+    const bool leftWeapon = pose.atkOff;
+    const int wDn = (leftWeapon ? CP_ARML_U : CP_ARMR_U) + 1;
+    const int oUp = leftWeapon ? CP_ARMR_U : CP_ARML_U, oDn = oUp + 1;
+    const vec3 grip = vec3(R.part[wDn] * vec4(0, -3.2f, -0.6f, 1));
+    const vec3 inBody = vec3(glm::inverse(bodyM) * vec4(grip, 1));
+    const vec3 pu = M.pivot[oUp];
+    const vec3 S(pu.x * b, pu.y - 12, pu.z);
+    const float l1 = glm::length(M.pivot[oDn] - pu);
+    vec3& arm = leftWeapon ? A.armR : A.armL;
+    vec3& fore = leftWeapon ? A.foreR : A.foreL;
+    reachArm(S, inBody, l1, BOW_FIST, vec3(leftWeapon ? 1.f : -1.f, -0.35f, 0.15f), arm, fore);
+    const vec3 armOff(pu.x * b, pu.y - 12, pu.z);
+    R.part[oUp] = child(bodyM, armOff, arm);
+    R.part[oDn] = child(R.part[oUp], M.pivot[oDn] - pu, fore);
+  }
   // ---- gear3d.js gearDraws: frames for the look's shapes ----
   R.gear.clear();
   const mat4& B = R.body;

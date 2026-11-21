@@ -90,12 +90,7 @@ static void attackPoseRaw(CharAngles& A, const CharPose& pose) {
   A.legR.y += L(&AtkKey::by) * 0.35f * st; A.legL.y += L(&AtkKey::by) * 0.35f * st;   // (the feet turn a little with the hips)
   const vec3 arm(L(&AtkKey::ax), L(&AtkKey::ay), L(&AtkKey::az)), other(L(&AtkKey::ox), L(&AtkKey::oy), L(&AtkKey::oz));
   const vec2 grip(L(&AtkKey::gx), L(&AtkKey::gz));
-  const bool both = id == MV_GS1 || id == MV_GS2 || id == MV_SPEAR1 || id == MV_SPEAR2;
-  if (both) {
-    A.armR = mixv(A.armR, arm, k); A.foreR.x += (L(&AtkKey::fx) - A.foreR.x) * k; A.toolR = grip * k;
-    const vec3 off(arm.x * 0.9f, -std::fabs(arm.y) * 0.45f - 0.15f, -arm.z * 0.4f);
-    A.armL = mixv(A.armL, off, k); A.foreL.x += (L(&AtkKey::fx) * 0.75f - A.foreL.x) * k;
-  } else if (!C.left) {
+  if (!C.left) {
     A.armR = mixv(A.armR, arm, k); A.foreR.x += (L(&AtkKey::fx) - A.foreR.x) * k; A.toolR = grip * k;
     if (!(pose.atkOff ? pose.held : pose.off)) { A.armL = mixv(A.armL, other, k * 0.85f); A.foreL.x += (L(&AtkKey::ofx) - A.foreL.x) * k * 0.85f; }
   } else {
