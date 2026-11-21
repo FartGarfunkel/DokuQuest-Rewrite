@@ -86,7 +86,7 @@ std::string recolorKey(const std::string& key, const std::string& c) {
 static CraftMatch special(const std::string& out, int n, int w = 1, int h = 1) { CraftMatch m; m.ok = true; m.out = out; m.n = n; m.w = w; m.h = h; return m; }
 
 // A new weapon, tool, or armour piece. One that already has qual is left alone.
-// The seed mixes the craft tick with the item key and a craft count, so two crafts in one tick can differ.
+// The seed is only the craft tick mixed with the item key. The same item in one tick keeps one qual.
 static bool craftedGear(const ItemStack& s) {
   if (s.empty()) return false;
   if (isPartTool(s) || isPartArmor(s)) return true;
@@ -97,10 +97,8 @@ static bool craftedGear(const ItemStack& s) {
   }
 }
 static uint32_t craftQualSeed(const std::string& key) {
-  static uint32_t n = 0xA341316Cu;
-  n = n * 1664525u + 1013904223u;
   const uint32_t tick = (uint32_t)(nowSeconds() * 30.0);
-  uint32_t h = n ^ (tick * 0x9E3779B9u);
+  uint32_t h = tick * 0x9E3779B9u;
   for (unsigned char c : key) h = h * 16777619u ^ c;
   return h;
 }
