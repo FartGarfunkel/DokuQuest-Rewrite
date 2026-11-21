@@ -242,11 +242,20 @@ int main() {
   hand.stats["skills"]["melee"] = skillXpFor(15);
   CHECK(skillLv(hand, "melee") >= 15 && weaponSkillMet(hand, ironGs), "melee 15 can hold the iron greatsword");
   ironGs.tag["qual"] = "poor";
+  ItemStack wornGs = ironGs;
+  wornGs.d = std::max(2, toolMaxDurability(wornGs) / 2);
+  std::vector<ItemStack> mendGrid(9);
+  mendGrid[0] = wornGs;
+  mendGrid[1] = ItemStack("iron_ingot", 1);
+  CraftMatch mended = matchGrid(mendGrid, 3);
+  CHECK(mended && mended.repair >= 0 && mended.result().id == wornGs.id && mended.result().d < wornGs.d
+        && mended.result().tag.value("qual", "") == "poor",
+        "a worn greatsword and one ingot mends and keeps its quality (repair %d)", mended.repair);
   std::vector<ItemStack> grid(9);
   grid[0] = ironGs;
   grid[1] = ItemStack("iron_ingot", 1);
   CraftMatch rolled = matchGrid(grid, 3);
-  CHECK(rolled && rolled.result().id == "mixed_greatsword" && rolled.result().tag.value("qual", "") != "poor",
+  CHECK(rolled && rolled.result().id == "mixed_greatsword" && rolled.result().tag.value("qual", "") != "poor" && rolled.repair < 0,
         "an ingot of its metal rolls a new quality and keeps the weapon");
 
   printf("a weapon guard is weaker than a shield\n");

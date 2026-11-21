@@ -132,6 +132,7 @@ static CraftMatch matchQualityReroll(const std::vector<ItemStack>& slots) {
     else ing = &s;
   }
   if (n != 2 || !gear || !ing || ing->n < 1) return {};
+  if (gear->d > 0) return {};   // worn: the one-material mend repairs it; a sound piece rerolls
   const ToolMaterial* tm = toolMaterialOfStack(*ing);
   if (!tm) return {};
   const json& mats = isPartTool(*gear) ? gear->tag["pt"]["m"] : gear->tag["pa"]["m"];

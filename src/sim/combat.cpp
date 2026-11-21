@@ -316,6 +316,17 @@ static void beginSwingOf(Player& p, bool sprint, bool air, bool off) {
   if (off && !p.offhand.empty()) std::swap(p.inv[p.selected], p.offhand[0]);
   p.atkOff = off && p.atkMove != MV_NONE;
 }
+// a queued cut is the weapon in the hand now. A press stored on a fist must not follow through on a greatsword.
+static bool queuedSwingAllowed(Level& lv, Player& p) {
+  if (!p.data.value("atkQueue", false)) return false;
+  const bool off = p.data.value("atkQueueOff", false);
+  const ItemStack& hand = off && !p.offhand.empty() ? p.offhand[0] : p.inv[p.selected];
+  if (weaponSkillMet(p, hand)) return true;
+  toast(lv, p, "Needs more melee practice.", "info");
+  p.data.erase("atkQueue");
+  p.data.erase("atkQueueOff");
+  return false;
+}
 void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allowStart, bool offStart) {
   const ToolInfo* tool = heldTool(p);
   (void)tool;
@@ -326,7 +337,7 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
     else if (p.atkMove != MV_NONE && p.atkT < attackMove(p.atkMove).recovery) { p.data["atkQueue"] = true; p.data["atkQueueOff"] = offPress; }
     else beginSwingOf(p, p.sprinting, !p.onGround, offPress);
   }
-  if (p.atkMove == MV_NONE) { p.atkGap += dt; if (p.data.value("atkQueue", false)) beginSwingOf(p, p.sprinting, !p.onGround, p.data.value("atkQueueOff", false)); return; }
+  if (p.atkMove == MV_NONE) { p.atkGap += dt; if (queuedSwingAllowed(lv, p)) beginSwingOf(p, p.sprinting, !p.onGround, p.data.value("atkQueueOff", false)); return; }
   const AttackMove& m = attackMove(p.atkMove);
   if ((p.dodgeT > 0 || p.blockT > 0.001f) && p.atkT < m.hitFrom) {
     p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = COMBO_WINDOW; p.data.erase("atkQueue");
@@ -376,10 +387,13 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
       }
     }
   }
-  if ((in.attackPressed || offStart) && p.atkT < m.recovery) { p.data["atkQueue"] = true; p.data["atkQueueOff"] = offPress; }
+  if ((in.attackPressed || offStart) && p.atkT < m.recovery) {
+    const ItemStack& qHand = offPress && !p.offhand.empty() ? p.offhand[0] : p.inv[p.selected];
+    if (weaponSkillMet(p, qHand)) { p.data["atkQueue"] = true; p.data["atkQueueOff"] = offPress; }
+  }
   if (p.atkT >= m.len) {
     p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = 0; p.atkOff = false;
-    if (p.data.value("atkQueue", false)) beginSwingOf(p, p.sprinting, !p.onGround, p.data.value("atkQueueOff", false));
+    if (queuedSwingAllowed(lv, p)) beginSwingOf(p, p.sprinting, !p.onGround, p.data.value("atkQueueOff", false));
   }
 }
 
