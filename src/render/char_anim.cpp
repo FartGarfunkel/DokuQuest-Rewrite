@@ -583,8 +583,11 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
   // a two-handed cut faces the blow. The borrowed sword twists the chest so far that the off shoulder
   // sits behind the hilt and the other hand cannot take it.
   if (pose.twoHand && !pose.swim && !pose.crawl && pose.deathT <= 0 &&
-      (pose.atkMove == MV_GS1 || pose.atkMove == MV_GS2 || pose.atkMove == MV_SPEAR1 || pose.atkMove == MV_SPEAR2))
+      (pose.atkMove == MV_GS1 || pose.atkMove == MV_GS2 || pose.atkMove == MV_SPEAR1 || pose.atkMove == MV_SPEAR2)) {
+    const float yaw = A.body.y;
     A.body.y *= 0.4f;
+    A.head.y -= A.body.y - yaw;   // the look was already cancelled against the full twist
+  }
   mat4 root = glm::translate(base, vec3(0, A.lift, 0));
   root = glm::scale(root, vec3(CHAR_PX));   // model pixels from here on
   auto child = [](const mat4& parent, vec3 off, vec3 r) { return rot(glm::translate(parent, off), r); };

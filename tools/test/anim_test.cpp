@@ -456,6 +456,24 @@ int main(int argc, char** argv) {
     CHECK(spearHands && dir.z > 0.45f && dir.z > std::fabs(dir.x) && dir.z > std::fabs(dir.y),
           "a spear thrusts along the look with both hands on the shaft (hands %.2f apart, tip %.2f %.2f %.2f)",
           glm::length(sr - sl), sptp.x, sptp.y, sptp.z);
+    // the chest yaw is scaled after the look was cancelled. The head has to take the same delta, or it keeps the full sword twist.
+    auto yawOf = [](const mat4& M) {
+      const vec3 x = glm::normalize(vec3(M[0]));
+      return std::atan2(-x.z, x.x);
+    };
+    auto lookAt = [&](u8 id, float t, float& chest, float& head, float& left) {
+      CharPose p; p.atkMove = id; p.atkT = t; p.held = true; p.twoHand = true;
+      const CharAngles full = charAnimate(p);
+      const CharRig R = rig(id, t, true);
+      chest = yawOf(R.part[CP_BODY]); head = yawOf(R.part[CP_HEAD]);
+      const float scaled = full.body.y * 0.4f;
+      left = full.head.y + scaled;   // where the head would point if it kept the full twist
+      return std::fabs(chest - scaled) < 0.12f && std::fabs(head) < 0.15f && std::fabs(head) < std::fabs(left) * 0.35f;
+    };
+    float chest1 = 0, head1 = 0, left1 = 0, chest2 = 0, head2 = 0, left2 = 0;
+    CHECK(lookAt(MV_GS1, g1t, chest1, head1, left1) && lookAt(MV_GS2, g2t, chest2, head2, left2),
+          "at the hit the head tracks the scaled chest, not the borrowed sword twist (chest %.2f/%.2f, head %.2f/%.2f, leftover %.2f/%.2f)",
+          chest1, chest2, head1, head2, left1, left2);
   }
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails;
