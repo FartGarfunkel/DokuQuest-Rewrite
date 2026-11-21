@@ -101,6 +101,7 @@ bool treeLearn(Player& p, const std::string& tree, const std::string& id) {
   return false;
 }
 void treeReset(Player& p) { p.stats["tree"] = json{{"nodes", json::array()}}; p.recalcMax(); }
+std::string treeNodeGainLine(const TreeNode& n) { return n.title.empty() ? "Learnt" : n.title; }
 
 static float sumAttr(const Player& p, const std::string& attr, bool pct) {
   float s = gemAttr(p, attr, pct);   // (gems set in the gear worn and held: sim/spell_items.h)

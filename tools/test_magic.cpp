@@ -334,6 +334,10 @@ int main(int argc, char** argv) {
       check(treePointsSpent(p) == 0 && p.maxHp == hp0, "a reset gives the points back");
       p.stats["tree"]["nodes"] = json::array({"warrior", "warrior_159"});
       check(treeSanitise(p) == 1 && treeHas(p, "warrior") && !treeHas(p, "warrior_159"), "an old import id is dropped; the Knight start stays");
+      TreeNode sample; sample.title = "Keen";
+      check(treeNodeGainLine(sample) == "Keen", "a node's toast is its title");
+      sample.title.clear();
+      check(treeNodeGainLine(sample) == "Learnt", "a nameless node still has a line");
     }
   }
 

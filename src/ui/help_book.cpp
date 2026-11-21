@@ -154,7 +154,7 @@ const std::vector<Section>& helpText() {
     {BUL, "Intelligence: spell power and mana.  Luck: critical hits and better loot."},
     {BUL, "Focus: you break a foe's guard sooner."},
     {H, "The skill tree"},
-    {P, "Every three skill levels is a talent point for the skill tree, on the left-hand page. Start from a tree's first node, then learn any node joined to one you have. A reset gives them all back."},
+    {P, "Every three skill levels is a talent point for the skill tree, on the left-hand page. Start from a tree's first node, then learn any node joined to one you have. A reset gives them all back. The tree grows the path a trainer started. Creatures take their level from your skills slowly, so the tree is how you pull ahead of the land."},
     {SUB, "With a controller"},
     {KEY, "D-pad", "Pick a node on the tree \xC2\xB7 A learns it"},
     {KEY, "RT \xC2\xB7 LT", "Cross to your stats \xC2\xB7 back to the tree"},

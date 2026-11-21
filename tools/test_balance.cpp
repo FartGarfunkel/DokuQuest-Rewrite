@@ -436,6 +436,7 @@ int main(int argc, char** argv) {
     json sk = json::object(); for (auto& d : magicData().skills) sk[d.key] = 0; p.stats["skills"] = sk;
     skillGain(*lv, p, "mining", skillXpFor(5));
     check(fx.heard("Mining skill level 5!"), "a skill's level: \"Mining skill level 5!\"");
+    check(fx.heard("a talent point to spend"), "crossing a multiple of 3 total skill levels names a talent point");
     skillGain(*lv, p, "melee", skillXpFor(5));
     check(fx.heard("a stat point to spend"), "...and the stat point it brings is named");
   }

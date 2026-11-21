@@ -20,6 +20,7 @@
 #include "sim/magic.h"
 #include "common/noise.h"
 #include "sim/deeds.h"
+#include "sim/combat_rpg.h"
 #include <imgui.h>
 #include <algorithm>
 #include <cmath>
@@ -53,7 +54,9 @@ public:
   bool pausesGame() const override { return false; }
   // learn a node; a tree's start taken without a Path says who teaches the Path that goes with it (sim/deeds.h)
   static void learn(App& a, Player& p, const SkillTree& T, int i) {
-    if (treeLearn(p, T.key, T.nodes[i].id) && T.nodes[i].start && a.session && a.session->level) pathTreeOnStart(*a.session->level, p, T.key);
+    if (!treeLearn(p, T.key, T.nodes[i].id)) return;
+    if (T.nodes[i].start && a.session && a.session->level) pathTreeOnStart(*a.session->level, p, T.key);
+    else a.toast(treeNodeGainLine(T.nodes[i]), "good");
   }
   void update(App& a, double) override {
     frames++;
@@ -192,6 +195,7 @@ public:
     const int deedT = deedTalentPoints(*p);
     ImGui::Text("Tree points: %d of %d", earned - spent, earned);
     if (deedT > 0) { ImGui::SameLine(); ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(ui::ink::good), "(from your deeds: %d)", deedT); }
+    ImGui::TextDisabled("Creatures measure you at Lv %d", playerCombatLevel(*p));
     ImGui::TextDisabled("A point every 3 levels of your skills, and for your deeds");
     if (!p->creative()) ImGui::TextDisabled("To learn again: a Shrine of Renewal, in any village square");
     else {   // (creative: the pad's reset, picked last on this page, and a second A within a few seconds, so a stray press costs nothing)

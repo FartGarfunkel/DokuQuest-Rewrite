@@ -31,6 +31,7 @@ std::string treeWhyNot(const Player& p, const SkillTree& t, const TreeNode& n);
 bool treeLearn(Player& p, const std::string& tree, const std::string& id);
 void treeReset(Player& p);
 int treeSanitise(Player& p);   // drop learnt ids the current trees do not have; how many dropped
+std::string treeNodeGainLine(const TreeNode& n);   // toast when learnt: title, or "Learnt"
 float treeAttr(const Player& p, const std::string& attr);      // flat
 float treeAttrPct(const Player& p, const std::string& attr);   // fraction
 // the keys of what you've learnt (and stats "attrBonus") that start with `prefix`, the prefix cut off: "grant_spell." -> the
