@@ -83,7 +83,7 @@ int treeSanitise(Player& p) {
     for (const SkillTree& t : skillTrees()) if (t.find(id) >= 0) { ok = true; break; }
     if (ok) keep.push_back(id); else drop++;
   }
-  if (drop) { p.stats["tree"]["nodes"] = keep; p.recalcMax(); }
+  if (drop) p.stats["tree"]["nodes"] = keep;
   return drop;
 }
 

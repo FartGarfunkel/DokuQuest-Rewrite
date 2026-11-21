@@ -334,6 +334,18 @@ int main(int argc, char** argv) {
       check(treePointsSpent(p) == 0 && p.maxHp == hp0, "a reset gives the points back");
       p.stats["tree"]["nodes"] = json::array({"warrior", "warrior_159"});
       check(treeSanitise(p) == 1 && treeHas(p, "warrior") && !treeHas(p, "warrior_159"), "an old import id is dropped; the Knight start stays");
+      p.stats["tree"]["nodes"] = json::array({"warrior", "warrior_159"});
+      p.recalcMax();
+      check(treeHas(p, "warrior") && !treeHas(p, "warrior_159"), "recalc drops old ids too, as a load would");
+      treeReset(p);
+      check(treeLearn(p, "warrior", "warrior"), "start again for a keystone");
+      bool might = true;
+      for (const char* id : {"w_might1", "w_might2", "w_might3", "w_might4", "w_might5", "w_might6"})
+        if (!treeLearn(p, "warrior", id)) might = false;
+      check(might && treeHas(p, "w_might6"), "the Might keystone can be learnt");
+      const int iG = W->find("w_guard6"), iW = W->find("w_wound6");
+      check(iG >= 0 && !treeWhyNot(p, *W, W->nodes[iG]).empty() && iW >= 0 && !treeWhyNot(p, *W, W->nodes[iW]).empty(),
+            "one Keystone: the other two are refused");
       TreeNode sample; sample.title = "Keen";
       check(treeNodeGainLine(sample) == "Keen", "a node's toast is its title");
       sample.title.clear();

@@ -21,6 +21,7 @@ Player::Player() {
 
 float Player::heal(float n) { float before = hp; hp = std::min(maxHp, hp + n); return hp - before; }
 void Player::recalcMax() {
+  treeSanitise(*this);
   float m = 20 + 2 * std::min(10, heartCrystals) + 2 * charmBonus(*this, "hearts") + pathMaxHealthBonus(*this);   // (+ a Knight's two hearts)
   m = std::round((m + conHealth(*this) + treeAttr(*this, "health")) * (1 + talent(*this, "health")));   // (Constitution; the skill tree, sim/skilltree.h)
   if (m != maxHp) { maxHp = m; if (hp > m) hp = m; }
