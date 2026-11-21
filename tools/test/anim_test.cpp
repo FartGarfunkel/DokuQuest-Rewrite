@@ -493,8 +493,9 @@ int main(int argc, char** argv) {
     const vec3 d = glm::normalize(mat3(G) * vec3(0, 0.472f, -1.448f));
     const vec3 tip(f + d * 1.40f);
     const vec3 tipA(tip.x, tip.y, -tip.z), fistA(f.x, f.y, -f.z);
-    CHECK(tipA.y > fistA.y + 0.40f, "idle: the blade points up from the grip (tip y %.2f, fist y %.2f)", tipA.y, fistA.y);
-    CHECK(tipA.z > 0.05f, "idle: the blade stays in front, not on the shoulder (tip z %.2f)", tipA.z);
+    CHECK(tipA.y > fistA.y + 0.50f, "idle: the blade points up from the grip (tip y %.2f, fist y %.2f)", tipA.y, fistA.y);
+    CHECK(std::fabs(tipA.x - fistA.x) < 0.28f, "idle: the blade goes up, not out to the side (tip x %.2f, fist x %.2f)", tipA.x, fistA.x);
+    CHECK(tipA.z > -0.55f && tipA.y > 1.6f, "idle: the blade stands in front of the chest (tip z %.2f y %.2f)", tipA.z, tipA.y);
     CharPose jump; jump.held = true; jump.twoHand = true; jump.greatsword = true; jump.air = true; jump.vy = 8.f;
     CharRig J; charRig(bladeModel(), jump, mat4(1), J, false, false);
     const vec3 jr = fist(J, false), jl = fist(J, true);
