@@ -8,6 +8,7 @@
 #include "sim/crafting.h"
 #include "sim/weapon_quality.h"
 #include "sim/attack_moves.h"
+#include <unordered_map>
 #include <unordered_set>
 
 namespace dq {
@@ -86,7 +87,35 @@ std::string recolorKey(const std::string& key, const std::string& c) {
 static CraftMatch special(const std::string& out, int n, int w = 1, int h = 1) { CraftMatch m; m.ok = true; m.out = out; m.n = n; m.w = w; m.h = h; return m; }
 
 // A new weapon, tool, or armour piece. One that already has qual is left alone.
-// The seed is only the craft tick mixed with the item key. The same item in one tick keeps one qual.
+// The seed is latched to the grid. The same arrangement keeps one qual across frames, so the
+// name in the preview is the name you take. A new arrangement may roll again. Not a counter:
+// matchGrid runs every frame and must not reshuffle.
+static const std::vector<ItemStack>* craftGridSlots = nullptr;
+static uint32_t arrangementKey(const std::vector<ItemStack>& slots) {
+  uint32_t h = 2166136261u;
+  auto mix = [&](uint32_t v) { h ^= v; h *= 16777619u; };
+  mix((uint32_t)slots.size());
+  for (size_t i = 0; i < slots.size(); ++i) {
+    const ItemStack& s = slots[i];
+    if (s.empty()) continue;
+    mix((uint32_t)i);
+    for (unsigned char c : s.id) mix(c);
+    mix((uint32_t)s.n);
+    mix((uint32_t)s.d);
+    if (s.tag.is_object()) for (unsigned char c : s.tag.dump()) mix(c);
+  }
+  return h;
+}
+static uint32_t latchedArrangementSeed(const std::vector<ItemStack>& slots) {
+  const uint32_t key = arrangementKey(slots);
+  static std::unordered_map<uint32_t, uint32_t> seeds;
+  auto it = seeds.find(key);
+  if (it != seeds.end()) return it->second;
+  uint32_t s = (uint32_t)(nowSeconds() * 1.0e6) ^ (key * 0x9E3779B9u);
+  if (!s) s = 1;
+  seeds.emplace(key, s);
+  return s;
+}
 static bool craftedGear(const ItemStack& s) {
   if (s.empty()) return false;
   if (isPartTool(s) || isPartArmor(s)) return true;
@@ -97,8 +126,8 @@ static bool craftedGear(const ItemStack& s) {
   }
 }
 static uint32_t craftQualSeed(const std::string& key) {
-  const uint32_t tick = (uint32_t)(nowSeconds() * 30.0);
-  uint32_t h = tick * 0x9E3779B9u;
+  const uint32_t base = craftGridSlots ? latchedArrangementSeed(*craftGridSlots) : 1u;
+  uint32_t h = base * 0x9E3779B9u;
   for (unsigned char c : key) h = h * 16777619u ^ c;
   return h;
 }
@@ -375,6 +404,11 @@ void consumeCraft(std::vector<ItemStack>& grid, const CraftMatch& r, const std::
 }
 
 CraftMatch matchGrid(const std::vector<ItemStack>& slots, int W) {
+  struct SlotHold {
+    const std::vector<ItemStack>* prev;
+    explicit SlotHold(const std::vector<ItemStack>& s) : prev(craftGridSlots) { craftGridSlots = &s; }
+    ~SlotHold() { craftGridSlots = prev; }
+  } hold(slots);
   const ItemStack* fm = nullptr; int nf = 0, ne = 0, np = 0, other = 0, fi = -1;
   for (int i = 0; i < (int)slots.size(); i++) {
     const ItemStack& s = slots[i]; if (s.empty()) continue;
