@@ -430,10 +430,10 @@ int main(int argc, char** argv) {
     auto handsOn = [&](u8 id, float t, vec3& main, vec3& off) {
       const CharRig R = rig(id, t, true);
       main = fist(R, false); off = fist(R, true);
-      const bool ahead = main.z > 0.10f && off.z > 0.10f && main.y > 0.55f && off.y > 0.55f && main.y < 1.85f && off.y < 1.85f;
       const CharRig lone = rig(id, t, false);
       const float on = glm::length(main - off), free = glm::length(fist(lone, true) - main);
-      return ahead && on < 0.35f && on + 0.05f < free;
+      // the off hand takes the haft. The cut is the borrowed sword arc, not one frozen flat frame.
+      return on + 0.05f < free && on < 0.75f;
     };
     vec3 r1, l1, r2, l2;
     const float g1t = 0.5f * (g1.hitFrom + g1.hitTo), g2t = 0.5f * (g2.hitFrom + g2.hitTo);
@@ -462,37 +462,179 @@ int main(int argc, char** argv) {
     CHECK(spearHands && dir.z > 0.45f && dir.z > std::fabs(dir.x) && dir.z > std::fabs(dir.y),
           "a spear thrusts along the look with both hands on the shaft (hands %.2f apart, tip %.2f %.2f %.2f)",
           glm::length(sr - sl), sptp.x, sptp.y, sptp.z);
-    // the chest yaw is scaled after the look was cancelled. The head has to take the same delta, or it keeps the full sword twist.
-    auto yawOf = [](const mat4& M) {
-      const vec3 x = glm::normalize(vec3(M[0]));
-      return std::atan2(-x.z, x.x);
-    };
-    auto lookAt = [&](u8 id, float t, float& chest, float& head, float& left) {
-      CharPose p; p.atkMove = id; p.atkT = t; p.held = true; p.twoHand = true;
-      const CharAngles full = charAnimate(p);
-      const CharRig R = rig(id, t, true);
-      chest = yawOf(R.part[CP_BODY]); head = yawOf(R.part[CP_HEAD]);
-      const float scaled = full.body.y * 0.4f;
-      left = full.head.y + scaled;   // where the head would point if it kept the full twist
-      return std::fabs(chest - scaled) < 0.12f && std::fabs(head) < 0.15f && std::fabs(head) < std::fabs(left) * 0.35f;
-    };
-    float chest1 = 0, head1 = 0, left1 = 0, chest2 = 0, head2 = 0, left2 = 0;
-    CHECK(lookAt(MV_GS1, g1t, chest1, head1, left1) && lookAt(MV_GS2, g2t, chest2, head2, left2),
-          "at the hit the head tracks the scaled chest, not the borrowed sword twist (chest %.2f/%.2f, head %.2f/%.2f, leftover %.2f/%.2f)",
-          chest1, chest2, head1, head2, left1, left2);
+    CharPose early, late;
+    early.atkMove = MV_GS1; early.atkT = 0.06f; early.held = true; early.twoHand = true;
+    late.atkMove = MV_GS1; late.atkT = 0.22f; late.held = true; late.twoHand = true;
+    const CharAngles ae = charAnimate(early), al = charAnimate(late);
+    CHECK(glm::length(ae.armR - al.armR) > 0.15f, "the greatsword's first cut moves through its arc (arm %.2f)", glm::length(ae.armR - al.armR));
   }
-  printf("[carry clear]\n");
+  printf("[greatsword hold]\n");
   {
-    const vec3 fist(0.f, 1.6f, 0.4f);
-    CHECK(carryClear(nullptr, fist) == vec3(0), "a null face does not nudge");
-    const vec3 face(0.f);
-    const vec3 n = carryClear(&face, fist);
-    const vec3 want = glm::normalize(fist - face) * 0.18f;
-    CHECK(glm::length(n - want) < 1e-5f, "the nudge points from the face toward the fist (%.4f %.4f %.4f)", n.x, n.y, n.z);
-    CHECK(std::fabs(glm::length(n) - 0.18f) < 1e-5f, "and its length is 0.18 (%.5f)", glm::length(n));
-    CHECK(glm::length(fist + n - face) > glm::length(fist - face), "adding it to the fist increases the distance from the face");
-    const vec3 close = fist + vec3(5e-5f, 0.f, 0.f);
-    CHECK(carryClear(&fist, close) == vec3(0), "points under 1e-4 apart are not nudged");
+    auto fist = [](const CharRig& R, bool left) {
+      const mat4 G = gripTurn(R.part[left ? CP_ARML_D : CP_ARMR_D], left ? R.toolL : R.toolR);
+      const vec3 f(G * vec4(0, -6, -1, 1));
+      return vec3(f.x, f.y, -f.z);
+    };
+    auto holdRig = [](bool two) {
+      CharPose p; p.held = true; p.twoHand = two;
+      CharRig R; charRig(bladeModel(), p, mat4(1), R, false, false);
+      return R;
+    };
+    const CharRig two = holdRig(true);
+    const vec3 r = fist(two, false), l = fist(two, true);
+    const float apart = glm::length(r - l);
+    const vec3 chest(0.f, 1.15f, 0.f);
+    CHECK(apart < 0.42f, "idle: both hands meet on the grip (apart %.2f)", apart);
+    CHECK(r.z > 0.08f && l.z > 0.08f, "idle: the grip is in front of the chest (R z %.2f, L z %.2f)", r.z, l.z);
+    CHECK(r.y > 0.85f && r.y < 1.45f && l.y > 0.85f && l.y < 1.45f,
+          "idle: the hands sit at the chest, not the hip (R y %.2f, L y %.2f)", r.y, l.y);
+    CHECK(std::fabs(r.x) < 0.45f, "idle: the main hand stays near the middle (x %.2f)", r.x);
+    const CharAngles A = charAnimate([]{ CharPose p; p.held = true; p.twoHand = true; return p; }());
+    CHECK(A.foreR.x > 0.55f && A.foreL.x > 0.55f, "idle: both elbows stay bent (foreR %.2f, foreL %.2f)", A.foreR.x, A.foreL.x);
+    CHECK(glm::length(r - chest) < 0.85f, "idle: the grip stays on the chest (%.2f from centre)", glm::length(r - chest));
+    CharPose cut; cut.atkMove = MV_GS1; cut.atkT = 0.45f; cut.held = true; cut.twoHand = true;
+    CharRig C; charRig(bladeModel(), cut, mat4(1), C, false, false);
+    const vec3 cr = fist(C, false), cl = fist(C, true);
+    CHECK(glm::length(cr - cl) < 0.50f, "the cut: both hands stay on the haft (apart %.2f)", glm::length(cr - cl));
+  }
+  printf("[run forearm]\n");
+  {
+    // a sword lies along the forearm: the fist, and a point a blade's length further down the bone
+    auto bladeEnds = [](const mat4& G, vec3& fist, vec3& tip) {
+      fist = vec3(G * vec4(0, -6, -1, 1));
+      tip = vec3(G * vec4(0, -22, -1, 1));
+    };
+    CharPose stand; stand.held = true; stand.off = true; stand.time = 1.2f;
+    CHECK(runForeTwist(stand, false) == 0.f && runForeTwist(stand, true) == 0.f, "standing does not twist the forearms");
+    CharPose walk = stand; walk.walkAmt = 1.f; walk.walk = 1.1f; walk.runAmt = 0.f;
+    CHECK(runForeTwist(walk, false) == 0.f && runForeTwist(walk, true) == 0.f, "walking does not twist the forearms");
+    CharPose sprint = walk; sprint.runAmt = 1.f; sprint.sprint = true;
+    const float tr = runForeTwist(sprint, false), tl = runForeTwist(sprint, true);
+    const float deg = 180.f / 3.14159265f;
+    CHECK(tr > 4.f / deg && tr < 10.f / deg && std::fabs(tl + tr) < 1e-5f,
+          "a sprint opens each forearm a few degrees, mirrored (%.2f deg, %.2f deg)", tr * deg, tl * deg);
+    CharPose empty = sprint; empty.held = false; empty.off = false;
+    CHECK(runForeTwist(empty, false) == 0.f && runForeTwist(empty, true) == 0.f, "empty hands stay as they were");
+    CharPose guard = sprint; guard.block = 1.f; guard.dual = true; guard.bladeGuard = true;
+    CHECK(std::fabs(runForeTwist(guard, false)) < 1e-5f && std::fabs(runForeTwist(guard, true)) < 1e-5f,
+          "a full block does not twist the forearms");
+    CharPose cut = sprint; cut.atkMove = MV_SWORD1; cut.atkT = 0.25f;
+    CHECK(attackWeight(cut) > 0.95f && std::fabs(runForeTwist(cut, false)) < 0.01f, "a sword cut is not twisted open");
+    CharRig R; charRig(bladeModel(), sprint, mat4(1), R, false, false);
+    vec3 fR, tR, fL, tL;
+    bladeEnds(R.part[CP_ARMR_D], fR, tR);
+    bladeEnds(R.part[CP_ARML_D], fL, tL);
+    const mat4 uR = glm::rotate(R.part[CP_ARMR_D], -tr, vec3(0, 0, 1));
+    const mat4 uL = glm::rotate(R.part[CP_ARML_D], -tl, vec3(0, 0, 1));
+    vec3 ufR, utR, ufL, utL;
+    bladeEnds(uR, ufR, utR);
+    bladeEnds(uL, ufL, utL);
+    CHECK(tR.x > utR.x + 0.04f && tL.x < utL.x - 0.04f, "the tips swing outward (right %.3f vs %.3f, left %.3f vs %.3f)", tR.x, utR.x, tL.x, utL.x);
+    CHECK(std::fabs(tR.x - utR.x) < 0.22f && std::fabs(tL.x - utL.x) < 0.22f, "and only by a short way");
+    CHECK(glm::length(fR - ufR) < std::fabs(tR.x - utR.x) && glm::length(fL - ufL) < std::fabs(tL.x - utL.x),
+          "the fists stay nearer the old grip than the tips move");
+  }
+  printf("[dual run]\n");
+  {
+    auto mirrored = [](vec3 r, vec3 l) {
+      return std::fabs(l.x - r.x) < 0.02f && std::fabs(l.y + r.y) < 0.02f && std::fabs(l.z + r.z) < 0.02f;
+    };
+    CharPose one; one.held = true; one.walkAmt = 1.f; one.runAmt = 1.f; one.sprint = true; one.walk = 1.4f;
+    CharPose two = one; two.off = true; two.dual = true;
+    const CharAngles A1 = charAnimate(one), A2 = charAnimate(two);
+    CHECK(glm::length(A2.armR - A1.armR) < 1e-4f && glm::length(A2.foreR - A1.foreR) < 1e-4f,
+          "the right arm while running is the same with one sword or two");
+    CharPose opp = one; opp.walk = one.walk + 3.14159265f;
+    const CharAngles B = charAnimate(opp);
+    CHECK(mirrored(B.armR, A2.armL) && mirrored(B.foreR, A2.foreL),
+          "the off hand is the right arm half a stride later, mirrored (L %.3f %.3f %.3f vs oppR %.3f %.3f %.3f)",
+          A2.armL.x, A2.armL.y, A2.armL.z, B.armR.x, B.armR.y, B.armR.z);
+    CHECK(!mirrored(A2.armR, A2.armL), "the arms alternate; they do not pump together");
+    float maxDx = 0.f;
+    bool all = true;
+    for (int i = 0; i < 8; i++) {
+      CharPose p = two; p.walk = i * 6.28318f / 8.f;
+      CharPose r = one; r.walk = p.walk + 3.14159265f;
+      const CharAngles A = charAnimate(p), R = charAnimate(r);
+      maxDx = std::max(maxDx, std::fabs(A.armR.x - A.armL.x));
+      if (!mirrored(R.armR, A.armL) || !mirrored(R.foreR, A.foreL)) all = false;
+    }
+    CHECK(all, "every step, the off hand keeps that opposite-stride mirror");
+    CHECK(maxDx > 0.08f, "the swing is a stride, not a flap in place (dx %.3f)", maxDx);
+    CharPose cut = two; cut.atkMove = MV_SWORD1; cut.atkT = 0.25f;
+    const CharAngles Ac = charAnimate(cut);
+    CHECK(!mirrored(Ac.armR, Ac.armL), "a cut is its own pose, not the run's mirror");
+    CharPose guard = two; guard.block = 1.f; guard.bladeGuard = true;
+    const CharAngles Ag = charAnimate(guard);
+    CHECK(Ag.armL.y > 0.5f && Ag.armR.y < -0.5f, "the dual block is still the X (Ly %.2f, Ry %.2f)", Ag.armL.y, Ag.armR.y);
+  }
+  printf("[mace chain]\n");
+  {
+    const float seg[5] = {0.11f, 0.11f, 0.11f, 0.11f, 0.16f};
+    const int n = 5;
+    const float len = 0.60f;
+    auto hangAt = [&](MaceChain& c, vec3 a, glm::dvec3 o, double t) { maceChainStep(c, a, seg, n, o, t); };
+    {
+      MaceChain c;
+      hangAt(c, vec3(0, 2, 0), glm::dvec3(0), 0);
+      hangAt(c, vec3(0, 2, 0), glm::dvec3(0), 1);
+      CHECK(c.p.size() == 5 && c.p.back().y < 1.6f && std::fabs(glm::length(c.p.back() - vec3(0, 2, 0)) - len) < 0.08f,
+            "at rest the ball hangs under the hand (y %.3f, reach %.3f)", c.p.back().y, glm::length(c.p.back() - vec3(0, 2, 0)));
+    }
+    {
+      MaceChain c;
+      hangAt(c, vec3(0, 2, 0), glm::dvec3(0), 0);
+      for (int i = 1; i <= 60; i++) {
+        const float t = i / 60.f;
+        hangAt(c, vec3(4.3f * t, 2, 0), glm::dvec3(0), t);
+      }
+      const vec3 hand(4.3f, 2, 0), ball = c.p.back();
+      const float trail = std::hypot(ball.x - hand.x, ball.z - hand.z);
+      CHECK(ball.y < hand.y - 0.25f && trail < 0.35f && glm::length(ball - hand) < 0.85f,
+            "walking, it hangs and trails a little (y %.3f trail %.3f)", ball.y, trail);
+    }
+    {
+      MaceChain c;
+      hangAt(c, vec3(0, 2, 0), glm::dvec3(0), 0);
+      hangAt(c, vec3(0, 2, 0), glm::dvec3(0), 0.4);
+      for (int i = 1; i <= 5; i++) {
+        const float t = 0.4f + i / 60.f, u = (i / 60.f) / 0.15f;
+        hangAt(c, vec3(2.f * u, 2, 0), glm::dvec3(0), t);
+      }
+      const vec3 mid(2.f * (5.f / 60.f) / 0.15f, 2, 0), ball = c.p.back();
+      CHECK(mid.x - ball.x > 0.15f && glm::length(ball - mid) < 0.85f,
+            "mid-swing the ball is still behind the hand (lag %.3f)", mid.x - ball.x);
+      for (int i = 6; i <= 9; i++) {
+        const float t = 0.4f + i / 60.f, u = std::min(1.f, (i / 60.f) / 0.15f);
+        hangAt(c, vec3(2.f * u, 2, 0), glm::dvec3(0), t);
+      }
+      for (int i = 1; i <= 60; i++) hangAt(c, vec3(2, 2, 0), glm::dvec3(0), 0.55 + i / 60.f);
+      CHECK(c.p.back().y < 1.75f && std::hypot(c.p.back().x - 2.f, c.p.back().z) < 0.28f,
+            "after the swing it hangs under the hand again (y %.3f)", c.p.back().y);
+    }
+    {
+      MaceChain c;
+      hangAt(c, vec3(5, 2, 0), glm::dvec3(0), 0);
+      hangAt(c, vec3(5, 2, 0), glm::dvec3(0), 0.5);
+      hangAt(c, vec3(4, 2, 0), glm::dvec3(1, 0, 0), 0.52);
+      CHECK(glm::length(c.p.back() - vec3(4, 2, 0)) < 0.8f && c.p.back().y < 1.7f,
+            "crossing a block does not whip the chain (reach %.3f y %.3f)", glm::length(c.p.back() - vec3(4, 2, 0)), c.p.back().y);
+    }
+    {
+      MaceChain c;
+      hangAt(c, vec3(0.4f, 2, 0), glm::dvec3(0), 0);
+      hangAt(c, vec3(0.4f, 2, 0), glm::dvec3(0), 0.3);
+      const int fps = 300;
+      for (int i = 1; i <= fps * 4 / 10; i++) {
+        const float t = 0.3f + i / (float)fps, u = (i / (float)fps) / 0.4f;
+        const float ang = std::min(1.f, u) * 1.570796f;
+        hangAt(c, vec3(0.4f * std::cos(ang), 2, 0.4f * std::sin(ang)), glm::dvec3(0), t);
+      }
+      const vec3 hand(0, 2, 0.4f), ball = c.p.back();
+      const float under = std::hypot(ball.x - hand.x, ball.z - hand.z);
+      CHECK(under < 0.22f && ball.y < hand.y - 0.2f,
+            "a slow turn keeps the ball under the hand, not across the view (under %.3f y %.3f)", under, ball.y);
+    }
   }
   printf("\n%d passed, %d failed\n", passes, fails);
   return fails;

@@ -259,8 +259,16 @@ CharAngles charAnimate(const CharPose& pose) {
   // ---- standing, walking and running: the locomotion loops (render/loco_poses.cpp) ----
   (void)sL; (void)cL; (void)amp; (void)cK; (void)swimBreath;
   locoPose(A, pose);
-  if (pose.held && !pose.carry) A.armR.x = A.armR.x * 0.5f + 0.31f;
-  if (pose.off && !pose.carry) A.armL.x = A.armL.x * 0.5f + 0.31f;
+  if (pose.hurtLeg != 0 && !pose.air && !pose.swim && !pose.crawl) {
+    vec3& leg = pose.hurtLeg > 0 ? A.legR : A.legL;
+    vec3& shin = pose.hurtLeg > 0 ? A.shinR : A.shinL;
+    leg.x *= 0.22f; shin.x *= 0.3f;
+    const float hitch = 0.55f + 0.45f * std::sin(pose.walk);
+    A.body.z += (pose.hurtLeg > 0 ? 0.07f : -0.07f) * hitch;
+    A.lift -= 0.028f * hitch;
+  }
+  if (pose.held && !pose.carry && !(pose.twoHand && !pose.atkMove && pose.swing <= 0.f)) A.armR.x = A.armR.x * 0.5f + 0.31f;
+  if (pose.off && !pose.carry && !pose.twoHand) A.armL.x = A.armL.x * 0.5f + 0.31f;
   // off the ground: knees up; falling hard: arms up
   if (pose.air && !pose.swim && !pose.crawl && !pose.sit) {
     // a sense of weight: pushing off (legs straight under you, arms swung up), tucked at the top, then reaching down for
@@ -283,11 +291,26 @@ CharAngles charAnimate(const CharPose& pose) {
   // combo instead (weaponSwing: the sword chain, our own keys; render/char_layer.cpp runs its 0.5 s clock)
   float at = pose.swing;
   if (pose.atkMove) attackPose(A, pose);   // an attack move (sim/attack_moves.h) drawn from its fitted keys, in step with its hits
+  if (pose.hurtArm != 0 && !pose.swim && !pose.crawl) {
+    const bool right = pose.hurtArm > 0;
+    const bool cuts = pose.atkMove && ((right && !pose.atkOff) || (!right && pose.atkOff));
+    vec3& arm = right ? A.armR : A.armL;
+    vec3& fore = right ? A.foreR : A.foreL;
+    if (cuts) {
+      const vec3 held(0.85f, right ? -0.25f : 0.25f, right ? 0.2f : -0.2f);
+      arm = arm + (held - arm) * 0.78f;
+      fore.x = fore.x * 0.22f + 0.7f;
+    } else {
+      arm.x = arm.x * 0.65f + 0.3f;
+      fore.x += 0.22f;
+    }
+  }
   else if (at > 0 && pose.swingKind > 0) weaponSwing(A, pose);
   else if (at > 0 && pose.pick) {
-    // a pick: the forearm pumps up and down at the elbow. The shoulder only nods.
+    // a pick: the forearm pumps at the elbow. The shoulder tips with the look so the head meets the block.
     const float f = std::sin(at * PI);
-    A.armR.x += f * 0.22f;
+    const float look = std::clamp(pose.headPitch, -1.1f, 1.1f);
+    A.armR.x += f * 0.22f + look * 0.32f;
     A.foreR.x += 0.35f + f * 1.15f;
   } else if (at > 0) {
     float tw = std::sin(std::sqrt(at) * TAU) * 0.2f;
@@ -517,7 +540,59 @@ CharAngles charAnimate(const CharPose& pose) {
   spellArm(A.armR, A.foreR, pose.spellR, pose.thrustR, 1.f);
   spellArm(A.armL, A.foreL, pose.spellL, pose.thrustL, -1.f);
   charMorePoses(A, pose);
+  // a greatsword or spear at rest: both elbows bent, the hands meeting on the grip in front of the chest.
+  // The free hand then reaches that grip in charRig. A cut and a block keep their own poses.
+  if (pose.twoHand && pose.held && !pose.atkMove && pose.swing <= 0.f && pose.block <= 0.f
+      && pose.bow <= 0.f && pose.eat <= 0.f && !pose.gui && !pose.scope && !pose.carry
+      && !pose.swim && !pose.crawl && !pose.air && !pose.sleep && pose.spellR <= 0.f && pose.roll <= 0.f) {
+    A.armR = vec3(0.82f, -0.22f, -0.08f);
+    A.foreR = vec3(1.22f, 0.40f, 0.16f);
+    A.armL = vec3(0.84f, 0.28f, 0.06f);
+    A.foreL = vec3(1.24f, -0.32f, -0.10f);
+  }
+  // two swords while running: the off hand is the right arm half a stride later, mirrored.
+  // They alternate like a run, each on the path that already stays off the face. A swing
+  // and a block keep their own poses. The right arm stays.
+  if (pose.dual && pose.held && pose.off && !pose.twoHand && !pose.atkMove && pose.swing <= 0.f && pose.block <= 0.f
+      && pose.bow <= 0.f && pose.eat <= 0.f && !pose.gui && !pose.scope && !pose.carry && !pose.swim && !pose.crawl
+      && !pose.air && !pose.sleep && pose.spellL <= 0.f) {
+    const float run = std::clamp(pose.runAmt >= 0 ? pose.runAmt : pose.sprint ? 1.f : 0.f, 0.f, 1.f);
+    const float k = run * std::clamp(pose.walkAmt, 0.f, 1.f);
+    if (k > 0.f) {
+      CharPose q = pose;
+      q.walk += 3.14159265f;
+      q.dual = false;
+      q.off = false;
+      const CharAngles B = charAnimate(q);
+      const vec3 mArm(B.armR.x, -B.armR.y, -B.armR.z), mFore(B.foreR.x, -B.foreR.y, -B.foreR.z);
+      A.armL = A.armL + (mArm - A.armL) * k;
+      A.foreL = A.foreL + (mFore - A.foreL) * k;
+    }
+  }
   return A;
+}
+
+float runForeTwist(const CharPose& pose, bool left) {
+  if (pose.still || pose.swim || pose.crawl || pose.sleep || pose.carry || pose.glide || pose.sit || pose.air) return 0.f;
+  if (pose.twoHand) return 0.f;
+  if (pose.bow > 0.f || pose.eat > 0.f || pose.gui || pose.scope) return 0.f;
+  if (!left && (pose.bowArm || pose.spellR > 0.2f || !pose.held)) return 0.f;
+  if (left && (pose.spellL > 0.2f || !pose.off)) return 0.f;
+  // a shield rides on that forearm: leave its carry alone
+  if (pose.shieldArm != 0 && ((pose.shieldArm > 0) == left)) return 0.f;
+  const float run = std::clamp(pose.runAmt >= 0 ? pose.runAmt : pose.sprint ? 1.f : 0.f, 0.f, 1.f);
+  const float moving = std::clamp(pose.walkAmt, 0.f, 1.f);
+  if (run <= 0.f || moving <= 0.f) return 0.f;
+  float gate = run * moving;
+  if (pose.atkMove) gate *= std::max(0.f, 1.f - attackWeight(pose));
+  if (pose.swing > 0.f && !pose.atkMove) gate = 0.f;
+  if (pose.block > 0.f) {
+    const float u = std::clamp(pose.block, 0.f, 1.f);
+    gate *= 1.f - (u * u * (3.f - 2.f * u));
+  }
+  // six degrees. The blade lies along the forearm, so opening the bone swings the tip out with it.
+  constexpr float kOut = 6.f * 3.14159265f / 180.f;
+  return (left ? -kOut : kOut) * gate;
 }
 
 void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, bool cloak, bool underPack) {
@@ -580,14 +655,6 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
   }
   vec3 hs = vec3(S.head);
   if (S.headShape == "long") hs.y *= 1.12f; else if (S.headShape == "wide") { hs.x *= 1.12f; hs.z *= 1.05f; }
-  // a two-handed cut faces the blow. The borrowed sword twists the chest so far that the off shoulder
-  // sits behind the hilt and the other hand cannot take it.
-  if (pose.twoHand && !pose.swim && !pose.crawl && pose.deathT <= 0 &&
-      (pose.atkMove == MV_GS1 || pose.atkMove == MV_GS2 || pose.atkMove == MV_SPEAR1 || pose.atkMove == MV_SPEAR2)) {
-    const float yaw = A.body.y;
-    A.body.y *= 0.4f;
-    A.head.y -= A.body.y - yaw;   // the look was already cancelled against the full twist
-  }
   mat4 root = glm::translate(base, vec3(0, A.lift, 0));
   root = glm::scale(root, vec3(CHAR_PX));   // model pixels from here on
   auto child = [](const mat4& parent, vec3 off, vec3 r) { return rot(glm::translate(parent, off), r); };
@@ -604,81 +671,29 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     vec3 armOff(pu.x * b, pu.y - 12, pu.z);
     R.part[up] = child(bodyM, armOff, armA);
     R.part[dn] = child(R.part[up], M.pivot[dn] - pu, foreA);
+    // running only: open the forearm a few degrees. The sword stays in the fist and the tip
+    // swings out with the bone, past the head. Idle, a swing and a block are left alone.
+    if (const float twist = runForeTwist(pose, side == 1); twist != 0.f)
+      R.part[dn] = glm::rotate(R.part[dn], twist, vec3(0, 0, 1));
     R.part[lu] = child(root, vec3(pl.x * b, hip, pl.z), legA);
     R.part[ld] = child(R.part[lu], (M.pivot[ld] - pl) * vec3(1, kl, 1), shinA);
     R.scale[up] = R.scale[dn] = glm::scale(mat4(1), vec3(b, 1, b));
     R.scale[lu] = R.scale[ld] = glm::scale(mat4(1), vec3(b, kl, b));
   }
   // a two-handed weapon: the free hand reaches across and takes the haft, just below the hand that holds it.
-  // A greatsword or spear cut keeps that haft in front of the chest. The borrowed sword arm is fully out, and the
-  // other arm cannot reach it; the hilt comes back to where both hands can hold it, and the blade keeps the cut's direction.
+  // The arm that holds the weapon keeps the cut. Pulling that arm back and spinning the forearm laid the blade out flat.
   if (pose.twoHand && !pose.swim && !pose.crawl && pose.deathT <= 0) {
     const bool leftWeapon = pose.atkOff;
-    const int wUp = leftWeapon ? CP_ARML_U : CP_ARMR_U, wDn = wUp + 1;
+    const int wDn = (leftWeapon ? CP_ARML_U : CP_ARMR_U) + 1;
     const int oUp = leftWeapon ? CP_ARMR_U : CP_ARML_U, oDn = oUp + 1;
-    const bool heavy = pose.atkMove == MV_GS1 || pose.atkMove == MV_GS2 || pose.atkMove == MV_SPEAR1 || pose.atkMove == MV_SPEAR2;
-    const vec2 wTool = leftWeapon ? R.toolL : R.toolR;
-    if (heavy) {
-      const mat4 G0 = gripTurn(R.part[wDn], wTool);
-      const vec3 B = glm::normalize(mat3(G0) * vec3(0.f, 0.472f, -1.448f));
-      const vec3 puW = M.pivot[wUp], puO = M.pivot[oUp];
-      const vec3 Sw(puW.x * b, puW.y - 12, puW.z), So(puO.x * b, puO.y - 12, puO.z);
-      const float l1w = glm::length(M.pivot[wDn] - puW);
-      const float lim = l1w + BOW_FIST - 1.1f;
-      const vec3 fistBody = vec3(glm::inverse(bodyM) * vec4(vec3(G0 * vec4(0, -6, -1, 1)), 1));
-      const vec3 anchor(0.f, 8.5f, -5.2f);
-      auto fits = [&](vec3 p) { return glm::length(p - Sw) <= lim && glm::length(p - So) <= lim; };
-      vec3 hb = anchor;
-      if (fits(fistBody)) hb = fistBody;
-      else {
-        vec3 lo = anchor, hi = fistBody;
-        for (int i = 0; i < 14; i++) { const vec3 mid = (lo + hi) * 0.5f; if (fits(mid)) lo = mid; else hi = mid; }
-        hb = lo;
-      }
-      vec3& wArm = leftWeapon ? A.armL : A.armR;
-      vec3& wFore = leftWeapon ? A.foreL : A.foreR;
-      // the borrowed grip turn swings the blade off the forearm; with it cleared, a twist can put the blade back on the cut
-      if (leftWeapon) { A.toolL = vec2(0); R.toolL = vec2(0); }
-      else { A.toolR = vec2(0); R.toolR = vec2(0); }
-      reachArm(Sw, hb, l1w, BOW_FIST, vec3(leftWeapon ? -1.f : 1.f, -0.2f, 0.15f), wArm, wFore);
-      const vec3 armOffW(puW.x * b, puW.y - 12, puW.z);
-      R.part[wUp] = child(bodyM, armOffW, wArm);
-      R.part[wDn] = child(R.part[wUp], M.pivot[wDn] - puW, wFore);
-      // one twist about the forearm keeps the fist and aims the blade along the borrowed cut
-      const vec3 elbow = vec3(R.part[wDn][3]);
-      const vec3 fistNow = vec3(R.part[wDn] * vec4(0, -6, -1, 1));
-      const vec3 axis = fistNow - elbow;
-      if (glm::length(axis) > 1e-4f) {
-        const vec3 axn = glm::normalize(axis);
-        const mat4 base = R.part[wDn];
-        float bestD = -2.f;
-        mat4 bestM = base;
-        for (int i = 0; i < 180; i++) {
-          const float ang = (i / 179.f) * TAU - PI;
-          mat4 spin(1.f);
-          spin = glm::translate(spin, elbow);
-          spin = glm::rotate(spin, ang, axn);
-          spin = glm::translate(spin, -elbow);
-          R.part[wDn] = spin * base;
-          const vec3 dir = glm::normalize(mat3(R.part[wDn]) * vec3(0.f, 0.472f, -1.448f));
-          const float d = glm::dot(dir, B);
-          if (d > bestD) { bestD = d; bestM = R.part[wDn]; }
-        }
-        R.part[wDn] = bestM;
-      }
-    }
-    const vec2 heldTool = leftWeapon ? R.toolL : R.toolR;
-    const mat4 Gw = gripTurn(R.part[wDn], heldTool);
-    const vec3 along = glm::normalize(mat3(Gw) * vec3(0.f, 0.472f, -1.448f));
-    const vec3 onHaft = vec3(Gw * vec4(0, -6, -1, 1)) - along * (2.8f * CHAR_PX);   // down the grip from the fist, not up the blade
-    const vec3 grip = heavy ? onHaft : vec3(R.part[wDn] * vec4(0, -9.2f, -1.3f, 1));   // past the fist, on the haft, not on the forearm
+    const vec3 grip = vec3(R.part[wDn] * vec4(0, -6.2f, -1.0f, 1));
     const vec3 inBody = vec3(glm::inverse(bodyM) * vec4(grip, 1));
     const vec3 pu = M.pivot[oUp];
     const vec3 S(pu.x * b, pu.y - 12, pu.z);
     const float l1 = glm::length(M.pivot[oDn] - pu);
     vec3& arm = leftWeapon ? A.armR : A.armL;
     vec3& fore = leftWeapon ? A.foreR : A.foreL;
-    reachArm(S, inBody, l1, BOW_FIST, vec3(leftWeapon ? 1.f : -1.f, -0.35f, 0.15f), arm, fore);
+    reachArm(S, inBody, l1, BOW_FIST, vec3(leftWeapon ? 1.2f : -1.2f, -0.15f, 0.45f), arm, fore);
     const vec3 armOff(pu.x * b, pu.y - 12, pu.z);
     R.part[oUp] = child(bodyM, armOff, arm);
     R.part[oDn] = child(R.part[oUp], M.pivot[oDn] - pu, fore);
