@@ -21,6 +21,8 @@
 #include "sim/mob_combat.h"
 #include "sim/physics.h"
 #include "sim/player.h"
+#include "sim/shield_shape.h"
+#include "sim/combat.h"
 #include "sim/blockinfo.h"
 #include "sim/skills.h"
 #include "sim/balance.h"
@@ -576,6 +578,11 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   float dealt = dmg;
   // dismember.js
   if (dealt > 0) tryDismember(lv, src, dealt);
+  if (dealt > 0 && a && a->isPlayer() && data.value("affix", std::string()) == "barbed"
+      && src.type != "magic" && src.type != "thorns" && src.type != "void") {
+    DamageSource ds; ds.type = "thorns"; ds.knock = 0; ds.attacker = id;
+    damagePlayer(lv, static_cast<Player&>(*a), 1.f, ds);
+  }
   // bestiary.js: neutral animals fight back, the rest run
   if (dealt > 0 && !T->ai.empty() && a && a != this) {
     Entity* who = a;
@@ -946,8 +953,37 @@ void Creature::update(Level& lv, float dt) {
       dir = nd ? *nd : toPlayer; want = T->speed;
       if (dist < 1.35f + w && std::fabs(dyp) < 1.6f && attackCd <= 0) {
         attackCd = 1.1f; swingT = 0.3f;
+        auto* pl = dynamic_cast<Player*>(p);
+        const vec3 from = pos + vec3(0, h * 0.62f, 0);
+        const vec3 to = p->pos + vec3(0, 1.1f, 0);
+        const vec3 claw = to - from;
         DamageSrc s; if (type == "charred_ghoul") s.element = "fire";
-        damageEntity(lv, *p, T->damage + weaponBonus(), this, "mob", s);
+        s.tool = "mob";
+        if (pl) {
+          ShieldBox guard;
+          if (pl->blockT > 0 && playerGuardBox(*pl, guard) && shieldRayHit(guard, from, claw, 1.f)) {
+            damageEntity(lv, *pl, T->damage + weaponBonus(), this, "mob", s);
+          } else {
+            PlayerLimbBox limbs[6];
+            const int nL = playerLimbBoxes(*pl, limbs);
+            int slot = -1; bool hit = false;
+            for (int i = 0; i < nL; i++) {
+              const vec3 lo = limbs[i].lo, hi = limbs[i].hi;
+              for (int k = 0; k <= 8; k++) {
+                const vec3 q = from + claw * (k / 8.f);
+                if (q.x >= lo.x && q.x <= hi.x && q.y >= lo.y && q.y <= hi.y && q.z >= lo.z && q.z <= hi.z) {
+                  hit = true; slot = limbs[i].armorSlot; break;
+                }
+              }
+              if (hit) break;
+            }
+            if (!hit && dist < 1.05f + w) hit = true;
+            if (hit) {
+              DamageSource ds; ds.type = "mob"; ds.element = s.element; ds.attacker = id; ds.armorSlot = slot; ds.tool = "mob";
+              damagePlayer(lv, *pl, T->damage + weaponBonus(), ds);
+            }
+          }
+        } else damageEntity(lv, *p, T->damage + weaponBonus(), this, "mob", s);
       }
       if (dist < 0.9f) want = 0;
       soundT -= dt;

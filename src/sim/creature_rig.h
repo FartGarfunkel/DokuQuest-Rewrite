@@ -51,6 +51,8 @@ bool rigPartShown(const Creature& m, const RigPart& p);
 // Ray (world space) against the posed parts: index of the closest part hit, -1 for none.
 // outT, when set, receives the world-space ray distance (the part matrix already holds the scale).
 int rigHitPart(const Creature& m, const RigModel& M, vec3 o, vec3 d, float* outT = nullptr);
+// A blade segment (world) against the posed parts: closest part it overlaps, -1 for none. r is half the blade's thickness.
+int rigSegHitPart(const Creature& m, const RigModel& M, vec3 a, vec3 b, float r = 0.08f);
 // Walk parents until a part carries a limb tag. -1 means the blow landed on the torso.
 int rigLimbPart(const RigModel& M, int part);
 

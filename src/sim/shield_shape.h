@@ -27,4 +27,12 @@ int shieldSide(const Player& p);
 bool shieldRayHit(const ShieldBox& b, const vec3& o, const vec3& d, float maxT, float* tHit = nullptr);
 // is the point inside it (with a margin)
 bool shieldContains(const ShieldBox& b, const vec3& p, float margin = 0);
+// a two-hand weapon on guard: a slab in front of the chest (the blade across you)
+bool playerWeaponGuardBox(const Player& p, ShieldBox& out);
+// shield if raised, else the weapon guard
+bool playerGuardBox(const Player& p, ShieldBox& out);
+
+struct PlayerLimbBox { vec3 lo, hi; int armorSlot; const char* name; };
+// six boxes: head, chest, armL, armR, legL, legR
+int playerLimbBoxes(const Player& p, PlayerLimbBox out[6]);
 }  // namespace dq

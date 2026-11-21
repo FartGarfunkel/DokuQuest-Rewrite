@@ -44,6 +44,7 @@ struct AttackMove {
   u8 strikes;       // most targets one move lands on
   bool leftHand;    // the blow is the left fist's (jab, hook)
   float reach = 1;  // x the drawn blade (a spear past 1, a mace under it)
+  float pierce = 0; // share of armour this cut ignores, on top of the attacker's own
 };
 const AttackMove& attackMove(u8 id);   // MV_NONE / out of range: a zeroed move
 
@@ -63,6 +64,15 @@ vec3 attackFrameToWorld(const vec3& local, const vec3& feet, float yaw, float pi
 // world)? reach scales the blade's length (1 = the drawn sword; a longer weapon > 1). when: the move time it met it.
 bool bladeSweepHits(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, const vec3& lo, const vec3& hi,
                     float reach = 1, float* when = nullptr);
+class Creature; struct RigModel; struct ShieldBox;
+// the blade against a posed creature's parts. -1 none. hitAt: world point on the blade. part: the mesh part.
+int bladeSweepHitsCreature(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, Creature& c,
+                           const RigModel& M, float reach = 1, vec3* hitAt = nullptr, int* part = nullptr);
+class Entity;
+int bladeSweepHitsEntity(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, Entity& e,
+                         float reach = 1, vec3* hitAt = nullptr);
+bool bladeSweepHitsShield(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, const ShieldBox& box,
+                          float reach = 1);
 // forward travel so far (0 .. lunge), easing in with the strike: move the body by lungeAt(t1) - lungeAt(t0) a tick
 float lungeAt(u8 id, float t);
 

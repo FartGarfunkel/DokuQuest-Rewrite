@@ -7,8 +7,10 @@
 #include "sim/crafting.h"
 #include "sim/inventory.h"
 #include "sim/player.h"
+#include "sim/combat.h"
 #include "sim/combat_rpg.h"
 #include "sim/skills.h"
+#include "sim/shield_shape.h"
 #include "core/tool_parts.h"
 #include "sim/balance.h"
 #include <cmath>
@@ -276,6 +278,120 @@ int main() {
         "a two-handed weapon sits between the sword and the shield");
   guard.shield[0] = ItemStack("shield", 1);
   CHECK(std::fabs(guardKeep(guard) - (0.35f + 0.25f * 0.65f)) < 0.001f, "a shield on the back does not replace a two-handed guard");
+
+  printf("every mixed tool and weapon swings, and the mix changes the blow\n");
+  struct MixKind { const char* kind; int n; Moveset want; };
+  const MixKind kinds[] = {
+    {"sword", 2, Moveset::Sword}, {"axe", 3, Moveset::Axe}, {"pickaxe", 3, Moveset::Tool},
+    {"shovel", 1, Moveset::Tool}, {"hoe", 2, Moveset::Tool}, {"greatsword", 3, Moveset::Greatsword},
+    {"spear", 2, Moveset::Spear}, {"mace", 3, Moveset::Mace}, {"knife", 1, Moveset::Dagger},
+    {"hammer", 1, Moveset::Tool}, {"javelin", 1, Moveset::Sword}, {"saw", 1, Moveset::Axe},
+    {"scythe", 1, Moveset::Tool}, {"propick", 1, Moveset::Tool}, {"chisel", 1, Moveset::Tool},
+  };
+  Player wielder;
+  wielder.selected = 0;
+  for (const MixKind& k : kinds) {
+    ItemStack iron, copper;
+    std::vector<std::string> nI(k.n, "iron"), nC(k.n, "copper");
+    const bool made = makePartTool(k.kind, nI, "stick", iron) && makePartTool(k.kind, nC, "stick", copper);
+    CHECK(made, "mixed %s crafts", k.kind);
+    if (!made) continue;
+    CHECK(movesetOf(iron.def()) == k.want, "mixed %s fights as %s (got %s)", k.kind, movesetName(k.want),
+          movesetName(movesetOf(iron.def())));
+    CHECK(attackMoveFor(movesetOf(iron.def()), 0, false, false) != MV_NONE, "mixed %s has a first cut", k.kind);
+    wielder.inv[0] = iron;
+    const float dI = heldTool(wielder) ? heldTool(wielder)->damage : 0.f;
+    wielder.inv[0] = copper;
+    const float dC = heldTool(wielder) ? heldTool(wielder)->damage : 0.f;
+    CHECK(dI > 0.f && dC > 0.f, "mixed %s deals damage in the hand (%.1f)", k.kind, dI);
+    if (toolOf(iron).damage > toolOf(copper).damage)
+      CHECK(dI > dC, "iron mixed %s hits harder than copper (%.1f > %.1f)", k.kind, dI, dC);
+    iron.tag["qual"] = "legendary";
+    copper.tag["qual"] = "poor";
+    wielder.inv[0] = iron;
+    const float leg = heldTool(wielder) ? heldTool(wielder)->damage : 0.f;
+    wielder.inv[0] = copper;
+    const float poorD = heldTool(wielder) ? heldTool(wielder)->damage : 0.f;
+    CHECK(leg > poorD * 1.2f, "a legendary mixed %s outhits a poor copper one (%.1f vs %.1f)", k.kind, leg, poorD);
+  }
+
+  printf("mixed armour follows the ore, and a two-hand guard sits in front\n");
+  ItemStack helmI, helmC, chestI, legsI, bootsI;
+  CHECK(makePartArmor("helmet", std::vector<std::string>(5, "iron"), helmI) &&
+        makePartArmor("helmet", std::vector<std::string>(5, "copper"), helmC) &&
+        makePartArmor("chestplate", std::vector<std::string>(8, "iron"), chestI) &&
+        makePartArmor("leggings", std::vector<std::string>(7, "iron"), legsI) &&
+        makePartArmor("boots", std::vector<std::string>(4, "iron"), bootsI),
+        "mixed helmet, chest, legs and boots craft");
+  CHECK(armorPointsOf(chestI) > armorPointsOf(helmI), "the chestplate is the heaviest piece");
+  ItemStack chestC;
+  CHECK(makePartArmor("chestplate", std::vector<std::string>(8, "copper"), chestC), "a copper chestplate mixes");
+  CHECK(armorPointsOf(chestI) > armorPointsOf(chestC), "an iron chestplate turns more than a copper one (%.1f > %.1f)",
+        armorPointsOf(chestI), armorPointsOf(chestC));
+  ItemStack swordMix, swordIron, swordDia;
+  CHECK(makePartTool("sword", {"iron", "iron"}, "stick", swordIron) &&
+        makePartTool("sword", {"diamond", "diamond"}, "stick", swordDia) &&
+        makePartTool("sword", {"iron", "diamond"}, "stick", swordMix),
+        "iron, diamond, and a mix of both make swords");
+  CHECK(toolOf(swordDia).damage > toolOf(swordIron).damage &&
+        toolOf(swordMix).damage > toolOf(swordIron).damage &&
+        toolOf(swordMix).damage < toolOf(swordDia).damage,
+        "a mixed iron-diamond blade sits between the two (%.1f / %.1f / %.1f)",
+        toolOf(swordIron).damage, toolOf(swordMix).damage, toolOf(swordDia).damage);
+  Player strong;
+  strong.statStr = 40;
+  CHECK(strDamageFactor(strong) > 1.2f, "Strength raises melee damage (x%.2f)", strDamageFactor(strong));
+  helmI.tag["qual"] = "legendary";
+  helmC.tag["qual"] = "poor";
+  Player suited;
+  suited.armor[0] = helmI;
+  const int legPts = armorPoints(suited);
+  suited.armor[0] = helmC;
+  CHECK(legPts > armorPoints(suited), "legendary iron helmet protects more than a poor copper one (%d > %d)",
+        legPts, armorPoints(suited));
+
+  Player blocker;
+  blocker.pos = vec3(0);
+  blocker.yaw = 0;
+  blocker.blockT = 0.2f;
+  blocker.shield[0] = ItemStack("shield", 1);
+  ShieldBox raised;
+  CHECK(playerGuardBox(blocker, raised), "a raised shield has a box");
+  CHECK(raised.c.z < -0.35f, "that shield sits in front (z=%.2f)", raised.c.z);
+  CHECK(bladeSweepHitsShield(MV_SWORD1, 0, 1, blocker.pos, 0, 0, raised, 1.f),
+        "a sword swing meets a raised shield in front");
+  ShieldBox behind = raised;
+  behind.c.z = 1.2f;
+  CHECK(!bladeSweepHitsShield(MV_SWORD1, 0, 1, blocker.pos, 0, 0, behind, 1.f),
+        "the same swing misses a shield behind you");
+
+  ItemStack gs;
+  CHECK(makePartTool("greatsword", {"iron", "iron", "iron"}, "stick", gs), "iron greatsword for the guard");
+  blocker.inv[0] = gs;
+  blocker.selected = 0;
+  blocker.shield[0] = ItemStack("shield", 1);
+  ShieldBox twoHand;
+  CHECK(playerGuardBox(blocker, twoHand), "a two-hand guard with a slung shield still has a box");
+  CHECK(std::fabs(twoHand.c.x) < 0.35f && twoHand.c.z < -0.35f,
+        "the two-hand guard sits in front, not on the hip (%.2f, %.2f)", twoHand.c.x, twoHand.c.z);
+  CHECK(bladeSweepHitsShield(MV_GS1, 0, 1, blocker.pos, 0, 0, twoHand, 1.15f),
+        "a greatsword cut meets that two-hand guard");
+
+  Player swordGuard;
+  swordGuard.pos = vec3(0);
+  swordGuard.yaw = 0;
+  swordGuard.blockT = 0.2f;
+  swordGuard.inv[0] = ItemStack("iron_sword", 1);
+  ShieldBox oneHand;
+  CHECK(playerGuardBox(swordGuard, oneHand), "a one-hand sword guard has a box");
+  CHECK(bladeSweepHitsShield(MV_SWORD1, 0, 1, swordGuard.pos, 0, 0, oneHand, 1.f),
+        "a sword swing can be caught on a sword guard");
+
+  PlayerLimbBox limbs[6];
+  const int nL = playerLimbBoxes(blocker, limbs);
+  CHECK(nL == 6 && limbs[0].armorSlot == 0 && limbs[1].armorSlot == 1 && limbs[4].armorSlot == 2,
+        "limb boxes map head, chest and legs onto armour slots");
+  CHECK(limbs[0].lo.y > limbs[4].hi.y, "the head box sits above the legs");
 
   printf(fails ? "%d failed\n" : "all passed\n", fails);
   return fails ? 1 : 0;

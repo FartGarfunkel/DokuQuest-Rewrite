@@ -811,6 +811,34 @@ int rigHitPart(const Creature& m, const RigModel& M, vec3 o, vec3 d, float* outT
   if (outT && best >= 0) *outT = bt;
   return best;
 }
+int rigSegHitPart(const Creature& m, const RigModel& M, vec3 a, vec3 b, float r) {
+  int best = -1; float bestU = 2.f;
+  const vec3 d = b - a;
+  const float len2 = glm::dot(d, d);
+  for (size_t i = 0; i < M.parts.size() && i < m.mats.size(); i++) {
+    if (!rigPartPosed(m, (int)i)) continue;
+    const mat4 inv = glm::inverse(m.mats[i]);
+    const vec3 lo = vec3(inv * vec4(a - m.pos, 1)), hi = vec3(inv * vec4(b - m.pos, 1));
+    const RigPart& p = M.parts[i];
+    const vec3 ext = p.max - p.min, pad = glm::max(vec3(0.02f), (vec3(0.16f) - ext) * 0.5f) + vec3(r);
+    vec3 boxLo = p.min - pad, boxHi = p.max + pad;
+    const vec3 sd = hi - lo;
+    float t0 = 0, t1 = 1;
+    bool miss = false;
+    for (int ax = 0; ax < 3; ax++) {
+      if (std::fabs(sd[ax]) < 1e-8f) { if (lo[ax] < boxLo[ax] || lo[ax] > boxHi[ax]) { miss = true; break; } continue; }
+      float ta = (boxLo[ax] - lo[ax]) / sd[ax], tb = (boxHi[ax] - lo[ax]) / sd[ax];
+      if (ta > tb) std::swap(ta, tb);
+      t0 = std::max(t0, ta); t1 = std::min(t1, tb);
+      if (t0 > t1) { miss = true; break; }
+    }
+    if (miss) continue;
+    const float u = clampv(t0, 0.f, 1.f);
+    if (u < bestU) { bestU = u; best = (int)i; }
+  }
+  (void)len2;
+  return best;
+}
 int rigLimbPart(const RigModel& M, int part) {
   int cur = part;
   for (int guard = 0; cur >= 0 && guard < 16; guard++) {
@@ -823,7 +851,9 @@ int rigLimbPart(const RigModel& M, int part) {
 
 // ------------------------------------------------------------------ dismember.js
 static float severChance(const std::string& k) {
-  if (k == "axe") return 0.3f; if (k == "sword") return 0.2f; if (k == "arrow") return 0.12f; if (k == "explosion") return 0.35f;
+  if (k == "axe") return 0.3f; if (k == "sword") return 0.2f; if (k == "greatsword") return 0.28f;
+  if (k == "mace") return 0.22f; if (k == "spear") return 0.14f; if (k == "dagger") return 0.16f;
+  if (k == "arrow") return 0.12f; if (k == "explosion") return 0.35f;
   if (k == "trident") return 0.16f; if (k == "hoe") return 0.08f; if (k == "pickaxe") return 0.06f; if (k == "shovel") return 0.04f;
   return 0;
 }
@@ -869,7 +899,13 @@ void Creature::tryDismember(Level& lv, const DamageSrc& src, float dealt) {
   ch *= clampv(dealt / 4, 0.5f, 1.6f) * T->j.value("sever", 1.f);
   if (part.limb == "head") { if (hp > maxHp * 0.4f) return; ch *= 0.5f; }
   if (lost.size() >= 4) return;
-  if (frand() > ch) return;
+  if (frand() > ch) {
+    if ((part.limb == "wingR" || part.limb == "wingL") && lost.find(part.limb) == lost.end()) {
+      data["wingHurt"] = part.limb;
+      data["wingHurtUntil"] = age + 12.0;
+    }
+    return;
+  }
   sever(lv, *this, *M, pi, src);
 }
 

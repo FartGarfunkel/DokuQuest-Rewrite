@@ -1,6 +1,9 @@
 // sim/attack_moves.cpp — the moves' timings and the blade's path (see the header). Owner: claude (timings, path);
 // the rules using them: grok.
 #include "sim/attack_moves.h"
+#include "sim/creature_rig.h"
+#include "sim/creature.h"
+#include "sim/shield_shape.h"
 #include "core/registry.h"
 #include <algorithm>
 #include <cmath>
@@ -27,20 +30,20 @@ const AttackMove MOVES[MV_COUNT] = {
   {"dagger_1",     0.42f, 0.03f, 0.10f, 0.20f, 0.24f, 0.45f, 0.8f, 0.6f, 1, false},
   {"dagger_2",     0.45f, 0.04f, 0.13f, 0.20f, 0.26f, 0.40f, 0.8f, 0.6f, 1, false},
   {"dagger_3",     0.70f, 0.08f, 0.25f, 0.30f, 0.45f, 0.90f, 1.2f, 1.0f, 1, false},
-  {"axe_1",        0.85f, 0.08f, 0.16f, 0.25f, 0.70f, 0.45f, 1.0f, 1.4f, 2, false},
-  {"axe_2",        0.90f, 0.10f, 0.16f, 0.23f, 0.78f, 0.45f, 1.1f, 1.5f, 2, false},
+  {"axe_1",        0.85f, 0.08f, 0.16f, 0.25f, 0.70f, 0.45f, 1.0f, 1.6f, 1, false, 1.f, 0.22f},
+  {"axe_2",        0.90f, 0.10f, 0.16f, 0.23f, 0.78f, 0.45f, 1.1f, 1.7f, 1, false, 1.f, 0.22f},
   {"fist_1",       0.42f, 0.03f, 0.13f, 0.23f, 0.25f, 0.40f, 1.0f, 0.6f, 1, true},
   {"fist_2",       0.42f, 0.03f, 0.13f, 0.23f, 0.25f, 0.40f, 1.0f, 0.7f, 1, false},
   {"fist_3",       0.58f, 0.05f, 0.13f, 0.23f, 0.45f, 0.40f, 1.3f, 1.2f, 1, true},
   {"tool_1",       0.60f, 0.06f, 0.15f, 0.18f, 0.40f, 0.10f, 1.0f, 1.0f, 1, false},
   {"tool_2",       0.62f, 0.06f, 0.15f, 0.18f, 0.42f, 0.10f, 1.0f, 1.0f, 1, false},
   // a heavy diagonal, then the return, quicker than a slow-motion chop and still slower than a sword. The other hand is on the haft.
-  {"greatsword_1", 0.86f, 0.09f, 0.36f, 0.54f, 0.66f, 0.32f, 1.0f, 1.4f, 2, false, 1.15f},
-  {"greatsword_2", 0.78f, 0.08f, 0.30f, 0.46f, 0.60f, 0.24f, 1.0f, 1.4f, 2, false, 1.15f},
+  {"greatsword_1", 0.86f, 0.09f, 0.36f, 0.54f, 0.66f, 0.32f, 1.0f, 1.4f, 2, false, 1.15f, 0.12f},
+  {"greatsword_2", 0.78f, 0.08f, 0.30f, 0.46f, 0.60f, 0.24f, 1.0f, 1.4f, 2, false, 1.15f, 0.12f},
   {"spear_1",      0.85f, 0.08f, 0.28f, 0.42f, 0.58f, 0.90f, 1.0f, 1.1f, 2, false, 1.35f},
   {"spear_2",      0.75f, 0.08f, 0.22f, 0.36f, 0.52f, 0.40f, 1.0f, 1.1f, 2, false, 1.35f},
-  {"mace_1",       0.85f, 0.08f, 0.16f, 0.25f, 0.70f, 0.45f, 1.0f, 1.6f, 1, false, 0.9f},
-  {"mace_2",       0.90f, 0.10f, 0.16f, 0.23f, 0.78f, 0.45f, 1.1f, 1.6f, 1, false, 0.9f},
+  {"mace_1",       0.85f, 0.08f, 0.16f, 0.25f, 0.70f, 0.45f, 1.0f, 1.6f, 1, false, 0.9f, 0.22f},
+  {"mace_2",       0.90f, 0.10f, 0.16f, 0.23f, 0.78f, 0.45f, 1.1f, 1.6f, 1, false, 0.9f, 0.22f},
 };
 
 constexpr float SHOULDER_Y = 1.35f, SHOULDER_X = 0.30f;
@@ -171,6 +174,54 @@ bool bladeSweepHits(u8 id, float t0, float t1, const vec3& feet, float yaw, floa
     const vec3 S = attackFrameToWorld(sh + (h - sh) * 0.4f, feet, yaw, pitch), T = attackFrameToWorld(tp, feet, yaw, pitch);
     // (the blades: 0.3-0.4 thick boxes)
     if (segBox(S, T, lo, hi, 0.15f)) { if (when) *when = t; return true; }
+  }
+  return false;
+}
+
+int bladeSweepHitsCreature(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, Creature& c,
+                           const RigModel& M, float reach, vec3* hitAt, int* part) {
+  const AttackMove& m = attackMove(id);
+  const float a = std::max(t0, m.hitFrom), b = std::min(t1, m.hitTo);
+  if (id == MV_NONE || id >= MV_COUNT || b < a) return -1;
+  rigPose(c, M, creatureBase(c, false));
+  const int n = std::max(1, (int)std::ceil((b - a) * 240));
+  int best = -1; vec3 at(0);
+  for (int i = 0; i <= n; i++) {
+    const float t = a + (b - a) * i / n;
+    vec3 h, tp; bladeAt(id, t, h, tp);
+    tp = h + (tp - h) * reach;
+    const vec3 sh(h.x < 0 ? -SHOULDER_X : SHOULDER_X, SHOULDER_Y, 0);
+    const vec3 S = attackFrameToWorld(sh + (h - sh) * 0.4f, feet, yaw, pitch), T = attackFrameToWorld(tp, feet, yaw, pitch);
+    const int pi = rigSegHitPart(c, M, S, T, 0.08f);
+    if (pi >= 0) { best = pi; at = (S + T) * 0.5f; break; }
+  }
+  if (best >= 0) { if (hitAt) *hitAt = at; if (part) *part = best; }
+  return best;
+}
+
+int bladeSweepHitsEntity(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, Entity& e,
+                         float reach, vec3* hitAt) {
+  auto* c = dynamic_cast<Creature*>(&e);
+  if (!c) return -2;
+  const RigModel* M = rigModel(c->modelKey());
+  if (!M || M->parts.empty()) return -2;
+  int part = -1;
+  return bladeSweepHitsCreature(id, t0, t1, feet, yaw, pitch, *c, *M, reach, hitAt, &part);
+}
+
+bool bladeSweepHitsShield(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, const ShieldBox& box,
+                          float reach) {
+  const AttackMove& m = attackMove(id);
+  const float a = std::max(t0, m.hitFrom), b = std::min(t1, m.hitTo);
+  if (id == MV_NONE || id >= MV_COUNT || b < a) return false;
+  const int n = std::max(1, (int)std::ceil((b - a) * 240));
+  for (int i = 0; i <= n; i++) {
+    const float t = a + (b - a) * i / n;
+    vec3 h, tp; bladeAt(id, t, h, tp);
+    tp = h + (tp - h) * reach;
+    const vec3 sh(h.x < 0 ? -SHOULDER_X : SHOULDER_X, SHOULDER_Y, 0);
+    const vec3 S = attackFrameToWorld(sh + (h - sh) * 0.4f, feet, yaw, pitch), T = attackFrameToWorld(tp, feet, yaw, pitch);
+    if (shieldRayHit(box, S, T - S, 1.f)) return true;
   }
   return false;
 }
