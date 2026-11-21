@@ -813,8 +813,30 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     ps.twoHand = hd->num("hands") >= 2.f;
     ps.pick = hd->hasTool && hd->tool.type == "pickaxe";
   }
+  {   // a blade in each hand, and neither is a two-handed weapon
+    auto blade = [](const std::string& id) {
+      if (id.empty() || isShieldItem(id)) return false;
+      const ItemDef* d = reg().item(id);
+      if (d && d->hasTool) {
+        const std::string t = d->tool.type;
+        if (t == "sword" || t == "axe" || t == "mace" || t == "dagger" || t == "spear" || t == "greatsword") return true;
+      }
+      return id.find("sword") != std::string::npos || id.find("mace") != std::string::npos || id.find("dagger") != std::string::npos;
+    };
+    ps.dual = !ps.twoHand && blade(wear.held) && blade(wear.off);
+  }
   ps.shieldArm = ps.blockMain ? -1 : isShieldItem(wear.off) ? 1 : 0;
   if (!wear.strap.empty()) { ps.blockMain = wear.strapRight; ps.shieldArm = wear.strapRight ? -1 : 1; }
+  ps.bladeGuard = ps.shieldArm == 0 && (ps.twoHand || ps.dual || [&] {
+    const std::string& id = wear.held;
+    if (id.empty() || isShieldItem(id)) return false;
+    const ItemDef* d = reg().item(id);
+    if (d && d->hasTool) {
+      const std::string t = d->tool.type;
+      if (t == "sword" || t == "axe" || t == "mace" || t == "dagger" || t == "spear" || t == "greatsword") return true;
+    }
+    return id.find("sword") != std::string::npos || id.find("mace") != std::string::npos || id.find("dagger") != std::string::npos;
+  }());
   if (st.rollU > 0 && !fp && !p.dead && !p.riding && !p.swimming) {
     ps.roll = st.rollU; ps.rollBack = st.rollBack;
     ps.bodyYaw = st.rollYaw + (st.rollBack ? PI : 0.f) + devTurn; ps.headTurn = 0; ps.legTurn = 0; ps.air = false;
