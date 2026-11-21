@@ -4,7 +4,7 @@
 
 **Goal:** Ship four short original trees that grow the four paths, keep the trainer kit, and make spending a node felt.
 
-**Architecture:** `tools/local/write_path_trees.py` writes tracked `data/skilltree.json`. `skillTrees()` reads that file. Unknown learnt ids are dropped. Toasts and the tree page name the spend. Path talents and skill perks are untouched.
+**Architecture:** `tools/write_path_trees.py` writes tracked `data/skilltree.json`. `skillTrees()` reads that file. Unknown learnt ids are dropped. Toasts and the tree page name the spend. Path talents and skill perks are untouched.
 
 **Tech Stack:** C++20, Python 3 for the JSON writer, headless `test_magic` / `test_balance` / `test_villagers`.
 
@@ -34,7 +34,7 @@
 ### Task 1: Four original trees ship
 
 **Files:**
-- Create: `data/skilltree.json` via `tools/local/write_path_trees.py` (already in the repo)
+- Create: `data/skilltree.json` via `tools/write_path_trees.py`
 - Modify: `src/sim/skilltree.cpp` (`skillTrees()` reads `dataDir() / "skilltree.json"`)
 - Modify: `src/sim/skilltree.h` (comment: shipped file, not the gitignored import)
 - Modify: `tools/test_magic.cpp` (tree-shape pins)
@@ -60,7 +60,7 @@ Also: every node has a non-empty title and desc; every percentage bonus `op != 0
 
 Expected: FAIL on "the Knight tree is short" while the loader still reads the 164-node import, or FAIL compile if you already switched the path and the file is missing.
 
-- [ ] **Step 3: Run** `python3 tools/local/write_path_trees.py` from the repo root, then point `skillTrees()` at `dataDir() / "skilltree.json"`. Copy runtime data is automatic on the next ninja because `dq_runtime_data` copies `data/`.
+- [ ] **Step 3: Run** `python3 tools/write_path_trees.py` from the repo root, then point `skillTrees()` at `dataDir() / "skilltree.json"`. Copy runtime data is automatic on the next ninja because `dq_runtime_data` copies `data/`.
 
 - [ ] **Step 4: Run** `ninja -C /home/matt/Documents/DokuQuest-Rewrite-main/build test_magic test_balance test_villagers && /home/matt/Documents/DokuQuest-Rewrite-main/build/test_magic && /home/matt/Documents/DokuQuest-Rewrite-main/build/test_balance && /home/matt/Documents/DokuQuest-Rewrite-main/build/test_villagers`
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Write data/skilltree.json: four original path trees. See docs/superpowers/specs/2026-11-21-path-trees-design.md."""
+"""Write data/skilltree.json: four original path trees. See docs/superpowers/specs/2026-11-21-path-trees-design.md."""  # tools/write_path_trees.py
 import json
 from pathlib import Path
 
@@ -193,7 +193,7 @@ mage = tree("mage", "Mage", "mage",
 out = {"trees": {"warrior": knight, "ranger": ranger, "rogue": rogue, "mage": mage}}
 
 def main():
-    root = Path(__file__).resolve().parents[2]
+    root = Path(__file__).resolve().parents[1]
     dest = root / "data" / "skilltree.json"
     dest.write_text(json.dumps(out, indent=2) + "\n", encoding="utf-8")
     n = {k: len(t["nodes"]) for k, t in out["trees"].items()}

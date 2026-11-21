@@ -73,7 +73,22 @@ std::string treeWhyNot(const Player& p, const SkillTree& t, const TreeNode& n) {
   return "";
 }
 
+int treeSanitise(Player& p) {
+  if (!p.stats.contains("tree") || !p.stats["tree"].is_object() || !p.stats["tree"]["nodes"].is_array()) return 0;
+  json keep = json::array();
+  int drop = 0;
+  for (auto& x : p.stats["tree"]["nodes"]) {
+    const std::string id = x.is_string() ? x.get<std::string>() : "";
+    bool ok = false;
+    for (const SkillTree& t : skillTrees()) if (t.find(id) >= 0) { ok = true; break; }
+    if (ok) keep.push_back(id); else drop++;
+  }
+  if (drop) { p.stats["tree"]["nodes"] = keep; p.recalcMax(); }
+  return drop;
+}
+
 bool treeLearn(Player& p, const std::string& tree, const std::string& id) {
+  treeSanitise(p);
   for (const SkillTree& t : skillTrees()) {
     if (t.key != tree) continue;
     const int i = t.find(id);

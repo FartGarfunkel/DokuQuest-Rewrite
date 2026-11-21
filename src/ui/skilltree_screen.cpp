@@ -63,6 +63,7 @@ public:
   void draw(App& a) override {
     Player* p = a.session ? a.session->player : nullptr;
     if (!p) return;
+    treeSanitise(*p);
     if (frames > 1 && a.input.pressed(Act::Skills)) want = true;
     const auto& trees = skillTrees();
     ImGuiIO& io = ImGui::GetIO();

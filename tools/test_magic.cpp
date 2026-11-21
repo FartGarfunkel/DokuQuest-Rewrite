@@ -332,6 +332,8 @@ int main(int argc, char** argv) {
       check(rs && !treeLearn(p, "ranger", rs->id), "one class at a time: not the ranger's start as well");
       treeReset(p);
       check(treePointsSpent(p) == 0 && p.maxHp == hp0, "a reset gives the points back");
+      p.stats["tree"]["nodes"] = json::array({"warrior", "warrior_159"});
+      check(treeSanitise(p) == 1 && treeHas(p, "warrior") && !treeHas(p, "warrior_159"), "an old import id is dropped; the Knight start stays");
     }
   }
 
