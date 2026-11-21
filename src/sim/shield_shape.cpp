@@ -62,7 +62,13 @@ bool playerShieldBox(const Player& p, ShieldBox& out) {
   if (p.dead || p.sleeping || p.swimming || p.crawling || p.riding || p.dodgeT > 0) return false;
   const int side = shieldSide(p);   // (sim/combat_rpg.h: a shield in a hand, or the shield slot's on the free forearm)
   if (!side) return false;
-  out = shieldBoxAt(p.pos, p.yaw, p.pitch, p.blockT > 0, p.sneaking, side > 0);
+  // a two-handed block does not raise a shield that is also equipped, so arrows do not meet the raised box
+  bool twoHand = false;
+  if (p.blockT > 0 && p.selected >= 0 && p.selected < (int)p.inv.size()) {
+    const ItemDef* d = p.inv[p.selected].def();
+    twoHand = d && d->num("hands") >= 2.0;
+  }
+  out = shieldBoxAt(p.pos, p.yaw, p.pitch, p.blockT > 0 && !twoHand, p.sneaking, side > 0);
   return true;
 }
 

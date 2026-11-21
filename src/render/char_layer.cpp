@@ -1276,10 +1276,12 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
       heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, fp ? &head : nullptr, fp && !ps.atkMove ? fpYawV : nullptr);
       if (fp) { HeldItemLayer::torchTip[0] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[0] = true; }   // (your own torch's flame, at its head)
     }
-    if (!wear.strap.empty() && (wear.strapRight ? mainOn : offOn) && !bowDraw)   // the shield slot's, strapped on the free forearm
+    // a two-handed block puts the off forearm on the haft: the strap stays off it, and an off-hand shield is not raised there
+    const bool twoHandBlock = ps.twoHand && ps.block > 0;
+    if (!wear.strap.empty() && (wear.strapRight ? mainOn : offOn) && !bowDraw && !twoHandBlock)
       shieldInHand(R, wear.strapRight ? CP_ARMR_D : CP_ARML_D, wear.strap, wear.strapRight ? 1.f : -1.f, ps.block, light, tint, false);
     if (!offOn || bowDraw) {}
-    else if (!wear.off.empty() && isShieldItem(wear.off)) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
+    else if (!wear.off.empty() && isShieldItem(wear.off) && !twoHandBlock) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
     else if (!wear.off.empty()) {
       vec3 head;
       heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, 0, glm::dvec3(0), wear.offModel, fp ? &head : nullptr, fp ? fpYawV : nullptr);

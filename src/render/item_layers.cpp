@@ -388,7 +388,9 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       // a shield (sim/combat_rpg.h) strapped on the forearm: carried with the forearm level, raised while you block (the
       // hand it's in, the main hand's first); a parry knocks it back
       const bool mainSh = p->held().id == "shield" || (p->held().def() && p->held().def()->has("shield"));
-      const bool up = p->blockT > 0 && (side > 0 || !mainSh);
+      const ItemDef* heldDef = p->held().def();
+      const bool twoHand = heldDef && heldDef->num("hands") >= 2.0;   // a two-handed block does not raise this shield
+      const bool up = p->blockT > 0 && !twoHand && (side > 0 || !mainSh);
       static float raise[2] = {0, 0}; static double rt[2] = {-1, -1};
       const int h = side > 0 ? 0 : 1;
       const float sdt = rt[h] < 0 ? 0.f : (float)std::clamp(f.time - rt[h], 0.0, 0.05); rt[h] = f.time;
