@@ -120,6 +120,7 @@ int main() {
 
   printf("procedural weapons\n");
   CHECK(reg().item("iron_greatsword") == nullptr && reg().item("mixed_greatsword") != nullptr, "a greatsword is not a fixed item");
+  CHECK(reg().item("iron_spear") == nullptr && reg().item("iron_mace") == nullptr, "a spear and a mace are not fixed items");
   ItemStack plainSword, plainGreat;
   CHECK(makePartTool("sword", {"iron", "iron"}, "stick", plainSword) && makePartTool("greatsword", {"iron", "iron", "iron"}, "stick", plainGreat),
         "iron mixes into a sword and a greatsword");
@@ -162,11 +163,22 @@ int main() {
         "the spear and the mace fight as those families");
 
   printf("the iron sword recipe stays ingots and a stick\n");
-  int shapedSwords = 0, badOut = 0;
+  int shapedSwords = 0, badOut = 0, recipeRows = 0;
   bool swordOk = false;
+  auto familyName = [](const std::string& s) {
+    return s.find("greatsword") != std::string::npos || s.find("spear") != std::string::npos || s.find("mace") != std::string::npos;
+  };
+  auto castName = [](const std::string& s) {
+    return s.find("mold") != std::string::npos || s.find("_head") != std::string::npos;
+  };
   for (const Recipe& r : reg().recipes) {
-    const bool family = r.out.find("greatsword") != std::string::npos || r.out.find("spear") != std::string::npos || r.out.find("mace") != std::string::npos;
-    if (family && (r.out.find("mold") != std::string::npos || r.out.find("_head") != std::string::npos)) badOut++;
+    if (r.out == "iron_greatsword" || r.out == "iron_spear" || r.out == "iron_mace" ||
+        r.out == "mixed_greatsword" || r.out == "mixed_spear" || r.out == "mixed_mace") recipeRows++;
+    bool family = familyName(r.out), cast = castName(r.out);
+    auto note = [&](const std::string& s) { family = family || familyName(s); cast = cast || castName(s); };
+    for (const auto& kv : r.key) note(kv.second);
+    for (const std::string& it : r.items) note(it);
+    if (family && cast) badOut++;
     if (r.out != "iron_sword" || !r.shaped()) continue;
     shapedSwords++;
     const auto mit = r.key.find('M'), sit = r.key.find('S');
@@ -178,7 +190,8 @@ int main() {
     printf("\n");
   }
   CHECK(shapedSwords == 1 && swordOk, "the old iron sword is still [\"M\",\"M\",\"S\"] of an ingot and a stick");
-  CHECK(badOut == 0, "no greatsword, spear, or mace recipe output is a mold or a head");
+  CHECK(recipeRows == 0, "a greatsword, spear, or mace is not a recipe row");
+  CHECK(badOut == 0, "no greatsword, spear, or mace recipe is a mold or a head");
 
   printf("who may hold one, and a new roll\n");
   ItemStack ironGs, copperGs;
