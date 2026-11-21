@@ -114,8 +114,9 @@ static void twoHandGuardArms(CharAngles& A, const CharPose& pose, const CharMode
   const vec3 pR = M.pivot[CP_ARMR_U], pL = M.pivot[CP_ARML_U];
   const vec3 sR(pR.x * b, pR.y - 12, pR.z), sL(pL.x * b, pL.y - 12, pL.z);
   const float l1 = glm::length(M.pivot[CP_ARMR_D] - pR), l2 = BOW_FIST;
-  // handle out in front of the chest so the blade stands in front of the face, not through the head
-  const vec3 grip = hipP + Rb * vec3(0.12f * b, 5.4f, -8.0f);
+  // handle out in front of the chest, a little to the right so first person can see past the blade
+  const float right = (pose.fp ? 3.6f : 2.6f) * b;
+  const vec3 grip = hipP + Rb * vec3(right, 5.4f, -8.0f);
   const vec3 main = grip + Rb * vec3(0.f, 0.7f, 0.f);
   const vec3 off = grip + Rb * vec3(0.f, -0.7f, 0.f);
   reachArm(sR, toBody(main), l1, l2, vec3(1.2f, -1.0f, 0.35f), A.armR, A.foreR);

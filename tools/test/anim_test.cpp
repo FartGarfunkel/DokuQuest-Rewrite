@@ -488,6 +488,7 @@ int main(int argc, char** argv) {
     CHECK(r.y > 0.85f && r.y < 1.28f && l.y > 0.85f && l.y < 1.28f,
           "idle: the hands sit at the waist, not on the shoulder (R y %.2f, L y %.2f)", r.y, l.y);
     CHECK(std::fabs(r.x - l.x) < 0.22f, "idle: the fists meet on the handle (dx %.2f)", r.x - l.x);
+    CHECK(r.x > 0.04f && r.x < 0.28f, "idle: the grip sits a little to the right of centre (x %.2f)", r.x);
     const mat4 G = gripTurn(two.part[CP_ARMR_D], two.toolR);
     const vec3 f(G * vec4(0, -6, -1, 1));
     const vec3 d = glm::normalize(mat3(G) * vec3(0, 0.472f, -1.448f));
