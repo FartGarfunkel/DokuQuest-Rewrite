@@ -475,12 +475,12 @@ int main(int argc, char** argv) {
       const vec3 f(G * vec4(0, -6, -1, 1));
       return vec3(f.x, f.y, -f.z);
     };
-    auto holdRig = [](bool two) {
-      CharPose p; p.held = true; p.twoHand = two;
+    auto holdRig = [] {
+      CharPose p; p.held = true; p.twoHand = true; p.greatsword = true;
       CharRig R; charRig(bladeModel(), p, mat4(1), R, false, false);
       return R;
     };
-    const CharRig two = holdRig(true);
+    const CharRig two = holdRig();
     const vec3 r = fist(two, false), l = fist(two, true);
     const float apart = glm::length(r - l);
     const vec3 chest(0.f, 1.15f, 0.f);
@@ -489,9 +489,16 @@ int main(int argc, char** argv) {
     CHECK(r.y > 0.85f && r.y < 1.45f && l.y > 0.85f && l.y < 1.45f,
           "idle: the hands sit at the chest, not the hip (R y %.2f, L y %.2f)", r.y, l.y);
     CHECK(std::fabs(r.x) < 0.45f, "idle: the main hand stays near the middle (x %.2f)", r.x);
-    const CharAngles A = charAnimate([]{ CharPose p; p.held = true; p.twoHand = true; return p; }());
+    const CharAngles A = charAnimate([]{ CharPose p; p.held = true; p.twoHand = true; p.greatsword = true; return p; }());
     CHECK(A.foreR.x > 0.55f && A.foreL.x > 0.55f, "idle: both elbows stay bent (foreR %.2f, foreL %.2f)", A.foreR.x, A.foreL.x);
     CHECK(glm::length(r - chest) < 0.85f, "idle: the grip stays on the chest (%.2f from centre)", glm::length(r - chest));
+    const mat4 G = gripTurn(two.part[CP_ARMR_D], two.toolR);
+    const vec3 f(G * vec4(0, -6, -1, 1));
+    const vec3 d = glm::normalize(mat3(G) * vec3(0, 0.472f, -1.448f));
+    const vec3 tip(f + d * 1.40f);
+    const vec3 tipA(tip.x, tip.y, -tip.z), fistA(f.x, f.y, -f.z);
+    CHECK(tipA.y > fistA.y + 0.35f, "idle: the blade stands up from the grip, not along the arm (tip y %.2f, fist y %.2f)", tipA.y, fistA.y);
+    CHECK(tipA.z > 0.05f, "idle: the blade is ahead, not resting on the shoulder (tip z %.2f)", tipA.z);
     CharPose cut; cut.atkMove = MV_GS1; cut.atkT = 0.45f; cut.held = true; cut.twoHand = true;
     CharRig C; charRig(bladeModel(), cut, mat4(1), C, false, false);
     const vec3 cr = fist(C, false), cl = fist(C, true);

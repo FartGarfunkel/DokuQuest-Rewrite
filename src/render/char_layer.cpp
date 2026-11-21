@@ -88,11 +88,113 @@ const VoxelModel* localPlayerArm() {
   return skinArmModel(*resolveCharacter(a.session->player->skin));
 }
 
-vec3 carryClear(const vec3* face, vec3 fist) {
-  if (!face) return vec3(0);
-  const vec3 d = fist - *face;
-  if (glm::length(d) < 1e-4f) return vec3(0);
-  return glm::normalize(d) * 0.18f;
+// turn the segment ra->rb onto wa->wb (lengths already matched)
+static mat4 swingAlign(vec3 ra, vec3 rb, vec3 wa, vec3 wb) {
+  const vec3 d0 = rb - ra, d1 = wb - wa;
+  const float l0 = glm::length(d0), l1 = glm::length(d1);
+  if (l0 < 1e-5f || l1 < 1e-5f) return glm::translate(mat4(1), wa - ra);
+  const vec3 a = d0 / l0, b = d1 / l1;
+  const vec3 axis = glm::cross(a, b);
+  const float s = glm::length(axis), c = glm::dot(a, b);
+  mat4 R(1);
+  if (s > 1e-5f) R = glm::rotate(mat4(1), std::atan2(s, c), axis / s);
+  else if (c < 0) {
+    vec3 up = glm::cross(a, vec3(0, 1, 0));
+    if (glm::length(up) < 1e-4f) up = glm::cross(a, vec3(1, 0, 0));
+    R = glm::rotate(mat4(1), 3.14159265f, glm::normalize(up));
+  }
+  return glm::translate(mat4(1), wa) * R * glm::translate(mat4(1), -ra);
+}
+
+void maceChainStep(MaceChain& c, vec3 anchor, const float* seg, int n, glm::dvec3 origin, double tnow) {
+  if (n <= 0 || !seg) return;
+  auto hang = [&] {
+    c.p.resize((size_t)n); c.prev.resize((size_t)n);
+    vec3 at = anchor;
+    for (int i = 0; i < n; i++) { at += vec3(0, -seg[i], 0); c.p[i] = c.prev[i] = at; }
+    c.anchor = anchor; c.vSmooth = vec3(0); c.origin = origin; c.t = tnow; c.acc = 0;
+  };
+  if (c.t < 0 || (int)c.p.size() != n || !std::isfinite(anchor.x + anchor.y + anchor.z)) { hang(); return; }
+  // the camera's block origin moved: keep the same world points so a walk across a cell is not a yank
+  if (origin != c.origin) {
+    const vec3 sh = vec3(c.origin - origin);
+    for (int i = 0; i < n; i++) { c.p[i] += sh; c.prev[i] += sh; }
+    c.anchor += sh;
+    c.origin = origin;
+  }
+  const vec3 delta = anchor - c.anchor;
+  if (glm::length(delta) > 2.f || tnow + 1e-4 < c.t) { hang(); return; }
+  c.acc = std::min(c.acc + (float)std::max(0.0, tnow - c.t), 0.25f);
+  c.t = tnow;
+  constexpr float STEP = 1.f / 120.f;
+  const int steps = (int)(c.acc / STEP);
+  if (steps <= 0) return;
+  c.acc -= steps * STEP;
+  const vec3 a0 = c.anchor;
+  c.anchor = anchor;
+  constexpr float G = 32.f, CAP = 16.f * STEP, TAU = 0.12f, MATCH = 3.5f;
+  const float follow = 1.f - std::exp(-STEP / TAU);
+  for (int s = 1; s <= steps; s++) {
+    const vec3 aPrev = a0 + delta * ((float)(s - 1) / (float)steps);
+    const vec3 a = a0 + delta * ((float)s / (float)steps);
+    const vec3 stepD = a - aPrev;
+    const vec3 vInst = stepD / STEP;
+    const float mismatch = glm::length(vInst - c.vSmooth);
+    const float k = std::exp(-(mismatch * mismatch) / (MATCH * MATCH));
+    const vec3 carry = stepD * k;
+    c.vSmooth += (vInst - c.vSmooth) * follow;
+    for (int i = 0; i < n; i++) { c.p[i] += carry; c.prev[i] += carry; }
+    for (int i = 0; i < n; i++) {
+      const float damp = i + 1 == n ? 0.985f : 0.97f;
+      vec3 vel = (c.p[i] - c.prev[i]) * damp;
+      if (glm::length(vel) > CAP) vel = glm::normalize(vel) * CAP;
+      c.prev[i] = c.p[i];
+      c.p[i] += vel;
+      c.p[i].y -= G * STEP * STEP;
+    }
+    for (int it = 0; it < 8; it++) {
+      vec3 from = a;
+      for (int i = 0; i < n; i++) {
+        vec3 d = c.p[i] - from;
+        const float L = glm::length(d);
+        c.p[i] = L > 1e-5f ? from + d * (seg[i] / L) : from + vec3(0, -seg[i], 0);
+        from = c.p[i];
+      }
+    }
+  }
+}
+
+bool drawSwingingMace(const VoxelModel& im, const mat4& placed, VoxelLight light, vec4 tint, float glint) {
+  if (!im.haftGl.ready() || im.loose.empty()) return false;
+  const int n = (int)im.loose.size();
+  for (int i = 0; i < n; i++) if (!im.loose[i].gl || !im.loose[i].gl->ready()) return false;
+  voxelRenderer().draw(im.haftGl, placed * im.haftFrame.matrix(), light, tint, glint);
+  std::vector<float> seg(n);
+  for (int i = 0; i < n; i++) {
+    const vec3 ra = vec3(placed * vec4(im.loose[i].a, 1)), rb = vec3(placed * vec4(im.loose[i].b, 1));
+    seg[i] = std::max(0.02f, glm::length(rb - ra));
+  }
+  const vec3 anchor = vec3(placed * vec4(im.loose[0].a, 1));
+  struct Slot { const void* key; MaceChain c; };
+  static std::vector<Slot> C;
+  const double tnow = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  glm::dvec3 origin{0};
+  if (App& A = app(); A.session) origin = A.session->frame.cam.origin;
+  Slot* me = nullptr;
+  for (auto& q : C) if (q.key == &im && tnow - q.c.t < 0.5) { me = &q; break; }
+  if (!me) {
+    C.erase(std::remove_if(C.begin(), C.end(), [&](const Slot& q) { return tnow - q.c.t > 1.0; }), C.end());
+    C.push_back({&im, MaceChain{}});
+    me = &C.back();
+  }
+  maceChainStep(me->c, anchor, seg.data(), n, origin, tnow);
+  vec3 from = anchor;
+  for (int i = 0; i < n; i++) {
+    const vec3 ra = vec3(placed * vec4(im.loose[i].a, 1)), rb = vec3(placed * vec4(im.loose[i].b, 1));
+    voxelRenderer().draw(*im.loose[i].gl, swingAlign(ra, rb, from, me->c.p[i]) * placed * im.haftFrame.matrix(), light, tint, glint);
+    from = me->c.p[i];
+  }
+  return true;
 }
 
 namespace {
@@ -193,21 +295,8 @@ void shieldInHand(const CharRig& R, int part, const std::string& id, float side,
   if (!im.ready()) return;
   voxelRenderer().draw(im.gl, shieldPlacement(R, part, side, k) * im.matrix(), light, tint, glint ? 1.f : 0.f);
 }
-// sword, dagger, greatsword, spear, axe or mace — and a part-tool whose pt.t (the model key's kind) is one of those
-bool carryBlade(const std::string& id, const std::string& modelKey) {
-  auto kind = [](const std::string& t) {
-    return t == "sword" || t == "dagger" || t == "greatsword" || t == "spear" || t == "axe" || t == "mace";
-  };
-  if (const ItemDef* d = reg().item(id); d && d->hasTool && kind(d->tool.type)) return true;
-  if (modelKey.rfind("pt:", 0) == 0 && (modelKey.size() < 4 || modelKey[3] != '=')) {
-    const size_t c = modelKey.find(':', 3);
-    if (kind(modelKey.substr(3, c == std::string::npos ? std::string::npos : c - 3))) return true;
-  }
-  return id.find("sword") != std::string::npos || id.find("dagger") != std::string::npos || id.find("mace") != std::string::npos
-      || id.find("spear") != std::string::npos || id.find("greatsword") != std::string::npos;
-}
 // skins.js held(): an item in a fist (fore = the forearm's frame, model pixels about the elbow; side -1 = the left hand)
-void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "", vec3* headOut = nullptr, const float* fpYaw = nullptr, const vec3* face = nullptr) {
+void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, vec4 tint, bool glint = false, u32 rodOwner = 0, double now = 0, glm::dvec3 camPos = glm::dvec3(0), const std::string& modelKey = "", vec3* headOut = nullptr, const float* fpYaw = nullptr) {
   if (id == "fishing_rod") id = "fishing_rod_tp";
   const VoxelModel& im0 = itemModel(modelKey.empty() ? id : modelKey);
   if (!im0.ready()) return;
@@ -284,34 +373,9 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
     hm = glm::scale(hm, vec3((1 + T[2]) / CHAR_PX)) * heldMat(id);
   }
   (void)side;
-  // the mesh only: the arm stays. A null face (swing, block, attack) is a zero shift.
-  if (carryBlade(id, modelKey)) {
-    const vec3 off = carryClear(face, vec3(hm[3]));
-    if (off != vec3(0)) hm = glm::translate(mat4(1), off) * hm;
-  }
-  if (id.find("mace") != std::string::npos || modelKey.rfind("pt:mace", 0) == 0) {
-    // the head is a ball on a chain: it hangs from the top of the haft and lags the hand
-    const vec3 fist = vec3(hm[3]);
-    vec3 axis = vec3(fore[0]);
-    if (glm::length(axis) < 1e-4f) axis = vec3(1, 0, 0);
-    axis = glm::normalize(axis);
-    struct Flail { vec3 at, vel; float ang, av; double t; };
-    static std::vector<Flail> F;
-    const double tnow = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
-    Flail* me = nullptr;
-    for (auto& q : F) if (glm::length(q.at - fist) < 0.8f && tnow - q.t < 0.5) { me = &q; break; }
-    if (!me) { F.erase(std::remove_if(F.begin(), F.end(), [&](const Flail& q) { return tnow - q.t > 1.0; }), F.end()); F.push_back({fist, vec3(0), 0, 0, tnow}); me = &F.back(); }
-    const float dt = (float)std::clamp(tnow - me->t, 0.0, 0.05);
-    if (dt > 0) {
-      const vec3 vel = (fist - me->at) / dt;
-      const vec3 acc = (vel - me->vel) / dt;
-      const float push = glm::dot(acc, glm::normalize(vec3(fore[2]) + vec3(0, 0.01f, 0)));
-      me->av += (-me->ang * 28.f - me->av * 4.5f + push * 0.02f) * dt;
-      me->ang = std::clamp(me->ang + me->av * dt, -0.9f, 0.9f);
-      me->vel = vel;
-    }
-    me->at = fist; me->t = tnow;
-    hm = glm::translate(mat4(1), fist) * glm::rotate(mat4(1), me->ang, axis) * glm::translate(mat4(1), -fist) * hm;
+  if ((id.find("mace") != std::string::npos || modelKey.rfind("pt:mace", 0) == 0) && drawSwingingMace(im, hm, light, tint, glint ? 1.f : 0.f)) {
+    if (headOut) *headOut = vec3(hm * vec4(0, 0.15f, 0, 1));
+    return;
   }
   if (headOut) *headOut = vec3(hm * vec4(0, 0.15f, 0, 1));   // (a torch's head, where its flame burns: render/held_light_fx.cpp)
   if (rodOwner && (id == "fishing_rod_tp" || id == "fishing_rod_cast")) setRodTip(rodOwner, camPos + glm::dvec3(hm * vec4(0.47f, 0.47f, 0, 1)), now);
@@ -821,6 +885,10 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.bow = p.bowPull; ps.eat = p.eatT; ps.scope = p.scoping;
   ps.gui = (p.activity & (Player::ACT_SCREEN | Player::ACT_TYPING)) && !p.riding && !p.sleeping; ps.doze = (p.activity & Player::ACT_DOZE) && !ps.gui && !p.sleeping;   // render/activity_layer.cpp
   ps.hurt = st.hurtT; ps.airLeft = st.airLeft; ps.backward = st.backward && !p.sneaking;
+  if (p.data.is_object() && p.data.value("hurtLimbT", 0.f) > 0) {
+    ps.hurtLeg = (i8)p.data.value("hurtLeg", 0);
+    ps.hurtArm = (i8)p.data.value("hurtArm", 0);
+  }
   if (ps.eat > 0) {   // a potion, a bottle, a mug, milk: drunk, not eaten
     ps.drink = isDrinkItem(p.eatT > 0 && !p.eatId.empty() ? p.eatId : wear.held);
   }
@@ -837,6 +905,8 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   if (const ItemDef* hd = reg().item(wear.held)) {
     ps.twoHand = hd->num("hands") >= 2.f;
     ps.pick = hd->hasTool && hd->tool.type == "pickaxe";
+    const std::string tk = hd->hasTool ? hd->tool.type : "", ms = hd->str("moveset");
+    ps.greatsword = ps.twoHand && (tk == "greatsword" || ms == "greatsword" || wear.held.find("greatsword") != std::string::npos);
   }
   {   // a blade in each hand, and neither is a two-handed weapon
     auto blade = [](const std::string& id) {
@@ -1291,8 +1361,6 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   if (!fp || fpArmR || fpArmL) {
     const bool mainOn = !fp || fpArmR, offOn = !fp || fpArmL;
     const float fpYawV[2] = {ps.yaw, ps.headPitch / 0.8f};   // (the body's facing, as charRig's base turns, and the look's pitch)
-    const vec3 faceC = vec3(R.part[CP_HEAD] * vec4(0, 4.f, 0, 1));
-    const vec3* face = (!ps.atkMove && ps.block <= 0 && ps.swing <= 0) ? &faceC : nullptr;
     bool bowDraw = ps.bow > 0 && wear.held.rfind("bow", 0) == 0;
     if (bowDraw) { if (!fp) drawnBow(R, light, tint, wear.heldGlint); }   // (first person: render/fp_bow.cpp)
     else if (!mainOn) {}
@@ -1300,7 +1368,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     else if (isShieldItem(wear.held)) shieldInHand(R, CP_ARMR_D, wear.held, 1.f, ps.blockMain ? ps.block : 0.f, light, tint, wear.heldGlint);
     else if (!wear.held.empty()) {
       vec3 head;
-      heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, fp ? &head : nullptr, fp && !ps.atkMove ? fpYawV : nullptr, face);
+      heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, fp ? &head : nullptr, fp && !ps.atkMove ? fpYawV : nullptr);
       if (fp) { HeldItemLayer::torchTip[0] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[0] = true; }   // (your own torch's flame, at its head)
     }
     // a two-handed block puts the off forearm on the haft: the strap stays off it, and an off-hand shield is not raised there
@@ -1311,7 +1379,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     else if (!wear.off.empty() && isShieldItem(wear.off) && !twoHandBlock) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
     else if (!wear.off.empty()) {
       vec3 head;
-      heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, 0, glm::dvec3(0), wear.offModel, fp ? &head : nullptr, fp ? fpYawV : nullptr, face);
+      heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, 0, glm::dvec3(0), wear.offModel, fp ? &head : nullptr, fp ? fpYawV : nullptr);
       if (fp) { HeldItemLayer::torchTip[1] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[1] = true; }
     }
   }
