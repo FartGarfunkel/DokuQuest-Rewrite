@@ -98,6 +98,32 @@ static void bowDrawArms(CharAngles& A, const CharPose& pose, const CharModel& M,
   reachArm(sR, toBody(D), l1, l2, vec3(1, -0.25f, 0.6f), A.armR, A.foreR);
 }
 
+// a two-hand greatsword rest: both fists on a vertical handle in front of the waist, elbows bent out.
+// The blade stands up from that grip (toolR), not along the forearm over the shoulder.
+static bool twoHandGuardIdle(const CharPose& pose) {
+  if (!pose.twoHand || !pose.held || !pose.greatsword) return false;
+  if (pose.atkMove || pose.swing > 0.f || pose.block > 0.f) return false;
+  if (pose.swim || pose.crawl || pose.sleep || pose.carry || pose.bow > 0.f || pose.eat > 0.f) return false;
+  if (pose.gui || pose.scope || pose.roll > 0.f || pose.sit) return false;
+  return true;
+}
+static void twoHandGuardArms(CharAngles& A, const CharPose& pose, const CharModel& M, float b, float hip) {
+  const glm::mat3 Rb = rotM(A.body);
+  const vec3 hipP(0, hip, 0);
+  auto toBody = [&](vec3 r) { return glm::transpose(Rb) * (r - hipP); };
+  const vec3 pR = M.pivot[CP_ARMR_U], pL = M.pivot[CP_ARML_U];
+  const vec3 sR(pR.x * b, pR.y - 12, pR.z), sL(pL.x * b, pL.y - 12, pL.z);
+  const float l1 = glm::length(M.pivot[CP_ARMR_D] - pR), l2 = BOW_FIST;
+  // handle in front of the lower chest, a little to the right; hands stacked on it
+  const vec3 grip = hipP + Rb * vec3(0.35f * b, 5.6f, -4.4f);
+  const vec3 main = grip + Rb * vec3(0.05f, 0.45f, 0.f);
+  const vec3 off = grip + Rb * vec3(-0.05f, -0.55f, 0.f);
+  reachArm(sR, toBody(main), l1, l2, vec3(1.1f, -0.9f, 0.35f), A.armR, A.foreR);
+  reachArm(sL, toBody(off), l1, l2, vec3(-1.1f, -0.9f, 0.35f), A.armL, A.foreL);
+  A.toolR = vec2(-1.32f, 0.12f);
+  (void)pose;
+}
+
 
 CharWork charWorkOf(const std::string& d) {
   static const std::pair<const char*, CharWork> K[] = {{"hammer", CW_HAMMER}, {"dip", CW_DIP}, {"brew", CW_BREW}, {"grind", CW_GRIND}, {"chop", CW_CHOP},
@@ -277,15 +303,16 @@ CharAngles charAnimate(const CharPose& pose) {
     const float reach = clampf((-pose.vy - 2) / 6, 0, 1);
     A.legR = vec3(0.55f * (1 - rise) * (1 - reach * 0.6f) - 0.15f * rise, 0, 0.05f); A.shinR = vec3(-1.0f * (1 - rise * 0.8f) * (1 - reach * 0.7f) - 0.3f * apex, 0, 0);
     A.legL = vec3(-0.15f + 0.35f * apex - 0.05f * rise, 0, -0.05f); A.shinL = vec3(-0.4f - 0.5f * apex, 0, 0);
-    if (!pose.held) A.armR = vec3(0.3f + fall * 2.2f + rise * 0.5f, 0, 0.3f + fall * 0.5f);
-    if (!pose.off) A.armL = vec3(0.3f + fall * 2.2f + rise * 0.5f, 0, -0.3f - fall * 0.5f);
+    if (!pose.held && !pose.twoHand) A.armR = vec3(0.3f + fall * 2.2f + rise * 0.5f, 0, 0.3f + fall * 0.5f);
+    if (!pose.off && !pose.twoHand) A.armL = vec3(0.3f + fall * 2.2f + rise * 0.5f, 0, -0.3f - fall * 0.5f);
     A.body.x += 0.1f * rise - 0.08f * reach;
     if (pose.airLeft) { std::swap(A.legR, A.legL); std::swap(A.shinR, A.shinL); A.legR.z = -A.legR.z; A.legL.z = -A.legL.z; }   // the other leg leads this jump
   }
   if (pose.land > 0) {   // the landing: knees give, hips drop, the body folds forward — as deep as the drop was hard
     const float dur = 0.2f * std::max(1.f, pose.landAmt), u = clampf(pose.land / dur, 0, 1), k = (u * u * (3 - 2 * u)) * pose.landAmt;
     A.lift -= 0.1f * k; A.legR.x += 0.5f * k; A.legL.x += 0.5f * k; A.shinR.x -= k; A.shinL.x -= k; A.body.x -= 0.25f * k;
-    if (!pose.held) A.armR.x += 0.35f * k; if (!pose.off) A.armL.x += 0.35f * k;   // the arms come forward to balance
+    if (!pose.held && !pose.twoHand) A.armR.x += 0.35f * k;
+    if (!pose.off && !pose.twoHand) A.armL.x += 0.35f * k;
   }
   // swinging a tool: the classic attack swing, a quick chop that eases out, the body twisting with it; a weapon cuts its
   // combo instead (weaponSwing: the sword chain, our own keys; render/char_layer.cpp runs its 0.5 s clock)
@@ -540,17 +567,6 @@ CharAngles charAnimate(const CharPose& pose) {
   spellArm(A.armR, A.foreR, pose.spellR, pose.thrustR, 1.f);
   spellArm(A.armL, A.foreL, pose.spellL, pose.thrustL, -1.f);
   charMorePoses(A, pose);
-  // two-hand rest like a vertical guard: both fists on the handle in front of the waist, blade up, elbows bent.
-  // The sword stays seated in the fist (no extra turn). A cut and a block keep their own poses.
-  if (pose.twoHand && pose.held && !pose.atkMove && pose.swing <= 0.f && pose.block <= 0.f
-      && pose.bow <= 0.f && pose.eat <= 0.f && !pose.gui && !pose.scope && !pose.carry
-      && !pose.swim && !pose.crawl && !pose.air && !pose.sleep && pose.spellR <= 0.f && pose.roll <= 0.f) {
-    A.armR = vec3(0.18f, -0.48f, 0.10f);
-    A.foreR = vec3(1.58f, 0.42f, 0.16f);
-    A.armL = vec3(0.22f, 0.52f, 0.06f);
-    A.foreL = vec3(1.55f, -0.38f, -0.12f);
-    A.toolR = vec2(-0.35f, 0.f);   // a little pitch so the blade stands in front, not over the shoulder
-  }
   // two swords while running: the off hand is the right arm half a stride later, mirrored.
   // They alternate like a run, each on the path that already stays off the face. A swing
   // and a block keep their own poses. The right arm stays.
@@ -643,6 +659,8 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
   float kl = S.legs, b = S.build, hip = 12 * kl;
   if (pose.crawl && !pose.swim && pose.deathT <= 0) crawlLimbs(A, pose, M, b, kl, hip);
   else if (pose.bow > 0 && !pose.fp && !pose.swim && !pose.sleep && pose.deathT <= 0) bowDrawArms(A, pose, M, b, hip);
+  else if (twoHandGuardIdle(pose)) twoHandGuardArms(A, pose, M, b, hip);
+  R.toolR = A.toolR; R.toolL = A.toolL;
   if (pose.reach) {   // the hands where the work is (render space -> model pixels -> body space), the elbows bent down and out
     const mat4 rootInv = glm::inverse(glm::scale(glm::translate(base, vec3(0, A.lift, 0)), vec3(CHAR_PX)));
     const glm::mat3 Rb = rotM(A.body);
@@ -683,7 +701,7 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
   }
   // a two-handed weapon: the free hand reaches across and takes the haft, just below the hand that holds it.
   // Idle: past the fist, on the haft (the original carry). A cut: down the grip from the fist.
-  if (pose.twoHand && !pose.swim && !pose.crawl && pose.deathT <= 0) {
+  if (pose.twoHand && !pose.swim && !pose.crawl && pose.deathT <= 0 && !twoHandGuardIdle(pose)) {
     const bool leftWeapon = pose.atkOff;
     const int wDn = (leftWeapon ? CP_ARML_U : CP_ARMR_U) + 1;
     const int oUp = leftWeapon ? CP_ARMR_U : CP_ARML_U, oDn = oUp + 1;

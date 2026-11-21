@@ -483,20 +483,23 @@ int main(int argc, char** argv) {
     const CharRig two = holdRig();
     const vec3 r = fist(two, false), l = fist(two, true);
     const float apart = glm::length(r - l);
-    CHECK(apart < 0.32f, "idle: both hands stacked on the grip (apart %.2f)", apart);
-    CHECK(r.z > 0.06f && l.z > 0.06f, "idle: the grip is in front of the body (R z %.2f, L z %.2f)", r.z, l.z);
-    CHECK(r.y > 0.80f && r.y < 1.30f && l.y > 0.80f && l.y < 1.30f,
+    CHECK(apart < 0.28f, "idle: both hands stacked on the grip (apart %.2f)", apart);
+    CHECK(r.z > 0.08f && l.z > 0.08f, "idle: the grip is in front of the body (R z %.2f, L z %.2f)", r.z, l.z);
+    CHECK(r.y > 0.85f && r.y < 1.28f && l.y > 0.85f && l.y < 1.28f,
           "idle: the hands sit at the waist, not on the shoulder (R y %.2f, L y %.2f)", r.y, l.y);
-    const CharAngles A = charAnimate([]{ CharPose p; p.held = true; p.twoHand = true; p.greatsword = true; return p; }());
-    CHECK(std::fabs(A.toolR.y) < 0.05f, "idle: the sword is not rolled off the grip");
-    CHECK(A.foreR.x > 1.10f && A.foreL.x > 1.10f, "idle: both elbows stay bent (foreR %.2f, foreL %.2f)", A.foreR.x, A.foreL.x);
+    CHECK(std::fabs(r.x - l.x) < 0.22f, "idle: the fists meet on the handle (dx %.2f)", r.x - l.x);
     const mat4 G = gripTurn(two.part[CP_ARMR_D], two.toolR);
     const vec3 f(G * vec4(0, -6, -1, 1));
     const vec3 d = glm::normalize(mat3(G) * vec3(0, 0.472f, -1.448f));
     const vec3 tip(f + d * 1.40f);
     const vec3 tipA(tip.x, tip.y, -tip.z), fistA(f.x, f.y, -f.z);
-    CHECK(tipA.y > fistA.y + 0.35f, "idle: the blade points up from the grip (tip y %.2f, fist y %.2f)", tipA.y, fistA.y);
-    CHECK(tipA.z > -0.15f, "idle: the blade stays in front, not on the shoulder (tip z %.2f)", tipA.z);
+    CHECK(tipA.y > fistA.y + 0.40f, "idle: the blade points up from the grip (tip y %.2f, fist y %.2f)", tipA.y, fistA.y);
+    CHECK(tipA.z > 0.05f, "idle: the blade stays in front, not on the shoulder (tip z %.2f)", tipA.z);
+    CharPose jump; jump.held = true; jump.twoHand = true; jump.greatsword = true; jump.air = true; jump.vy = 8.f;
+    CharRig J; charRig(bladeModel(), jump, mat4(1), J, false, false);
+    const vec3 jr = fist(J, false), jl = fist(J, true);
+    CHECK(glm::length(jr - jl) < 0.35f && jr.z > 0.05f && jl.z > 0.05f,
+          "jumping, both hands stay on the grip in front (apart %.2f, z %.2f %.2f)", glm::length(jr - jl), jr.z, jl.z);
     CharPose cut; cut.atkMove = MV_GS1; cut.atkT = 0.45f; cut.held = true; cut.twoHand = true;
     CharRig C; charRig(bladeModel(), cut, mat4(1), C, false, false);
     const vec3 cr = fist(C, false), cl = fist(C, true);
