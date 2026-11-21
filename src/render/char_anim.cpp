@@ -114,30 +114,14 @@ static void twoHandGuardArms(CharAngles& A, const CharPose& pose, const CharMode
   const vec3 pR = M.pivot[CP_ARMR_U], pL = M.pivot[CP_ARML_U];
   const vec3 sR(pR.x * b, pR.y - 12, pR.z), sL(pL.x * b, pL.y - 12, pL.z);
   const float l1 = glm::length(M.pivot[CP_ARMR_D] - pR), l2 = BOW_FIST;
-  // handle in front of the chest, centered; hands stacked on it like the posed reference
-  const vec3 grip = hipP + Rb * vec3(0.10f * b, 6.0f, -4.2f);
-  const vec3 main = grip + Rb * vec3(0.f, 0.65f, 0.f);
-  const vec3 off = grip + Rb * vec3(0.f, -0.65f, 0.f);
-  reachArm(sR, toBody(main), l1, l2, vec3(1.2f, -1.0f, 0.2f), A.armR, A.foreR);
-  reachArm(sL, toBody(off), l1, l2, vec3(-1.2f, -1.0f, 0.2f), A.armL, A.foreL);
+  // handle out in front of the chest so the blade stands in front of the face, not through the head
+  const vec3 grip = hipP + Rb * vec3(0.12f * b, 5.4f, -8.0f);
+  const vec3 main = grip + Rb * vec3(0.f, 0.7f, 0.f);
+  const vec3 off = grip + Rb * vec3(0.f, -0.7f, 0.f);
+  reachArm(sR, toBody(main), l1, l2, vec3(1.2f, -1.0f, 0.35f), A.armR, A.foreR);
+  reachArm(sL, toBody(off), l1, l2, vec3(-1.2f, -1.0f, 0.35f), A.armL, A.foreL);
   (void)pose;
 }
-
-static vec2 aimBladeUp(const mat4& fore) {
-  vec2 best(0.f, 0.f);
-  float bestS = -99.f;
-  for (int ix = 0; ix <= 28; ix++) {
-    const float tx = -2.4f + (4.8f * ix) / 28.f;
-    for (int iy = 0; iy <= 20; iy++) {
-      const float ty = -1.6f + (3.2f * iy) / 20.f;
-      const vec3 dir = glm::normalize(mat3(gripTurn(fore, vec2(tx, ty))) * vec3(0.f, 0.472f, -1.448f));
-      const float s = dir.y - 1.8f * std::fabs(dir.x) - 0.25f * std::fabs(dir.z);
-      if (s > bestS) { bestS = s; best = vec2(tx, ty); }
-    }
-  }
-  return best;
-}
-
 
 CharWork charWorkOf(const std::string& d) {
   static const std::pair<const char*, CharWork> K[] = {{"hammer", CW_HAMMER}, {"dip", CW_DIP}, {"brew", CW_BREW}, {"grind", CW_GRIND}, {"chop", CW_CHOP},
@@ -714,8 +698,32 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     R.scale[lu] = R.scale[ld] = glm::scale(mat4(1), vec3(b, kl, b));
   }
   if (twoHandGuardIdle(pose)) {
-    A.toolR = aimBladeUp(R.part[CP_ARMR_D]);
-    R.toolR = A.toolR;
+    const vec3 elbow = vec3(R.part[CP_ARMR_D][3]);
+    const vec3 fistNow = vec3(R.part[CP_ARMR_D] * vec4(0, -6, -1, 1));
+    const vec3 axis = fistNow - elbow;
+    if (glm::length(axis) > 1e-4f) {
+      const vec3 axn = glm::normalize(axis);
+      const vec3 up = glm::normalize(vec3(R.body[1]));
+      const vec3 ahead = -glm::normalize(vec3(R.body[2]));
+      const vec3 want = glm::normalize(up + 0.28f * ahead);
+      const mat4 spinBase = R.part[CP_ARMR_D];
+      float bestD = -2.f;
+      mat4 bestM = spinBase;
+      for (int i = 0; i < 180; i++) {
+        const float ang = (i / 179.f) * TAU - PI;
+        mat4 spin(1.f);
+        spin = glm::translate(spin, elbow);
+        spin = glm::rotate(spin, ang, axn);
+        spin = glm::translate(spin, -elbow);
+        R.part[CP_ARMR_D] = spin * spinBase;
+        const vec3 dir = glm::normalize(mat3(R.part[CP_ARMR_D]) * vec3(0.f, 0.472f, -1.448f));
+        const float d = glm::dot(dir, want);
+        if (d > bestD) { bestD = d; bestM = R.part[CP_ARMR_D]; }
+      }
+      R.part[CP_ARMR_D] = bestM;
+    }
+    A.toolR = vec2(0, 0);
+    R.toolR = vec2(0, 0);
   }
   // a two-handed weapon: the free hand reaches across and takes the haft, just below the hand that holds it.
   // Idle: past the fist, on the haft (the original carry). A cut: down the grip from the fist.

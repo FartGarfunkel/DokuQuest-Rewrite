@@ -484,7 +484,7 @@ int main(int argc, char** argv) {
     const vec3 r = fist(two, false), l = fist(two, true);
     const float apart = glm::length(r - l);
     CHECK(apart < 0.28f, "idle: both hands stacked on the grip (apart %.2f)", apart);
-    CHECK(r.z > 0.08f && l.z > 0.08f, "idle: the grip is in front of the body (R z %.2f, L z %.2f)", r.z, l.z);
+    CHECK(r.z > 0.34f && l.z > 0.34f, "idle: the grip is out in front of the chest (R z %.2f, L z %.2f)", r.z, l.z);
     CHECK(r.y > 0.85f && r.y < 1.28f && l.y > 0.85f && l.y < 1.28f,
           "idle: the hands sit at the waist, not on the shoulder (R y %.2f, L y %.2f)", r.y, l.y);
     CHECK(std::fabs(r.x - l.x) < 0.22f, "idle: the fists meet on the handle (dx %.2f)", r.x - l.x);
@@ -495,7 +495,12 @@ int main(int argc, char** argv) {
     const vec3 tipA(tip.x, tip.y, -tip.z), fistA(f.x, f.y, -f.z);
     CHECK(tipA.y > fistA.y + 0.50f, "idle: the blade points up from the grip (tip y %.2f, fist y %.2f)", tipA.y, fistA.y);
     CHECK(std::fabs(tipA.x - fistA.x) < 0.28f, "idle: the blade goes up, not out to the side (tip x %.2f, fist x %.2f)", tipA.x, fistA.x);
-    CHECK(tipA.z > -0.55f && tipA.y > 1.6f, "idle: the blade stands in front of the chest (tip z %.2f y %.2f)", tipA.z, tipA.y);
+    CHECK(tipA.z > 0.28f && tipA.y > 1.6f, "idle: the blade stands in front of the chest (tip z %.2f y %.2f)", tipA.z, tipA.y);
+    const vec3 head(0.f, 1.58f, 0.08f);
+    const vec3 ab = tipA - fistA;
+    const float t = std::clamp(glm::dot(head - fistA, ab) / std::max(1e-6f, glm::dot(ab, ab)), 0.f, 1.f);
+    const float headDist = glm::length(fistA + ab * t - head);
+    CHECK(headDist > 0.28f, "idle: the blade does not pass through the head (%.2f)", headDist);
     CharPose jump; jump.held = true; jump.twoHand = true; jump.greatsword = true; jump.air = true; jump.vy = 8.f;
     CharRig J; charRig(bladeModel(), jump, mat4(1), J, false, false);
     const vec3 jr = fist(J, false), jl = fist(J, true);
