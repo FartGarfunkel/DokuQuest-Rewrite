@@ -103,6 +103,7 @@ static void bowDrawArms(CharAngles& A, const CharPose& pose, const CharModel& M,
 static bool twoHandGuardIdle(const CharPose& pose) {
   if (!pose.twoHand || !pose.held || !pose.greatsword) return false;
   if (pose.atkMove || pose.swing > 0.f) return false;
+  if (pose.block > 0.28f) return false;   // a real guard keeps the blade across; leftovers after you let go use the idle hold
   if (pose.swim || pose.crawl || pose.sleep || pose.carry || pose.bow > 0.f || pose.eat > 0.f) return false;
   if (pose.gui || pose.scope || pose.roll > 0.f || pose.sit) return false;
   return true;
