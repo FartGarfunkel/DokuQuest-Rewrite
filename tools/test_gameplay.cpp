@@ -566,6 +566,20 @@ int main(int argc, char** argv) {
     r.set(0, Y + 10, -2, stone);
     r.lookAt(vec3(0.5f, Y + 10.5f, -1.0f)); r.c->updateTarget();
     CHECK(r.c->breakTime(stone, &r.c->target) <= 0.05f + 1e-4f, "creative breaks blocks at once");
+    {
+      const int by = (int)std::floor(r.p->pos.y);
+      r.set(0, by, -2, stone);
+      r.lookAt(vec3(0.5f, by + 0.5f, -1.0f)); r.c->updateTarget();
+      r.p->inv[0] = ItemStack("iron_sword", 1); r.p->selected = 0;
+      r.p->atkMove = 0; r.p->atkT = 0;
+      PlayerInput atk; atk.attack = true; atk.attackPressed = true;
+      r.step(0.05, atk);
+      CHECK(r.p->atkMove != 0, "creative sword looking at a block still swings");
+      CHECK(r.get(0, by, -2) == stone, "creative sword does not break the block");
+      r.set(0, by, -2, AIR);
+      r.p->atkMove = 0; r.p->atkT = 0;
+    }
+    r.lookAt(vec3(0.5f, Y + 10.5f, -1.0f)); r.c->updateTarget();
     r.p->selected = 4; r.p->inv[4].clear();
     for (int i = 0; i < 9; i++) r.p->inv[i].clear();
     r.c->pickBlock(r.c->target);

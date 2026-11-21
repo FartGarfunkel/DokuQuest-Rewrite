@@ -19,6 +19,7 @@
 #include "sim/magic.h"
 #include "sim/chest_work.h"
 #include "sim/combat_rpg.h"
+#include "sim/attack_moves.h"
 #include "sim/creature_rig.h"
 #include "sim/vehicles.h"
 #include "sim/effects.h"
@@ -511,17 +512,25 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   // a ghast's fireball can be punched back: it flies for you then, and finishes off a ghast it hits
   if (in.attackPressed && deflectFireball(lv, p, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), 4.5f)) { swingArm(); mining.active = false; fightHold = true; return; }
   handCasting(dt, inM, te);
-  // a combat move starts on a creature or on thin air; a click on a block digs it, whatever is in your hand
-  const bool allowSwing = te || !target.hit;
-  // both hands armed: use swings the off hand (two hands), unless what you look at is for using (a door, a chest)
+  // a combat blade swings on a creature, in the air, or at a block (a pick still digs). Creative swords never break blocks.
+  const auto meleeBlade = [&] {
+    const ItemStack& h = p.held();
+    if (h.empty()) return false;
+    switch (movesetOf(h.def())) {
+      case Moveset::Sword: case Moveset::Greatsword: case Moveset::Spear:
+      case Moveset::Mace: case Moveset::Dagger: return true;
+      default: return false;
+    }
+  }();
+  const bool allowSwing = te || !target.hit || meleeBlade;
+  // the off hand swings from the attack button only when the main hand is empty. Two weapons share that button; use blocks.
   const bool offUse = in.usePressed && offHandSwings(p, false, true) && !(target.hit && interactable(target.id));
   tickMelee(lv, p, dt, in, allowSwing || offUse, offUse);
   if (p.atkMove) { mining.active = false; fightHold = true; if (in.attackPressed) return; }
   if (!in.attack) fightHold = false;
-  if (in.attackPressed && !target.hit) swingArm();
+  if (in.attackPressed && (!target.hit || meleeBlade)) swingArm();
   // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks
-  const ToolInfo* ti = heldTool(p);
-  bool noDig = fightHold || (p.creative() && ti && ti->type == "sword") || p.mode == "adventure";   // adventure: the world stays as it is
+  bool noDig = fightHold || (p.creative() && meleeBlade) || p.mode == "adventure";   // adventure: the world stays as it is
   // Hands-on Stations: an open barrel's tray (a strike takes one; sneaking, the stack)
   if (handsStations && target.hit && !te && handsBarrel(world(), target.block) && chestLidOpen(world(), target.block)
       && handsBarrelAim(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch)).what >= HandsChestAim::Tray) {   // (its tray or buttons: else it breaks as ever)
@@ -1202,6 +1211,7 @@ bool PlayerController::eatFood(ItemStack& held, const ItemDef& def, bool repeat)
       p.eatId = held.id;
       if (--held.n <= 0) held.clear();
       p.eatAnim = EAT_ANIM; sfxUi(lv, p, held.id.find("bottle") != std::string::npos || held.id.find("stew") != std::string::npos || held.id.find("soup") != std::string::npos ? "drink" : "eat");
+      p.data.erase("hurtLimbT"); p.data.erase("hurtLeg"); p.data.erase("hurtArm");
       p.foodCd = FOOD_CD * foodWaitFactor(p);   // (Quick Bite)
       if (const float rg = feastRegenSecs(p); rg > 0) giveEffect(lv, p, "regen", rg);   // (Feast: sim/skills.h)
       if (lv.events) lv.events->emit("foodEffect", json::array({p.name, def.key, food.value("effect", json()), food.value("cure", json())}));
@@ -1218,6 +1228,7 @@ bool PlayerController::eatFood(ItemStack& held, const ItemDef& def, bool repeat)
   float heal = food.value("heal", 0.0f) * cookingHealFactor(p), now = heal > 1 ? heal / 2 : heal;   // (Cooking: food heals more)
   if (heal > 1) p.foodPool += heal - now;
   float healed = p.heal(now);
+  p.data.erase("hurtLimbT"); p.data.erase("hurtLeg"); p.data.erase("hurtArm");   // eating sets a hurt limb right
   std::string icon = def.icon;
   p.eatId = held.id;
   if (--held.n <= 0) held.clear();
