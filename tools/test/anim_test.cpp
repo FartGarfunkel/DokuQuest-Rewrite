@@ -507,6 +507,11 @@ int main(int argc, char** argv) {
     const vec3 jr = fist(J, false), jl = fist(J, true);
     CHECK(glm::length(jr - jl) < 0.35f && jr.z > 0.05f && jl.z > 0.05f,
           "jumping, both hands stay on the grip in front (apart %.2f, z %.2f %.2f)", glm::length(jr - jl), jr.z, jl.z);
+    CharPose after; after.held = true; after.twoHand = true; after.greatsword = true; after.block = 0.45f;
+    CharRig B; charRig(bladeModel(), after, mat4(1), B, false, false);
+    const vec3 br = fist(B, false), bl = fist(B, true);
+    CHECK(glm::length(br - bl) < 0.28f && br.z > 0.28f,
+          "after a block, both hands stay on the grip (apart %.2f, z %.2f)", glm::length(br - bl), br.z);
     CharPose cut; cut.atkMove = MV_GS1; cut.atkT = 0.45f; cut.held = true; cut.twoHand = true;
     CharRig C; charRig(bladeModel(), cut, mat4(1), C, false, false);
     const vec3 cr = fist(C, false), cl = fist(C, true);
