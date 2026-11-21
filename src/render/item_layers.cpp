@@ -432,32 +432,6 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       const std::string ms = d->str("moveset");
       return t == "sword" || t == "axe" || t == "mace" || ms == "greatsword" || ms == "spear" || ms == "mace" || stack.id.find("dagger") != std::string::npos;
     }();
-    const bool gsTwo = [&] {
-      const ItemDef* d = stack.def();
-      if (!d || d->num("hands") < 2.f) return false;
-      const std::string t = d->hasTool ? d->tool.type : "", ms = d->str("moveset");
-      return t == "greatsword" || ms == "greatsword" || stack.id.find("greatsword") != std::string::npos;
-    }();
-    if (gsTwo && side > 0 && !weaponUp && swing <= 0) {
-      // both fists stacked on the hilt at mid-chest, blade a diagonal ahead
-      mat4 amR = glm::translate(mat4(1), vec3(0.10f + bx, -0.52f + by - eqMain * 0.35f, -0.50f));
-      amR = glm::rotate(amR, 0.18f, vec3(0, 1, 0));
-      amR = glm::rotate(amR, 1.35f, vec3(1, 0, 0));
-      drawArm(amR);
-      mat4 amL = glm::translate(mat4(1), vec3(-0.02f - bx * 0.2f, -0.54f + by - eq * 0.2f, -0.48f));
-      amL = glm::rotate(amL, -0.14f, vec3(0, 1, 0));
-      amL = glm::rotate(amL, 1.35f, vec3(1, 0, 0));
-      drawArm(amL);
-      drew |= 3;
-      mat4 m = glm::translate(mat4(1), vec3(0.04f, -0.38f + by, -0.42f));
-      m = glm::rotate(m, 0.18f, vec3(0, 1, 0));
-      m = glm::rotate(m, 0.55f, vec3(1, 0, 0));
-      m = glm::scale(m, vec3(0.48f));
-      m = glm::translate(m, vec3(0, 0.28f, 0));
-      if (im.ready()) VR.draw(im.gl, m * im.matrix(), L, vec4(0), itemGlints(stack) ? 1.f : 0.f);
-      if (itemHook && im.ready()) over.push_back({stack, m});
-      return;
-    }
     if (weaponUp) {
       const bool pair = !p->offhand.empty() && !p->offhand[0].empty() && !p->held().empty();
       // one blade lies across the view, lower, the way a greatsword does. Two tilt in and cross.

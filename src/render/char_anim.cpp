@@ -540,25 +540,15 @@ CharAngles charAnimate(const CharPose& pose) {
   spellArm(A.armR, A.foreR, pose.spellR, pose.thrustR, 1.f);
   spellArm(A.armL, A.foreL, pose.spellL, pose.thrustL, -1.f);
   charMorePoses(A, pose);
-  // a two-hand rest: both elbows bent, the hands meeting on the grip in front of the chest.
-  // A greatsword's blade stands up from that grip (toolR tips it off the forearm) so it does not lie on the shoulder.
-  // The free hand then reaches the handle in charRig. A cut and a block keep their own poses.
+  // a two-hand rest: the sword stays seated in the main fist the original way (no extra turn).
+  // Both arms fold so the fists can meet on that handle. The off hand then reaches it in charRig.
   if (pose.twoHand && pose.held && !pose.atkMove && pose.swing <= 0.f && pose.block <= 0.f
       && pose.bow <= 0.f && pose.eat <= 0.f && !pose.gui && !pose.scope && !pose.carry
       && !pose.swim && !pose.crawl && !pose.air && !pose.sleep && pose.spellR <= 0.f && pose.roll <= 0.f) {
-    if (pose.greatsword) {
-      // mid-chest, left arm across, elbows folded: both fists stacked on the hilt, blade a diagonal ahead
-      A.armR = vec3(0.00f, -0.38f, 0.04f);
-      A.foreR = vec3(1.78f, 0.48f, 0.14f);
-      A.armL = vec3(0.04f, 0.64f, 0.04f);
-      A.foreL = vec3(1.80f, -0.46f, -0.10f);
-      A.toolR = vec2(-1.45f, 0.25f);
-    } else {
-      A.armR = vec3(0.82f, -0.22f, -0.08f);
-      A.foreR = vec3(1.22f, 0.40f, 0.16f);
-      A.armL = vec3(0.84f, 0.28f, 0.06f);
-      A.foreL = vec3(1.24f, -0.32f, -0.10f);
-    }
+    A.armR = vec3(0.08f, -0.42f, 0.06f);
+    A.foreR = vec3(1.70f, 0.35f, 0.10f);
+    A.armL = vec3(0.12f, 0.60f, 0.04f);
+    A.foreL = vec3(1.65f, -0.40f, -0.08f);
   }
   // two swords while running: the off hand is the right arm half a stride later, mirrored.
   // They alternate like a run, each on the path that already stays off the face. A swing
@@ -699,8 +689,7 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     const vec2 turn = leftWeapon ? R.toolL : R.toolR;
     const mat4 G = gripTurn(R.part[wDn], turn);
     const vec3 fist = vec3(G * vec4(0, -6, -1, 1));
-    const vec3 along = glm::normalize(mat3(G) * vec3(0, 0.472f, -1.448f));
-    const vec3 grip = pose.greatsword ? fist : fist - along * 0.16f;   // both fists on the hilt; a spear keeps a little shaft
+    const vec3 grip = fist;   // the off fist on the same handle the main hand already holds
     const vec3 inBody = vec3(glm::inverse(bodyM) * vec4(grip, 1));
     const vec3 pu = M.pivot[oUp];
     const vec3 S(pu.x * b, pu.y - 12, pu.z);
