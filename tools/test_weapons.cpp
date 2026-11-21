@@ -236,6 +236,9 @@ int main() {
   CHECK(weaponSkillMet(hand, ItemStack("iron_sword", 1)), "an iron sword needs no melee practice");
   CHECK(weaponSkillMet(hand, copperGs), "a copper greatsword needs no melee practice (tier %d)", toolOf(copperGs).tier);
   CHECK(!weaponSkillMet(hand, ironGs), "an iron greatsword needs melee 15");
+  hand.mode = "creative";
+  CHECK(weaponSkillMet(hand, ironGs), "creative can try an iron greatsword");
+  hand.mode = "survival";
   hand.stats["skills"]["melee"] = skillXpFor(15);
   CHECK(skillLv(hand, "melee") >= 15 && weaponSkillMet(hand, ironGs), "melee 15 can hold the iron greatsword");
   ironGs.tag["qual"] = "poor";

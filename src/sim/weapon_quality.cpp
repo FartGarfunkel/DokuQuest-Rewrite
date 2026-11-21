@@ -1,6 +1,7 @@
 #include "sim/weapon_quality.h"
 #include "sim/attack_moves.h"
 #include "sim/skills.h"
+#include "sim/player.h"
 #include "core/tool_parts.h"
 
 namespace dq {
@@ -63,6 +64,7 @@ float gearQualityFactor(const ItemStack& s) {
 }
 
 bool weaponSkillMet(const Player& p, const ItemStack& s) {
+  if (p.creative()) return true;   // creative is for trying the moves
   if (!isPartTool(s)) return true;
   const std::string kind = s.tag["pt"].value("t", "");
   if (kind != "greatsword" && kind != "spear" && kind != "mace") return true;
