@@ -158,6 +158,27 @@ int main() {
   CHECK(std::fabs(sw.reach - 1.f) < 0.001f && std::fabs(sw.impact - 1.f) < 0.001f, "a sword's first cut is unchanged");
   CHECK(attackMoveFor(Moveset::Greatsword, 0, true, false) == MV_AXE2 && attackMoveFor(Moveset::Spear, 0, false, true) == MV_SWORD_AIR,
         "until their own poses, a dash reuses the axe and the air cut reuses the sword");
+  CHECK(spGrid && mcGrid && movesetOf(spGrid.result().def()) == Moveset::Spear && movesetOf(mcGrid.result().def()) == Moveset::Mace,
+        "the spear and the mace fight as those families");
+
+  printf("the iron sword recipe stays ingots and a stick\n");
+  int shapedSwords = 0, badOut = 0;
+  bool swordOk = false;
+  for (const Recipe& r : reg().recipes) {
+    const bool family = r.out.find("greatsword") != std::string::npos || r.out.find("spear") != std::string::npos || r.out.find("mace") != std::string::npos;
+    if (family && (r.out.find("mold") != std::string::npos || r.out.find("_head") != std::string::npos)) badOut++;
+    if (r.out != "iron_sword" || !r.shaped()) continue;
+    shapedSwords++;
+    const auto mit = r.key.find('M'), sit = r.key.find('S');
+    const bool shape = r.shape.size() == 3 && r.shape[0] == "M" && r.shape[1] == "M" && r.shape[2] == "S";
+    const bool key = mit != r.key.end() && sit != r.key.end() && mit->second == "iron_ingot" && sit->second == "stick" && r.key.size() == 2;
+    swordOk = shape && key && r.props.value("classicOnly", false);
+    printf("  iron_sword shape");
+    for (const std::string& row : r.shape) printf(" \"%s\"", row.c_str());
+    printf("\n");
+  }
+  CHECK(shapedSwords == 1 && swordOk, "the old iron sword is still [\"M\",\"M\",\"S\"] of an ingot and a stick");
+  CHECK(badOut == 0, "no greatsword, spear, or mace recipe output is a mold or a head");
 
   printf("who may hold one, and a new roll\n");
   ItemStack ironGs, copperGs;
