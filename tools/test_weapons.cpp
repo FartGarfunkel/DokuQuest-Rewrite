@@ -393,6 +393,21 @@ int main() {
         "limb boxes map head, chest and legs onto armour slots");
   CHECK(limbs[0].lo.y > limbs[4].hi.y, "the head box sits above the legs");
 
+  printf("an off-hand cut is the main hand's, mirrored\n");
+  {
+    const vec3 feet(0);
+    vec3 h, tp; bladeAt(MV_SWORD1, attackMove(MV_SWORD1).hitFrom, h, tp);
+    const vec3 fistR = attackFrameToWorld(h, feet, 0, 0);
+    vec3 hL = h; hL.x = -hL.x;
+    const vec3 fistL = attackFrameToWorld(hL, feet, 0, 0);
+    const vec3 half(0.10f, 0.10f, 0.10f);
+    CHECK(std::fabs(fistR.x - fistL.x) > 0.3f, "the off-hand fist is on the other side (R %.2f, L %.2f)", fistR.x, fistL.x);
+    CHECK(bladeSweepHits(MV_SWORD1, 0, 1, feet, 0, 0, fistR - half, fistR + half, 1.f),
+          "the main-hand cut meets a box on its own fist");
+    CHECK(bladeSweepHits(MV_SWORD1, 0, 1, feet, 0, 0, fistL - half, fistL + half, 1.f, nullptr, true),
+          "the off-hand cut meets a box on the other fist");
+  }
+
   printf(fails ? "%d failed\n" : "all passed\n", fails);
   return fails ? 1 : 0;
 }

@@ -55,6 +55,11 @@ void combatRpgTick(Level& lv, Player& p, float dt) {
   if (p.staggerT > 0) p.staggerT = std::max(0.f, p.staggerT - dt);
   if (p.posture > 0 && p.staggerT <= 0) p.posture = std::max(0.f, p.posture - 8.f * dt);
   if (p.secondChanceCd > 0) p.secondChanceCd = std::max(0.f, p.secondChanceCd - dt);
+  if (float h = p.data.value("hurtLimbT", 0.f); h > 0) {
+    h -= dt;
+    if (h <= 0) { p.data.erase("hurtLimbT"); p.data.erase("hurtLeg"); p.data.erase("hurtArm"); }
+    else p.data["hurtLimbT"] = h;
+  }
   const int earned = statPointsEarned(p);
   if (p.data.value("conSeen", -1) != p.statCon) { p.data["conSeen"] = p.statCon; p.recalcMax(); }   // (Constitution's health)
   const int spent = p.statCon + p.statStr + p.statAgi + p.statInt + p.statLck + p.statFoc;
@@ -159,6 +164,10 @@ void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt) {
 float combatRpgIncoming(Level& lv, Player& p, float amount, DamageSource& src) {
   if (amount <= 0 || src.type == "void" || src.bypass) return amount;
   if (p.dodgeT > 0) return 0;
+  if (src.attacker && src.type != "magic" && dodgeChance(p) > 0 && rnd() < dodgeChance(p)) { toast(lv, p, "Evaded", "good"); return 0; }
+  // a locational body hit (the blade missed the guard) is not a parry or a keep
+  const bool locational = src.armorSlot >= 0 && !src.metGuard;
+  if (locational) return amount * (1 - conReduction(p)) * damageTakenFactor(p);
   if (p.blockT > 0 && p.blockT < guardWindow(p) && p.stamina >= PARRY_COST && src.attacker) {
     spend(p, PARRY_COST);
     p.parryFlash = 0.35f;
@@ -171,8 +180,6 @@ float combatRpgIncoming(Level& lv, Player& p, float amount, DamageSource& src) {
     sfxUi(lv, p, "crit");
     return 0;
   }
-  // a talent's chance to slip a creature's or player's blow outright
-  if (src.attacker && src.type != "magic" && dodgeChance(p) > 0 && rnd() < dodgeChance(p)) { toast(lv, p, "Evaded", "good"); return 0; }
   if (p.blockT > 0) { p.guardFlash = 0.35f; amount *= guardKeep(p); }
   return amount * (1 - conReduction(p)) * damageTakenFactor(p);   // Constitution: toughness; the trees' damage reduction
 }

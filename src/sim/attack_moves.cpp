@@ -160,7 +160,7 @@ vec3 attackFrameToWorld(const vec3& l, const vec3& feet, float yaw, float pitch)
 }
 
 bool bladeSweepHits(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, const vec3& lo, const vec3& hi,
-                    float reach, float* when) {
+                    float reach, float* when, bool leftHand) {
   const AttackMove& m = attackMove(id);
   const float a = std::max(t0, m.hitFrom), b = std::min(t1, m.hitTo);
   if (id == MV_NONE || id >= MV_COUNT || b < a) return false;
@@ -168,49 +168,49 @@ bool bladeSweepHits(u8 id, float t0, float t1, const vec3& feet, float yaw, floa
   for (int i = 0; i <= n; i++) {
     const float t = a + (b - a) * i / n;
     vec3 h, tp; bladeAt(id, t, h, tp);
+    if (leftHand) { h.x = -h.x; tp.x = -tp.x; }
     tp = h + (tp - h) * reach;
-    // (from the shoulder out: the arm is in the blow too, so a foe close in is struck by the hilt end of it)
     const vec3 sh(h.x < 0 ? -SHOULDER_X : SHOULDER_X, SHOULDER_Y, 0);
     const vec3 S = attackFrameToWorld(sh + (h - sh) * 0.4f, feet, yaw, pitch), T = attackFrameToWorld(tp, feet, yaw, pitch);
-    // (the blades: 0.3-0.4 thick boxes)
     if (segBox(S, T, lo, hi, 0.15f)) { if (when) *when = t; return true; }
   }
   return false;
 }
 
 int bladeSweepHitsCreature(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, Creature& c,
-                           const RigModel& M, float reach, vec3* hitAt, int* part) {
+                           const RigModel& M, float reach, vec3* hitAt, int* part, bool leftHand, vec3* hitDir) {
   const AttackMove& m = attackMove(id);
   const float a = std::max(t0, m.hitFrom), b = std::min(t1, m.hitTo);
   if (id == MV_NONE || id >= MV_COUNT || b < a) return -1;
   rigPose(c, M, creatureBase(c, false));
   const int n = std::max(1, (int)std::ceil((b - a) * 240));
-  int best = -1; vec3 at(0);
+  int best = -1; vec3 at(0), dir(0);
   for (int i = 0; i <= n; i++) {
     const float t = a + (b - a) * i / n;
     vec3 h, tp; bladeAt(id, t, h, tp);
+    if (leftHand) { h.x = -h.x; tp.x = -tp.x; }
     tp = h + (tp - h) * reach;
     const vec3 sh(h.x < 0 ? -SHOULDER_X : SHOULDER_X, SHOULDER_Y, 0);
     const vec3 S = attackFrameToWorld(sh + (h - sh) * 0.4f, feet, yaw, pitch), T = attackFrameToWorld(tp, feet, yaw, pitch);
     const int pi = rigSegHitPart(c, M, S, T, 0.08f);
-    if (pi >= 0) { best = pi; at = (S + T) * 0.5f; break; }
+    if (pi >= 0) { best = pi; at = S; dir = T - S; break; }
   }
-  if (best >= 0) { if (hitAt) *hitAt = at; if (part) *part = best; }
+  if (best >= 0) { if (hitAt) *hitAt = at; if (part) *part = best; if (hitDir) *hitDir = dir; }
   return best;
 }
 
 int bladeSweepHitsEntity(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, Entity& e,
-                         float reach, vec3* hitAt) {
+                         float reach, vec3* hitAt, bool leftHand, vec3* hitDir) {
   auto* c = dynamic_cast<Creature*>(&e);
   if (!c) return -2;
   const RigModel* M = rigModel(c->modelKey());
   if (!M || M->parts.empty()) return -2;
   int part = -1;
-  return bladeSweepHitsCreature(id, t0, t1, feet, yaw, pitch, *c, *M, reach, hitAt, &part);
+  return bladeSweepHitsCreature(id, t0, t1, feet, yaw, pitch, *c, *M, reach, hitAt, &part, leftHand, hitDir);
 }
 
 bool bladeSweepHitsShield(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, const ShieldBox& box,
-                          float reach) {
+                          float reach, bool leftHand) {
   const AttackMove& m = attackMove(id);
   const float a = std::max(t0, m.hitFrom), b = std::min(t1, m.hitTo);
   if (id == MV_NONE || id >= MV_COUNT || b < a) return false;
@@ -218,6 +218,7 @@ bool bladeSweepHitsShield(u8 id, float t0, float t1, const vec3& feet, float yaw
   for (int i = 0; i <= n; i++) {
     const float t = a + (b - a) * i / n;
     vec3 h, tp; bladeAt(id, t, h, tp);
+    if (leftHand) { h.x = -h.x; tp.x = -tp.x; }
     tp = h + (tp - h) * reach;
     const vec3 sh(h.x < 0 ? -SHOULDER_X : SHOULDER_X, SHOULDER_Y, 0);
     const vec3 S = attackFrameToWorld(sh + (h - sh) * 0.4f, feet, yaw, pitch), T = attackFrameToWorld(tp, feet, yaw, pitch);

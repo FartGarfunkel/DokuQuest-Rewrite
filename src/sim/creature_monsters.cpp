@@ -10,6 +10,7 @@
 #include "sim/mob_combat.h"
 #include "sim/physics.h"
 #include "sim/player.h"
+#include "sim/shield_shape.h"
 #include "sim/effects.h"
 #include "sim/balance.h"
 #include "sim/magic_fx.h"
@@ -103,7 +104,38 @@ void Creature::meleeAt(Level& lv, Entity& p, float dist, float dyp) {
   if (dist < 1.35f + w && std::fabs(dyp) < 1.6f && attackCd <= 0) {
     attackCd = 1.1f; swingT = 0.3f;
     float dmg = T->damage * (type == "slime" || type == "magma_slime" ? std::max(1, size - 1) : 1) + weaponBonus();
-    damageEntity(lv, p, dmg, this, "mob");
+    DamageSrc s; s.tool = "mob";
+    if (type == "charred_ghoul") s.element = "fire";
+    auto* pl = dynamic_cast<Player*>(&p);
+    if (!pl) { damageEntity(lv, p, dmg, this, "mob", s); return; }
+    const vec3 from = pos + vec3(0, h * 0.62f, 0);
+    const vec3 to = pl->pos + vec3(0, 1.1f, 0);
+    const vec3 claw = to - from;
+    ShieldBox guard;
+    if (pl->blockT > 0 && playerGuardBox(*pl, guard) && shieldRayHit(guard, from, claw, 1.f)) {
+      s.metGuard = true;
+      damageEntity(lv, *pl, dmg, this, "mob", s);
+      return;
+    }
+    PlayerLimbBox limbs[6];
+    const int nL = playerLimbBoxes(*pl, limbs);
+    int slot = -1;
+    auto onBox = [&](const vec3& lo, const vec3& hi) {
+      for (int k = 0; k <= 12; k++) {
+        const vec3 q = from + claw * (k / 12.f);
+        if (q.x >= lo.x && q.x <= hi.x && q.y >= lo.y && q.y <= hi.y && q.z >= lo.z && q.z <= hi.z) return true;
+      }
+      return false;
+    };
+    for (int i = 0; i < nL; i++) if (onBox(limbs[i].lo, limbs[i].hi)) { slot = limbs[i].armorSlot; break; }
+    if (slot < 0) {
+      const vec3 lo = pl->pos - vec3(pl->w, 0.05f, pl->w), hi = pl->pos + vec3(pl->w, pl->h, pl->w);
+      if (onBox(lo, hi)) slot = 1;
+    }
+    if (slot >= 0) {
+      s.armorSlot = slot;
+      damageEntity(lv, *pl, dmg, this, "mob", s);
+    }
   }
 }
 static void shootAt(Level& lv, Creature& m, Entity& p) {

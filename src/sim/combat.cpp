@@ -287,6 +287,16 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
     src.rayO = p.pos + vec3(0, p.eye, 0); src.rayD = lookVector(p.yaw, p.pitch);
   }
   if (p.data.contains("hitArmorSlot")) src.armorSlot = p.data.value("hitArmorSlot", -1);
+  if (p.data.value("metGuard", false)) src.metGuard = true;
+  if (p.data.contains("hitRayO") && p.data["hitRayO"].is_array() && p.data["hitRayO"].size() >= 3) {
+    src.hasRay = true;
+    src.rayO = vec3(p.data["hitRayO"][0].get<float>(), p.data["hitRayO"][1].get<float>(), p.data["hitRayO"][2].get<float>());
+    if (p.data.contains("hitRayD") && p.data["hitRayD"].is_array() && p.data["hitRayD"].size() >= 3) {
+      const vec3 d(p.data["hitRayD"][0].get<float>(), p.data["hitRayD"][1].get<float>(), p.data["hitRayD"][2].get<float>());
+      const float L = glm::length(d);
+      if (L > 1e-4f) src.rayD = d / L;
+    }
+  }
   float dealt;
   if (e.ghost && lv.net && lv.net->isClient()) {   // a joined world: the server's creature; it takes the hit there
     lv.net->hitEntity(p, e.id, dmg, {{"element", src.element}, {"knock", src.knock}, {"tool", src.tool}, {"weapon", src.weapon}, {"crit", crit},
@@ -458,13 +468,16 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
       vec3 ep = e->pos;
       if (p.atkOff) { const vec3 right(std::cos(p.atkYaw), 0, -std::sin(p.atkYaw)); ep -= right * (2 * glm::dot(ep - p.pos, right)); }
       const float reach = sore ? m.reach * 0.35f : m.reach;
+      const bool left = p.atkOff;
       if (auto* hitP = dynamic_cast<Player*>(e.get())) {
         ShieldBox guard;
         if (hitP->blockT > 0 && playerGuardBox(*hitP, guard) &&
-            bladeSweepHitsShield(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, guard, reach)) {
-          const bool swapIn = p.atkOff && !p.offhand.empty();
+            bladeSweepHitsShield(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, guard, reach, left)) {
+          const bool swapIn = left && !p.offhand.empty();
           if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
+          p.data["metGuard"] = true;
           attackEntity(lv, p, *e, m.dmg, m.impact, p.atkMove == MV_SWORD_AIR, false);
+          p.data.erase("metGuard");
           if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
           p.atkHit.push_back(e->id);
           continue;
@@ -473,12 +486,12 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
         const int nL = playerLimbBoxes(*hitP, limbs);
         bool hitLimb = false; int slot = -1;
         for (int i = 0; i < nL; i++) {
-          if (bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, limbs[i].lo, limbs[i].hi, reach)) {
+          if (bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, limbs[i].lo, limbs[i].hi, reach, nullptr, left)) {
             hitLimb = true; slot = limbs[i].armorSlot; break;
           }
         }
         if (!hitLimb) continue;
-        const bool swapIn = p.atkOff && !p.offhand.empty();
+        const bool swapIn = left && !p.offhand.empty();
         if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
         p.data["hitArmorSlot"] = slot;
         attackEntity(lv, p, *e, m.dmg, m.impact, p.atkMove == MV_SWORD_AIR, false);
@@ -487,16 +500,20 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
         p.atkHit.push_back(e->id);
         continue;
       }
-      vec3 at(0);
-      const int part = bladeSweepHitsEntity(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, *e, reach, &at);
+      vec3 at(0), dir(0);
+      const int part = bladeSweepHitsEntity(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, *e, reach, &at, left, &dir);
       if (part == -1) continue;
       if (part == -2) {
         const vec3 lo = ep - vec3(e->w, 0.05f, e->w), hi = ep + vec3(e->w, e->h, e->w);
-        if (!bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, lo, hi, reach)) continue;
+        if (!bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, lo, hi, reach, nullptr, left)) continue;
+      } else {
+        p.data["hitRayO"] = json::array({at.x, at.y, at.z});
+        p.data["hitRayD"] = json::array({dir.x, dir.y, dir.z});
       }
-      const bool swapIn = p.atkOff && !p.offhand.empty();
+      const bool swapIn = left && !p.offhand.empty();
       if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
       attackEntity(lv, p, *e, m.dmg, m.impact, p.atkMove == MV_SWORD_AIR, false);
+      p.data.erase("hitRayO"); p.data.erase("hitRayD");
       if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
       p.atkHit.push_back(e->id);
       if (isMob(*e)) {

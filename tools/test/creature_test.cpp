@@ -204,6 +204,14 @@ int main(int argc, char** argv) {
     p.shield[0] = ItemStack("shield", 1);
     const float kept = damagePlayer(*lv, p, 10, openSrc);
     CHECK(open > 0 && kept > 0 && kept < open * 0.5f, "a raised shield keeps most of a blow (%.1f -> %.1f)", open, kept);
+    p.invuln = 0; p.hp = 20; p.blockT = 1.0f; p.stamina = 100;
+    DamageSource bodyBlow; bodyBlow.type = "mob"; bodyBlow.armorSlot = 1;
+    const float missedGuard = damagePlayer(*lv, p, 10, bodyBlow);
+    CHECK(missedGuard > kept * 1.4f, "a blow that missed the guard is not kept (%.1f vs kept %.1f)", missedGuard, kept);
+    p.invuln = 0; p.hp = 20; p.blockT = 1.0f; p.stamina = 100;
+    DamageSource onGuard; onGuard.type = "mob"; onGuard.metGuard = true;
+    const float met = damagePlayer(*lv, p, 10, onGuard);
+    CHECK(met <= kept + 0.1f, "a blow that met the guard is kept (%.1f)", met);
     p.blockT = 0; p.shield[0].clear(); p.invuln = 0; p.hp = 20;
     ItemStack helm, chest;
     CHECK(makePartArmor("helmet", std::vector<std::string>(5, "iron"), helm) &&
@@ -235,6 +243,15 @@ int main(int argc, char** argv) {
       ShieldBox behind;
       CHECK(playerGuardBox(p, behind) && !shieldRayHit(behind, from, claw, 1.f),
             "turning your back, that claw misses the shield");
+      p.invuln = 0; p.hp = 20; p.blockT = 1.0f; p.stamina = 100; p.yaw = 0;
+      g2->attackCd = 0;
+      g2->meleeAt(*lv, p, 1.f, 0.f);
+      const float front = 20.f - p.hp;
+      p.invuln = 0; p.hp = 20; p.blockT = 1.0f; p.stamina = 100; p.yaw = 3.14159f;
+      g2->attackCd = 0;
+      g2->meleeAt(*lv, p, 1.f, 0.f);
+      const float back = 20.f - p.hp;
+      CHECK(front > 0 && back > front * 1.4f, "a claw in the back is not kept (front %.1f, back %.1f)", front, back);
       g2->removed = true;
     } else CHECK(false, "a ghoul's claw in front meets a raised shield");
     p.blockT = 0; p.shield[0].clear(); p.yaw = 0; p.hp = p.maxHp; p.invuln = 0;

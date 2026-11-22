@@ -83,6 +83,8 @@ struct DamageSrc {
   bool hasRay = false; vec3 rayO{0}, rayD{0};   // where the blow came from (dismemberment)
   int ench = 0;          // an arrow: its bow's enchantment levels (sim/wither_storm.cpp)
   float pierce = 0;      // the share of its armour the attacker ignores (sim/balance.h)
+  int armorSlot = -1;    // 0 helm, 1 chest, 2 legs, 3 boots; -1 the whole suit
+  bool metGuard = false; // the claw met the shield / weapon guard
 };
 
 struct Move { float want = 0, dir = 0; };

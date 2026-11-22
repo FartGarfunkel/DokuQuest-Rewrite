@@ -29,6 +29,7 @@ static float hurtPlayer(Level& lv, Player& p, float amount, Entity* attacker, co
   DamageSource ds;
   ds.type = src.type; ds.element = src.element; ds.tool = src.tool; ds.attacker = attacker ? attacker->id : src.attacker;
   ds.knock = src.knock; ds.bypassArmor = src.bypassArmor;
+  ds.armorSlot = src.armorSlot; ds.metGuard = src.metGuard;
   float dmg = damagePlayer(lv, p, amount, ds);
   if (dmg <= 0) return 0;
   // what a creature's touch leaves behind (monsters.js)
@@ -68,6 +69,7 @@ bool creatureTakesHit(Level& lv, Entity& e, float amount, const DamageSource& sr
   s.type = src.type; s.element = src.element; s.tool = src.tool; s.attacker = src.attacker; s.knock = src.knock;
   s.weapon = !src.weapon.empty(); s.bypassArmor = src.bypassArmor;
   s.hasRay = src.hasRay; s.rayO = src.rayO; s.rayD = src.rayD; s.ench = src.ench; s.pierce = src.pierce;
+  s.armorSlot = src.armorSlot; s.metGuard = src.metGuard;
   if (s.type == "arrow" && s.tool.empty()) s.tool = "arrow";
   dealt = c->hurt(lv, amount, s);
   return true;

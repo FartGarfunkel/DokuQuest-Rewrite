@@ -63,16 +63,18 @@ vec3 attackFrameToWorld(const vec3& local, const vec3& feet, float yaw, float pi
 // does the blade, swept over t0..t1 (its live part only, clipped to hitFrom..hitTo), pass through the box (lo..hi,
 // world)? reach scales the blade's length (1 = the drawn sword; a longer weapon > 1). when: the move time it met it.
 bool bladeSweepHits(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, const vec3& lo, const vec3& hi,
-                    float reach = 1, float* when = nullptr);
+                    float reach = 1, float* when = nullptr, bool leftHand = false);
 class Creature; struct RigModel; struct ShieldBox;
-// the blade against a posed creature's parts. -1 none. hitAt: world point on the blade. part: the mesh part.
+// the blade against a posed creature's parts. -1 none, -2 no posed rig (caller may use the AABB).
+// hitAt: world point on the blade. part: the mesh part.
 int bladeSweepHitsCreature(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, Creature& c,
-                           const RigModel& M, float reach = 1, vec3* hitAt = nullptr, int* part = nullptr);
+                           const RigModel& M, float reach = 1, vec3* hitAt = nullptr, int* part = nullptr,
+                           bool leftHand = false, vec3* hitDir = nullptr);
 class Entity;
 int bladeSweepHitsEntity(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, Entity& e,
-                         float reach = 1, vec3* hitAt = nullptr);
+                         float reach = 1, vec3* hitAt = nullptr, bool leftHand = false, vec3* hitDir = nullptr);
 bool bladeSweepHitsShield(u8 id, float t0, float t1, const vec3& feet, float yaw, float pitch, const ShieldBox& box,
-                          float reach = 1);
+                          float reach = 1, bool leftHand = false);
 // forward travel so far (0 .. lunge), easing in with the strike: move the body by lungeAt(t1) - lungeAt(t0) a tick
 float lungeAt(u8 id, float t);
 
