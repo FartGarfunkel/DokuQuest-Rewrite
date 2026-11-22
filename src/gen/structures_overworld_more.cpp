@@ -1,7 +1,7 @@
 // gen/structures_overworld_more.cpp — jungle temples, trail ruins and woodland mansions.
 // Registered from registerStructurePlaces() (gen/structures_places.cpp). Surface places, existing blocks only.
 #include "gen/structures_common.h"
-#include "gen/proc_rooms.h"
+#include "world/dirs.h"
 #include "core/itemstack.h"
 #include <algorithm>
 #include <cstring>
@@ -21,26 +21,35 @@ static void putDisp(SP& P, int x, int y, int z, int face6, u32 salt) {
   const int i = P.put(x, y, z, "dispenser", (u8)face6);
   if (i >= 0) P.setEntity(i, json{{"type", "dispenser"}, {"items", arrowDisp(salt ^ (u32)(x * 17 + z * 31 + y))}});
 }
-// tripwire hall: hooks at the ends (strung), dispensers in the end walls and beside each hook
-static void putTripHall(SP& P, int a0, int a1, int y, int b, bool alongX, u32 seed) {
-  if (a1 < a0) std::swap(a0, a1);
-  if (alongX) {
-    P.put(a0, y, b, "tripwire_hook", 3 | 4);
-    P.put(a1, y, b, "tripwire_hook", 1 | 4);
-    for (int x = a0 + 1; x < a1; x++) P.put(x, y, b, "tripwire", 2);
-    putDisp(P, a0 - 1, y, b, 5, seed);
-    putDisp(P, a1 + 1, y, b, 4, seed);
-    putDisp(P, a0, y, b - 1, 3, seed);
-    putDisp(P, a1, y, b + 1, 2, seed);
-  } else {
-    P.put(b, y, a0, "tripwire_hook", 0 | 4);
-    P.put(b, y, a1, "tripwire_hook", 2 | 4);
-    for (int z = a0 + 1; z < a1; z++) P.put(b, y, z, "tripwire", 2);
-    putDisp(P, b, y, a0 - 1, 3, seed);
-    putDisp(P, b, y, a1 + 1, 2, seed);
-    putDisp(P, b - 1, y, a0, 5, seed);
-    putDisp(P, b + 1, y, a1, 4, seed);
-  }
+// one tripwire run (Minecraft jungle temple: two strings in the hall, dispensers in the side walls)
+static void putTripRun(SP& P, int x0, int z, int x1, int y, u32 seed) {
+  if (x1 < x0) std::swap(x0, x1);
+  P.put(x0, y, z, "tripwire_hook", 1 | 4);   // facing east, strung
+  P.put(x1, y, z, "tripwire_hook", 3 | 4);   // facing west, strung
+  for (int x = x0 + 1; x < x1; x++) P.put(x, y, z, "tripwire", 2);
+  putDisp(P, (x0 + x1) / 2, y, z - 1, 3, seed);       // south into the hall
+  putDisp(P, (x0 + x1) / 2 + 1, y, z + 1, 2, seed ^ 17); // north into the hall
+}
+
+static std::string landName(const TerrainQuery& t, int x, int z) {
+  const OverworldGen* ow = owOf(t);
+  return (ow && t.genVersion() >= 15) ? ow->landBiomeName(x, z) : std::string();
+}
+static bool nameHas(const std::string& n, const char* k) { return n.find(k) != std::string::npos; }
+static bool jungleLand(const TerrainQuery& t, int x, int z, const TerrainColumn& c) {
+  const std::string n = landName(t, x, z);
+  if (!n.empty()) return nameHas(n, "jungle") && !nameHas(n, "sparse");
+  return c.biome == BIOME_FOREST && c.temp > 0.28 && c.humid > 0.12;
+}
+static bool darkForestLand(const TerrainQuery& t, int x, int z, const TerrainColumn& c) {
+  const std::string n = landName(t, x, z);
+  if (!n.empty()) return nameHas(n, "dark_forest") && !nameHas(n, "deep_dark");
+  return c.biome == BIOME_FOREST && c.temp <= 0.28 && c.humid > 0.12;
+}
+static bool taigaLand(const TerrainQuery& t, int x, int z, const TerrainColumn& c) {
+  const std::string n = landName(t, x, z);
+  if (!n.empty()) return nameHas(n, "taiga");
+  return c.biome == BIOME_TAIGA || (c.biome == BIOME_FOREST && c.temp <= 0.28);
 }
 
 static std::string_view mossPick(SP& P, int x, int y, int z, int s) {
@@ -49,24 +58,28 @@ static std::string_view mossPick(SP& P, int x, int y, int z, int s) {
 }
 
 // ==== Jungle temple ==================================================================================================
+// Minecraft jungle pyramid: mossy cobble, front door, stairs down to a lever puzzle and a tripwire hall
+// with two dispensers and one chest, a second chest behind the puzzle wall. No dumped furniture.
 bool jungleTemplePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
   TerrainColumn c = t.terrainColumn(x, z);
-  if (!sLandy(c) || c.biome != BIOME_FOREST || c.temp <= 0.28 || c.humid <= 0.12) return false;
+  if (!sLandy(c) || !jungleLand(t, x, z, c)) return false;
   Land L = sLand(t, x - 7, z - 7, x + 7, z + 7);
   if (L.jhi - L.jlo > 10 || L.mean < 12) return false;
   S.x0 = x - 7; S.z0 = z - 7; S.x1 = x + 7; S.z1 = z + 7; S.cx = x; S.cz = z;
   S.y = L.mean; S.hashDy = L.jmean - L.mean; S.surface = true;
-  S.rot = rnd() < 0.5 ? 0 : 1;
+  S.rot = 0;
   S.name = "Jungle Temple";
   S.data = {{"residents", json::array({mobAt(x, S.y + 1, z, "jungle_skeleton"),
                                        mobAt(x + 2, S.y + 1, z - 2, "jungle_skeleton")})}};
+  (void)rnd;
   return true;
 }
 
 void jungleTempleBuild(ChunkWriter& w, const StructurePlan& S) {
   SP P(w);
   const int cx = S.cx, cz = S.cz, y = S.y;
-  const int yb = y - 8;
+  const int yb = y - 5;
+  auto moss = [&](int x, int yy, int z, int s) { return mossPick(P, x, yy, z, s); };
   for (int z = S.z0 - 1; z <= S.z1 + 1; z++) for (int x = S.x0 - 1; x <= S.x1 + 1; x++) {
     if (!P.in(x, z)) continue;
     const int lz = z - cz, ax = std::abs(x - cx), az = std::abs(lz), gh = P.ground(x, z);
@@ -76,29 +89,23 @@ void jungleTempleBuild(ChunkWriter& w, const StructurePlan& S) {
       if (gh >= y) P.put(x, y, z, "grass");
       continue;
     }
-    for (int yy = std::min(gh, y) - 3; yy < y; yy++) P.put(x, yy, z, mossPick(P, x, yy, z, 1));
+    for (int yy = std::min(gh, y) - 3; yy < y; yy++) P.put(x, yy, z, moss(x, yy, z, 1));
     for (int yy = y + 1; yy <= std::max(gh, y) + 2; yy++) P.put(x, yy, z, "air");
-    P.put(x, y, z, mossPick(P, x, 0, z, 2));
+    P.put(x, y, z, moss(x, 0, z, 2));
     const int ring = std::max(ax, az);
-    int top = 0;
-    if (ring <= 7) top = 5;
-    if (ring <= 5) top = 9;
-    if (ring <= 3) top = 12;
+    int top = ring <= 3 ? 10 : ring <= 5 ? 7 : 5;
     const bool wall = (ax == 7 || az == 7) || ((ax == 5 || az == 5) && ring <= 5) || ((ax == 3 || az == 3) && ring <= 3);
-    const bool door = lz == -7 && ax <= 1;
+    const bool door = lz == 7 && ax <= 1;   // south front
     if (wall) {
       for (int yy = 1; yy <= top; yy++) {
         if (door && yy <= 3) { P.put(x, y + yy, z, "air"); continue; }
         const bool win = !door && yy == 3 && top >= 5 && (ax % 2 == 0 || az % 2 == 0) && P.h(x, yy, z, 4) < 0.35;
-        P.put(x, y + yy, z, win ? std::string_view("air") : mossPick(P, x, yy, z, 5));
+        P.put(x, y + yy, z, win ? std::string_view("air") : moss(x, yy, z, 5));
       }
     } else {
-      const int roof = ring <= 3 ? 12 : ring <= 5 ? 9 : 5;
-      for (int yy = 1; yy < roof; yy++) P.put(x, y + yy, z, "air");
-      if (ring > 1) P.put(x, y + roof, z, mossPick(P, x, roof, z, 6));
-      if (P.h(x, 3, z, 8) < 0.08) P.put(x, y + 1, z, "cobweb");
+      for (int yy = 1; yy < top; yy++) P.put(x, y + yy, z, "air");
+      if (ring > 1) P.put(x, y + top, z, moss(x, top, z, 6));
     }
-    // vines on the outer faces
     if ((x == S.x0 || x == S.x1 || z == S.z0 || z == S.z1) && P.h(x, 4, z, 9) < 0.6) {
       const int ox = x == S.x0 ? -1 : x == S.x1 ? 1 : 0, oz = z == S.z0 ? -1 : z == S.z1 ? 1 : 0;
       const int meta = x == S.x0 ? 1 : x == S.x1 ? 3 : z == S.z0 ? 2 : 0;
@@ -106,43 +113,45 @@ void jungleTempleBuild(ChunkWriter& w, const StructurePlan& S) {
       for (int k = 1; k <= len && k <= top; k++) P.put(x + ox, y + k, z + oz, "vine", (u8)meta);
     }
   }
-  // basement: moss box, 1-wide tripwire hall from the ladder (north) to the chests (south)
-  P.fill(cx - 5, yb - 1, cz - 5, cx + 5, y - 1, cz + 5, "mossy_cobblestone");
-  P.fill(cx - 4, yb + 1, cz - 4, cx + 4, y - 1, cz + 4, "air");
-  P.fill(cx - 4, yb, cz - 4, cx + 4, yb, cz + 4, "mossy_cobblestone");
-  const bool alongX = S.rot == 0;
-  if (alongX) {
-    // hall along x at cz; ladder west, chests east
-    for (int x = cx - 3; x <= cx + 3; x++) for (int yy = yb + 1; yy <= yb + 3; yy++) {
-      P.put(x, yy, cz - 1, mossPick(P, x, yy, cz - 1, 11));
-      P.put(x, yy, cz + 1, mossPick(P, x, yy, cz + 1, 11));
-    }
-    P.fill(cx - 3, yb + 1, cz, cx + 3, yb + 3, cz, "air");
-    putTripHall(P, cx - 3, cx + 3, yb + 1, cz, true, S.seed);
-    for (int yy = yb + 1; yy < y; yy++) { P.put(cx - 4, yy, cz, "air"); P.put(cx - 5, yy, cz, "mossy_cobblestone"); }
-    P.ladder(cx - 4, yb + 1, y - 1, cz, 3);
-    P.put(cx - 4, y, cz, "air");
-    P.chest(cx + 3, yb + 1, cz - 3, 1, "temple");
-    P.chest(cx + 3, yb + 1, cz + 3, 1, "temple");
-  } else {
-    for (int z = cz - 3; z <= cz + 3; z++) for (int yy = yb + 1; yy <= yb + 3; yy++) {
-      P.put(cx - 1, yy, z, mossPick(P, cx - 1, yy, z, 11));
-      P.put(cx + 1, yy, z, mossPick(P, cx + 1, yy, z, 11));
-    }
-    P.fill(cx, yb + 1, cz - 3, cx, yb + 3, cz + 3, "air");
-    putTripHall(P, cz - 3, cz + 3, yb + 1, cx, false, S.seed);
-    for (int yy = yb + 1; yy < y; yy++) { P.put(cx, yy, cz - 4, "air"); P.put(cx, yy, cz - 5, "mossy_cobblestone"); }
-    P.ladder(cx, yb + 1, y - 1, cz - 4, 0);
-    P.put(cx, y, cz - 4, "air");
-    P.chest(cx - 3, yb + 1, cz + 3, 0, "temple");
-    P.chest(cx + 3, yb + 1, cz + 3, 0, "temple");
+  // main floor: open hall
+  P.fill(cx - 5, y + 1, cz - 5, cx + 5, y + 4, cz + 5, "air");
+  // basement box
+  P.fill(cx - 6, yb - 1, cz - 6, cx + 6, y, cz + 6, "mossy_cobblestone");
+  P.fill(cx - 5, yb + 1, cz - 5, cx + 5, y - 1, cz + 5, "air");
+  P.fill(cx - 5, yb, cz - 5, cx + 5, yb, cz + 5, "mossy_cobblestone");
+  // stairwell from the west of the hall down into the basement
+  for (int s = 0; s < 4; s++) {
+    const int zz = cz + 2 - s, yy = y - s;
+    P.put(cx - 4, yy, zz, "air"); P.put(cx - 5, yy, zz, "air");
+    P.put(cx - 4, yy, zz, "mossy_cobblestone_stairs", 0);   // facing north, walk north/down
+    P.put(cx - 5, yy, zz, "mossy_cobblestone_stairs", 0);
+    P.put(cx - 4, yy - 1, zz, mossPick(P, cx - 4, yy, zz, 11));
+    P.put(cx - 5, yy - 1, zz, mossPick(P, cx - 5, yy, zz, 11));
   }
-  P.chest(cx + 4, y + 1, cz - 4, 3, "temple");
-  P.put(cx, yb + 3, cz, "cobweb");
-  P.put(cx - 2, yb + 3, cz + 2, "cobweb");
-  furnishPlaced(P, cx, y + 1, cz, 4, 4, 4, "shrine", hash32(cx, y, cz, (i32)S.seed), PAL_MOSSY, 3);
-  furnishPlaced(P, cx + (alongX ? 3 : 0), yb + 1, cz + (alongX ? 0 : 3), 1, 1, 3, "store",
-                hash32(cx, yb, cz, (i32)S.seed), PAL_MOSSY, 2);
+  // puzzle wall (west): three chiseled bricks with levers, sticky pistons behind
+  for (int i = 0; i < 3; i++) {
+    const int zz = cz - 2 + i * 2;
+    P.put(cx - 5, yb + 2, zz, "chiseled_stone_bricks");
+    P.put(cx - 4, yb + 2, zz, "lever", 5);   // on the east face of the west wall
+    P.put(cx - 6, yb + 2, zz, "sticky_piston", 5);   // facing east
+  }
+  P.put(cx - 5, yb + 1, cz, "redstone_wire");
+  // tripwire hall along +x: 1-wide corridor with moss walls so the dispensers sit in the sides
+  for (int x = cx - 1; x <= cx + 4; x++) {
+    P.put(x, yb + 1, cz - 1, mossPick(P, x, yb + 1, cz - 1, 12));
+    P.put(x, yb + 2, cz - 1, mossPick(P, x, yb + 2, cz - 1, 12));
+    P.put(x, yb + 1, cz + 1, mossPick(P, x, yb + 1, cz + 1, 12));
+    P.put(x, yb + 2, cz + 1, mossPick(P, x, yb + 2, cz + 1, 12));
+    P.put(x, yb + 1, cz, "air"); P.put(x, yb + 2, cz, "air"); P.put(x, yb + 3, cz, "air");
+  }
+  putTripRun(P, cx, cz, cx + 3, yb + 1, S.seed);
+  P.put(cx + 4, yb + 1, cz - 1, "vine", 2);
+  P.put(cx + 4, yb + 1, cz + 1, "vine", 0);
+  P.chest(cx + 4, yb + 1, cz, 3, "temple");   // trap chest at the end of the hall
+  P.chest(cx - 3, yb + 1, cz, 1, "temple");   // puzzle chest in the lever room
+  P.put(cx - 4, y, cz + 2, "air"); P.put(cx - 5, y, cz + 2, "air");   // stair opening in the floor
+  P.put(cx, yb + 3, cz - 3, "cobweb");
+  P.put(cx + 3, yb + 3, cz + 3, "cobweb");
 }
 
 // ==== Trail ruins ====================================================================================================
@@ -151,10 +160,7 @@ struct TrailExt { std::vector<TrailBit> bits; };
 
 bool trailRuinsPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
   TerrainColumn c = t.terrainColumn(x, z);
-  if (!sLandy(c)) return false;
-  const bool taiga = c.biome == BIOME_TAIGA;
-  const bool coolForest = c.biome == BIOME_FOREST && c.temp <= 0.28;
-  if (!taiga && !coolForest) return false;
+  if (!sLandy(c) || !taigaLand(t, x, z, c)) return false;
   const int R = 10;
   Land L = sLand(t, x - R, z - R, x + R, z + R);
   if (L.jhi - L.jlo > 12 || L.mean < 10) return false;
@@ -221,9 +227,6 @@ void trailRuinsBuild(ChunkWriter& w, const StructurePlan& S) {
         else if (P.h(x, 4, z, 11) < 0.08) P.put(x, fy + 1, z, "cobweb");
       }
     }
-    const int rx = std::max(1, (B.x1 - B.x0) / 2 - 1), rz = std::max(1, (B.z1 - B.z0) / 2 - 1);
-    furnishPlaced(P, mx, fy + 1, mz, rx, rz, std::max(3, B.h + 1), "store",
-                  hash32(mx, fy, mz, (i32)S.seed), PAL_MOSSY, 3);
     if (B.chest) P.chest(mx, fy + 1, mz, 2, "ruin");
   }
   for (int z = S.z0; z <= S.z1; z++) for (int x = S.x0; x <= S.x1; x++) {
@@ -239,22 +242,97 @@ void trailRuinsBuild(ChunkWriter& w, const StructurePlan& S) {
 }
 
 // ==== Woodland mansion ===============================================================================================
-constexpr int MX = 4, MZ = 3, MCS = 8, MFH = 6, MFL = 3;
-static const char* kMansionRoom[3][12] = {
-  {"store", "kitchen", "pantry", "workshop",
-   "armoury", "hall", "dining", "office",
-   "entry", "hall", "hall", "sleeping"},
-  {"sleeping", "sleeping", "library", "archive",
-   "hall", "gallery", "office", "bath",
-   "sleeping", "scriptorium", "armoury", "store"},
-  {"library", "gallery", "observatory", "sleeping",
-   "hall", "archive", "store", "office",
-   "sleeping", "greenhouse", "workshop", "pantry"}
-};
+// Minecraft: 3 floors, cobble foundation, birch floors, dark oak walls. Front foyer with a
+// giant staircase. Corridors with a carpet runner connect the rooms. Rooms are themed, not dumped.
+constexpr int MX = 5, MZ = 4, MCS = 9, MFH = 8, MFL = 3;
+
+static const char* mansionKind(int fl, int gx, int gz) {
+  if (fl >= 2 && gz == 0) return "none";                 // top floor is the front half
+  if (gz == MZ - 2 && fl < 2) return "hall";             // E-W corridor
+  if (gx == 2 && gz < MZ - 2 && fl < 2) return "hall";   // N-S spur
+  if (fl == 0 && gz == MZ - 1 && (gx == 1 || gx == 2)) return "foyer";
+  if (fl == 1 && gz == MZ - 1 && (gx == 1 || gx == 2)) return "hall";
+  if (fl == 1 && gx == 2 && gz == MZ - 3) return "stairs";
+  static const char* extra[3][4][5] = {
+    { // floor 0, gz 0..3 × gx 0..4
+      {"library", "office", "hall", "bedroom", "store"},
+      {"dining", "flower", "hall", "store", "office"},
+      {"hall", "hall", "hall", "hall", "hall"},
+      {"flower", "foyer", "foyer", "dining", "store"},
+    },
+    {
+      {"bedroom", "library", "hall", "bedroom", "flower"},
+      {"store", "office", "stairs", "flower", "library"},
+      {"hall", "hall", "hall", "hall", "hall"},
+      {"bedroom", "hall", "hall", "store", "office"},
+    },
+    {
+      {"none", "none", "none", "none", "none"},
+      {"library", "bedroom", "hall", "store", "flower"},
+      {"hall", "hall", "hall", "hall", "hall"},
+      {"flower", "office", "dining", "bedroom", "store"},
+    }
+  };
+  return extra[fl][gz][gx];
+}
+
+static void putBed2(SP& P, int x, int y, int z, int facing, const char* key) {
+  const int x2 = x + DIRX[facing & 3], z2 = z + DIRZ[facing & 3];
+  P.put(x, y, z, key, (u8)(facing & 3));
+  P.put(x2, y, z2, key, (u8)((facing & 3) | 4));
+}
+static void mBedroom(SP& P, int x0, int z0, int x1, int z1, int y, u32 seed) {
+  const char* bed = hasBlock("red_bed") ? "red_bed" : "bed";
+  putBed2(P, x0 + 1, y, z0 + 2, 1, bed);
+  if (z1 - z0 >= 6) putBed2(P, x0 + 1, y, z1 - 2, 1, bed);
+  P.chest(x1 - 1, y, (z0 + z1) / 2, 3, "ruin");
+  P.put(x1 - 1, y, z0 + 1, "flower_pot");
+  P.hang((x0 + x1) / 2, y + 5, (z0 + z1) / 2, "lantern");
+  (void)seed;
+}
+static void mLibrary(SP& P, int x0, int z0, int x1, int z1, int y) {
+  for (int z = z0 + 1; z <= z1 - 1; z++) {
+    P.put(x0 + 1, y, z, "bookshelf"); P.put(x0 + 1, y + 1, z, "bookshelf");
+    P.put(x1 - 1, y, z, "bookshelf"); P.put(x1 - 1, y + 1, z, "bookshelf");
+  }
+  P.put((x0 + x1) / 2, y, (z0 + z1) / 2, PLK("oak_table", "planks"));
+  P.put((x0 + x1) / 2, y + 1, (z0 + z1) / 2, "flower_pot");
+  P.hang((x0 + x1) / 2, y + 5, z0 + 2, "lantern");
+}
+static void mStore(SP& P, int x0, int z0, int x1, int z1, int y) {
+  int n = 0;
+  for (int z = z0 + 1; z <= z1 - 1; z += 2) {
+    P.chest(x0 + 1, y, z, 1, n++ % 2 == 0 ? "ruin" : "ruin");
+    if (x1 - x0 >= 5) P.chest(x1 - 1, y, z, 3, "ruin");
+  }
+  P.hang((x0 + x1) / 2, y + 5, (z0 + z1) / 2, "lantern");
+}
+static void mDining(SP& P, int x0, int z0, int x1, int z1, int y) {
+  const std::string st = PLK("dark_oak_stairs", "oak_stairs");
+  const int mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+  for (int dx = -2; dx <= 2; dx++) P.put(mx + dx, y, mz, st, 0);
+  for (int dx = -2; dx <= 2; dx++) P.put(mx + dx, y, mz + 1, st, 2);
+  P.put(mx, y + 1, mz, "flower_pot");
+  P.put(mx - 2, y, mz - 1, PLK("oak_chair", "oak_stairs"));
+  P.put(mx + 2, y, mz + 2, PLK("oak_chair", "oak_stairs"));
+  P.hang(mx, y + 5, mz, "lantern");
+}
+static void mFlower(SP& P, int x0, int z0, int x1, int z1, int y) {
+  for (int z = z0 + 2; z <= z1 - 2; z += 2) for (int x = x0 + 2; x <= x1 - 2; x += 2)
+    P.put(x, y, z, "flower_pot");
+  P.hang((x0 + x1) / 2, y + 5, (z0 + z1) / 2, "lantern");
+}
+static void mOffice(SP& P, int x0, int z0, int x1, int z1, int y) {
+  P.put((x0 + x1) / 2, y, z0 + 1, PLK("oak_desk", "oak_table"));
+  P.put((x0 + x1) / 2, y, z0 + 2, PLK("oak_chair", "oak_stairs"), 0);
+  P.put(x0 + 1, y, z1 - 1, "flower_pot");
+  P.put(x1 - 1, y, z1 - 1, "flower_pot");
+  P.hang((x0 + x1) / 2, y + 5, (z0 + z1) / 2, "lantern");
+}
 
 bool woodlandMansionPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
   TerrainColumn c = t.terrainColumn(x, z);
-  if (!sLandy(c) || c.biome != BIOME_FOREST || (c.temp > 0.28 && c.humid > 0.12)) return false;
+  if (!sLandy(c) || !darkForestLand(t, x, z, c)) return false;
   const int hx = (MX * MCS) / 2, hz = (MZ * MCS) / 2;
   Land L = sLand(t, x - hx, z - hz, x + hx, z + hz);
   if (L.jhi - L.jlo > 14 || L.mean < 12 || L.mean + MFL * MFH + 6 >= DIM_H - 2) return false;
@@ -263,13 +341,13 @@ bool woodlandMansionPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, S
   S.name = "Woodland Mansion";
   const int y = S.y;
   json res = json::array();
-  res.push_back(mobAt(x, y + 1, z + 4, "raider"));
-  res.push_back(mobAt(x - 6, y + 1, z, "raider"));
-  res.push_back(mobAt(x + 6, y + 1 + MFH, z - 4, "raider"));
+  res.push_back(mobAt(x, y + 1, z + 8, "raider"));
+  res.push_back(mobAt(x - 8, y + 1, z, "raider"));
+  res.push_back(mobAt(x + 8, y + 1 + MFH, z - 4, "raider"));
   res.push_back(mobAt(x, y + 1 + MFH, z, "raider"));
   res.push_back(mobAt(x - 4, y + 1 + MFH * 2, z + 2, "warlock"));
   res.push_back(mobAt(x + 4, y + 1 + MFH * 2, z - 2, "warlock"));
-  if (rnd() < 0.5) res.push_back(mobAt(x + 2, y + 1, z - 6, "raider"));
+  if (rnd() < 0.5) res.push_back(mobAt(x + 2, y + 1, z - 8, "raider"));
   S.data = {{"residents", std::move(res)}};
   return true;
 }
@@ -277,12 +355,21 @@ bool woodlandMansionPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, S
 void woodlandMansionBuild(ChunkWriter& w, const StructurePlan& S) {
   SP P(w);
   const int x0 = S.x0, z0 = S.z0, x1 = S.x1, z1 = S.z1, y = S.y, cx = S.cx;
-  const std::string plank = PLK("dark_oak_planks", "planks"), log = PLK("dark_oak_log", "log");
+  const std::string wallP = PLK("dark_oak_planks", "planks"), log = PLK("dark_oak_log", "log");
+  const std::string floorP = PLK("birch_planks", "planks");
   const std::string fence = PLK("dark_oak_fence", "oak_fence"), door = PLK("dark_oak_door", "oak_door");
   const std::string glass = PLK("glass_pane", "air");
-  const BlockId rug = bid("red_carpet");
-  const int sx = x0 + 2, sz = z0 + 10;   // ladder shaft
+  const std::string cobbleSt = PLK("cobblestone_stairs", "cobblestone");
   const int top = y + MFL * MFH;
+  const int foyerX0 = x0 + 1 * MCS, foyerX1 = x0 + 3 * MCS;
+  auto isFoyer = [&](int x, int z, int fl) {
+    return fl == 0 && z >= z0 + (MZ - 1) * MCS && x >= foyerX0 && x < foyerX1;
+  };
+  auto isHall = [&](int gx, int gz, int fl) {
+    const char* k = mansionKind(fl, gx, gz);
+    return std::strcmp(k, "hall") == 0 || std::strcmp(k, "foyer") == 0 || std::strcmp(k, "stairs") == 0;
+  };
+
   for (int z = z0 - 1; z <= z1 + 2; z++) for (int x = x0 - 1; x <= x1 + 1; x++) {
     if (!P.in(x, z)) continue;
     const int gh = P.ground(x, z);
@@ -298,36 +385,43 @@ void woodlandMansionBuild(ChunkWriter& w, const StructurePlan& S) {
       }
       continue;
     }
+    const int gx = std::clamp((x - x0) / MCS, 0, MX - 1), gz = std::clamp((z - z0) / MCS, 0, MZ - 1);
     const int lx = (x - x0) % MCS, lz = (z - z0) % MCS;
     const bool xw = x == x0 || x == x1 || lx == 0, zw = z == z0 || z == z1 || lz == 0;
     const bool wall = xw || zw;
     const bool corner = (x == x0 || x == x1) && (z == z0 || z == z1);
-    const bool shaft = x == sx && z == sz;
     for (int yy = std::min(gh, y) - 3; yy < y; yy++) P.put(x, yy, z, "cobblestone");
     for (int yy = y; yy <= std::max(gh, top) + 2; yy++) P.put(x, yy, z, "air");
     for (int fl = 0; fl < MFL; fl++) {
+      if (fl >= 2 && gz == 0) continue;   // no back rooms on the top floor
       const int fy = y + fl * MFH;
-      const bool hole = shaft && fl > 0;
-      if (hole) P.put(x, fy, z, "air");
-      else P.put(x, fy, z, wall ? log : plank);
-      for (int yy = 1; yy <= 4; yy++) {
+      const bool foyer = isFoyer(x, z, fl);
+      P.put(x, fy, z, wall ? log : floorP);
+      for (int yy = 1; yy <= 6; yy++) {
         if (!wall) { P.put(x, fy + yy, z, "air"); continue; }
-        const bool front = z == z1 && x >= cx && x <= cx + 1 && fl == 0 && yy <= 2;
-        if (front) { P.put(x, fy + yy, z, door, (u8)(2 | (yy == 2 ? 16 : 0) | (x == cx + 1 ? 8 : 0))); continue; }
-        const bool win = (x == x0 || x == x1 || z == z0 || z == z1) && (yy == 2 || yy == 3) && ((x + z + fl) % 3 == 1) && !front;
+        const bool front = z == z1 && x >= cx - 1 && x <= cx && fl == 0 && yy <= 3;
+        if (front) { P.put(x, fy + yy, z, door, (u8)(2 | (yy == 2 ? 16 : 0) | (x == cx ? 8 : 0))); continue; }
+        const bool win = (x == x0 || x == x1 || z == z0 || z == z1) && (yy == 3 || yy == 4)
+                         && ((x + z + fl) % 3 == 1) && !front;
         if (win) { P.put(x, fy + yy, z, glass); continue; }
-        P.put(x, fy + yy, z, corner || yy == 4 ? log : plank);
+        P.put(x, fy + yy, z, corner || yy == 6 ? log : wallP);
       }
-      P.put(x, fy + 5, z, hole ? "air" : plank);
-      if (!wall && fl == 0 && rug != NOBLOCK && rug != AIR) {
-        const int gx = std::clamp((x - x0) / MCS, 0, MX - 1), gz = std::clamp((z - z0) / MCS, 0, MZ - 1);
-        if (std::strcmp(kMansionRoom[0][gz * MX + gx], "hall") == 0) P.rug(x, fy, z, rug);
+      P.put(x, fy + 7, z, wallP);
+      if (!wall && isHall(gx, gz, fl)) {
+        const bool runner = std::strcmp(mansionKind(fl, gx, gz), "hall") == 0;
+        const BlockId wcar = bid("white_carpet"), rcar = bid("red_carpet");
+        const BlockId use = runner && rcar != NOBLOCK && (lx == MCS / 2 || lz == MCS / 2)
+                            ? rcar : (wcar != NOBLOCK ? wcar : rcar);
+        if (use != NOBLOCK && use != AIR) P.rug(x, fy, z, use);
+        if (foyer && rcar != NOBLOCK) P.rug(x, fy, z, rcar);
       }
     }
-    P.put(x, top, z, plank);
-    if (x == x0 || x == x1 || z == z0 || z == z1) P.put(x, top + 1, z, fence);
+    const int localTop = gz == 0 ? y + 2 * MFH : top;   // top floor is the front half
+    P.put(x, localTop, z, wallP);
+    if (x == x0 || x == x1 || z == z0 || z == z1) P.put(x, localTop + 1, z, fence);
   }
-  // inner doorways on shared walls
+
+  // doorways: rooms open onto the corridor (3-wide arch at mid-wall)
   for (int z = z0 + 1; z < z1; z++) for (int x = x0 + 1; x < x1; x++) {
     if (!P.in(x, z)) continue;
     const int lx = (x - x0) % MCS, lz = (z - z0) % MCS;
@@ -336,32 +430,66 @@ void woodlandMansionBuild(ChunkWriter& w, const StructurePlan& S) {
     const bool open = (xw && lz >= 3 && lz <= 5) || (zw && lx >= 3 && lx <= 5);
     if (!open) continue;
     for (int fl = 0; fl < MFL; fl++) {
+      const int gz = std::clamp((z - z0) / MCS, 0, MZ - 1);
+      if (fl >= 2 && gz == 0) continue;
       const int fy = y + fl * MFH;
-      P.put(x, fy + 1, z, "air"); P.put(x, fy + 2, z, "air");
+      P.put(x, fy + 1, z, "air"); P.put(x, fy + 2, z, "air"); P.put(x, fy + 3, z, "air");
     }
   }
-  for (int yy = y; yy < top; yy++) {
-    P.put(sx, yy, sz, "air");
-    P.put(sx, yy, sz - 1, log);
+
+  // foyer staircase: 3-wide cobble stairs from the front door, north into the house, up to floor 1
+  {
+    const int fx = (foyerX0 + foyerX1) / 2;
+    const int fz = z1 - 2;
+    for (int s = 0; s < MFH - 1; s++) {
+      const int zz = fz - 1 - s, yy = y + 1 + s;
+      for (int dx = -1; dx <= 1; dx++) {
+        P.put(fx + dx, yy, zz, cobbleSt, 0);   // facing north
+        for (int k = y; k < yy; k++) P.put(fx + dx, k, zz, "cobblestone");
+        P.put(fx + dx, y + MFH, zz, "air");     // hole through the first ceiling
+        P.put(fx + dx, y + MFH + 1, zz, "air");
+        P.put(fx + dx, y + MFH + 2, zz, "air");
+      }
+    }
+    // landing on floor 1
+    for (int dx = -1; dx <= 1; dx++) for (int dz = 0; dz <= 2; dz++)
+      P.put(fx + dx, y + MFH, fz - MFH - dz, PLK("birch_planks", "planks"));
   }
-  P.ladder(sx, y + 1, top - 1, sz, 0);
-  // chimneys
-  for (auto [dx, dz] : {std::pair{6, -4}, {-8, 5}}) {
+
+  // second-to-third floor stairs in the dedicated stair cell
+  {
+    const int sx = x0 + 2 * MCS + MCS / 2, sz = z0 + 1 * MCS + 2;
+    const int fy = y + MFH;
+    for (int s = 0; s < MFH - 1; s++) {
+      const int zz = sz + s, yy = fy + 1 + s;
+      for (int dx = -1; dx <= 1; dx++) {
+        P.put(sx + dx, yy, zz, cobbleSt, 2);   // facing south
+        for (int k = fy; k < yy; k++) P.put(sx + dx, k, zz, "cobblestone");
+        P.put(sx + dx, fy + MFH, zz, "air");
+        P.put(sx + dx, fy + MFH + 1, zz, "air");
+      }
+    }
+  }
+
+  for (auto [dx, dz] : {std::pair{10, -6}, {-12, 8}}) {
     const int x = cx + dx, z = S.cz + dz;
     for (int k = 0; k <= 3; k++) P.put(x, top + k, z, "cobblestone");
     P.put(x, top + 4, z, PLK("cobblestone_wall", "cobblestone"));
   }
-  auto chest = [&](int x, int yy, int z, const char*, bool) { P.chest(x, yy, z, 2, "ruin"); };
+
   for (int fl = 0; fl < MFL; fl++) for (int gz = 0; gz < MZ; gz++) for (int gx = 0; gx < MX; gx++) {
-    const int rx = x0 + gx * MCS + MCS / 2, rz = z0 + gz * MCS + MCS / 2;
+    const char* kind = mansionKind(fl, gx, gz);
+    if (std::strcmp(kind, "none") == 0 || std::strcmp(kind, "hall") == 0
+        || std::strcmp(kind, "foyer") == 0 || std::strcmp(kind, "stairs") == 0) continue;
+    const int ix0 = x0 + gx * MCS + 1, iz0 = z0 + gz * MCS + 1;
+    const int ix1 = x0 + (gx + 1) * MCS - 1, iz1 = z0 + (gz + 1) * MCS - 1;
     const int fy = y + fl * MFH + 1;
-    const char* kind = kMansionRoom[fl][gz * MX + gx];
-    const int pal = std::strcmp(kind, "library") == 0 || std::strcmp(kind, "archive") == 0 || std::strcmp(kind, "scriptorium") == 0
-                    ? PAL_SLATE : PAL_OAK;
-    const int clut = std::strcmp(kind, "hall") == 0 || std::strcmp(kind, "entry") == 0 ? 1 : 2;
-    furnishPlaced(P, rx, fy, rz, 3, 3, 4, kind, hash32(rx, fy, rz, (i32)S.seed), pal, clut, chest);
-    if (std::strcmp(kind, "store") == 0 || std::strcmp(kind, "armoury") == 0)
-      P.chest(rx - 1, fy, rz - 1, 2, "ruin");
+    if (std::strcmp(kind, "bedroom") == 0) mBedroom(P, ix0, iz0, ix1, iz1, fy, S.seed);
+    else if (std::strcmp(kind, "library") == 0) mLibrary(P, ix0, iz0, ix1, iz1, fy);
+    else if (std::strcmp(kind, "store") == 0) mStore(P, ix0, iz0, ix1, iz1, fy);
+    else if (std::strcmp(kind, "dining") == 0) mDining(P, ix0, iz0, ix1, iz1, fy);
+    else if (std::strcmp(kind, "flower") == 0) mFlower(P, ix0, iz0, ix1, iz1, fy);
+    else if (std::strcmp(kind, "office") == 0) mOffice(P, ix0, iz0, ix1, iz1, fy);
   }
 }
 

@@ -1066,9 +1066,12 @@ void registerStructurePlaces() {
   auto deepOn = [](const TerrainQuery& t) { const OverworldGen* ow = owOf(t); return ow && ow->deepStructs(); };
   regPlace("mineshaft", "Mineshaft", 480, 0.55, 64, 5, [deepOn](const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) { return !deepOn(t) && minePlan(t, x, z, rnd, S); }, mineBuild);
   regPlace("labyrinth", "The Labyrinth", 720, 0.6, 60, 6, mazePlan, mazeBuild);
-  regPlace("jungle_temple", "Jungle Temple", 480, 0.55, 40, -1, jungleTemplePlan, jungleTempleBuild);
-  regPlace("trail_ruins", "Trail Ruins", 400, 0.5, 32, -1, trailRuinsPlan, trailRuinsBuild);
-  regPlace("woodland_mansion", "Woodland Mansion", 900, 0.35, 64, -1, woodlandMansionPlan, woodlandMansionBuild);
+  // Minecraft jungle pyramid: 32-chunk spacing → 512 blocks (chance is high; biome plan() is the filter)
+  regPlace("jungle_temple", "Jungle Temple", 512, 0.70, 48, -1, jungleTemplePlan, jungleTempleBuild);
+  // Minecraft trail ruins: ~34-chunk spacing → 544 blocks; taiga-family, uncommon
+  regPlace("trail_ruins", "Trail Ruins", 544, 0.40, 40, -1, trailRuinsPlan, trailRuinsBuild);
+  // Minecraft woodland mansion: 80-chunk spacing → 1280 blocks; rarest overworld structure
+  regPlace("woodland_mansion", "Woodland Mansion", 1280, 0.80, 80, -1, woodlandMansionPlan, woodlandMansionBuild);
 }
 
 // registered after every other kind, so their indices (their seeds) stay as they were
