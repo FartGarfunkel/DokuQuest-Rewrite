@@ -112,6 +112,7 @@ static void bronzeBuild(ChunkWriter& w, const StructurePlan& S) {
   carve(P, x + 15, y0 + 1, z - 1, x + 15, y0 + 3, z + 1);
   skyChest(P, x + 13, y0 + 1, z - 4, 0, 0);
   if (P.h(x, y0, z, 4) < 0.6) skyChest(P, x + 13, y0 + 1, z + 3, 2, 0);
+  furnishPlaced(P, x + 10, y0 + 1, z, 3, 3, 5, "store", hash32(x + 10, y0, z, (i32)S.seed), PAL_QUARTZ, 1);
   // the reward behind the Slider
   skyChest(P, x - 6, y0 + 1, z + 5, 2, 0);
 }
@@ -171,7 +172,7 @@ static void silverBuild(ChunkWriter& w, const StructurePlan& S) {
       if (r < 0.3) skyChest(P, ox + u0 + 1, Y + 1, oz + v0 + 1, (int)(r * 13) & 3, 1);
       static const char* SK[] = {"hall", "shrine", "store", "sleeping", "office", "gallery", "chapel", "workshop"};
       furnishPlaced(P, ox + u0 + 3, Y + 1, oz + v0 + 3, 2, 2, 5, SK[(cx + 3 * cz + 9 * f) % 8],
-                    hash32(ox + u0, Y, oz + v0, (i32)S.seed), 0, 1);
+                    hash32(ox + u0, Y, oz + v0, (i32)S.seed), PAL_QUARTZ, 1);
     }
   }
   for (int f = 0; f < 2; f++) {   // a ladder up from one room of each floor, against its back wall

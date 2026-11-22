@@ -492,7 +492,7 @@ OptMove npcJobWork(Level& lv, Creature& e, NpcMind& M, const Village& v, const V
     tidyStands(w, f.work, f.workF, rec);
     ivec3 sp; if (!piece(lv, w, rec, "stand", "armor_stand", f.work, f.workF, sp)) return std::nullopt;
     if (!atPiece(sp, mv)) return mv;
-    static const char* MAT[] = {"iron", "chainmail", "gold", "diamond", "copper"};
+    static const char* MAT[] = {"copper", "bronze", "iron", "chainmail", "gold"};
     const int n = rec.value("dressed", 0) + 1; rec["dressed"] = n;
     json items = json::array();
     if (job == "leatherworker") {
@@ -501,10 +501,10 @@ OptMove npcJobWork(Level& lv, Creature& e, NpcMind& M, const Village& v, const V
       for (const char* p : {"leather_helmet", "leather_chestplate", "leather_leggings", "leather_boots"}) { ItemStack s(p, 1); s.tag = json{{"color", (int)dye}}; items.push_back(s.toJson()); }
       items.push_back(nullptr);
     } else {
-      std::string m = MAT[n % 5]; if (!reg().item(m + "_helmet")) m = "iron";
+      std::string m = MAT[n % 5]; if (!reg().item(m + "_helmet")) m = "copper";
       for (const char* p : {"_helmet", "_chestplate", "_leggings", "_boots"}) items.push_back(job == "armorer" && reg().item(m + p) ? proceduralOf(m + p, 1).toJson() : json());
-      static const char* WEAP[] = {"iron_sword", "iron_axe", "stone_sword", "diamond_sword", "gold_sword"};
-      static const char* TOOL[] = {"iron_pickaxe", "iron_shovel", "iron_hoe", "iron_axe", "stone_pickaxe"};
+      static const char* WEAP[] = {"copper_sword", "bronze_sword", "iron_sword", "stone_sword", "gold_sword"};
+      static const char* TOOL[] = {"copper_pickaxe", "bronze_pickaxe", "copper_shovel", "bronze_hoe", "copper_axe"};
       items.push_back(job == "weaponsmith" ? proceduralOf(WEAP[n % 5], 1).toJson() : job == "toolsmith" ? proceduralOf(TOOL[n % 5], 1).toJson() : json());
       // the forged work on the wall rack too
       if (job != "armorer") {

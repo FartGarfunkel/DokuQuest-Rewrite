@@ -21,7 +21,7 @@ EXPR = r"""(() => {
 # game/villages.js vLoot (a table local to the function)
 VLOOT = {
   'house': [['bread', 1, 4, 0.6], ['apple', 1, 3, 0.5], ['wheat_seeds', 2, 6, 0.4], ['emerald', 1, 2, 0.25], ['torch', 2, 6, 0.4], ['potato', 1, 4, 0.3], ['carrot', 1, 3, 0.3], ['stick', 2, 5, 0.3]],
-  'smithy': [['iron_ingot', 1, 4, 0.7], ['coal', 2, 6, 0.6], ['bread', 1, 3, 0.4], ['iron_pickaxe', 1, 1, 0.2], ['iron_sword', 1, 1, 0.15], ['silver_ingot', 1, 2, 0.25], ['steel_ingot', 1, 1, 0.12], ['emerald', 1, 3, 0.3], ['iron_helmet', 1, 1, 0.12]],
+  'smithy': [['iron_ingot', 1, 4, 0.7], ['coal', 2, 6, 0.6], ['bread', 1, 3, 0.4], ['copper_pickaxe', 1, 1, 0.2], ['copper_sword', 1, 1, 0.15], ['silver_ingot', 1, 2, 0.25], ['steel_ingot', 1, 1, 0.12], ['emerald', 1, 3, 0.3], ['copper_helmet', 1, 1, 0.12]],
   'library': [['book', 1, 3, 0.7], ['paper', 2, 6, 0.6], ['feather', 1, 3, 0.4], ['emerald', 1, 2, 0.3], ['empty_map', 1, 1, 0.2], ['compass', 1, 1, 0.15]],
   'tavern': [['bread', 2, 5, 0.7], ['cooked_beef', 1, 3, 0.4], ['apple', 1, 4, 0.5], ['honey_bottle', 1, 2, 0.3], ['emerald', 1, 3, 0.4], ['cake', 1, 1, 0.15]],
 }

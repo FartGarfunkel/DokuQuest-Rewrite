@@ -566,6 +566,12 @@ int main(int argc, char** argv) {
           for (const auto& s : vLoot("smithy", r)) if (s.is_object() && isIronGear(s)) smithIron++;
         }
         check(smithIron == 0, "a village smithy at spawn stocks copper and bronze, not iron (" + std::to_string(smithIron) + ")");
+        long pirateIron = 0;
+        for (int i = 0; i < N; i++) {
+          Mulberry32 r((u32)(42000 + i));
+          for (const auto& s : structLoot("pirate", r)) if (s.is_object() && (s.value("id", "") == "iron_sword" || isIronGear(s))) pirateIron++;
+        }
+        check(pirateIron == 0, "a pirate wreck at spawn has no iron_sword (" + std::to_string(pirateIron) + ")");
         check(rDia == 0 && rEm == 0, "a ruin has no gems (" + std::to_string(rEm) + " em, " + std::to_string(rDia) + " gems)");
         check(mDia == 0, "a mineshaft has no diamonds (" + std::to_string(mDia) + ")");
         {
@@ -579,19 +585,36 @@ int main(int argc, char** argv) {
         }
         {
           const int combo = PROC_ROOM_KIND_N * PROC_PATTERN_N * PROC_YAW_N * PROC_PAL_N * PROC_CLUTTER_N;
-          check(combo >= 3000, "room options: " + std::to_string(combo) + " kind x pattern x yaw x pal x clutter");
+          check(combo >= 50000, "room options: " + std::to_string(combo) + " kind x pattern x yaw x pal x clutter");
+          check(PROC_PAL_N == 12 && PROC_PATTERN_N == 12 && PROC_ROOM_KIND_N == 34,
+                "12 palettes, 12 patterns, 34 room kinds");
+          check(std::string(palette(PAL_SAND).wall).find("sand") != std::string::npos
+                && std::string(palette(PAL_PRISM).wall).find("prismarine") != std::string::npos
+                && std::string(palette(PAL_PURPUR).wall).find("purpur") != std::string::npos
+                && std::string(palette(PAL_BLACK).wall).find("blackstone") != std::string::npos
+                && std::string(palette(PAL_QUARTZ).wall).find("quartz") != std::string::npos
+                && (std::string(palette(PAL_ICE).wall).find("ice") != std::string::npos
+                    || std::string(palette(PAL_ICE).wall).find("permafrost") != std::string::npos),
+                "biome palettes: sand, prismarine, purpur, blackstone, quartz, ice");
+          {
+            ProcRoom pr;
+            applyProcLayout(pr, ProcLayout{2, 11, PAL_PURPUR, 2});
+            check(pr.pattern == 11 && pr.pal == PAL_PURPUR && pr.yaw == 2,
+                  "applyProcLayout keeps pattern 11 (not masked to 0-7)");
+          }
           int ox = 0, oz = 0;
           rotOffset(0, -1, 1, ox, oz);
           check(ox == 1 && oz == 0 && rotDir(0, 1) == 1 && rotDir(2, 2) == 0, "a north offset turns east with yaw 1");
-          bool sawPat[8] = {}, sawYaw[4] = {};
+          bool sawPat[12] = {}, sawYaw[4] = {};
           int nPat = 0, nYaw = 0;
-          for (int i = 0; i < 400; i++) {
+          for (int i = 0; i < 800; i++) {
             Mulberry32 r((u32)(90000 + i * 17));
             ProcLayout L = pickProcLayout(r, i % PROC_PAL_N, i % PROC_CLUTTER_N);
-            if (!sawPat[L.pattern & 7]) { sawPat[L.pattern & 7] = true; nPat++; }
+            const int pat = ((L.pattern % PROC_PATTERN_N) + PROC_PATTERN_N) % PROC_PATTERN_N;
+            if (!sawPat[pat]) { sawPat[pat] = true; nPat++; }
             if (!sawYaw[L.yaw & 3]) { sawYaw[L.yaw & 3] = true; nYaw++; }
           }
-          check(nPat == PROC_PATTERN_N && nYaw == PROC_YAW_N, "layouts cover 8 patterns and 4 yaws (" + std::to_string(nPat) + " / " + std::to_string(nYaw) + ")");
+          check(nPat == PROC_PATTERN_N && nYaw == PROC_YAW_N, "layouts cover 12 patterns and 4 yaws (" + std::to_string(nPat) + " / " + std::to_string(nYaw) + ")");
         }
         {
           bool ironHang = false;

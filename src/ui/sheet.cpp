@@ -65,6 +65,24 @@ double manaMax(const Player& p) {
 std::string fmt1(double v) { double r = std::round(v * 10) / 10; char b[32]; snprintf(b, sizeof b, "%g", r); return b; }
 std::string num(double v) { char b[32]; snprintf(b, sizeof b, "%g", v); return b; }
 u32 hexCol(const char* h) { return (u32)std::strtoul(h + 1, nullptr, 16); }
+// harvest tool.tier is not the metal: copper is 2, which used to print "stone". Name the id prefix; fall back to harvest tier.
+std::string harvestMetalName(const ItemStack& s, int tier) {
+  if (isPartTool(s) && s.tag.contains("pt") && s.tag["pt"].contains("m") && s.tag["pt"]["m"].is_array()
+      && !s.tag["pt"]["m"].empty() && s.tag["pt"]["m"][0].is_string())
+    return s.tag["pt"]["m"][0].get<std::string>();
+  const std::string& id = s.id;
+  static const char* METALS[] = {"adamantite", "mithril", "diamond", "bronze", "copper", "silver", "steel", "stone", "iron", "gold", "wood"};
+  static const char* TIER[] = {"", "wood", "stone", "copper", "steel", "mithril", "adamantite"};
+  size_t at = 0;
+  const size_t h = id.find("_hafted_");
+  if (h != std::string::npos) at = h + 8;
+  for (const char* m : METALS) {
+    const size_t n = std::char_traits<char>::length(m);
+    if (id.size() > at + n && id.compare(at, n, m) == 0 && id[at + n] == '_') return m;
+  }
+  if (tier > 0 && tier < 7 && TIER[tier][0]) return TIER[tier];
+  return {};
+}
 }
 
 // itemInfoHTML: lines of (text, colour); returns the first line (the name)
@@ -151,10 +169,12 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
       std::string line = "In your hands: " + fmt1(mine) + " \xE2\x99\xA5 a blow";
       if (!held.empty() && &held != &s) line += cmp(mine, blowOf(*p, held), "");
       L.push_back({line, TS});
-      static const char* TIER[] = {"", "wood", "stone", "iron", "diamond", "mithril", "adamantite"};
       int tier = d->tool.tier;
       const std::string& ty = d->tool.type;
-      if ((ty == "pickaxe" || ty == "axe" || ty == "shovel" || ty == "hoe" || ty == "hammer") && tier) L.push_back({"Tier " + std::to_string(tier) + (tier < 7 && *TIER[tier] ? std::string(" (") + TIER[tier] + ")" : "") + " \xC2\xB7 digs " + fmt1(d->tool.speed * (1 + gearBonus(s, 0.35))) + "\xC3\x97 as fast as a bare hand", TD});
+      if ((ty == "pickaxe" || ty == "axe" || ty == "shovel" || ty == "hoe" || ty == "hammer") && tier) {
+        const std::string named = harvestMetalName(s, tier);
+        L.push_back({"Tier " + std::to_string(tier) + (named.empty() ? "" : " (" + named + ")") + " \xC2\xB7 digs " + fmt1(d->tool.speed * (1 + gearBonus(s, 0.35))) + "\xC3\x97 as fast as a bare hand", TD});
+      }
     }
     if (d->has("armor")) {
       int slot = d->props["armor"].value("slot", 0);

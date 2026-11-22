@@ -342,7 +342,7 @@ Creature* npcSpawn(Level& lv, const Village& v, int i, const std::string& kind) 
   int idx = kind == "guard" ? 100 + i : kind == "golem" ? 200 + i : i;
   u32 seed = kind == "golem" ? 0 : npcSeedOf(v, idx);
   e->data["npc"] = {{"v", v.id}, {"i", idx}, {"n", kind == "golem" ? std::string(e->type == "sandstone_golem" ? "Sandstone Golem" : e->type == "frost_golem" ? "Frost Golem" : e->type == "moss_golem" ? "Mossy Golem" : e->type == "savanna_golem" ? "Savanna Golem" : "Iron Golem") : npcName(seed)}, {"j", job}, {"s", seed}, {"p", 0}};
-  if (kind == "guard") { e->heldItem = "iron_sword"; e->data["npcArmor"] = json::array({"iron_helmet", "iron_chestplate", "iron_leggings", "iron_boots"}); }
+  if (kind == "guard") { e->heldItem = "copper_sword"; e->data["npcArmor"] = json::array({"copper_helmet", "copper_chestplate", "copper_leggings", "copper_boots"}); }
   else if (kind != "golem") { const json& J = VD()["jobs"]; e->heldItem = J.contains(job) && J[job].contains("held") && J[job]["held"].is_string() ? J[job]["held"].get<std::string>() : ""; }
   if (!e->heldItem.empty() && !reg().item(e->heldItem)) e->heldItem.clear();
   e->kept = false;

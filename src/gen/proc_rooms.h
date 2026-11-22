@@ -19,17 +19,20 @@ struct ProcRoom {
   std::string pillar = "stone_bricks";
   std::string slab = "stone_brick_slab";
   std::string stairs = "stone_brick_stairs";
+  std::string chisel = "chiseled_stone_bricks";
+  std::string floor = "stone_bricks";
   bool webs = false;
   float density = 0.65f;   // 0.35 sparse, 0.65 lived-in, 0.9 packed
   int yaw = 0;       // 0..3, 90° CW of the whole layout
-  int pattern = 0;   // 0..7, furniture positions in local space
-  int pal = 0;       // 0..5, see palette()
+  int pattern = 0;   // 0..11, furniture positions in local space
+  int pal = 0;       // 0..11, see palette()
   int clutter = 1;   // 0 sparse, 1 lived-in, 2 packed, 3 ruined
 };
 
 struct ProcPal {
   const char* wall; const char* floor; const char* pillar; const char* slab;
   const char* stairs; const char* light; const char* hang; const char* wood;
+  const char* chisel;
 };
 
 enum ProcPat : int {
@@ -40,17 +43,37 @@ enum ProcPat : int {
   PL_BEDS_NS = 4,  // pairs on E/W walls, aisle N-S
   PL_BEDS_EW = 5,  // pairs on N/S walls, aisle E-W
   PL_L       = 6,  // L: local south + west
-  PL_PACK    = 7   // all four walls / extra interior
+  PL_PACK    = 7,  // all four walls / extra interior
+  PL_CROSS   = 8,  // plus through the centre
+  PL_CORNER  = 9,  // packed in local south-west, rest open
+  PL_RING    = 10, // furniture on all four walls, hollow middle
+  PL_SPLIT   = 11  // two halves, aisle along local +X
 };
 
-inline constexpr int PROC_PATTERN_N = 8, PROC_PAL_N = 6, PROC_CLUTTER_N = 4, PROC_YAW_N = 4;
+enum ProcPalId : int {
+  PAL_CRYPT  = 0,
+  PAL_MOSSY  = 1,
+  PAL_SLATE  = 2,
+  PAL_NETHER = 3,
+  PAL_OAK    = 4,
+  PAL_SPRUCE = 5,
+  PAL_SAND   = 6,
+  PAL_PRISM  = 7,
+  PAL_PURPUR = 8,
+  PAL_BLACK  = 9,
+  PAL_QUARTZ = 10,
+  PAL_ICE    = 11
+};
+
+inline constexpr int PROC_PATTERN_N = 12, PROC_PAL_N = 12, PROC_CLUTTER_N = 4, PROC_YAW_N = 4;
 
 inline constexpr const char* PROC_ROOM_KINDS[] = {
   "entry", "hall", "loot", "spawner", "library", "boss", "barracks", "dining", "chapel",
   "kitchen", "armoury", "cells", "workshop", "crypt", "well", "gallery", "shrine", "store",
-  "sleeping", "refectory", "scriptorium", "nave", "vault", "prison", "office", "forge"
+  "sleeping", "refectory", "scriptorium", "nave", "vault", "prison", "office", "forge",
+  "pantry", "archive", "treasury", "brewery", "bath", "alcove", "observatory", "greenhouse"
 };
-inline constexpr int PROC_ROOM_KIND_N = 26;
+inline constexpr int PROC_ROOM_KIND_N = 34;
 inline constexpr int DUNGEON_GRID_MIN = 6, DUNGEON_GRID_MAX = 8;
 inline constexpr int DUNGEON_CELL_MIN = 9, DUNGEON_CELL_MAX = 13;
 inline constexpr int DUNGEON_FLOORS_MIN = 2, DUNGEON_FLOORS_MAX = 4;
@@ -61,9 +84,10 @@ inline constexpr const char* PROC_FURNITURE[] = {
   "brazier", "old_torch", "torch", "soul_torch", "lantern", "soul_lantern", "candle",
   "barrel", "lectern", "armor_stand", "weapon_rack", "wall_weapon_rack", "campfire",
   "bookshelf", "decorated_pot", "cauldron", "anvil", "bed", "iron_bars", "chain", "grave",
-  "oak_desk", "oak_coffin", "altar", "sconce"
+  "oak_desk", "oak_coffin", "altar", "sconce",
+  "brewing_stand", "flower_pot", "cartography_table", "loom", "fletching_table"
 };
-inline constexpr int PROC_FURNITURE_N = 32;
+inline constexpr int PROC_FURNITURE_N = 37;
 
 using ProcChestFn = std::function<void(int x, int y, int z, const char* lootKind, bool mimic)>;
 

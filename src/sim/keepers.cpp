@@ -140,7 +140,8 @@ private:
       if (!k.dungeon) { const vec3 xp = at + vec3(0, 2, 0); grantXP(lv, *q, 150, &xp); }
     }
     if (k.dungeon) {
-      dropItem(lv, REALM_MAIN, ItemStack("emerald", 4 + (int)(frand() * 6)), at + vec3(0, 1, 0), true);
+      dropItem(lv, REALM_MAIN, ItemStack("gold_coin", 2 + (int)(frand() * 3)), at + vec3(0, 1, 0), true);
+      if (frand() < 0.22f) dropItem(lv, REALM_MAIN, ItemStack("emerald", 1), at + vec3(0, 1, 0), true);
       if (frand() < 0.35f && reg().item("heart_crystal")) dropItem(lv, REALM_MAIN, ItemStack("heart_crystal", 1), at + vec3(0, 1, 0), true);
     }
   }

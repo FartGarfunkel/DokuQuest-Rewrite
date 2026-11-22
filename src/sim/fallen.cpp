@@ -29,7 +29,7 @@ const std::vector<Loot>& lootFor(const std::string& kind) {
                                            {"arrow", 2, 6, 0.4f}, {"gold_coin", 1, 3, 0.3f}, {"vine", 1, 3, 0.25f}, {"bread", 1, 2, 0.3f}};
   static const std::vector<Loot> swamp = {{"bone", 2, 5, 0.65f}, {"rotten_flesh", 1, 3, 0.45f}, {"string", 1, 3, 0.4f},
                                           {"gold_coin", 1, 3, 0.3f}, {"candle", 1, 2, 0.25f}, {"lily_pad", 1, 2, 0.2f}};
-  static const std::vector<Loot> miner = {{"coal", 2, 6, 0.7f}, {"torch", 3, 8, 0.65f}, {"iron_ingot", 1, 2, 0.35f},
+  static const std::vector<Loot> miner = {{"coal", 2, 6, 0.7f}, {"torch", 3, 8, 0.65f}, {"copper_ingot", 1, 2, 0.35f},
                                           {"bread", 1, 2, 0.4f}, {"string", 1, 3, 0.25f}, {"cobblestone", 2, 6, 0.35f}};
   if (kind == "desert") return desert;
   if (kind == "snowy") return snowy;

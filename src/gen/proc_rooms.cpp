@@ -22,18 +22,25 @@ std::string pickProcKind(Mulberry32& rnd, const std::string& role, int salt) {
   static const char* REST[] = {
     "hall", "loot", "library", "barracks", "dining", "chapel", "kitchen", "armoury",
     "workshop", "gallery", "shrine", "store", "sleeping", "refectory", "scriptorium",
-    "crypt", "office", "forge", "well", "vault", "nave"
+    "crypt", "office", "forge", "well", "vault", "nave",
+    "pantry", "archive", "treasury", "brewery", "bath", "alcove", "observatory", "greenhouse"
   };
-  return REST[jsFloor(rnd() * 21)];
+  return REST[jsFloor(rnd() * 29)];
 }
 
 static const ProcPal PROC_PAL[PROC_PAL_N] = {
-  {"stone_bricks",      "stone_bricks",      "stone_bricks",      "stone_brick_slab",   "stone_brick_stairs", "old_torch",  "lantern",      "oak"},
-  {"mossy_stone_bricks","mossy_cobblestone", "mossy_stone_bricks","stone_brick_slab",   "stone_brick_stairs", "old_torch",  "lantern",      "oak"},
-  {"slate_bricks",      "slate_tiles",       "slate_bricks",      "slate_brick_slab",   "slate_brick_stairs", "lantern",    "soul_lantern", "dark_oak"},
-  {"nether_bricks",     "nether_bricks",     "nether_bricks",     "nether_brick_slab",  "nether_brick_stairs","soul_torch", "soul_lantern", "crimson"},
-  {"planks",            "planks",            "log",               "oak_slab",           "oak_stairs",         "torch",      "lantern",      "oak"},
-  {"spruce_planks",     "spruce_planks",     "spruce_log",        "spruce_slab",        "spruce_stairs",      "lantern",    "lantern",      "spruce"},
+  {"stone_bricks",           "stone_bricks",        "stone_bricks",        "stone_brick_slab",   "stone_brick_stairs", "old_torch",    "lantern",      "oak",      "chiseled_stone_bricks"},
+  {"mossy_stone_bricks",     "mossy_cobblestone",   "mossy_stone_bricks",  "stone_brick_slab",   "stone_brick_stairs", "old_torch",    "lantern",      "oak",      "chiseled_stone_bricks"},
+  {"slate_bricks",           "slate_tiles",         "slate_bricks",        "slate_brick_slab",   "slate_brick_stairs", "lantern",      "soul_lantern", "dark_oak", "chiseled_slate"},
+  {"nether_bricks",          "nether_bricks",       "nether_bricks",       "nether_brick_slab",  "nether_brick_stairs","soul_torch",   "soul_lantern", "crimson",  "chiseled_nether_bricks"},
+  {"planks",                 "planks",              "log",                 "oak_slab",           "oak_stairs",         "torch",        "lantern",      "oak",      "log"},
+  {"spruce_planks",          "spruce_planks",       "spruce_log",          "spruce_slab",        "spruce_stairs",      "lantern",      "lantern",      "spruce",   "spruce_log"},
+  {"desert_sandstone_bricks","cut_sandstone",       "chiseled_sandstone",  "sandstone_slab",     "sandstone_stairs",   "torch",        "lantern",      "jungle",   "chiseled_sandstone"},
+  {"prismarine_bricks",      "prismarine",          "dark_prismarine",     "prismarine_slab",    "prismarine_stairs",  "sea_lantern",  "sea_lantern",  "warped",   "dark_prismarine"},
+  {"purpur_block",           "purpur_block",        "purpur_pillar",       "purpur_slab",        "purpur_stairs",      "lantern",      "lantern",      "warped",   "purpur_pillar"},
+  {"blackstone_bricks",      "polished_blackstone", "polished_blackstone", "blackstone_slab",    "blackstone_stairs",  "soul_torch",   "soul_lantern", "crimson",  "chiseled_polished_blackstone"},
+  {"quartz_block",           "smooth_quartz",       "quartz_pillar",       "quartz_slab",        "quartz_stairs",      "lantern",      "lantern",      "birch",    "chiseled_quartz_block"},
+  {"permafrost_bricks",      "packed_ice",          "polished_permafrost", "spruce_slab",        "spruce_stairs",      "soul_lantern", "soul_lantern", "spruce",   "packed_ice"},
 };
 
 const ProcPal& palette(int pal) {
@@ -44,6 +51,8 @@ void applyPalette(ProcRoom& r) {
   r.pillar = p.pillar; r.slab = p.slab; r.stairs = p.stairs;
   r.light = p.light; r.hangLight = p.hang;
   r.wood = procWood(p.wood);
+  r.chisel = hasBlock(p.chisel) ? p.chisel : (hasBlock("chiseled_stone_bricks") ? "chiseled_stone_bricks" : p.pillar);
+  r.floor = hasBlock(p.floor) ? p.floor : p.wall;
 }
 static const float CLUTTER_DENSITY[4] = {0.35f, 0.55f, 0.80f, 0.45f};
 float clutterDensity(int c) { return CLUTTER_DENSITY[std::clamp(c, 0, 3)]; }
@@ -66,9 +75,12 @@ void rotCell(const ProcRoom& r, int lx, int lz, int& x, int& z) {
 
 int pickDungeonPal(int theme, Mulberry32& rnd) {
   const double u = rnd();
-  if (theme == 0) return u < 0.45 ? 0 : u < 0.75 ? 1 : u < 0.88 ? 2 : u < 0.94 ? 4 : u < 0.97 ? 5 : 3;
-  if (theme == 1) return u < 0.40 ? 1 : u < 0.70 ? 4 : u < 0.85 ? 5 : u < 0.93 ? 0 : 2;
-  return              u < 0.50 ? 2 : u < 0.70 ? 5 : u < 0.85 ? 0 : u < 0.93 ? 1 : 4;
+  if (theme == 0) return u < 0.38 ? PAL_CRYPT : u < 0.62 ? PAL_MOSSY : u < 0.76 ? PAL_SLATE
+                   : u < 0.86 ? PAL_OAK : u < 0.92 ? PAL_SPRUCE : u < 0.97 ? PAL_BLACK : PAL_NETHER;
+  if (theme == 1) return u < 0.34 ? PAL_MOSSY : u < 0.56 ? PAL_OAK : u < 0.70 ? PAL_SPRUCE
+                   : u < 0.82 ? PAL_CRYPT : u < 0.92 ? PAL_SLATE : PAL_SAND;
+  return              u < 0.36 ? PAL_SLATE : u < 0.54 ? PAL_SPRUCE : u < 0.68 ? PAL_CRYPT
+                   : u < 0.80 ? PAL_MOSSY : u < 0.90 ? PAL_ICE : u < 0.96 ? PAL_BLACK : PAL_OAK;
 }
 ProcLayout pickProcLayout(Mulberry32& rnd, int dungeonPal, int dungeonClutter) {
   ProcLayout L;
@@ -79,7 +91,8 @@ ProcLayout pickProcLayout(Mulberry32& rnd, int dungeonPal, int dungeonClutter) {
   return L;
 }
 void applyProcLayout(ProcRoom& r, const ProcLayout& L) {
-  r.yaw = L.yaw & 3; r.pattern = L.pattern & 7;
+  r.yaw = L.yaw & 3;
+  r.pattern = ((L.pattern % PROC_PATTERN_N) + PROC_PATTERN_N) % PROC_PATTERN_N;
   r.pal = std::clamp(L.pal, 0, PROC_PAL_N - 1);
   r.clutter = std::clamp(L.clutter, 0, PROC_CLUTTER_N - 1);
   r.density = clutterDensity(r.clutter);
@@ -233,17 +246,20 @@ void deskAgainst(SP& P, const ProcRoom& r, int dir) {
 }
 
 void chiseledBase(SP& P, const ProcRoom& r, int x, int z) {
-  if (!hasBlock("chiseled_stone_bricks")) return;
-  if (P.in(x, z) && solidAt(P, x, r.y - 1, z)) P.put(x, r.y - 1, z, "chiseled_stone_bricks");
+  std::string c = r.chisel;
+  if (c.empty() || !hasBlock(c)) c = hasBlock("chiseled_stone_bricks") ? "chiseled_stone_bricks" : r.pillar;
+  if (c.empty() || !hasBlock(c)) return;
+  if (P.in(x, z) && solidAt(P, x, r.y - 1, z)) P.put(x, r.y - 1, z, c);
 }
 
 void cornerPillars(SP& P, const ProcRoom& r, bool chisel) {
   const int px = std::max(1, r.rx - 1), pz = std::max(1, r.rz - 1);
+  const std::string capK = !r.chisel.empty() && hasBlock(r.chisel) ? r.chisel : "chiseled_stone_bricks";
   for (auto [sx, sz] : {std::pair{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}) {
     const int x = r.x + sx * px, z = r.z + sz * pz;
     for (int yy = r.y; yy < r.y + r.H; yy++) {
-      const bool cap = chisel && (yy == r.y || yy == r.y + r.H - 1) && hasBlock("chiseled_stone_bricks");
-      P.put(x, yy, z, cap ? "chiseled_stone_bricks" : r.pillar);
+      const bool cap = chisel && (yy == r.y || yy == r.y + r.H - 1) && hasBlock(capK);
+      P.put(x, yy, z, cap ? capK : r.pillar);
     }
   }
 }
@@ -284,6 +300,37 @@ void extraBarrels(SP& P, const ProcRoom& r, Mulberry32& rnd) {
   }
 }
 
+void palAccent(SP& P, const ProcRoom& r, int pat) {
+  chiseledBase(P, r, r.x, r.z);
+  const bool runner = pat == PL_LONG || pat == PL_CROSS || pat == PL_SPLIT;
+  const bool cross = pat == PL_CROSS || pat == PL_RING;
+  if (runner) {
+    const int span = std::min(r.rx, 3);
+    for (int t = -span; t <= span; t++) {
+      if (t == 0) continue;
+      int x, z; rotCell(r, t, 0, x, z);
+      if (P.in(x, z) && solidAt(P, x, r.y - 1, z) && !r.slab.empty()) P.put(x, r.y - 1, z, r.slab);
+    }
+  }
+  if (cross) {
+    const int span = std::min(r.rz, 3);
+    for (int t = -span; t <= span; t++) {
+      int x, z; rotCell(r, 0, t, x, z);
+      const std::string& k = !r.chisel.empty() ? r.chisel : r.slab;
+      if (P.in(x, z) && solidAt(P, x, r.y - 1, z) && !k.empty()) P.put(x, r.y - 1, z, k);
+    }
+  }
+}
+
+void potsOn(SP& P, const ProcRoom& r, Mulberry32& rnd, int localDir, int along0, int along1) {
+  const std::string pot = hasBlock("flower_pot") ? "flower_pot" : "decorated_pot";
+  for (int a = along0; a <= along1; a++) {
+    if (skipPiece(r, rnd)) continue;
+    int x, z; wallAt(r, localDir, a, x, z);
+    putFloor(P, x, r.y, z, pot);
+  }
+}
+
 void furnishChapel(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
   const std::string top = hasBlock("altar") ? "altar" : "lectern";
   const int y = r.y;
@@ -306,10 +353,19 @@ void furnishChapel(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
     case PL_L:       altar(2); placeAgainst(P, r, rnd, 3, -1, furn(r, "standing_shelf"));
                      placeAgainst(P, r, rnd, 3,  1, furn(r, "standing_shelf"));
                      pewRow(P, r, rnd, 0, 0, 1, 2); break;
-    default:         altar(2); pewRow(P, r, rnd, 0, -1, 1, 2);
+    case PL_PACK:    altar(2); pewRow(P, r, rnd, 0, -1, 1, 2);
                      placeAgainst(P, r, rnd, 1, 0, "brazier", false);
                      placeAgainst(P, r, rnd, 3, 0, "brazier", false);
                      wallBanner(P, r, rotDir(3, r.yaw)); break;
+    case PL_CROSS:   altar(0); pewRow(P, r, rnd, 1, -1, 1, 3); pewRow(P, r, rnd, 3, -1, 1, 1);
+                     placeAgainst(P, r, rnd, 2, 0, "brazier", false); break;
+    case PL_CORNER:  altar(2); pewRow(P, r, rnd, 3, 0, 1, 1);
+                     placeAgainst(P, r, rnd, 2, -1, furn(r, "standing_shelf"));
+                     placeAgainst(P, r, rnd, 1, 0, "candle", false); break;
+    case PL_RING:    altar(0); pewRow(P, r, rnd, 1, -1, 1, 3); pewRow(P, r, rnd, 3, -1, 1, 1);
+                     pewRow(P, r, rnd, 2, -1, 1, 0); wallBanner(P, r, rotDir(1, r.yaw)); break;
+    default:         altar(1); pewRow(P, r, rnd, 0, -1, 1, 2); pewRow(P, r, rnd, 2, -1, 1, 0);
+                     placeAgainst(P, r, rnd, 3, 0, "brazier", false); break;
   }
 }
 
@@ -340,8 +396,13 @@ void furnishLibrary(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
     case PL_BEDS_NS: wallBooks(1); wallBooks(3); desk(2); break;
     case PL_BEDS_EW: wallBooks(0); wallBooks(2); desk(1); break;
     case PL_L:       wallBooks(2); wallBooks(3); desk(1); break;
-    default:         wallBooks(0); wallBooks(1); wallBooks(2); wallBooks(3);
+    case PL_PACK:    wallBooks(0); wallBooks(1); wallBooks(2); wallBooks(3);
                      deskAgainst(P, r, rotDir(2, r.yaw)); break;
+    case PL_CROSS:   wallBooks(0); wallBooks(2); desk(1); desk(3); break;
+    case PL_CORNER:  wallBooks(2); wallBooks(3); desk(2); break;
+    case PL_RING:    wallBooks(0); wallBooks(1); wallBooks(2); wallBooks(3);
+                     { int x, z; rotCell(r, 0, 0, x, z); putFloor(P, x, r.y, z, furn(r, "table")); } break;
+    default:         wallBooks(1); wallBooks(3); desk(0); desk(2); break;
   }
 }
 
@@ -364,8 +425,17 @@ void furnishBarracks(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
     case PL_BEDS_NS: bedsOn(1, 1); bedsOn(3, 3); break;
     case PL_BEDS_EW: bedsOn(0, 0); bedsOn(2, 2); break;
     case PL_L:       bedsOn(2, 2); bedsOn(3, 3); break;
-    default:         bedsOn(0, 0); bedsOn(1, 1); bedsOn(2, 2); bedsOn(3, 3);
-                     int x, z; wallAt(r, 2, 0, x, z); putBarrel(P, x, r.y, z, rotDir(0, r.yaw)); break;
+    case PL_PACK:    bedsOn(0, 0); bedsOn(1, 1); bedsOn(2, 2); bedsOn(3, 3);
+                     { int x, z; wallAt(r, 2, 0, x, z); putBarrel(P, x, r.y, z, rotDir(0, r.yaw)); } break;
+    case PL_CROSS:   bedsOn(1, 1); bedsOn(3, 3);
+                     placeAgainst(P, r, rnd, 0, 0, furn(r, "table"), false);
+                     placeAgainst(P, r, rnd, 2, 0, "armor_stand", false); break;
+    case PL_CORNER:  bedsOn(2, 2); placeAgainst(P, r, rnd, 3, 0, furn(r, "standing_shelf"));
+                     placeAgainst(P, r, rnd, 1, 0, furn(r, "stool"), false); break;
+    case PL_RING:    bedsOn(0, 0); bedsOn(1, 1); bedsOn(2, 2); bedsOn(3, 3);
+                     placeAgainst(P, r, rnd, 0, 1, furn(r, "table"), false); break;
+    default:         bedsOn(1, 1); bedsOn(3, 3); bedsOn(0, 0);
+                     placeAgainst(P, r, rnd, 2, 0, furn(r, "standing_shelf")); break;
   }
 }
 
@@ -381,8 +451,19 @@ void furnishHall(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
     case PL_BEDS_EW: pewRow(P, r, rnd, 0, -1, 1, 2); pewRow(P, r, rnd, 2, -1, 1, 0); break;
     case PL_L:       placeAgainst(P, r, rnd, 2, 0, furn(r, "bench"), false);
                      placeAgainst(P, r, rnd, 3, 0, furn(r, "bench"), false); break;
-    default:         wallBanner(P, r, rotDir(1, r.yaw)); wallBanner(P, r, rotDir(3, r.yaw));
+    case PL_PACK:    wallBanner(P, r, rotDir(1, r.yaw)); wallBanner(P, r, rotDir(3, r.yaw));
                      placeAgainst(P, r, rnd, 0, 0, furn(r, "stool"), false); break;
+    case PL_CROSS:   pewRow(P, r, rnd, 0, -1, 1, 2); pewRow(P, r, rnd, 1, -1, 1, 3);
+                     placeAgainst(P, r, rnd, 2, 0, "brazier", false); break;
+    case PL_CORNER:  placeAgainst(P, r, rnd, 2, -1, furn(r, "standing_shelf"));
+                     placeAgainst(P, r, rnd, 3, -1, furn(r, "bench"), false);
+                     wallBanner(P, r, rotDir(2, r.yaw)); break;
+    case PL_RING:    placeAgainst(P, r, rnd, 0, 0, furn(r, "bench"), false);
+                     placeAgainst(P, r, rnd, 1, 0, furn(r, "bench"), false);
+                     placeAgainst(P, r, rnd, 2, 0, furn(r, "bench"), false);
+                     placeAgainst(P, r, rnd, 3, 0, furn(r, "bench"), false); break;
+    default:         pewRow(P, r, rnd, 1, -1, 1, 3); pewRow(P, r, rnd, 3, -1, 1, 1);
+                     wallBanner(P, r, rotDir(0, r.yaw)); break;
   }
 }
 
@@ -408,20 +489,28 @@ void furnishDining(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
     case PL_BEDS_NS: tables(1, 3); tables(3, 1); break;
     case PL_BEDS_EW: tables(0, 2); tables(2, 0); break;
     case PL_L:       tables(2, 0); tables(3, 1); break;
-    default:         tables(0, 2); tables(1, 3); break;
+    case PL_PACK:    tables(0, 2); tables(1, 3); break;
+    case PL_CROSS:   tables(0, 2); tables(1, 3); placeAgainst(P, r, rnd, 2, 0, furn(r, "cabinet")); break;
+    case PL_CORNER:  tables(2, 0); placeAgainst(P, r, rnd, 3, 0, furn(r, "cabinet")); break;
+    case PL_RING:    tables(0, 2); tables(1, 3); tables(2, 0); tables(3, 1); break;
+    default:         tables(1, 3); tables(3, 1); placeAgainst(P, r, rnd, 0, 0, furn(r, "cabinet")); break;
   }
   int x, z; wallAt(r, 3, 0, x, z); putBarrel(P, x, r.y, z, rotDir(1, r.yaw));
   wallAt(r, 1, 0, x, z); putBarrel(P, x, r.y, z, rotDir(3, r.yaw));
 }
 
 void furnishKitchen(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
-  const int cook = (pat == PL_DAIS_N) ? 0 : (pat == PL_L) ? 3 : 2;
+  const int cook = (pat == PL_DAIS_N || pat == PL_CROSS) ? 0
+                 : (pat == PL_L || pat == PL_CORNER) ? 3
+                 : (pat == PL_SPLIT) ? 1 : 2;
   placeAgainst(P, r, rnd, cook, 0, PLK("smoker", "furnace"), false);
   placeAgainst(P, r, rnd, cook, 1, "cauldron", false);
   deskAgainst(P, r, rotDir((cook + 2) & 3, r.yaw));
   int x, z; wallAt(r, 3, -1, x, z); putBarrel(P, x, r.y, z, rotDir(1, r.yaw));
   placeAgainst(P, r, rnd, 1, 0, furn(r, "cabinet"));
-  if (pat == PL_PACK || pat == PL_SHELVES) placeAgainst(P, r, rnd, 0, 0, "crafting_table", false);
+  if (pat == PL_PACK || pat == PL_SHELVES || pat == PL_RING)
+    placeAgainst(P, r, rnd, 0, 0, "crafting_table", false);
+  if (pat == PL_CROSS || pat == PL_SPLIT) potsOn(P, r, rnd, (cook + 1) & 3, -1, 1);
 }
 
 void furnishArmoury(SP& P, const ProcRoom& r, Mulberry32& rnd, const ProcChestFn& chest, int pat) {
@@ -429,7 +518,9 @@ void furnishArmoury(SP& P, const ProcRoom& r, Mulberry32& rnd, const ProcChestFn
     if (!chest || !floorOk(P, x, y, z)) return;
     chest(x, y, z, k, mimic);
   };
-  const int rack = (pat == PL_DAIS_N) ? 0 : (pat == PL_DAIS_S) ? 2 : 1;
+  const int rack = (pat == PL_DAIS_N || pat == PL_CROSS) ? 0
+                 : (pat == PL_DAIS_S || pat == PL_CORNER) ? 2
+                 : (pat == PL_SPLIT) ? 3 : 1;
   placeAgainst(P, r, rnd, rack, 0, PLK("weapon_rack", "armor_stand"), false);
   placeAgainst(P, r, rnd, rack, 1, "armor_stand", false);
   int x, z; wallAt(r, 0, 0, x, z);
@@ -437,6 +528,10 @@ void furnishArmoury(SP& P, const ProcRoom& r, Mulberry32& rnd, const ProcChestFn
   placeAgainst(P, r, rnd, (rack + 2) & 3, 0, furn(r, "shelf"));
   wallAt(r, (rack + 2) & 3, 1, x, z);
   ch(x, r.y, z, "rare", false);
+  if (pat == PL_RING || pat == PL_PACK) {
+    placeAgainst(P, r, rnd, (rack + 1) & 3, 0, "armor_stand", false);
+    placeAgainst(P, r, rnd, (rack + 3) & 3, 0, PLK("weapon_rack", "armor_stand"), false);
+  }
 }
 
 void furnishCells(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
@@ -445,7 +540,8 @@ void furnishCells(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
     if (isAir(P, x, r.y, z) || floorOk(P, x, r.y, z)) P.put(x, r.y, z, "iron_bars", 0);
     if (isAir(P, x, r.y + 1, z)) P.put(x, r.y + 1, z, "iron_bars", 0);
   };
-  const int d0 = (pat == PL_BEDS_EW || pat == PL_DAIS_N) ? 0 : 1;
+  const int d0 = (pat == PL_BEDS_EW || pat == PL_DAIS_N || pat == PL_CROSS) ? 0
+               : (pat == PL_CORNER) ? 2 : 1;
   const int d1 = (d0 + 2) & 3;
   const int span = ((rotDir(d0, r.yaw) == 0 || rotDir(d0, r.yaw) == 2) ? r.rx : r.rz) - 1;
   for (int t = -span; t <= span; t++) {
@@ -463,7 +559,9 @@ void furnishCells(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
 }
 
 void furnishWorkshop(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
-  const int side = (pat == PL_DAIS_N) ? 0 : (pat == PL_L) ? 3 : 1;
+  const int side = (pat == PL_DAIS_N || pat == PL_CROSS) ? 0
+                 : (pat == PL_L || pat == PL_CORNER) ? 3
+                 : (pat == PL_SPLIT) ? 2 : 1;
   if (r.kind == "forge") {
     placeAgainst(P, r, rnd, side, 0, "anvil", false);
     placeAgainst(P, r, rnd, side, 1, PLK("blast_furnace", "furnace"), false);
@@ -491,21 +589,30 @@ void furnishCrypt(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
     case PL_BEDS_NS: coffins(1); coffins(3); break;
     case PL_BEDS_EW: coffins(0); coffins(2); break;
     case PL_L:       coffins(2); coffins(3); break;
-    default:         coffins(0); coffins(1); coffins(2); coffins(3); break;
+    case PL_PACK:    coffins(0); coffins(1); coffins(2); coffins(3); break;
+    case PL_CROSS:   coffins(0); coffins(2); coffins(1); coffins(3); break;
+    case PL_CORNER:  coffins(2); coffins(3); break;
+    case PL_RING:    coffins(0); coffins(1); coffins(2); coffins(3);
+                     { int x, z; rotCell(r, 0, 0, x, z); P.put(x, r.y, z, r.slab, 0); } break;
+    default:         coffins(1); coffins(3); coffins(0); break;
   }
   int x, z; wallAt(r, 2, 0, x, z); P.put(x, r.y, z, r.slab, 0);
   putHang(P, r.x - std::max(1, r.rx / 2), r.y + r.H - 1, r.z - std::max(1, r.rz / 2), "soul_lantern");
 }
 
 void furnishStore(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
-  const int wall = (pat == PL_DAIS_N) ? 0 : (pat == PL_BEDS_NS) ? 1 : 3;
+  const int wall = (pat == PL_DAIS_N || pat == PL_CROSS) ? 0
+                 : (pat == PL_BEDS_NS || pat == PL_SPLIT) ? 1
+                 : (pat == PL_CORNER) ? 2 : 3;
   for (int i : {-2, -1, 1}) {
     if (std::abs(i) > ((rotDir(wall, r.yaw) == 0 || rotDir(wall, r.yaw) == 2) ? r.rx : r.rz)) continue;
     int x, z; wallAt(r, wall, i, x, z);
     putBarrel(P, x, r.y, z, rotDir((wall + 2) & 3, r.yaw));
     placeAgainst(P, r, rnd, (wall + 2) & 3, i, furn(r, "standing_shelf"));
   }
-  if (pat == PL_PACK || pat == PL_LONG) placeAgainst(P, r, rnd, 2, 0, furn(r, "table"), false);
+  if (pat == PL_PACK || pat == PL_LONG || pat == PL_RING)
+    placeAgainst(P, r, rnd, 2, 0, furn(r, "table"), false);
+  if (pat == PL_RING || pat == PL_CROSS) extraBarrels(P, r, rnd);
 }
 
 void furnishLoot(SP& P, const ProcRoom& r, Mulberry32& rnd, const ProcChestFn& chest, int pat) {
@@ -513,13 +620,17 @@ void furnishLoot(SP& P, const ProcRoom& r, Mulberry32& rnd, const ProcChestFn& c
     if (!chest || !floorOk(P, x, y, z)) return;
     chest(x, y, z, k, mimic);
   };
-  const int back = (pat == PL_DAIS_N) ? 0 : (pat == PL_L) ? 3 : 2;
+  const int back = (pat == PL_DAIS_N || pat == PL_CROSS) ? 0 : (pat == PL_L || pat == PL_CORNER) ? 3 : 2;
   int x, z; wallAt(r, back, 0, x, z);
-  ch(x, r.y, z, pat == PL_PACK ? "rare" : "common", rnd() < 0.08);
+  ch(x, r.y, z, pat == PL_PACK || pat == PL_RING ? "rare" : "common", rnd() < 0.08);
   wallAt(r, back, 1, x, z);
   putBarrel(P, x, r.y, z, frontTo(x, z, r.x, r.z));
   placeAgainst(P, r, rnd, (back + 2) & 3, 0, furn(r, "standing_shelf"));
   placeAgainst(P, r, rnd, 1, 0, "decorated_pot", false);
+  if (pat == PL_SPLIT || pat == PL_RING) {
+    wallAt(r, (back + 2) & 3, -1, x, z);
+    putBarrel(P, x, r.y, z, frontTo(x, z, r.x, r.z));
+  }
 }
 
 void furnishVault(SP& P, const ProcRoom& r, Mulberry32& rnd, const ProcChestFn& chest, int pat) {
@@ -527,7 +638,7 @@ void furnishVault(SP& P, const ProcRoom& r, Mulberry32& rnd, const ProcChestFn& 
     if (!chest || !floorOk(P, x, y, z)) return;
     chest(x, y, z, k, mimic);
   };
-  const int back = (pat == PL_DAIS_N) ? 0 : 2;
+  const int back = (pat == PL_DAIS_N || pat == PL_CROSS) ? 0 : (pat == PL_CORNER || pat == PL_L) ? 3 : 2;
   for (int i = -1; i <= 1; i++) {
     int x, z; wallAt(r, back, i, x, z);
     P.put(x, r.y, z, r.slab, 0);
@@ -544,7 +655,7 @@ void furnishBoss(SP& P, const ProcRoom& r, Mulberry32& rnd, const ProcChestFn& c
     chest(x, y, z, k, mimic);
   };
   cornerPillars(P, r, true);
-  const int dais = (pat == PL_DAIS_N) ? 0 : 2;
+  const int dais = (pat == PL_DAIS_N || pat == PL_CROSS) ? 0 : (pat == PL_CORNER) ? 3 : 2;
   for (int a = -2; a <= 2; a++) daisSlab(P, r, dais, a);
   int x, z; wallAt(r, dais, 0, x, z);
   const std::string throne = hasBlock("altar") && r.kind == "nave" ? "altar" : furn(r, "chair");
@@ -584,6 +695,59 @@ void furnishEntry(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
     int x, z; wallAt(r, 0, 0, x, z);
     putBarrel(P, x, r.y, z, frontTo(x, z, r.x, r.z));
   }
+  if (pat == PL_CROSS || pat == PL_RING) potsOn(P, r, rnd, 0, -1, 1);
+  if (pat == PL_CORNER) placeAgainst(P, r, rnd, 2, -1, furn(r, "bench"), false);
+}
+
+void furnishBrewery(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
+  const int side = (pat == PL_DAIS_N || pat == PL_CROSS) ? 0 : (pat == PL_CORNER) ? 3 : 2;
+  placeAgainst(P, r, rnd, side, 0, PLK("brewing_stand", "cauldron"), false);
+  placeAgainst(P, r, rnd, side, 1, "cauldron", false);
+  placeAgainst(P, r, rnd, (side + 2) & 3, 0, furn(r, "cabinet"));
+  int x, z; wallAt(r, (side + 1) & 3, 0, x, z); putBarrel(P, x, r.y, z, rotDir((side + 3) & 3, r.yaw));
+  if (pat == PL_PACK || pat == PL_RING) potsOn(P, r, rnd, (side + 3) & 3, -1, 1);
+}
+
+void furnishBath(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
+  putFloor(P, r.x, r.y, r.z, "cauldron");
+  for (auto [dx, dz] : {std::pair{-1, 0}, {1, 0}, {0, -1}, {0, 1}})
+    P.put(r.x + dx, r.y, r.z + dz, r.slab, 0);
+  const int side = (pat == PL_CORNER) ? 2 : (pat == PL_SPLIT) ? 1 : 0;
+  placeAgainst(P, r, rnd, side, 0, furn(r, "stool"), false);
+  int x, z; wallAt(r, (side + 2) & 3, 0, x, z);
+  putHang(P, x, r.y + r.H - 1, z, "chain");
+  if (pat == PL_RING || pat == PL_PACK) {
+    wallAt(r, 1, 1, x, z); putFloor(P, x, r.y, z, "cauldron");
+    wallAt(r, 3, -1, x, z); putFloor(P, x, r.y, z, "cauldron");
+  }
+}
+
+void furnishGreenhouse(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
+  potsOn(P, r, rnd, 0, -1, 1);
+  potsOn(P, r, rnd, 2, -1, 1);
+  if (pat == PL_RING || pat == PL_PACK || pat == PL_CROSS) {
+    potsOn(P, r, rnd, 1, -1, 1);
+    potsOn(P, r, rnd, 3, -1, 1);
+  }
+  placeAgainst(P, r, rnd, (pat == PL_CORNER) ? 3 : 1, 0, "composter", false);
+  int x, z; rotCell(r, 0, 0, x, z);
+  putFloor(P, x, r.y, z, hasBlock("moss_block") ? "moss_block" : r.slab);
+}
+
+void furnishObservatory(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
+  cornerPillars(P, r, true);
+  deskAgainst(P, r, rotDir((pat == PL_DAIS_N || pat == PL_CROSS) ? 0 : 2, r.yaw));
+  int x, z; wallAt(r, 0, 0, x, z);
+  putFloor(P, x, r.y, z, "lectern", (u8)rotDir(0, r.yaw));
+  placeAgainst(P, r, rnd, 1, 0, hasBlock("cartography_table") ? "cartography_table" : furn(r, "table"), false);
+  if (pat == PL_RING || pat == PL_PACK) placeAgainst(P, r, rnd, 3, 0, furn(r, "standing_shelf"));
+  wallBanner(P, r, rotDir(2, r.yaw));
+}
+
+void furnishPantry(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
+  furnishStore(P, r, rnd, pat);
+  potsOn(P, r, rnd, (pat == PL_CORNER) ? 2 : 0, -1, 1);
+  placeAgainst(P, r, rnd, 1, 0, "decorated_pot", false);
 }
 
 } // namespace
@@ -592,10 +756,11 @@ void furnishProcRoom(SP& P, const ProcRoom& r, const ProcChestFn& chest) {
   Mulberry32 rnd(r.seed ? r.seed : 1);
   wallLights(P, r, rnd);
   clutterCorners(P, r, rnd);
-  const int pat = r.pattern & 7;
+  const int pat = ((r.pattern % PROC_PATTERN_N) + PROC_PATTERN_N) % PROC_PATTERN_N;
+  palAccent(P, r, pat);
   const std::string& k = r.kind;
   if (k == "chapel" || k == "shrine") furnishChapel(P, r, rnd, pat);
-  else if (k == "library" || k == "scriptorium") furnishLibrary(P, r, rnd, pat);
+  else if (k == "library" || k == "scriptorium" || k == "archive") furnishLibrary(P, r, rnd, pat);
   else if (k == "barracks" || k == "sleeping") furnishBarracks(P, r, rnd, pat);
   else if (k == "hall" || k == "gallery") furnishHall(P, r, rnd, pat);
   else if (k == "dining" || k == "refectory") furnishDining(P, r, rnd, pat);
@@ -605,12 +770,17 @@ void furnishProcRoom(SP& P, const ProcRoom& r, const ProcChestFn& chest) {
   else if (k == "workshop" || k == "forge" || k == "office") furnishWorkshop(P, r, rnd, pat);
   else if (k == "crypt") furnishCrypt(P, r, rnd, pat);
   else if (k == "store") furnishStore(P, r, rnd, pat);
+  else if (k == "pantry") furnishPantry(P, r, rnd, pat);
   else if (k == "loot") furnishLoot(P, r, rnd, chest, pat);
-  else if (k == "vault") furnishVault(P, r, rnd, chest, pat);
+  else if (k == "vault" || k == "treasury") furnishVault(P, r, rnd, chest, pat);
   else if (k == "boss" || k == "nave") furnishBoss(P, r, rnd, chest, pat);
   else if (k == "spawner") furnishSpawner(P, r, pat);
   else if (k == "well") furnishWell(P, r);
-  else if (k == "entry") furnishEntry(P, r, rnd, pat);
+  else if (k == "entry" || k == "alcove") furnishEntry(P, r, rnd, pat);
+  else if (k == "brewery") furnishBrewery(P, r, rnd, pat);
+  else if (k == "bath") furnishBath(P, r, rnd, pat);
+  else if (k == "greenhouse") furnishGreenhouse(P, r, rnd, pat);
+  else if (k == "observatory") furnishObservatory(P, r, rnd, pat);
   else furnishHall(P, r, rnd, pat);
   if (r.clutter >= 2) extraBarrels(P, r, rnd);
 }

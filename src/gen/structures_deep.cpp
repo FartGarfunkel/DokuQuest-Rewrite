@@ -70,6 +70,8 @@ static void strongholdBuild(ChunkWriter& w, const StructurePlan& S) {
   for (auto [x, z] : {std::pair{cx - 4, cz - 33}, {cx + 4, cz - 33}, {cx - 4, cz - 25}, {cx + 4, cz - 25}}) P.put(x, cy + 1, z, "lantern");
   P.fill(cx - 1, cy + 1, cz - 30, cx + 1, cy + 1, cz - 28, "stone_brick_slab");
   P.put(cx, cy + 2, cz - 29, "chiseled_stone_bricks");
+  furnishPlaced(P, cx, cy + 1, cz - 29, 4, 4, 5, "hall",
+                hash32(cx, cy, cz - 29, (i32)S.seed), PAL_CRYPT, 0);
   // ---- the library: walls of books, an old book on its stand, a chest ----
   for (int z = cz - 37; z <= cz - 21; z++) for (int y = cy + 1; y <= cy + 5; y++) {
     P.put(cx - 18, y, z, P.hw(cx - 18, y, z, 5) < 0.12 ? "cobweb" : "bookshelf");
@@ -90,7 +92,7 @@ static void strongholdBuild(ChunkWriter& w, const StructurePlan& S) {
     pr.kind = kind; pr.x = x; pr.y = y; pr.z = z; pr.rx = rx; pr.rz = rz; pr.H = H;
     pr.seed = hash32(x, y, z, salt); pr.wood = "oak"; pr.light = "lantern"; pr.hangLight = "lantern";
     pr.pillar = "stone_bricks"; pr.slab = "stone_brick_slab"; pr.density = 0.7f;
-    applyProcLayout(pr, ProcLayout{(int)(pr.seed % 4), (int)((pr.seed >> 4) % 8), (int)(salt & 1u), 1});
+    applyProcLayout(pr, ProcLayout{(int)(pr.seed % 4), (int)((pr.seed >> 4) % PROC_PATTERN_N), (int)(salt & 1u), 1});
     pr.light = "lantern"; pr.hangLight = "lantern";
     furnishProcRoom(P, pr);   // the hold's own chests already sit on the library and storeroom walls
   };
@@ -200,7 +202,7 @@ static void cityBuild(ChunkWriter& w, const StructurePlan& S) {
     P.chest(hx - dsx * 3 + (doorX ? 0 : 2), y, hz - dsz * 3 + (doorX ? 2 : 0), 0, "ancient_city");
     P.put(hx - dsx * 3 - (doorX ? 0 : 2), y, hz - dsz * 3 - (doorX ? 2 : 0), "candle");
     static const char* CK[] = {"sleeping", "store", "library", "shrine", "office", "crypt"};
-    furnishPlaced(P, hx, y, hz, 3, 3, 4, CK[k % 6], hash32(hx, y, hz, (i32)S.seed), 2, 1);
+    furnishPlaced(P, hx, y, hz, 3, 3, 4, CK[k % 6], hash32(hx, y, hz, (i32)S.seed), PAL_BLACK, 1);
     for (int t = 0; t < 4; t++) { const int x = hx - 2 + jsFloor(P.h(hx, t, hz, 21) * 5), z = hz - 2 + jsFloor(P.h(hx, t, hz, 22) * 5); if (P.get(x, y, z) == AIR) P.put(x, y, z, "sculk_vein"); }
     // a path of polished deepslate to the dais
     for (int s = 5; s < 14; s++) { const int x = jsRound(hx - std::cos(a) * s), z = jsRound(hz - std::sin(a) * s); P.put(x, fy, z, "polished_slate"); }
@@ -406,9 +408,11 @@ static void dhBuild(ChunkWriter& w, const StructurePlan& S) {
     if (role == "secret") { P.chest(x, F.y + 1, z, 0, "deep_secret"); P.chest(x + 4, F.y + 1, z, 0, "deep_secret"); }
     if (role == "vault") { P.chest(x, F.y + 1, z, 0, "deep_vault"); P.chest(x + 2, F.y + 1, z, 0, "deep_vault"); P.chest(x + 4, F.y + 1, z, 0, "deep_vault"); }
     const int mx = X0 + q[0] * C + (C >> 1), mz = Z0 + q[1] * C + (C >> 1);
+    if (role == "trap" || role == "puzzle" || role == "stair") continue;
     const char* k = role == "boss" ? "boss" : role == "vault" ? "vault" : role == "secret" ? "armoury"
-                   : role == "key" ? "office" : role == "cage" ? "cells" : "hall";
-    furnishPlaced(P, mx, F.y + 1, mz, 4, 4, 6, k, hash32(mx, F.y, mz, (i32)S.seed), F.f == 2 ? 2 : 0, 1);
+                   : role == "keyroom" ? "office" : role == "cage" ? "cells"
+                   : role == "captain" ? "barracks" : role == "entry" ? "entry" : "hall";
+    furnishPlaced(P, mx, F.y + 1, mz, 4, 4, 6, k, hash32(mx, F.y, mz, (i32)S.seed), PAL_BLACK, 1);
   }
   // the levers (on the floor, all off)
   if (E.puzzle) for (const auto& [x, y, z] : E.levers) P.put(x, y, z, "lever", 0);
@@ -474,6 +478,16 @@ static void tvBuild(ChunkWriter& w, const StructurePlan& S) {
   for (auto [a, b] : {std::pair{0, 0}, {1, 0}, {0, 1}, {1, 1}}) { const int x = a ? E.arena[2] - 2 : E.arena[0] + 2, z = b ? E.arena[3] - 2 : E.arena[1] + 2; P.put(x, y + 1, z, "chiseled_stone_bricks"); P.put(x, y + 2, z, "campfire"); }
   for (int k = 0; k < 4; k++) P.chest(E.vault[0] + 1 + k * 2, y + 1, E.vault[1] + 1, 2, "twin_vault");
   P.lectern(E.ante[0] + 4, y + 1, E.ante[3] - 1, 0, "twin_vault");
+  {
+    const int ax = (E.ante[0] + E.ante[2]) / 2, az = (E.ante[1] + E.ante[3]) / 2;
+    const int arx = std::max(1, (E.ante[2] - E.ante[0]) / 2 - 1);
+    const int arz = std::max(1, (E.ante[3] - E.ante[1]) / 2 - 1);
+    furnishPlaced(P, ax, y + 1, az, arx, arz, 4, "entry", hash32(ax, y, az, (i32)S.seed), PAL_BLACK, 0);
+    const int vx = (E.vault[0] + E.vault[2]) / 2, vz = (E.vault[1] + E.vault[3]) / 2;
+    const int vrx = std::max(1, (E.vault[2] - E.vault[0]) / 2 - 1);
+    const int vrz = std::max(1, (E.vault[3] - E.vault[1]) / 2 - 1);
+    furnishPlaced(P, vx, y + 1, vz, vrx, vrz, 4, "store", hash32(vx, y, vz, (i32)S.seed), PAL_BLACK, 1);
+  }
   // the way down, and two black obelisks on the land
   for (int yy = E.shBottom; yy <= E.shTop; yy++) P.put(E.shX, yy, E.shZ, "ladder", 2);
   for (int yy = y + 6; yy <= E.shTop + 3; yy++) for (auto [dx, dz] : {std::pair{-1, 0}, {1, 0}, {0, 1}, {-1, 1}, {1, 1}})
@@ -530,7 +544,7 @@ static void coveBuild(ChunkWriter& w, const StructurePlan& S) {
   P.put(cx, y + 1, cz, "campfire");
   P.chest(cx - 2, gy(cx - 2, cz + 1) + 1, cz + 1, 2, "pirate"); P.chest(cx + 2, gy(cx + 2, cz + 1) + 1, cz + 1, 2, "pirate"); P.chest(cx, gy(cx, cz - 5) + 1, cz - 5, 2, "pirate");
   for (auto [bx, bz] : {std::pair{cx + 5, cz + 1}, {cx + 5, cz + 2}, {cx - 5, cz + 2}}) P.put(bx, gy(bx, bz) + 1, bz, "barrel");
-  furnishPlaced(P, cx, y + 1, cz, 5, 5, 4, "store", hash32(cx, y, cz, (i32)S.seed), 4, 2);
+  furnishPlaced(P, cx, y + 1, cz, 5, 5, 4, "store", hash32(cx, y, cz, (i32)S.seed), PAL_OAK, 2);
   const int fx = cx + 6, fz = cz - 5, fy = gy(fx, fz);
   for (int k = 1; k <= 6; k++) P.put(fx, fy + k, fz, "oak_fence");
   for (int k = 0; k < 3; k++) for (int j = 0; j < 2; j++) P.put(fx + 1 + k, fy + 5 + j, fz, hasBlock("black_wool") ? "black_wool" : "wool");

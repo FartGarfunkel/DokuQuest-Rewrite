@@ -139,14 +139,17 @@ static void ruinBuild(ChunkWriter& w, const StructurePlan& S) {
     const int arx = std::max(1, (ax1 - ax0) / 2 - 1), arz = std::max(1, (az1 - az0) / 2 - 1);
     Mulberry32 ra(hash32(mx, S.y, mz, 11));
     furnishPlaced(P, mx, S.y + 1, mz, arx, arz, std::max(3, R.aH), pickProcKind(ra, "", 0),
-                  hash32(mx, S.y, mz, (i32)S.seed), R.style == 2 ? 2 : R.style == 1 ? 0 : 1, 3);
+                  hash32(mx, S.y, mz, (i32)S.seed),
+                  R.style == 2 ? PAL_ICE : R.style == 1 ? PAL_SAND : PAL_MOSSY, 3);
   }
   const int hrx = std::max(2, (x1m - x0m) / 2 - 1), hrz = std::max(2, (z1m - z0m) / 2 - 1);
   Mulberry32 rh(hash32(cx, S.y, cz, 7));
   furnishPlaced(P, cx, S.y + 1, cz, hrx, hrz, std::max(3, R.maxH), pickProcKind(rh, "", 1),
-                hash32(cx, S.y, cz, (i32)S.seed), R.style == 2 ? 2 : R.style == 1 ? 0 : 1, 3);
+                hash32(cx, S.y, cz, (i32)S.seed),
+                R.style == 2 ? PAL_ICE : R.style == 1 ? PAL_SAND : PAL_MOSSY, 3);
   if (R.cellar)
-    furnishPlaced(P, cx, S.y - 4, cz, 1, 1, 3, "store", hash32(cx, S.y, cz, 19), 1, 3);
+    furnishPlaced(P, cx, S.y - 4, cz, 1, 1, 3, "store", hash32(cx, S.y, cz, 19),
+                  R.style == 2 ? PAL_ICE : R.style == 1 ? PAL_SAND : PAL_MOSSY, 3);
 }
 
 // ==== Mage towers ====================================================================================================
@@ -237,10 +240,10 @@ static void towerBuild(ChunkWriter& w, const StructurePlan& S) {
   P.chest(cx, L(3), cz + 3, 0, "archmage");
   for (auto [a, b] : {std::pair{2, 2}, {-2, 2}, {2, -2}, {-2, -2}}) P.put(cx + a, L(3), cz + b, "soul_lantern");
   const int tr = std::max(2, R - 2);
-  furnishPlaced(P, cx, L(0), cz, tr, tr, 4, "workshop", hash32(cx, L(0), cz, (i32)S.seed), 2, 1);
-  furnishPlaced(P, cx, L(1), cz, std::max(2, R - 3), std::max(2, R - 3), 4, "library", hash32(cx, L(1), cz, (i32)S.seed), 2, 1);
-  furnishPlaced(P, cx, L(2), cz, tr, tr, 4, "office", hash32(cx, L(2), cz, (i32)S.seed), 2, 2);
-  furnishPlaced(P, cx, L(3), cz, tr, tr, 4, "nave", hash32(cx, L(3), cz, (i32)S.seed), 2, 1);
+  furnishPlaced(P, cx, L(0), cz, tr, tr, 4, "workshop", hash32(cx, L(0), cz, (i32)S.seed), PAL_SLATE, 1);
+  furnishPlaced(P, cx, L(1), cz, std::max(2, R - 3), std::max(2, R - 3), 4, "library", hash32(cx, L(1), cz, (i32)S.seed), PAL_SLATE, 1);
+  furnishPlaced(P, cx, L(2), cz, tr, tr, 4, "office", hash32(cx, L(2), cz, (i32)S.seed), PAL_SLATE, 2);
+  furnishPlaced(P, cx, L(3), cz, tr, tr, 4, "nave", hash32(cx, L(3), cz, (i32)S.seed), PAL_SLATE, 1);
 }
 
 // ==== Desert temples =================================================================================================
@@ -303,8 +306,8 @@ static void desertBuild(ChunkWriter& w, const StructurePlan& S) {
   for (auto [dx, dz] : {std::pair{-3, -3}, {3, -3}, {-3, 3}, {3, 3}}) { P.put(cx + dx, yf + 1, cz + dz, chis); P.put(cx + dx, yf + 2, cz + dz, OT); }
   Mulberry32 rd(hash32(cx, y, cz, 3));
   furnishPlaced(P, cx, y + 1, cz, 6, 5, 6, pickProcKind(rd, "", 2),
-                hash32(cx, y, cz, (i32)S.seed), 0, 1);
-  furnishPlaced(P, cx, yf + 1, cz, 2, 2, 3, "vault", hash32(cx, yf, cz, (i32)S.seed), 0, 2);
+                hash32(cx, y, cz, (i32)S.seed), PAL_SAND, 1);
+  furnishPlaced(P, cx, yf + 1, cz, 2, 2, 3, "vault", hash32(cx, yf, cz, (i32)S.seed), PAL_SAND, 2);
 }
 
 // ==== Sunken temples =================================================================================================
@@ -358,7 +361,7 @@ static void oceanBuild(ChunkWriter& w, const StructurePlan& S) {
     }
   }
   P.chest(cx + 2, y + 1, cz + 2, 0, "ocean"); P.chest(cx - 2, y + 1, cz + 2, 0, "ocean");
-  furnishPlaced(P, cx, y + 1, cz, 7, 7, 5, "shrine", hash32(cx, y, cz, (i32)S.seed), 2, 1);
+  furnishPlaced(P, cx, y + 1, cz, 7, 7, 5, "shrine", hash32(cx, y, cz, (i32)S.seed), PAL_PRISM, 1);
 }
 
 // ==== Shipwrecks =====================================================================================================
@@ -554,7 +557,7 @@ static void mineBuild(ChunkWriter& w, const StructurePlan& S) {
       pr.x = ox; pr.y = y; pr.z = oz; pr.rx = 2; pr.rz = 2; pr.H = 3;
       pr.seed = hash32(ox, y, oz, (i32)S.seed); pr.wood = "oak"; pr.light = "torch"; pr.hangLight = "lantern";
       pr.pillar = "log"; pr.slab = "oak_slab"; pr.density = 0.55f;
-      applyProcLayout(pr, ProcLayout{(int)(pr.seed % 4), (int)((pr.seed >> 2) % 8), P.h(ox, 1, oz, 17) < 0.5 ? 4 : 5, 1});
+      applyProcLayout(pr, ProcLayout{(int)(pr.seed % 4), (int)((pr.seed >> 2) % PROC_PATTERN_N), P.h(ox, 1, oz, 17) < 0.5 ? PAL_OAK : PAL_SPRUCE, 1});
       furnishProcRoom(P, pr);
     }
   }
@@ -798,7 +801,7 @@ struct LabGen {
       place(blockX, blockY - 1, blockZ, LK_SPAWN, 0, mob);
     }
     static const char* DK[] = {"crypt", "armoury", "store", "office"};
-    if (doSpawner) e.rooms.push_back({blockX, blockY - 1, blockZ, 3, 3, 4, DK[nextInt(4)]});
+    e.rooms.push_back({blockX, blockY - 1, blockZ, 3, 3, 4, DK[nextInt(4)]});
   }
 
   void cornerPost(int x, int y, int z, int blockX, int blockZ, int zRoom) {
@@ -1025,7 +1028,8 @@ static void mazeBuild(ChunkWriter& w, const StructurePlan& S) {
   for (const auto& r : M.rooms) {
     if (r.kind == "library") continue;
     furnishPlaced(P, r.x, r.y, r.z, r.rx, r.rz, r.H, r.kind,
-                  hash32(r.x, r.y, r.z, (i32)S.seed), M.cold ? 2 : 1, 1);
+                  hash32(r.x, r.y, r.z, (i32)S.seed),
+                  M.cold ? PAL_ICE : M.wallA == "sandstone" ? PAL_SAND : PAL_MOSSY, 1);
   }
 }
 

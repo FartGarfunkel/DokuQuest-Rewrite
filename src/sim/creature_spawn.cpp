@@ -764,7 +764,7 @@ public:
         for (int i = 0, n = 2 + (int)(frand() * 3); i < n; i++)
           if (Creature* o = spawnCreature(lv, realm, "raider", vec3(x + 0.5f + (frand() - 0.5f) * 3, y, z + 0.5f + (frand() - 0.5f) * 3))) { o->leader = m->id; if (frand() < 0.35f) o->heldItem = "stone_axe"; }
       }
-      if (t == "drowned" && frand() < 0.2f) m->heldItem = "iron_sword";
+      if (t == "drowned" && frand() < 0.2f) m->heldItem = "copper_sword";
     };
     const bool deep = isUnderworld(dimOfY(ifloor(p.pos.y)));   // (the deep world's Underworld: only the dark below)
     // at night, out in the open: only where no torch or lamp reaches at all (light 0)

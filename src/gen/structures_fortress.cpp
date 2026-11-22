@@ -206,7 +206,7 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
         pr.x = cx; pr.y = y + 1; pr.z = cz; pr.rx = std::max(3, H - 1); pr.rz = std::max(3, H - 1); pr.H = 4;
         pr.seed = hash32(cx, y, cz, (i32)S.seed); pr.wood = "crimson"; pr.light = "soul_torch"; pr.hangLight = "soul_lantern";
         pr.pillar = "nether_bricks"; pr.slab = "nether_brick_slab"; pr.density = 0.7f;
-        applyProcLayout(pr, ProcLayout{(int)(pr.seed % 4), (int)((pr.seed >> 3) % 8), 3, 1 + (int)((pr.seed >> 6) % 3)});
+        applyProcLayout(pr, ProcLayout{(int)(pr.seed % 4), (int)((pr.seed >> 3) % PROC_PATTERN_N), PAL_NETHER, 1 + (int)((pr.seed >> 6) % 3)});
         furnishProcRoom(P, pr);
         break;
       }
@@ -215,6 +215,11 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
         if (P.h(cx, 1, cz, 4) < 0.5 && P.in(cx, cz)) P.chest(cx, y + 1, cz, 0, "nether_fortress");
         break;
       }
+      case F_CROSS:
+        if (n.castle)
+          furnishPlaced(P, cx, y + 1, cz, 3, 3, 4, "hall",
+                        hash32(cx, y, cz, (i32)S.seed), PAL_NETHER, 1);
+        break;
       default: break;
     }
   }

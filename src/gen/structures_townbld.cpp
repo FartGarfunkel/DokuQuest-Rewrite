@@ -63,6 +63,16 @@ const std::vector<std::string>& townDecor(const std::string& kind) {
     m["tools"] = {"copper_pickaxe", "copper_shovel", "bronze_axe", "shears", "copper_ingot", "coal"};
     m["chest"] = {"copper_chestplate", "bronze_chestplate"};
     m["helm"] = {"copper_helmet", "bronze_helmet"};
+    if (m.count("goods")) {
+      std::vector<std::string> g;
+      for (const auto& id : m["goods"]) if (id != "iron_ingot") g.push_back(id == "iron_nugget" ? "copper_ingot" : id);
+      m["goods"] = std::move(g);
+    }
+    if (m.count("books")) {
+      std::vector<std::string> b;
+      for (const auto& id : m["books"]) b.push_back(id == "enchanted_book" ? "book" : id);
+      m["books"] = std::move(b);
+    }
     return m;
   }();
   static const std::vector<std::string> none;

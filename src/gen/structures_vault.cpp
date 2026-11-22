@@ -127,7 +127,7 @@ static void wayvaultBuild(ChunkWriter& w, const StructurePlan& S) {
   for (const auto& r : v.rooms) {
     const char* k = r.role == "vault" ? "vault" : r.role == "ante" ? "entry" : "hall";
     furnishPlaced(P, ox + r.x, oy + kAir0, oz + r.z, std::max(1, r.rx - 1), std::max(1, r.rz - 1), 4, k,
-                  hash32(ox + r.x, oy, oz + r.z, (i32)S.seed), 1, r.role == "vault" ? 2 : 1);
+                  hash32(ox + r.x, oy, oz + r.z, (i32)S.seed), PAL_MOSSY, r.role == "vault" ? 2 : 1);
   }
   // Air from the ante ceiling up through the shaft top, cobblestone around it. The sleeve starts at the
   // ceiling, so it does not fill the ante. place stored the sampled surface; a higher column is opened too.

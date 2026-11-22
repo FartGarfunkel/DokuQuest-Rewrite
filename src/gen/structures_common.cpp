@@ -140,11 +140,27 @@ static json stripDumpGems(const json& src) {
   }
   return out;
 }
+// dumpGem leaves iron. At spawn (tier 0) a pirate wreck still rolled iron_sword; map those pieces to copper. Not iron_ingot.
+static void remapSpawnIron(json& table) {
+  if (!table.is_array()) return;
+  for (auto& e : table) {
+    if (!e.is_array() || e.empty() || !e[0].is_string()) continue;
+    const std::string id = e[0].get<std::string>();
+    if (id == "iron_sword") e[0] = "copper_sword";
+    else if (id == "iron_helmet") e[0] = "copper_helmet";
+    else if (id == "iron_pickaxe") e[0] = "copper_pickaxe";
+    else if (id == "iron_axe") e[0] = "copper_axe";
+    else if (id == "iron_chestplate") e[0] = "copper_chestplate";
+    else if (id == "iron_leggings") e[0] = "copper_leggings";
+    else if (id == "iron_boots") e[0] = "copper_boots";
+  }
+}
 static json structTable(const std::string& kind, int tier = 0) {
   const json& L = SD()["STRUCT_LOOT"];
   const json& src = L.contains(kind) ? L[kind] : L["ruin"];
   if (lateLootKind(kind) && tier > 0) return src;
   json out = stripDumpGems(src);
+  if (tier <= 0) remapSpawnIron(out);
   if (tier >= 3) {
     out.push_back(json::array({"gold_ingot", 1, 2, 0.12}));
     out.push_back(json::array({"emerald", 1, 1, 0.06}));
@@ -177,7 +193,11 @@ static json villageTable(const std::string& kind) {
     add("gold_nugget", 1, 3, 0.08);
   } else {
     const json& L = SD()["VLOOT"];
-    if (L.contains(kind)) return stripDumpGems(L[kind]);
+    if (L.contains(kind)) {
+      json out = stripDumpGems(L[kind]);
+      remapSpawnIron(out);
+      return out;
+    }
   }
   return table;
 }

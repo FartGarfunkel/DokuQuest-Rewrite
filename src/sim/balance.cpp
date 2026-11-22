@@ -114,6 +114,7 @@ MobLoot mobLoot(int level, bool elite, const Player* killer) {
   const int tiers = (int)(sizeof GEAR_TIERS / sizeof GEAR_TIERS[0]);
   const int fromLevel = std::min(tiers - 1, up / GEAR_LEVELS_PER_TIER + (elite ? 1 : 0));
   const int fromProgress = std::min(tiers - 1, progressTier(*killer) + (elite ? 1 : 0));
+  l.gearCap = fromProgress;
   l.gearTier = std::min(fromLevel, fromProgress);
   return l;
 }
@@ -137,7 +138,7 @@ static uint32_t lootQualSeed(const std::string& id, double r1, double r2, double
 }
 ItemStack mobGearRoll(const MobLoot& l, double r1, double r2, double r3) {
   const int tiers = (int)(sizeof GEAR_TIERS / sizeof GEAR_TIERS[0]), pieces = (int)(sizeof GEAR_PIECES / sizeof GEAR_PIECES[0]);
-  int tier = std::clamp(l.gearTier + (r2 < 0.15 ? 1 : 0), 0, tiers - 1);   // now and then a tier better
+  int tier = std::clamp(l.gearTier + (r2 < 0.15 ? 1 : 0), 0, std::min(tiers - 1, std::max(l.gearCap, l.gearTier)));   // a bump never walks past how far you have come
   const std::string id0 = std::string(GEAR_TIERS[tier]) + "_" + GEAR_PIECES[std::clamp((int)(r1 * pieces), 0, pieces - 1)];
   // silver is a holy sidegrade to iron, not a rung above steel
   const std::string id = (id0.rfind("iron_", 0) == 0 && r3 < 0.25) ? ("silver_" + id0.substr(5)) : id0;
