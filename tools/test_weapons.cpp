@@ -80,7 +80,7 @@ int main() {
   ItemStack poor("iron_sword", 1);
   poor.tag = json::object();
   poor.tag["qual"] = "poor";
-  CHECK(std::fabs(qualityDamageFactor(weaponQuality(poor)) - 0.85f) < 0.001f, "a poor sword deals 0.85");
+  CHECK(std::fabs(qualityDamageFactor(weaponQuality(poor)) - 0.92f) < 0.001f, "a poor sword deals 0.92");
   ItemStack a("iron_sword", 1), b("iron_sword", 1);
   rollWeaponQuality(a, 42);
   rollWeaponQuality(b, 42);
@@ -95,31 +95,64 @@ int main() {
   CHECK(nPoor == 18 && nNormal == 42 && nFine == 25 && nGreat == 12 && nLegend == 3,
         "a hundred seeds are 18 poor, 42 normal, 25 fine, 12 great, 3 legendary (got %d %d %d %d %d)",
         nPoor, nNormal, nFine, nGreat, nLegend);
-  CHECK(std::fabs(qualityDamageFactor(WQual::Great) - 1.28f) < 0.001f && std::fabs(qualityDamageFactor(WQual::Legendary) - 1.5f) < 0.001f,
-        "great is 1.28 and legendary is 1.5");
-  CHECK(std::fabs(weaponQualityFactor(poor) - 0.85f) < 0.001f, "a poor sword's blow is scaled");
+  CHECK(std::fabs(qualityDamageFactor(WQual::Great) - 1.15f) < 0.001f && std::fabs(qualityDamageFactor(WQual::Legendary) - 1.22f) < 0.001f,
+        "great is 1.15 and legendary is 1.22");
+  CHECK(std::fabs(weaponQualityFactor(poor) - 0.92f) < 0.001f, "a poor sword's blow is scaled");
 
   printf("tools and armour use that same quality\n");
   ItemStack pick;
   CHECK(makePartTool("pickaxe", {"iron", "iron", "iron"}, "stick", pick), "an iron pick mixes");
   const int pickBase = toolMaxDurability(pick);
   pick.tag["qual"] = "poor";
-  CHECK(std::fabs(gearQualityFactor(pick) - 0.85f) < 0.001f, "a poor pick uses the poor factor");
-  CHECK(toolMaxDurability(pick) == (int)std::lround(pickBase * 0.85f), "a poor pick wears out sooner (%d vs %d)",
-        toolMaxDurability(pick), (int)std::lround(pickBase * 0.85f));
+  CHECK(std::fabs(gearQualityFactor(pick) - 0.92f) < 0.001f, "a poor pick uses the poor factor");
+  CHECK(toolMaxDurability(pick) == (int)std::lround(pickBase * 0.92f), "a poor pick wears out sooner (%d vs %d)",
+        toolMaxDurability(pick), (int)std::lround(pickBase * 0.92f));
   ItemStack helm;
   CHECK(makePartArmor("helmet", std::vector<std::string>(5, "iron"), helm), "an iron helmet mixes");
   const float orePts = armorPointsOf(helm);
   helm.tag["qual"] = "legendary";
   helm.tag["pa"]["fr"] = 0.2f;
   pick.tag["qual"] = "legendary";
-  CHECK(std::fabs(gearQualityFactor(helm) - gearQualityFactor(pick)) < 0.001f && std::fabs(gearQualityFactor(helm) - 1.5f) < 0.001f,
+  CHECK(std::fabs(gearQualityFactor(helm) - gearQualityFactor(pick)) < 0.001f && std::fabs(gearQualityFactor(helm) - 1.22f) < 0.001f,
         "a legendary helmet and a legendary pick share the weapon factor");
   Player wearer;
   wearer.armor.assign(4, ItemStack());
   wearer.armor[0] = helm;
-  CHECK(armorPoints(wearer) == (int)std::lround(orePts * 1.5f), "the helmet's protection is the ore mix times legendary");
-  CHECK(std::fabs(fireResist(wearer) - 0.3f) < 0.02f, "its fire resistance scales the same way");
+  CHECK(armorPoints(wearer) == (int)std::lround(orePts * 1.22f), "the helmet's protection is the ore mix times legendary");
+  CHECK(std::fabs(fireResist(wearer) - 0.244f) < 0.02f, "its fire resistance scales the same way");
+
+  printf("ore steps beat a lucky quality roll\n");
+  {
+    const char* ores[] = {"copper", "bronze", "iron", "steel", "mithril", "adamantite"};
+    float prev = 0.f;
+    bool stepped = true;
+    for (const char* o : ores) {
+      ItemStack s;
+      if (!makePartTool("sword", {o, o}, "stick", s)) { stepped = false; break; }
+      const float d = toolOf(s).damage;
+      CHECK(d > prev, "%s sword deals %.1f, more than the ore before", o, d);
+      if (d <= prev) stepped = false;
+      prev = d;
+    }
+    CHECK(stepped, "copper < bronze < iron < steel < mithril < adamantite");
+    ItemStack sil, irn;
+    CHECK(makePartTool("sword", {"silver", "silver"}, "stick", sil) && makePartTool("sword", {"iron", "iron"}, "stick", irn),
+          "silver and iron mix into swords");
+    CHECK(std::fabs(toolOf(sil).damage - toolOf(irn).damage) < 0.01f, "silver matches iron on the blow (%.1f)", toolOf(sil).damage);
+    CHECK(gearIsHoly(sil) && !gearIsHoly(irn), "silver is the holy sidegrade to iron");
+    ItemStack poorI, fineC;
+    CHECK(makePartTool("sword", {"iron", "iron"}, "stick", poorI) && makePartTool("sword", {"copper", "copper"}, "stick", fineC),
+          "iron and copper swords for the quality check");
+    poorI.tag["qual"] = "poor";
+    fineC.tag["qual"] = "fine";
+    Player w;
+    w.selected = 0;
+    w.inv[0] = poorI;
+    const float dPoorIron = heldTool(w) ? heldTool(w)->damage : 0.f;
+    w.inv[0] = fineC;
+    const float dFineCu = heldTool(w) ? heldTool(w)->damage : 0.f;
+    CHECK(dPoorIron > dFineCu, "a poor iron sword still beats a fine copper one (%.2f > %.2f)", dPoorIron, dFineCu);
+  }
 
   printf("procedural weapons\n");
   CHECK(reg().item("iron_greatsword") == nullptr && reg().item("mixed_greatsword") != nullptr, "a greatsword is not a fixed item");
@@ -343,12 +376,10 @@ int main() {
   CHECK(strDamageFactor(strong) > 1.2f, "Strength raises melee damage (x%.2f)", strDamageFactor(strong));
   helmI.tag["qual"] = "legendary";
   helmC.tag["qual"] = "poor";
-  Player suited;
-  suited.armor[0] = helmI;
-  const int legPts = armorPoints(suited);
-  suited.armor[0] = helmC;
-  CHECK(legPts > armorPoints(suited), "legendary iron helmet protects more than a poor copper one (%d > %d)",
-        legPts, armorPoints(suited));
+  const float legMix = armorPointsOf(helmI) * gearQualityFactor(helmI);
+  const float poorMix = armorPointsOf(helmC) * gearQualityFactor(helmC);
+  CHECK(legMix > poorMix, "legendary iron helmet's mix protects more than a poor copper one (%.2f > %.2f)",
+        legMix, poorMix);
 
   Player blocker;
   blocker.pos = vec3(0);

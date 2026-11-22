@@ -134,7 +134,15 @@ int main(int argc, char** argv) {
   printf("[panning and the sluice]\n");
   {
     check(panFind(0.05f, 0.1f).id.find("_ore_sample") != std::string::npos, "a lucky swirl: an ore sample (" + panFind(0.05f, 0.1f).id + ")");
-    check(!panFind(0.31f, 0.5f).empty() && panFind(0.9f, 0.5f).empty(), "now and then a gem; mostly nothing");
+    {
+      const ItemStack junk = panFind(0.31f, 0.5f);
+      const ItemStack gem = panFind(0.31f, 0.05f, 6);
+      check(!junk.empty() && junk.id != "emerald" && junk.id != "diamond" && junk.id != "ruby" && junk.id != "sapphire",
+            "a swirl with no player finds junk, not a gem (" + junk.id + ")");
+      check(gem.id == "emerald" || gem.id == "ruby" || gem.id == "sapphire" || gem.id == "diamond",
+            "a far-come player can pan a gem (" + gem.id + ")");
+      check(panFind(0.9f, 0.5f).empty(), "mostly nothing");
+    }
     const BlockId GRAVEL = reg().blockId("gravel"), WATER = reg().blockId("water"), SLUICE = reg().blockId("sluice");
     const BlockId STONE = reg().blockId("stone");
     for (int x = 10; x < 20; x++) for (int z = 8; z < 18; z++) w.setBlock(x, rg.Y - 1, z, STONE);   // (the test floor floats: gravel needs something under it)

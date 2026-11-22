@@ -441,6 +441,30 @@ int main(int argc, char** argv) {
     check(fx.heard("a stat point to spend"), "...and the stat point it brings is named");
   }
 
+  printf("[ore ladder: copper < bronze < iron < steel < mithril < adamantite]\n");
+  {
+    auto dmg = [](const char* id) {
+      const ItemDef* it = reg().item(id);
+      return it && it->hasTool ? it->tool.damage : 0.f;
+    };
+    const float cu = dmg("copper_sword"), br = dmg("bronze_sword"), ir = dmg("iron_sword");
+    const float st = dmg("steel_sword"), ag = dmg("silver_sword"), mi = dmg("mithril_sword"), ad = dmg("adamantite_sword");
+    check(cu < br && br < ir && ir < st && st < mi && mi < ad,
+          "swords: copper " + std::to_string((int)cu) + " < bronze " + std::to_string((int)br) + " < iron " + std::to_string((int)ir)
+          + " < steel " + std::to_string((int)st) + " < mithril " + std::to_string((int)mi) + " < adamantite " + std::to_string((int)ad));
+    check(std::fabs(ag - ir) < 0.01f, "silver sword matches iron (" + std::to_string((int)ag) + ")");
+    const int nTiers = (int)(sizeof bal::GEAR_TIERS / sizeof bal::GEAR_TIERS[0]);
+    bool silverRung = false;
+    for (int i = 0; i < nTiers; i++) if (std::string(bal::GEAR_TIERS[i]) == "silver") silverRung = true;
+    check(nTiers == 6 && !silverRung && std::string(bal::GEAR_TIERS[0]) == "copper" && std::string(bal::GEAR_TIERS[5]) == "adamantite",
+          "six ore rungs, silver a holy sidegrade not a step above steel");
+    const ItemDef* sb = reg().item("silver_boots");
+    const ItemDef* ib = reg().item("iron_boots");
+    const float sp = sb && sb->props.contains("armor") ? sb->props["armor"].value("points", 0.f) : -1.f;
+    const float ip = ib && ib->props.contains("armor") ? ib->props["armor"].value("points", 0.f) : -1.f;
+    check(std::fabs(sp - ip) < 0.01f, "silver boots match iron (" + std::to_string(sp) + ")");
+  }
+
   printf("[the fight table: gear tier x skill level vs a ghoul of level x elite]\n");
   printf("     %-11s %5s %4s | %-21s | %-21s\n", "gear", "skill", "lvl", "plain: TTK / TTD s", "elite: TTK / TTD s");
   bool bandsOk = true; std::string why;

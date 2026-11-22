@@ -67,6 +67,38 @@ int main(int argc, char** argv) {
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
   const MagicData& md = magicData();
   check(md.loaded && md.spells.size() == 29 && md.ench.size() == 35 && md.potions.size() == 22 && md.skills.size() == 14, "data/magic.json: 29 spells, 35 enchantments, 22 potions, 14 skills");
+  {
+    bool six = true; std::string why;
+    std::map<std::string, std::string> titles;
+    for (const char* k : {"knight", "ranger", "mage", "rogue"}) {
+      if (!md.paths.contains(k) || !md.paths[k].contains("tiers") || md.paths[k]["tiers"].size() != 3) {
+        six = false; why += std::string(" ") + k + " tiers";
+        continue;
+      }
+      int n = 0;
+      for (const auto& row : md.paths[k]["tiers"]) {
+        n += (int)row.size();
+        for (const auto& t : row) if (t.is_array() && t.size() >= 2 && t[1].is_string()) {
+          const std::string title = t[1].get<std::string>();
+          if (titles.count(title)) { six = false; why += " path dup " + title; }
+          titles[title] = k;
+        }
+      }
+      if (n != 6) { six = false; why += std::string(" ") + k + "=" + std::to_string(n); }
+    }
+    check(six, "each path has 3 tiers and 6 talents" + why);
+    bool collide = false; std::string cwhy;
+    for (const auto& [sk, perks] : md.perks) for (const auto& pk : perks) {
+      if (titles.count(pk.name)) { collide = true; cwhy += " " + pk.name; }
+    }
+    check(!collide, "perk names do not copy path talent names" + cwhy);
+    Player q;
+    q.stats["path"] = json{{"k", "rogue"}, {"t", {{"vanish", 1}}}};
+    q.sneaking = true;
+    check(noticeRange(q, 20.f) <= 20.f * 0.76f, "Vanish: sneaking, creatures notice you a quarter less far");
+    q.stats["path"]["t"] = json{{"cutpurse", 1}};
+    check(talent(q, "loot_double") >= 0.19f, "Cutpurse: one kill in five drops its loot twice");
+  }
 
   // ---- skills ----
   check(skillLevel(82) == 1 && skillLevel(83) == 2 && skillLevel(101333) == 50 && skillLevel(13034431) == 99 && near(skillXpFor(99), 13034431), "skill curve: 83 -> 2, 101,333 -> 50, 13,034,431 -> 99");

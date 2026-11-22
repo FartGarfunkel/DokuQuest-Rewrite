@@ -6,6 +6,8 @@
 
 namespace dq {
 
+struct ProcLayout { int yaw = 0, pattern = 0, pal = 0, clutter = 1; };
+
 struct ProcRoom {
   std::string kind;
   int x = 0, y = 0, z = 0;
@@ -19,7 +21,29 @@ struct ProcRoom {
   std::string stairs = "stone_brick_stairs";
   bool webs = false;
   float density = 0.65f;   // 0.35 sparse, 0.65 lived-in, 0.9 packed
+  int yaw = 0;       // 0..3, 90° CW of the whole layout
+  int pattern = 0;   // 0..7, furniture positions in local space
+  int pal = 0;       // 0..5, see palette()
+  int clutter = 1;   // 0 sparse, 1 lived-in, 2 packed, 3 ruined
 };
+
+struct ProcPal {
+  const char* wall; const char* floor; const char* pillar; const char* slab;
+  const char* stairs; const char* light; const char* hang; const char* wood;
+};
+
+enum ProcPat : int {
+  PL_LONG    = 0,  // long table / pew / bench run along local +X
+  PL_SHELVES = 1,  // two facing walls (local N+S) lined
+  PL_DAIS_N  = 2,  // focal piece on local north
+  PL_DAIS_S  = 3,  // focal piece on local south
+  PL_BEDS_NS = 4,  // pairs on E/W walls, aisle N-S
+  PL_BEDS_EW = 5,  // pairs on N/S walls, aisle E-W
+  PL_L       = 6,  // L: local south + west
+  PL_PACK    = 7   // all four walls / extra interior
+};
+
+inline constexpr int PROC_PATTERN_N = 8, PROC_PAL_N = 6, PROC_CLUTTER_N = 4, PROC_YAW_N = 4;
 
 inline constexpr const char* PROC_ROOM_KINDS[] = {
   "entry", "hall", "loot", "spawner", "library", "boss", "barracks", "dining", "chapel",
@@ -51,5 +75,15 @@ std::string pickProcKind(Mulberry32& rnd, const std::string& role, int salt = 0)
 
 // a wood that exists as furniture, falling back to oak
 std::string procWood(const std::string& want);
+
+const ProcPal& palette(int pal);
+void applyPalette(ProcRoom& r);
+int rotDir(int dir, int yaw);
+void rotOffset(int lx, int lz, int yaw, int& ox, int& oz);
+void rotCell(const ProcRoom& r, int lx, int lz, int& x, int& z);
+float clutterDensity(int clutter);
+int pickDungeonPal(int theme, Mulberry32& rnd);
+ProcLayout pickProcLayout(Mulberry32& rnd, int dungeonPal, int dungeonClutter);
+void applyProcLayout(ProcRoom& r, const ProcLayout& L);
 
 } // namespace dq

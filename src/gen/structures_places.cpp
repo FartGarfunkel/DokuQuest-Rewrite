@@ -530,6 +530,7 @@ static void mineBuild(ChunkWriter& w, const StructurePlan& S) {
       pr.x = ox; pr.y = y; pr.z = oz; pr.rx = 2; pr.rz = 2; pr.H = 3;
       pr.seed = hash32(ox, y, oz, (i32)S.seed); pr.wood = "oak"; pr.light = "torch"; pr.hangLight = "lantern";
       pr.pillar = "log"; pr.slab = "oak_slab"; pr.density = 0.55f;
+      applyProcLayout(pr, ProcLayout{(int)(pr.seed % 4), (int)((pr.seed >> 2) % 8), P.h(ox, 1, oz, 17) < 0.5 ? 4 : 5, 1});
       furnishProcRoom(P, pr);
     }
   }

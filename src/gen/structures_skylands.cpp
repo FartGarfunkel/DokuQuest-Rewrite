@@ -41,10 +41,10 @@ json skyLoot(int tier, Mulberry32& r) {
   static const std::vector<std::pair<const char*, int>> T[3] = {
     {{"zanite_ore", 6}, {"ambrosium_ore", 10}, {"gravitite_ore", 3}, {"golden_apple", 1}, {"iron_ingot", 6}, {"gold_ingot", 4},
      {"arrow", 16}, {"bow", 1}, {"saddle", 1}, {"enchanted_book", 1}, {"music_disc_skylark", 1}, {"golden_feather", 1}},
-    {{"gravitite_ore", 4}, {"zanite_ore", 8}, {"golden_apple", 2}, {"diamond", 2}, {"gold_ingot", 6}, {"skyland_crystal", 6},
-     {"golden_feather", 1}, {"enchanted_book", 1}, {"experience_bottle", 4}, {"emerald", 6}, {"valkyrie_lance", 1}, {"heart_crystal", 1}},
-    {{"gravitite_ore", 6}, {"diamond", 3}, {"golden_apple", 3}, {"gold_block", 2}, {"emerald", 10}, {"skyland_crystal", 8},
-     {"heart_crystal", 1}, {"enchanted_book", 2}, {"experience_bottle", 6}, {"golden_feather", 2}, {"mithril_ingot", 2}, {"fire_charge", 8}}};
+    {{"gravitite_ore", 4}, {"zanite_ore", 8}, {"golden_apple", 2}, {"gold_ingot", 6}, {"skyland_crystal", 6},
+     {"golden_feather", 1}, {"enchanted_book", 1}, {"experience_bottle", 4}, {"valkyrie_lance", 1}, {"heart_crystal", 1}},
+    {{"gravitite_ore", 6}, {"golden_apple", 3}, {"gold_ingot", 6}, {"skyland_crystal", 8},
+     {"heart_crystal", 1}, {"enchanted_book", 2}, {"experience_bottle", 6}, {"golden_feather", 2}, {"fire_charge", 8}}};
   json items = json::array(); for (int s = 0; s < 27; s++) items.push_back(nullptr);
   const auto& L = T[std::clamp(tier, 0, 2)];
   const int n = 5 + (int)(r() * 4) + tier;

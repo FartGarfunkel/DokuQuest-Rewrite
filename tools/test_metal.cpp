@@ -511,6 +511,37 @@ int main(int argc, char** argv) {
         }
         check(dia == 0, "a first dungeon has no diamonds (" + std::to_string(dia) + ")");
         check(em < N / 4, "emeralds in a first dungeon are scarce (" + std::to_string(em / N) + " a chest-set)");
+        auto matsOf = [](const json& s) {
+          json mats = json::array();
+          if (s.contains("pt") && s["pt"].is_object()) mats = s["pt"].value("m", json::array());
+          else if (s.contains("pa") && s["pa"].is_object()) mats = s["pa"].value("m", json::array());
+          return mats;
+        };
+        auto isIronGear = [&](const json& s) {
+          const std::string id = s.value("id", "");
+          if (id == "iron_sword" || id == "iron_helmet" || id == "iron_pickaxe" || id == "iron_chestplate"
+              || id == "iron_axe" || id == "iron_leggings" || id == "iron_boots") return true;
+          if (id.rfind("mixed_", 0) != 0) return false;
+          for (const auto& m : matsOf(s)) if (m.is_string() && m.get<std::string>() == "iron") return true;
+          return false;
+        };
+        long steel = 0, mithril = 0, rareIronGear = 0;
+        for (int i = 0; i < N; i++) {
+          Mulberry32 r((u32)(31000 + i));
+          auto countDump = [&](const json& items, bool rare) {
+            for (const auto& s : items) if (s.is_object()) {
+              const std::string id = s.value("id", "");
+              if (id.find("steel") != std::string::npos) steel += s.value("n", 1);
+              if (id.find("mithril") != std::string::npos) mithril += s.value("n", 1);
+              if (rare && isIronGear(s)) rareIronGear++;
+            }
+          };
+          countDump(dungeonLoot("common", r), false);
+          countDump(dungeonLoot("rare", r), true);
+          countDump(dungeonLoot("boss", r), false);
+        }
+        check(steel == 0 && mithril == 0, "a first dungeon has no steel or mithril (" + std::to_string(steel) + " steel, " + std::to_string(mithril) + " mithril)");
+        check(rareIronGear == 0, "a first rare chest is not a second iron kit (" + std::to_string(rareIronGear) + ")");
         long hEm = 0, hDia = 0, smEm = 0, rEm = 0, rDia = 0, mDia = 0;
         auto countGems = [](const json& items, long& em, long& dia) {
           for (const auto& s : items) if (s.is_object()) {
@@ -528,6 +559,12 @@ int main(int argc, char** argv) {
         }
         check(hDia == 0 && hEm == 0, "a village house has no gems (" + std::to_string(hEm) + " em, " + std::to_string(hDia) + " gems)");
         check(smEm == 0, "a village smithy has no emeralds (" + std::to_string(smEm) + ")");
+        long smithIron = 0;
+        for (int i = 0; i < N; i++) {
+          Mulberry32 r((u32)(41000 + i));
+          for (const auto& s : vLoot("smithy", r)) if (s.is_object() && isIronGear(s)) smithIron++;
+        }
+        check(smithIron == 0, "a village smithy at spawn stocks copper and bronze, not iron (" + std::to_string(smithIron) + ")");
         check(rDia == 0 && rEm == 0, "a ruin has no gems (" + std::to_string(rEm) + " em, " + std::to_string(rDia) + " gems)");
         check(mDia == 0, "a mineshaft has no diamonds (" + std::to_string(mDia) + ")");
         {
@@ -538,6 +575,22 @@ int main(int argc, char** argv) {
             if (k != "spawner" && k != "cells" && k != "prison") cages = false;
           }
           check(cages, "a spawner role is a cage room, never a well or a crypt");
+        }
+        {
+          const int combo = PROC_ROOM_KIND_N * PROC_PATTERN_N * PROC_YAW_N * PROC_PAL_N * PROC_CLUTTER_N;
+          check(combo >= 3000, "room options: " + std::to_string(combo) + " kind x pattern x yaw x pal x clutter");
+          int ox = 0, oz = 0;
+          rotOffset(0, -1, 1, ox, oz);
+          check(ox == 1 && oz == 0 && rotDir(0, 1) == 1 && rotDir(2, 2) == 0, "a north offset turns east with yaw 1");
+          bool sawPat[8] = {}, sawYaw[4] = {};
+          int nPat = 0, nYaw = 0;
+          for (int i = 0; i < 400; i++) {
+            Mulberry32 r((u32)(90000 + i * 17));
+            ProcLayout L = pickProcLayout(r, i % PROC_PAL_N, i % PROC_CLUTTER_N);
+            if (!sawPat[L.pattern & 7]) { sawPat[L.pattern & 7] = true; nPat++; }
+            if (!sawYaw[L.yaw & 3]) { sawYaw[L.yaw & 3] = true; nYaw++; }
+          }
+          check(nPat == PROC_PATTERN_N && nYaw == PROC_YAW_N, "layouts cover 8 patterns and 4 yaws (" + std::to_string(nPat) + " / " + std::to_string(nYaw) + ")");
         }
       }
     }

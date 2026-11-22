@@ -18,10 +18,10 @@ WQual weaponQuality(const ItemStack& s) {
 
 float qualityDamageFactor(WQual q) {
   switch (q) {
-    case WQual::Poor: return 0.85f;
-    case WQual::Fine: return 1.12f;
-    case WQual::Great: return 1.28f;
-    case WQual::Legendary: return 1.5f;
+    case WQual::Poor: return 0.92f;
+    case WQual::Fine: return 1.08f;
+    case WQual::Great: return 1.15f;
+    case WQual::Legendary: return 1.22f;
     case WQual::Normal: return 1.f;
   }
   return 1.f;

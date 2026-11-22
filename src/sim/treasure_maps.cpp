@@ -27,8 +27,10 @@ json loot(std::mt19937& r) {
   json items = json::array(); for (int i = 0; i < 27; i++) items.push_back(nullptr);
   auto roll = [&](int lo, int hi) { return lo + (int)(r() % (unsigned)(hi - lo + 1)); };
   std::vector<ItemStack> v = {ItemStack("gold_coin", roll(12, 40)), ItemStack("gold_ingot", roll(2, 6)), ItemStack("iron_ingot", roll(3, 9))};
-  const char* rare[] = {"diamond", "emerald", "ruby", "sapphire", "enchanted_book", "golden_apple"};
-  for (int k = 0, n = roll(2, 3); k < n; k++) { const std::string id = rare[r() % 6]; if (reg().item(id)) v.push_back(ItemStack(id, id == "enchanted_book" || id == "golden_apple" ? 1 : roll(1, 3))); }
+  // a quest reward: one diamond now and then, not two or three gem stacks
+  if ((r() % 100) < 15 && reg().item("diamond")) v.push_back(ItemStack("diamond", 1));
+  if ((r() % 100) < 12 && reg().item("enchanted_book")) v.push_back(ItemStack("enchanted_book", 1));
+  if ((r() % 100) < 10 && reg().item("golden_apple")) v.push_back(ItemStack("golden_apple", 1));
   std::vector<int> slots(27); for (int i = 0; i < 27; i++) slots[i] = i;
   std::shuffle(slots.begin(), slots.end(), r);
   for (size_t i = 0; i < v.size(); i++) if (reg().item(v[i].id)) items[slots[i]] = v[i].toJson();

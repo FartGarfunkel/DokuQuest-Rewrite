@@ -24,7 +24,9 @@ float talent(const Player& p, const std::string& attr) {
   const TalentRule* r = talentRule(attr);
   const float pct = treeAttrPct(p, attr);
   if (!r) return pct;
-  const float v = (r->flatScale != 0 ? treeAttr(p, attr) * r->flatScale : 0.f) + pct;
+  float v = (r->flatScale != 0 ? treeAttr(p, attr) * r->flatScale : 0.f) + pct;
+  if (hasTal(p, "vanish") && attr == "stealth") v += 0.25f;
+  if (hasTal(p, "cutpurse") && attr == "loot_double") v += 0.20f;
   return std::clamp(v, r->lo, r->hi);
 }
 
@@ -134,11 +136,26 @@ static uint32_t lootQualSeed(const std::string& id, double r1, double r2, double
 ItemStack mobGearRoll(const MobLoot& l, double r1, double r2, double r3) {
   const int tiers = (int)(sizeof GEAR_TIERS / sizeof GEAR_TIERS[0]), pieces = (int)(sizeof GEAR_PIECES / sizeof GEAR_PIECES[0]);
   int tier = std::clamp(l.gearTier + (r2 < 0.15 ? 1 : 0), 0, tiers - 1);   // now and then a tier better
-  const std::string id = std::string(GEAR_TIERS[tier]) + "_" + GEAR_PIECES[std::clamp((int)(r1 * pieces), 0, pieces - 1)];
+  const std::string id0 = std::string(GEAR_TIERS[tier]) + "_" + GEAR_PIECES[std::clamp((int)(r1 * pieces), 0, pieces - 1)];
+  // silver is a holy sidegrade to iron, not a rung above steel
+  const std::string id = (id0.rfind("iron_", 0) == 0 && r3 < 0.25) ? ("silver_" + id0.substr(5)) : id0;
   if (!reg().item(id)) return {};
   ItemStack s = proceduralOf(id, 1);
   if (foundGear(s)) rollWeaponQuality(s, lootQualSeed(s.id, r1, r2, r3));
   if (const int max = toolMaxDurability(s); max > 0) s.d = (int)(max * (GEAR_WORN_MIN + r3 * (GEAR_WORN_MAX - GEAR_WORN_MIN)));
+  // a found piece is not plain: one boon, one drawback, and rarely a major, from the talents that already exist
+  struct Bit { const char* a; float v; int pct; };
+  static const Bit good[] = {{"damage", 0.06f, 1}, {"armor", 1.f, 0}, {"crit_chance", 0.03f, 1}, {"stamina", 0.06f, 1}, {"armor_pierce", 0.04f, 1}};
+  static const Bit bad[] = {{"speed", -0.04f, 1}, {"damage", -0.04f, 1}, {"stamina_regen", -0.08f, 1}};
+  static const Bit major[] = {{"lifesteal", 0.04f, 1}, {"armor_pierce", 0.12f, 1}, {"dodge", 0.04f, 1}};
+  const int gi = (int)(std::fmod(r1 * 12.9898, 1.0) * 5) % 5, bi = (int)(std::fmod(r2 * 78.233, 1.0) * 3) % 3;
+  if (!s.tag.is_object()) s.tag = json::object();
+  json roll = json::array({json{{"a", good[gi].a}, {"v", good[gi].v}, {"p", good[gi].pct}}, json{{"a", bad[bi].a}, {"v", bad[bi].v}, {"p", bad[bi].pct}}});
+  if (std::fmod(r1 * 17.13 + r2 * 3.7 + r3 * 9.1, 1.0) < 0.08) {
+    const int mi = (int)(std::fmod(r3 * 41.7, 1.0) * 3) % 3;
+    roll.push_back(json{{"a", major[mi].a}, {"v", major[mi].v}, {"p", major[mi].pct}, {"major", 1}});
+  }
+  s.tag["roll"] = roll;
   return s;
 }
 

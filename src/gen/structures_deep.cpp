@@ -90,6 +90,8 @@ static void strongholdBuild(ChunkWriter& w, const StructurePlan& S) {
     pr.kind = kind; pr.x = x; pr.y = y; pr.z = z; pr.rx = rx; pr.rz = rz; pr.H = H;
     pr.seed = hash32(x, y, z, salt); pr.wood = "oak"; pr.light = "lantern"; pr.hangLight = "lantern";
     pr.pillar = "stone_bricks"; pr.slab = "stone_brick_slab"; pr.density = 0.7f;
+    applyProcLayout(pr, ProcLayout{(int)(pr.seed % 4), (int)((pr.seed >> 4) % 8), (int)(salt & 1u), 1});
+    pr.light = "lantern"; pr.hangLight = "lantern";
     furnishProcRoom(P, pr);   // the hold's own chests already sit on the library and storeroom walls
   };
   holdFurnish((cx - 18 + cx - 13) / 2, cy + 1, (cz - 12 + cz - 6) / 2, 3, 3, 4, "barracks", (u32)S.seed);

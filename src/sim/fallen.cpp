@@ -40,7 +40,7 @@ const std::vector<Loot>& lootFor(const std::string& kind) {
 }
 // their worn-out gear: a tool or weapon now and then, well used
 const char* gearFor(const std::string& kind) {
-  return kind == "miner" ? "iron_pickaxe" : kind == "desert" ? "iron_sword" : kind == "snowy" ? "iron_axe" : kind == "jungle" ? "bow" : kind == "swamp" ? "stone_pickaxe" : "iron_sword";
+  return kind == "miner" ? "copper_pickaxe" : kind == "desert" ? "copper_sword" : kind == "snowy" ? "copper_axe" : kind == "jungle" ? "bow" : kind == "swamp" ? "stone_pickaxe" : "copper_sword";
 }
 u32 mix(u32 h) { h ^= h >> 16; h *= 0x7feb352d; h ^= h >> 15; h *= 0x846ca68b; h ^= h >> 16; return h; }
 }  // namespace

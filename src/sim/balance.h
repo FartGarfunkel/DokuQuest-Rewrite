@@ -126,7 +126,7 @@ constexpr int ELITE_ROLLS = 2;                                          // an el
 constexpr float ELITE_GEAR = 0.35f, ELITE_GEAR_PER_LEVEL = 0.005f, ELITE_GEAR_MAX = 0.6f;
 constexpr int GEAR_FROM = 12; constexpr float GEAR_CHANCE_PER_LEVEL = 0.004f, GEAR_CHANCE_MAX = 0.12f;
 constexpr int GEAR_LEVELS_PER_TIER = 6;                                  // copper 1-6, bronze 7-12, iron 13-18... (+1 tier for an elite)
-inline constexpr const char* GEAR_TIERS[] = {"copper", "bronze", "iron", "steel", "silver", "mithril", "adamantite"};
+inline constexpr const char* GEAR_TIERS[] = {"copper", "bronze", "iron", "steel", "mithril", "adamantite"};
 inline constexpr const char* GEAR_PIECES[] = {"sword", "axe", "helmet", "chestplate", "leggings", "boots"};
 constexpr float GEAR_WORN_MIN = 0.2f, GEAR_WORN_MAX = 0.6f;              // dropped gear comes this worn
 

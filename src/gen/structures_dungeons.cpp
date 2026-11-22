@@ -36,10 +36,11 @@ static const DTheme& dtheme(int k) {
   }();
   return T[k];
 }
-struct DRoom { std::string kind; int x, z, y, R, H; u32 seed; std::string key; int rx = 0, rz = 0, fl = 0; };
+struct DRoom { std::string kind; int x, z, y, R, H; u32 seed; std::string key; int rx = 0, rz = 0, fl = 0; int yaw = 0, pattern = 0; };
 struct DungeonExt {
   int theme = 0, entX = 0, entZ = 0, surf = 0, grid = 6, cell = 11, floors = 2;
   std::string wood = "oak"; float density = 0.65f;
+  int pal = 0, clutter = 1;
   std::vector<DRoom> rooms;
   std::vector<std::pair<int, int>> corridors, stairs;
   std::vector<std::pair<std::array<int, 3>, std::string>> spawners;
@@ -99,9 +100,10 @@ static bool dungeonPlace(const StructureIndex& idx, const TerrainQuery& t, int r
   auto e = std::make_shared<DungeonExt>();
   e->theme = theme; e->entX = entX; e->entZ = entZ; e->surf = sc.y;
   e->grid = grid; e->cell = cell; e->floors = floors;
-  e->density = rnd() < 0.25 ? 0.35f : rnd() < 0.7 ? 0.65f : 0.9f;
-  static const char* WOODS[3][2] = {{"oak", "dark_oak"}, {"oak", "spruce"}, {"dark_oak", "spruce"}};
-  e->wood = procWood(WOODS[theme][rnd() < 0.33 ? 1 : 0]);
+  e->pal = pickDungeonPal(theme, rnd);
+  e->clutter = rnd() < 0.18 ? 0 : rnd() < 0.55 ? 1 : rnd() < 0.82 ? 2 : 3;
+  e->density = clutterDensity(e->clutter);
+  e->wood = procWood(palette(e->pal).wood);
   int far = 0; for (int i = 0; i < (int)cells.size(); i++) if (cells[i].d > cells[far].d) far = i;
   std::vector<std::string> roles(cells.size());
   for (int i = 0; i < (int)cells.size(); i++) {
@@ -161,6 +163,8 @@ static bool dungeonPlace(const StructureIndex& idx, const TerrainQuery& t, int r
                hash32(seed, c.gx, c.gz, c.fl * 17 + rx * 7 + rz),
                std::to_string(c.gx) + "," + std::to_string(c.gz) + "," + std::to_string(c.fl)};
     room.rx = rxr; room.rz = rzr; room.fl = c.fl;
+    room.yaw = jsFloor(rnd() * PROC_YAW_N);
+    room.pattern = jsFloor(rnd() * PROC_PATTERN_N);
     e->rooms.push_back(room);
   }
   e->corridors = edges; e->stairs = stairs;
@@ -306,6 +310,9 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
     pr.rx = r.rx > 0 ? r.rx : r.R; pr.rz = r.rz > 0 ? r.rz : r.R; pr.H = r.H;
     pr.seed = r.seed; pr.wood = d.wood; pr.light = th.light; pr.hangLight = hang;
     pr.pillar = th.pillar; pr.slab = th.slab; pr.stairs = th.stairs; pr.webs = th.webs; pr.density = d.density;
+    applyProcLayout(pr, ProcLayout{r.yaw, r.pattern, d.pal, d.clutter});
+    pr.light = th.light; pr.hangLight = hang;   // theme lamps, palette furniture
+    pr.webs = th.webs || pr.webs;
     furnishProcRoom(P, pr, chest);
   }
 }
@@ -407,7 +414,6 @@ static void lairBuild(ChunkWriter& w, const StructurePlan& S) {
       const double q = hf(x, z, 5);
       if (q < 0.05) P.put(x, Ly + 1, z, "bone_block");
       else if (q < 0.056 && d > 3) P.put(x, Ly + 1, z, "gold_block");
-      else if (q < 0.059 && d > 3) P.put(x, Ly + 1, z, "emerald_block");
       else if (q < 0.075 && d > 3) P.put(x, Ly + 1, z, sea ? "sea_lantern" : deep ? "magma_block" : L.type == "frost" ? "packed_ice" : "gravel");
       else if (sea && q < 0.2 && d > 2) {
         static const char* COR[5] = {"tube", "brain", "bubble", "fire", "horn"};

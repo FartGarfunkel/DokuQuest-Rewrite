@@ -159,8 +159,10 @@ static json villageTable(const std::string& kind) {
     add("torch", 1, 4, 0.30); add("potato", 1, 3, 0.25); add("carrot", 1, 2, 0.25); add("stick", 1, 4, 0.28);
     add("coal", 1, 2, 0.12);
   } else if (kind == "smithy") {
-    add("iron_ingot", 1, 2, 0.45); add("coal", 2, 5, 0.55); add("bread", 1, 2, 0.35);
-    add("iron_pickaxe", 1, 1, 0.12); add("iron_sword", 1, 1, 0.08); add("iron_helmet", 1, 1, 0.06);
+    add("copper_ingot", 1, 2, 0.40); add("bronze_ingot", 1, 1, 0.18);
+    add("coal", 2, 5, 0.55); add("bread", 1, 2, 0.35);
+    add("copper_pickaxe", 1, 1, 0.12); add("copper_sword", 1, 1, 0.08);
+    add("bronze_pickaxe", 1, 1, 0.06); add("copper_helmet", 1, 1, 0.05);
   } else if (kind == "library") {
     add("book", 1, 2, 0.60); add("paper", 1, 4, 0.50); add("feather", 1, 2, 0.35);
     add("empty_map", 1, 1, 0.10); add("ink_sac", 1, 2, 0.20);
@@ -207,14 +209,14 @@ static json dungeonTable(const std::string& kind, int tier = 0) {
     if (tier >= 6) { add("emerald", 1, 1, 0.08); add("steel_ingot", 1, 1, 0.08); }
   } else if (kind == "rare") {
     add("iron_ingot", 1, 2, 0.30); add("bread", 1, 2, 0.25); add("bone", 2, 4, 0.30);
-    add("iron_sword", 1, 1, 0.10); add("iron_helmet", 1, 1, 0.07); add("potion_heal", 1, 1, 0.08);
-    if (tier >= 3) { add("gold_ingot", 1, 2, 0.16); add("steel_sword", 1, 1, 0.10); add("emerald", 1, 1, 0.08); add("enchanted_book", 1, 1, 0.10); }
+    add("potion_heal", 1, 1, 0.08); add("copper_sword", 1, 1, 0.08); add("bronze_helmet", 1, 1, 0.05);
+    if (tier >= 3) { add("iron_sword", 1, 1, 0.10); add("iron_helmet", 1, 1, 0.07); add("gold_ingot", 1, 2, 0.16); add("steel_sword", 1, 1, 0.10); add("emerald", 1, 1, 0.08); add("enchanted_book", 1, 1, 0.10); }
     if (tier >= 6) { add("diamond", 1, 1, 0.10); add("ruby", 1, 1, 0.10); add("sapphire", 1, 1, 0.10); add("steel_chestplate", 1, 1, 0.08); }
   } else {   // boss
-    add("iron_chestplate", 1, 1, 0.16); add("steel_ingot", 1, 2, 0.18); add("iron_sword", 1, 1, 0.12);
+    add("iron_chestplate", 1, 1, 0.16); add("iron_ingot", 1, 2, 0.18); add("iron_sword", 1, 1, 0.12);
     add("potion_heal", 1, 1, 0.14); add("golden_apple", 1, 1, 0.08);
     add("enchanted_book", 1, 1, 0.10);
-    if (tier >= 3) { add("steel_sword", 1, 1, 0.16); add("steel_chestplate", 1, 1, 0.12); add("gold_sword", 1, 1, 0.10); add("emerald", 1, 2, 0.14); }
+    if (tier >= 3) { add("steel_ingot", 1, 2, 0.18); add("steel_sword", 1, 1, 0.16); add("steel_chestplate", 1, 1, 0.12); add("gold_sword", 1, 1, 0.10); add("emerald", 1, 2, 0.14); }
     if (tier >= 6) { add("diamond", 1, 2, 0.18); add("mithril_sword", 1, 1, 0.10); add("mithril_ingot", 1, 2, 0.14); }
   }
   return table;

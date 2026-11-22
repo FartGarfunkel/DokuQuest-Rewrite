@@ -358,14 +358,14 @@
         },
         {
           "id": "w_wound2",
-          "title": "Crushing Blow",
-          "desc": "A blow that lands also shoves harder.",
+          "title": "Bind Wounds",
+          "desc": "Healing mends you a little more.",
           "x": -112.0,
           "y": -112.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "knockback",
+              "attr": "heal_received",
               "v": 0.12,
               "op": 1
             }
@@ -832,15 +832,15 @@
         },
         {
           "id": "r_gift2",
-          "title": "River Luck",
-          "desc": "The water is a little kinder to you.",
+          "title": "High Step",
+          "desc": "You jump a little higher.",
           "x": -112.0,
           "y": -112.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "fishing",
-              "v": 0.12,
+              "attr": "jump",
+              "v": 0.08,
               "op": 1
             }
           ],
@@ -879,7 +879,7 @@
         {
           "id": "r_gift4",
           "title": "Full Bag",
-          "desc": "Luckier finds, and the water is kinder still.",
+          "desc": "Luckier finds, and you learn a little faster.",
           "x": -224.0,
           "y": -224.0,
           "size": 1,
@@ -890,7 +890,7 @@
               "op": 1
             },
             {
-              "attr": "fishing",
+              "attr": "xp_gain",
               "v": 0.1,
               "op": 1
             }
