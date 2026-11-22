@@ -103,18 +103,52 @@ static bool dungeonPlace(const StructureIndex& idx, const TerrainQuery& t, int r
   static const char* WOODS[3][2] = {{"oak", "dark_oak"}, {"oak", "spruce"}, {"dark_oak", "spruce"}};
   e->wood = procWood(WOODS[theme][rnd() < 0.33 ? 1 : 0]);
   int far = 0; for (int i = 0; i < (int)cells.size(); i++) if (cells[i].d > cells[far].d) far = i;
-  int spawnersLeft = 2 + jsFloor(rnd() * 3);
+  std::vector<std::string> roles(cells.size());
+  for (int i = 0; i < (int)cells.size(); i++) {
+    if (i == far) roles[i] = "boss";
+    else if (cells[i].gx == s0 && cells[i].gz == s1 && cells[i].fl == 0) roles[i] = "entry";
+  }
+  std::vector<char> floorCage(floors, 0);
+  for (int fl = 0; fl < floors; fl++)
+    for (int i = 0; i < (int)cells.size(); i++)
+      if (roles[i].empty() && cells[i].fl == fl) { roles[i] = "spawner"; floorCage[fl] = 1; break; }
+  int extraCages = 1 + jsFloor(rnd() * 3);
+  for (int i = 0; i < (int)cells.size() && extraCages > 0; i++)
+    if (roles[i].empty() && rnd() < 0.22) { roles[i] = "spawner"; extraCages--; }
+  static const char* REST[] = {
+    "hall", "loot", "library", "barracks", "dining", "chapel", "kitchen", "armoury",
+    "workshop", "gallery", "shrine", "store", "sleeping", "refectory", "scriptorium",
+    "crypt", "office", "forge", "well", "vault"
+  };
+  std::vector<std::string> bag;
+  for (const char* k : REST) bag.emplace_back(k);
+  for (int i = (int)bag.size() - 1; i > 0; i--) std::swap(bag[i], bag[jsFloor(rnd() * (i + 1))]);
+  // loot and armoury first so a 12-room crypt always has both
+  auto takeKind = [&](const char* want) {
+    for (size_t i = 0; i < bag.size(); i++) if (bag[i] == want) { std::swap(bag[i], bag[0]); break; }
+  };
+  takeKind("armoury"); takeKind("loot");
+  size_t bagAt = 0;
+  std::vector<std::string> used;
   for (int i = 0; i < (int)cells.size(); i++) {
     const Cell& c = cells[i];
-    std::string role;
-    if (i == far) role = "boss";
-    else if (c.gx == s0 && c.gz == s1 && c.fl == 0) role = "entry";
-    else if (spawnersLeft > 0 && rnd() < 0.28) { role = "spawner"; spawnersLeft--; }
-    const std::string kind = pickProcKind(rnd, role, i);
+    std::string kind;
+    if (roles[i] == "boss") kind = "boss";
+    else if (roles[i] == "entry") kind = "entry";
+    else if (roles[i] == "spawner") kind = pickProcKind(rnd, "spawner", i);
+    else {
+      do {
+        kind = bag[bagAt % bag.size()];
+        bagAt++;
+      } while (bagAt < bag.size() * 2 && std::find(used.begin(), used.end(), kind) != used.end());
+      used.push_back(kind);
+    }
     int rxr = 3, rzr = 3, H = 4, R = 3;
     if (kind == "boss" || kind == "nave") { rxr = rzr = R = std::min(5, cell / 2 - 1); H = 6; }
     else if (kind == "entry") { rxr = rzr = R = 2; H = 3; }
-    else switch (jsFloor(rnd() * 5)) {
+    else if (kind == "library" || kind == "chapel" || kind == "dining" || kind == "refectory") {
+      rxr = std::min(4, cell / 2 - 1); rzr = std::min(4, cell / 2 - 1); H = 5; R = std::min(rxr, rzr);
+    } else switch (jsFloor(rnd() * 5)) {
       case 0: rxr = 2; rzr = 2; H = 3; break;
       case 1: rxr = std::min(4, cell / 2 - 1); rzr = 2; H = 4; break;
       case 2: rxr = 2; rzr = std::min(4, cell / 2 - 1); H = 4; break;
@@ -131,19 +165,43 @@ static bool dungeonPlace(const StructureIndex& idx, const TerrainQuery& t, int r
   }
   e->corridors = edges; e->stairs = stairs;
   const DTheme& th = dtheme(theme);
-  const DRoom* boss = nullptr; for (auto& r : e->rooms) if (r.kind == "boss" || r.kind == "nave") { boss = &r; if (r.kind == "boss") break; }
+  const DRoom* boss = nullptr; for (auto& r : e->rooms) if (r.kind == "boss") { boss = &r; break; }
   if (!boss && !e->rooms.empty()) boss = &e->rooms.back();
   const std::string bossType = th.bosses[jsFloor(rnd() * th.bosses.size())];
+  const int brx = boss->rx > 0 ? boss->rx : boss->R, brz = boss->rz > 0 ? boss->rz : boss->R;
+  auto onDais = [&](int x, int y, int z) {
+    return x >= boss->x - brx && x <= boss->x + brx && z >= boss->z - brz && z <= boss->z + brz
+        && y >= boss->y && y <= boss->y + boss->H - 1;
+  };
   json spawners = json::array();
-  for (auto& r : e->rooms) if (r.kind == "spawner" || r.kind == "cells" || r.kind == "prison") {
+  auto addCage = [&](int x, int y, int z) {
+    if (th.mobs.empty() || onDais(x, y, z)) return;
     const std::string mob = th.mobs[jsFloor(rnd() * th.mobs.size())];
-    spawners.push_back(mobAt(r.x, r.y, r.z, mob.c_str())); e->spawners.push_back({{r.x, r.y, r.z}, mob});
+    spawners.push_back(mobAt(x, y, z, mob.c_str()));
+    e->spawners.push_back({{x, y, z}, mob});
+  };
+  auto cageKind = [](const std::string& k) { return k == "spawner" || k == "cells" || k == "prison"; };
+  for (auto& r : e->rooms) if (cageKind(r.kind)) addCage(r.x, r.y, r.z);
+  int patrols = 2 + jsFloor(rnd() * 3);
+  for (auto& r : e->rooms) {
+    if (patrols <= 0) break;
+    if (r.kind != "hall") continue;
+    addCage(r.x + 1, r.y, r.z - 1);
+    patrols--;
+  }
+  for (auto [ai, bi] : e->corridors) {
+    if (patrols <= 0) break;
+    const DRoom &a = e->rooms[ai], &b = e->rooms[bi];
+    addCage((a.x + b.x) / 2, a.y, (a.z + b.z) / 2);
+    patrols--;
   }
   S.id = "d" + std::to_string(rx) + "_" + std::to_string(rz); S.seed = hash32(seed, rx, rz, 5152);
   S.x0 = ox - 3; S.z0 = oz - 3; S.x1 = ox + SZ + 3; S.z1 = oz + SZ + 3; S.cx = ox + SZ / 2; S.cz = oz + SZ / 2; S.y = y; S.hashDy = yo - y;
   S.name = th.name;
   S.data = {{"theme", th.key}, {"ent", json::array({entX, entZ})}, {"surf", sc.y}, {"floors", floors}, {"grid", grid},
-            {"boss", {{"at", jat(boss->x, boss->y, boss->z)}, {"type", bossType}}}, {"spawners", spawners}};
+            {"boss", {{"at", jat(boss->x, boss->y, boss->z)}, {"type", bossType},
+                      {"box", {boss->x - brx, boss->y, boss->z - brz, boss->x + brx, boss->y + boss->H - 1, boss->z + brz}}}},
+            {"spawners", spawners}};
   S.ext = e;
   return true;
 }
@@ -151,7 +209,24 @@ static bool dungeonPlace(const StructureIndex& idx, const TerrainQuery& t, int r
 static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
   SP P(w); const DungeonExt& d = extOf<DungeonExt>(S); const DTheme& th = dtheme(d.theme);
   auto pick = [&](const std::vector<std::string>& list, int x, int y, int z, int salt) -> const std::string& { return list[jsFloor(hashFloat(x * 3 + salt, y + S.hashDy, z, (i32)S.seed) * list.size())]; };
-  auto wall = [&](int x, int y, int z) -> const std::string& { return pick(th.wall, x, y, z, 1); };
+  auto wall = [&](int x, int y, int z) -> const std::string& {
+    const float h = hashFloat(x * 3 + 1, y + S.hashDy, z, (i32)S.seed);
+    if (th.key == "crypt") {
+      static const std::string chi = "chiseled_stone_bricks", crk = "cracked_stone_bricks", mos = "mossy_stone_bricks";
+      if (h < 0.10f && hasBlock("chiseled_stone_bricks")) return chi;
+      if (h < 0.22f && hasBlock("cracked_stone_bricks")) return crk;
+      if (h < 0.32f && hasBlock("mossy_stone_bricks")) return mos;
+    } else if (th.key == "hollow") {
+      static const std::string chi = "chiseled_slate_bricks", crk = "cracked_slate_bricks";
+      if (h < 0.10f && hasBlock("chiseled_slate_bricks")) return chi;
+      if (h < 0.22f && hasBlock("cracked_slate_bricks")) return crk;
+    } else if (th.key == "nest") {
+      static const std::string mos = "mossy_stone_bricks", cob = "mossy_cobblestone";
+      if (h < 0.12f && hasBlock("mossy_stone_bricks")) return mos;
+      if (h < 0.22f) return cob;
+    }
+    return pick(th.wall, x, y, z, 1);
+  };
   auto flo = [&](int x, int y, int z) -> const std::string& { return pick(th.floor, x, y, z, 2); };
   std::vector<std::array<int, 6>> spaces;
   for (const auto& r : d.rooms) {
@@ -163,11 +238,17 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
     const int x0 = std::min(a.x, b.x), x1 = std::max(a.x, b.x), z0 = std::min(a.z, b.z), z1 = std::max(a.z, b.z);
     if (a.x == b.x) spaces.push_back({a.x - 1, a.y, z0, a.x + 1, a.y + 2, z1}); else spaces.push_back({x0, a.y, a.z - 1, x1, a.y + 2, a.z + 1});
   }
+  auto stairCol = [](const DRoom& a, const DRoom& b, int& x, int& z) {
+    const int rx = std::min(a.rx > 0 ? a.rx : a.R, b.rx > 0 ? b.rx : b.R);
+    const int rz = std::min(a.rz > 0 ? a.rz : a.R, b.rz > 0 ? b.rz : b.R);
+    x = a.x - rx;                     // west interior, against the wall
+    z = a.z - (rz >= 2 ? 2 : 0);      // north of the 3-wide east-west door
+  };
   for (auto [ai, bi] : d.stairs) {
     const DRoom &a = d.rooms[ai], &b = d.rooms[bi];
-    const int x = (a.x + b.x) / 2, z = (a.z + b.z) / 2;
+    int x, z; stairCol(a, b, x, z);
     const int y0 = std::min(a.y, b.y), y1 = std::max(a.y + 2, b.y + 2);
-    spaces.push_back({x - 1, y0, z - 1, x + 1, y1, z + 1});
+    spaces.push_back({x, y0, z, x, y1, z});   // one column, not a 3x3 hole
   }
   const int ex = d.entX + 2, ez = d.entZ + 2;
   spaces.push_back({ex, S.y, ez, ex, d.surf + 1, ez});
@@ -185,10 +266,9 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
   for (int y = S.y; y <= d.surf; y++) P.put(ex, y, ez, "ladder", 2);
   for (auto [ai, bi] : d.stairs) {
     const DRoom &a = d.rooms[ai], &b = d.rooms[bi];
-    const int x = (a.x + b.x) / 2, z = (a.z + b.z) / 2;
+    int x, z; stairCol(a, b, x, z);
     const int y0 = std::min(a.y, b.y), y1 = std::max(a.y + a.H - 1, b.y + b.H - 1);
-    for (int y = y0; y <= y1; y++) P.put(x, y, z, "ladder", 2);
-    P.put(x, y0, z + 1, th.light, 3);
+    for (int y = y0; y <= y1; y++) P.put(x, y, z, "ladder", 3);   // against the west wall
   }
   for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {
     const int x = ex + dx, z = ez + dz;
@@ -212,6 +292,7 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
   }
   { const int h = P.ground(ex, ez); P.put(ex + 1, h + 1, ez - 1, th.light == "soul_torch" ? "soul_lantern" : "lantern"); }
   const std::string hang = th.light == "soul_torch" ? "soul_lantern" : "lantern";
+  for (const auto& [at, mob] : d.spawners) P.spawner(at[0], at[1], at[2], mob);
   for (const DRoom& r : d.rooms) {
     Mulberry32 rr(r.seed);
     auto chest = [&](int x, int y, int z, const char* kind, bool mimic) {
@@ -219,10 +300,6 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
       const int i = P.put(x, y, z, "chest", meta);
       if (i >= 0) { json be{{"type", "chest"}, {"items", dungeonLoot(kind, rr)}, {"lk", std::string("d:") + kind}}; if (mimic) be["mimic"] = 1; P.setEntity(i, be); }
     };
-    if (r.kind == "spawner" || r.kind == "cells" || r.kind == "prison") {
-      std::string mob; for (auto& [at, m] : d.spawners) if (at[0] == r.x && at[2] == r.z) mob = m;
-      if (!mob.empty()) P.spawner(r.x, r.y, r.z, mob);
-    }
     ProcRoom pr;
     pr.kind = r.kind; pr.x = r.x; pr.y = r.y; pr.z = r.z;
     pr.rx = r.rx > 0 ? r.rx : r.R; pr.rz = r.rz > 0 ? r.rz : r.R; pr.H = r.H;

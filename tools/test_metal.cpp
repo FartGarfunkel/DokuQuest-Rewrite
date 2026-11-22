@@ -25,6 +25,7 @@
 #include "sim/inv_ops.h"
 #include "sim/controller.h"
 #include "gen/structures_common.h"
+#include "gen/proc_rooms.h"
 #include "common/threadpool.h"
 #include "world/world.h"
 #include "world/dims.h"
@@ -496,6 +497,49 @@ int main(int argc, char** argv) {
       check(mixedDungeon, "a dungeon chest still rolls metal gear, as mixed");
       check(mixedStruct, "mineshafts, strongholds, pirate wrecks and nether fortresses still roll metal gear, as mixed");
       check(mixedTop, "a later-opened dungeon chest tops up with mixed gear too");
+      {
+        long em = 0, dia = 0;
+        const int N = 400;
+        for (int i = 0; i < N; i++) {
+          Mulberry32 r((u32)(30000 + i));
+          for (const json& items : {dungeonLoot("common", r), dungeonLoot("rare", r), dungeonLoot("boss", r)})
+            for (const auto& s : items) if (s.is_object()) {
+              const std::string id = s.value("id", "");
+              if (id == "emerald") em += s.value("n", 1);
+              if (id == "diamond") dia += s.value("n", 1);
+            }
+        }
+        check(dia == 0, "a first dungeon has no diamonds (" + std::to_string(dia) + ")");
+        check(em < N / 4, "emeralds in a first dungeon are scarce (" + std::to_string(em / N) + " a chest-set)");
+        long hEm = 0, hDia = 0, smEm = 0, rEm = 0, rDia = 0, mDia = 0;
+        auto countGems = [](const json& items, long& em, long& dia) {
+          for (const auto& s : items) if (s.is_object()) {
+            const std::string id = s.value("id", "");
+            if (id == "emerald") em += s.value("n", 1);
+            if (id == "diamond" || id == "ruby" || id == "sapphire") dia += s.value("n", 1);
+          }
+        };
+        for (int i = 0; i < N; i++) {
+          Mulberry32 r((u32)(40000 + i));
+          countGems(vLoot("house", r), hEm, hDia);
+          countGems(vLoot("smithy", r), smEm, hDia);
+          countGems(structLoot("ruin", r), rEm, rDia);
+          long ign = 0; countGems(structLoot("mineshaft", r), ign, mDia);
+        }
+        check(hDia == 0 && hEm == 0, "a village house has no gems (" + std::to_string(hEm) + " em, " + std::to_string(hDia) + " gems)");
+        check(smEm == 0, "a village smithy has no emeralds (" + std::to_string(smEm) + ")");
+        check(rDia == 0 && rEm == 0, "a ruin has no gems (" + std::to_string(rEm) + " em, " + std::to_string(rDia) + " gems)");
+        check(mDia == 0, "a mineshaft has no diamonds (" + std::to_string(mDia) + ")");
+        {
+          bool cages = true;
+          for (int i = 0; i < 80; i++) {
+            Mulberry32 r((u32)(7 + i * 13));
+            const std::string k = pickProcKind(r, "spawner", i);
+            if (k != "spawner" && k != "cells" && k != "prison") cages = false;
+          }
+          check(cages, "a spawner role is a cage room, never a well or a crypt");
+        }
+      }
     }
   }
 

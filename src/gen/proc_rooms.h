@@ -36,9 +36,10 @@ inline constexpr const char* PROC_FURNITURE[] = {
   "oak_chair", "oak_table", "oak_bench", "oak_stool", "oak_shelf", "oak_standing_shelf", "oak_bookcase",
   "brazier", "old_torch", "torch", "soul_torch", "lantern", "soul_lantern", "candle",
   "barrel", "lectern", "armor_stand", "weapon_rack", "wall_weapon_rack", "campfire",
-  "bookshelf", "decorated_pot", "cauldron", "anvil", "bed", "iron_bars", "chain", "grave"
+  "bookshelf", "decorated_pot", "cauldron", "anvil", "bed", "iron_bars", "chain", "grave",
+  "oak_desk", "oak_coffin", "altar", "sconce"
 };
-inline constexpr int PROC_FURNITURE_N = 28;
+inline constexpr int PROC_FURNITURE_N = 32;
 
 using ProcChestFn = std::function<void(int x, int y, int z, const char* lootKind, bool mimic)>;
 

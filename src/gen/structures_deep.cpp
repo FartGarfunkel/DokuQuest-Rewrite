@@ -76,7 +76,7 @@ static void strongholdBuild(ChunkWriter& w, const StructurePlan& S) {
     if (z < cz - 31 || z > cz - 27) P.put(cx - 13, y, z, "bookshelf");
   }
   P.fill(cx - 17, cy + 6, cz - 37, cx - 14, cy + 6, cz - 21, "planks");
-  for (int z = cz - 35; z <= cz - 23; z += 4) P.put(cx - 15, cy + 5, z, "lantern");
+  for (int z = cz - 35; z <= cz - 23; z += 4) P.put(cx - 15, cy + 5, z, "lantern", 1);
   P.lectern(cx - 15, cy + 1, cz - 33, 2, "end");
   P.chest(cx - 16, cy + 1, cz - 24, 2, "stronghold_library");
   // ---- the storeroom ----
@@ -90,9 +90,9 @@ static void strongholdBuild(ChunkWriter& w, const StructurePlan& S) {
     pr.kind = kind; pr.x = x; pr.y = y; pr.z = z; pr.rx = rx; pr.rz = rz; pr.H = H;
     pr.seed = hash32(x, y, z, salt); pr.wood = "oak"; pr.light = "lantern"; pr.hangLight = "lantern";
     pr.pillar = "stone_bricks"; pr.slab = "stone_brick_slab"; pr.density = 0.7f;
-    furnishProcRoom(P, pr, [&](int xx, int yy, int zz, const char* loot, bool) { if (P.in(xx, zz)) P.chest(xx, yy, zz, 0, loot && std::string(loot) == "rare" ? "stronghold_library" : "stronghold"); });
+    furnishProcRoom(P, pr);   // the hold's own chests already sit on the library and storeroom walls
   };
-  holdFurnish((cx - 18 + cx - 13) / 2, cy + 1, (cz - 12 + cz - 6) / 2, 2, 3, 4, "barracks", (u32)S.seed);
+  holdFurnish((cx - 18 + cx - 13) / 2, cy + 1, (cz - 12 + cz - 6) / 2, 3, 3, 4, "barracks", (u32)S.seed);
   holdFurnish((cx + 13 + cx + 17) / 2, cy + 1, (cz - 18 + cz - 12) / 2, 2, 3, 4, "kitchen", (u32)S.seed + 1);
   holdFurnish(cx, cy + 1, (cz + 8 + cz + 16) / 2, 4, 4, 4, "chapel", (u32)S.seed + 2);
   holdFurnish(cx, cy + 9, cz - 29, 4, 4, 5, "library", (u32)S.seed + 3);

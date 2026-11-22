@@ -479,22 +479,32 @@ static void mineBuild(ChunkWriter& w, const StructurePlan& S) {
         if (P.h(x, 2, z, 3) < 0.06 && k % 4 != 0) P.put(x, y + 2, z, "cobweb");
         if (s.spider && P.h(x, 3, z, 4) < 0.3 && wv != 0) P.put(x, y + 1 + (k & 1), z, "cobweb");
       }
-      if (s.chest && k == 5) { const int x = alongX ? ax : ax + 2, z = alongX ? az + 2 : az; if (P.in(x, z)) P.chest(x, y, z, alongX ? 0 : 3, "mineshaft"); }
+      if (s.chest && k == 5) {
+        const int x = alongX ? ax : ax + 1, z = alongX ? az + 1 : az;
+        if (P.in(x, z)) {
+          if (!tSolid(P.get(x, y - 1, z))) P.put(x, y - 1, z, "planks");
+          P.chest(x, y, z, alongX ? 0 : 3, "mineshaft");
+        }
+      }
     }
     // crossings: a small furnished room so two shafts never look the same
     for (auto [cx, cz] : {std::pair{s.x, s.z}, std::pair{s.ex, s.ez}}) {
+      if (cx == M.x && cz == M.z) continue;   // the ladder shaft
+      int deg = 0; for (const auto& o : M.segs)
+        if ((o.x == cx && o.z == cz) || (o.ex == cx && o.ez == cz)) deg++;
+      if (deg != 1) continue;   // through-stations stay rails and posts
       for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {
         const int x = cx + dx, z = cz + dz; if (!P.in(x, z)) continue;
         for (int yy = y; yy <= y + 3; yy++) if (P.get(x, yy, z) != BED && P.get(x, yy, z) != RAIL) P.put(x, yy, z, "air");
         if (!tSolid(P.get(x, y - 1, z))) P.put(x, y - 1, z, "planks");
       }
       ProcRoom pr;
-      static const char* MK[] = {"office", "store", "sleeping", "forge", "shrine", "hall"};
-      pr.kind = MK[jsFloor(P.h(cx, 0, cz, 11) * 6)];
-      pr.x = cx; pr.y = y; pr.z = cz; pr.rx = 3; pr.rz = 3; pr.H = 4;
+      static const char* MK[] = {"office", "store", "forge", "workshop", "cells"};
+      pr.kind = MK[jsFloor(P.h(cx, 0, cz, 11) * 5)];
+      pr.x = cx; pr.y = y; pr.z = cz; pr.rx = 2; pr.rz = 2; pr.H = 3;
       pr.seed = hash32(cx, y, cz, (i32)S.seed); pr.wood = "oak"; pr.light = "old_torch"; pr.hangLight = "lantern";
       pr.pillar = "log"; pr.slab = "oak_slab"; pr.density = 0.55f;
-      furnishProcRoom(P, pr, [&](int x, int yy, int z, const char*, bool) { if (P.in(x, z)) P.chest(x, yy, z, 0, "mineshaft"); });
+      furnishProcRoom(P, pr);   // the shaft's own chest is on the timber, not a pile in every crossing
     }
   }
   // the cage, wrapped in webs

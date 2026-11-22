@@ -198,12 +198,12 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
         const int bxx = cx + DIRX[back] * (H - 1), bzz = cz + DIRZ[back] * (H - 1);
         const int sx = -DIRZ[back], sz = DIRX[back];
         if (P.in(bxx + sx, bzz + sz)) P.chest(bxx + sx, y + 1, bzz + sz, (back + 2) & 3, "nether_fortress");
-        if (P.in(bxx - sx, bzz - sz)) P.chest(bxx - sx, y + 1, bzz - sz, (back + 2) & 3, "nether_fortress");
         if (((cx ^ cz) & 1) && P.in(cx, cz)) P.spawner(cx, y + 1, cz, "wither_skeleton");
         ProcRoom pr;
-        static const char* FK[] = {"barracks", "armoury", "refectory", "forge", "shrine", "store"};
-        pr.kind = FK[(unsigned)(cx * 7 + cz) % 6];
-        pr.x = cx; pr.y = y + 1; pr.z = cz; pr.rx = std::max(2, H - 2); pr.rz = std::max(2, H - 2); pr.H = 4;
+        static const char* FK[] = {"barracks", "armoury", "refectory", "forge", "shrine", "store",
+                                   "kitchen", "cells", "office", "chapel", "workshop", "sleeping"};
+        pr.kind = FK[(unsigned)(cx * 7 + cz + y) % 12];
+        pr.x = cx; pr.y = y + 1; pr.z = cz; pr.rx = std::max(3, H - 1); pr.rz = std::max(3, H - 1); pr.H = 4;
         pr.seed = hash32(cx, y, cz, (i32)S.seed); pr.wood = "crimson"; pr.light = "soul_torch"; pr.hangLight = "soul_lantern";
         pr.pillar = "nether_bricks"; pr.slab = "nether_brick_slab"; pr.density = 0.7f;
         furnishProcRoom(P, pr);
