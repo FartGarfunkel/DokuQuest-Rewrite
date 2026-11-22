@@ -69,7 +69,7 @@ bool creatureTakesHit(Level& lv, Entity& e, float amount, const DamageSource& sr
   s.type = src.type; s.element = src.element; s.tool = src.tool; s.attacker = src.attacker; s.knock = src.knock;
   s.weapon = !src.weapon.empty(); s.bypassArmor = src.bypassArmor;
   s.hasRay = src.hasRay; s.rayO = src.rayO; s.rayD = src.rayD; s.ench = src.ench; s.pierce = src.pierce;
-  s.armorSlot = src.armorSlot; s.metGuard = src.metGuard;
+  s.armorSlot = src.armorSlot; s.metGuard = src.metGuard; s.hitPart = src.hitPart;
   if (s.type == "arrow" && s.tool.empty()) s.tool = "arrow";
   dealt = c->hurt(lv, amount, s);
   return true;

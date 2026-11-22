@@ -885,12 +885,15 @@ void Creature::tryDismember(Level& lv, const DamageSrc& src, float dealt) {
   if (!M || M->rig.empty()) return;
   rigPose(*this, *M, creatureBase(*this, false));   // the pose right now
   int pi = -1;
-  if (src.hasRay) pi = rigHitPart(*this, *M, src.rayO, src.rayD);
+  if (src.hitPart >= 0 && src.hitPart < (int)M->parts.size() && rigPartPosed(*this, src.hitPart))
+    pi = src.hitPart;
+  else if (src.hasRay) pi = rigHitPart(*this, *M, src.rayO, src.rayD);
   if (pi >= 0) {
     int limb = rigLimbPart(*M, pi);
     if (limb < 0) return;   // the torso: a body hit does not tear off some other limb
     pi = limb;
   } else {
+    if (src.hitPart >= 0) return;   // the blade named a part that is gone now: do not roll another limb
     std::vector<int> limbs; for (size_t i = 0; i < M->parts.size(); i++) if (!M->parts[i].limb.empty() && rigPartPosed(*this, (int)i)) limbs.push_back((int)i);
     if (limbs.empty()) return;
     pi = limbs[(size_t)(frand() * limbs.size()) % limbs.size()];

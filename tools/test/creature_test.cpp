@@ -117,6 +117,9 @@ int main(int argc, char** argv) {
       gh->pos = vec3(0, 0, -1.35f); gh->yaw = 3.14159f; gh->onGround = true; gh->age = 2;
       const int hit = bladeSweepHitsCreature(MV_SWORD1, 0, 1, vec3(0), 0, 0, *gh, *Mg, 1.f);
       CHECK(hit >= 0, "a sword swing hits a ghoul standing in front (%s)", hit >= 0 ? Mg->parts[hit].name.c_str() : "nothing");
+      const int limb = hit >= 0 ? rigLimbPart(*Mg, hit) : -1;
+      CHECK(hit < 0 || limb < 0 || !Mg->parts[limb].limb.empty(),
+            "that part is the limb tryDismember will take (%s)", limb >= 0 ? Mg->parts[limb].limb.c_str() : "torso");
       gh->pos = vec3(4.0f, 0, 0);
       const int sideMiss = bladeSweepHitsCreature(MV_SWORD1, 0, 1, vec3(0), 0, 0, *gh, *Mg, 1.f);
       CHECK(sideMiss < 0, "a ghoul well to the side is missed by that swing");
@@ -382,7 +385,12 @@ int main(int argc, char** argv) {
       Creature* gh = spawnCreature(*lv, 0, "ghoul", p.pos + vec3(2.5f, 0.2f, 0)); gh->calm = true;
       lv->tick(TICK_DT);
       for (int h = 0; h < 6 && gh->alive(); h++) {
-        DamageSource d2; d2.attacker = p.id; d2.tool = "axe"; d2.hasRay = true; d2.rayO = p.pos + vec3(0, 1.62f, 0); d2.rayD = glm::normalize(gh->pos + vec3(0, 0.3f + h * 0.3f, 0) - d2.rayO);
+        DamageSource d2; d2.attacker = p.id; d2.tool = "axe"; d2.hasRay = true;
+        d2.rayO = p.pos + vec3(0, 1.62f, 0); d2.rayD = glm::normalize(gh->pos + vec3(0, 0.3f + h * 0.3f, 0) - d2.rayO);
+        if (const RigModel* Mh = rigModel(gh->modelKey())) {
+          rigPose(*gh, *Mh, creatureBase(*gh, false));
+          d2.hitPart = rigHitPart(*gh, *Mh, d2.rayO, d2.rayD);
+        }
         damageEntity(*lv, *gh, 3, d2);
       }
       gibs = countType(*lv, "gib");

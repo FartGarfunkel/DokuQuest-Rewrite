@@ -85,6 +85,7 @@ struct DamageSrc {
   float pierce = 0;      // the share of its armour the attacker ignores (sim/balance.h)
   int armorSlot = -1;    // 0 helm, 1 chest, 2 legs, 3 boots; -1 the whole suit
   bool metGuard = false; // the claw met the shield / weapon guard
+  int hitPart = -1;      // posed mesh part the blade overlapped; -1 none
 };
 
 struct Move { float want = 0, dir = 0; };

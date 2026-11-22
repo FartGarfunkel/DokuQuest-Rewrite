@@ -288,6 +288,7 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
   }
   if (p.data.contains("hitArmorSlot")) src.armorSlot = p.data.value("hitArmorSlot", -1);
   if (p.data.value("metGuard", false)) src.metGuard = true;
+  if (p.data.contains("hitPart")) src.hitPart = p.data.value("hitPart", -1);
   if (p.data.contains("hitRayO") && p.data["hitRayO"].is_array() && p.data["hitRayO"].size() >= 3) {
     src.hasRay = true;
     src.rayO = vec3(p.data["hitRayO"][0].get<float>(), p.data["hitRayO"][1].get<float>(), p.data["hitRayO"][2].get<float>());
@@ -466,7 +467,6 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
       if (e->removed || e->id == p.id || e->realm != p.realm || e->hp <= 0 || (!isMob(*e) && !e->isPlayer())) continue;
       if (std::find(p.atkHit.begin(), p.atkHit.end(), e->id) != p.atkHit.end()) continue;
       vec3 ep = e->pos;
-      if (p.atkOff) { const vec3 right(std::cos(p.atkYaw), 0, -std::sin(p.atkYaw)); ep -= right * (2 * glm::dot(ep - p.pos, right)); }
       const float reach = sore ? m.reach * 0.35f : m.reach;
       const bool left = p.atkOff;
       if (auto* hitP = dynamic_cast<Player*>(e.get())) {
@@ -509,11 +509,12 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
       } else {
         p.data["hitRayO"] = json::array({at.x, at.y, at.z});
         p.data["hitRayD"] = json::array({dir.x, dir.y, dir.z});
+        p.data["hitPart"] = part;
       }
       const bool swapIn = left && !p.offhand.empty();
       if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
       attackEntity(lv, p, *e, m.dmg, m.impact, p.atkMove == MV_SWORD_AIR, false);
-      p.data.erase("hitRayO"); p.data.erase("hitRayD");
+      p.data.erase("hitRayO"); p.data.erase("hitRayD"); p.data.erase("hitPart");
       if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
       p.atkHit.push_back(e->id);
       if (isMob(*e)) {

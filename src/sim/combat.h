@@ -29,6 +29,7 @@ struct DamageSource {
   float pierce = 0;          // the share of the target's armour the attacker ignores (sim/balance.h armorPierce)
   int armorSlot = -1;        // 0 helm, 1 chest, 2 legs, 3 boots; -1 the whole suit
   bool metGuard = false;     // the blade or claw met the shield / weapon guard
+  int hitPart = -1;          // posed mesh part the blade overlapped; -1 none (tryDismember uses this, not a random limb)
 };
 
 // LocalPlayer.hurt + Player.hurt: rules (fall/drown/fire damage), creative, invulnerability,
