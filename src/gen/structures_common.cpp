@@ -287,6 +287,16 @@ int SP::chest(int x, int y, int z, int f, const std::string& kind) {
   if (i >= 0) { Mulberry32 r(hash32(x, y + S.hashDy, z, (i32)S.seed)); setEntity(i, json{{"type", "chest"}, {"items", structLoot(kind, r)}, {"lk", "s:" + kind}}); }
   return i;
 }
+int SP::barrel(int x, int y, int z, int f, const std::string& kind) {
+  int i = put(x, y, z, "barrel", (2 - f) & 3);
+  if (i >= 0) {
+    Mulberry32 r(hash32(x, y + S.hashDy, z, (i32)S.seed ^ 0xBA22ELu));
+    const bool dungeon = kind == "common" || kind == "rare" || kind == "boss";
+    json items = dungeon ? dungeonLoot(kind, r) : structLoot(kind.empty() ? "ruin" : kind, r);
+    setEntity(i, json{{"type", "chest"}, {"items", items}, {"lk", dungeon ? "d:" + kind : "s:" + kind}});
+  }
+  return i;
+}
 
 int SP::lectern(int x, int y, int z, int f, const std::string& lore) {
   int i = put(x, y, z, "lectern", (f + 2) & 3);

@@ -77,6 +77,7 @@ public:
   void setEntity(int idx, json e) { if (idx >= 0) w.ch.blockEntities[idx] = std::move(e); }
   // a chest whose front faces f (0 north, 1 east, 2 south, 3 west), filled from a loot table
   int chest(int x, int y, int z, int f, const std::string& kind);
+  int barrel(int x, int y, int z, int f, const std::string& kind);   // same facing as chest, a little scrap inside
   int lectern(int x, int y, int z, int f, const std::string& lore = "");
   void ladder(int x, int y0, int y1, int z, int f) { for (int y = y0; y <= y1; y++) put(x, y, z, "ladder", f); }
   int ground(int x, int z) const { return w.ground(x, z); }

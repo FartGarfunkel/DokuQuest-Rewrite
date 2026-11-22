@@ -74,15 +74,19 @@ def main(d):
                                       'shape': 'oak_coffin', 'tex': P, 'facingModel': True, 'furniture': 'coffin', 'wood': 'oak'}, [tiles[P]] * 6)
     recipe('oak_coffin', 1, ['PPP', 'PSP'], {'P': 'planks', 'S': SLAB}, group='furniture')
 
-    # altar: a full-cell stone dais, a cloth runner, two candles (nocol) on the north (the back)
-    if 'altar' not in sj['shapes']:
-        sj['shapes']['altar'] = [
-            {'b': [0, 0, 0, 16, 4, 16], 'side': SB, 'end': SB},
-            {'b': [5, 4, 1, 11, 4.5, 15], 'side': WOOL, 'end': WOOL},
-            {'b': [4, 4.5, 2, 6, 10, 4], 'side': CAND, 'end': CAND, 'nocol': True},
-            {'b': [10, 4.5, 2, 12, 10, 4], 'side': CAND, 'end': CAND, 'nocol': True},
-            {'b': [4.4, 10, 2.4, 5.6, 13, 3.6], 'side': FLAME, 'end': FLAME, 'nocol': True},
-            {'b': [10.4, 10, 2.4, 11.6, 13, 3.6], 'side': FLAME, 'end': FLAME, 'nocol': True}]
+    # altar: dais, cloth, two bone candlesticks with fire (candle sprites are hollow on a model box)
+    WAX, FIRET = tex('honeycomb_block', 'yellow_terracotta', 'bone_block_side', 'smooth_stone'), tex('fire')
+    GOLD = tex('gold_block', 'raw_gold_block', SB)
+    sj['shapes']['altar'] = [
+        {'b': [0, 0, 0, 16, 4, 16], 'side': SB, 'end': SB},
+        {'b': [4, 4, 2, 12, 5, 14], 'side': WOOL, 'end': WOOL},
+        {'b': [6.5, 5, 6.5, 9.5, 6.2, 9.5], 'side': GOLD, 'end': GOLD},
+        {'b': [3.5, 5, 3, 5.5, 11, 5], 'side': WAX, 'end': WAX},
+        {'b': [10.5, 5, 3, 12.5, 11, 5], 'side': WAX, 'end': WAX},
+        {'b': [4.2, 10.5, 2.2, 4.8, 16, 5.8], 'side': FIRET, 'end': FIRET, 'nocol': True, 'tv': 8},
+        {'b': [3.2, 10.5, 3.7, 5.8, 16, 4.3], 'side': FIRET, 'end': FIRET, 'nocol': True, 'tv': 8},
+        {'b': [11.2, 10.5, 2.2, 11.8, 16, 5.8], 'side': FIRET, 'end': FIRET, 'nocol': True, 'tv': 8},
+        {'b': [10.2, 10.5, 3.7, 12.8, 16, 4.3], 'side': FIRET, 'end': FIRET, 'nocol': True, 'tv': 8}]
     block('altar', 'Altar', {'render': 6, 'opaque': False, 'hardness': 2, 'tool': 'pickaxe', 'sound': 'stone', 'light': 8,
                              'shape': 'altar', 'tex': SB, 'facingModel': True}, [tiles[SB]] * 6)
     recipe('altar', 1, ['C C', 'SSS'], {'C': 'candle', 'S': 'stone_bricks'})
@@ -98,6 +102,15 @@ def main(d):
     block('sconce', 'Sconce', {'render': 6, 'solid': False, 'opaque': False, 'hardness': 1, 'sound': 'metal', 'light': 12, 'hot': True,
                               'shape': 'sconce', 'tex': IRON, 'facingModel': True}, [tiles[IRON]] * 6)
     recipe('sconce', 1, ['N', 'T'], {'N': 'iron_nugget', 'T': 'torch'})
+
+    # brazier: a cross of fire in the bowl, not a solid fire cube
+    if 'brazier' in sj['shapes']:
+        boxes = [b for b in sj['shapes']['brazier'] if b.get('side') != 'fire' and b.get('end') != 'fire']
+        boxes += [
+            {'b': [7.2, 9, 3, 8.8, 16, 13], 'side': FIRET, 'end': FIRET, 'nocol': True, 'tv': 8},
+            {'b': [3, 9, 7.2, 13, 16, 8.8], 'side': FIRET, 'end': FIRET, 'nocol': True, 'tv': 8},
+            {'b': [6, 9, 6, 10, 16, 10], 'side': FIRET, 'end': FIRET, 'nocol': True, 'tv': 8}]
+        sj['shapes']['brazier'] = boxes
 
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'shapes.json').write_text(json.dumps(sj, indent=1, ensure_ascii=False) + '\n')

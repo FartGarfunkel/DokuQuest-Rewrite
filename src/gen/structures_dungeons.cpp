@@ -296,8 +296,9 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
   for (const DRoom& r : d.rooms) {
     Mulberry32 rr(r.seed);
     auto chest = [&](int x, int y, int z, const char* kind, bool mimic) {
-      const int meta = jsFloor(rr() * 4);
-      const int i = P.put(x, y, z, "chest", meta);
+      const int dx = r.x - x, dz = r.z - z;
+      const int f = std::abs(dx) >= std::abs(dz) ? (dx >= 0 ? 1 : 3) : (dz >= 0 ? 2 : 0);
+      const int i = P.put(x, y, z, "chest", (u8)((2 - f) & 3));
       if (i >= 0) { json be{{"type", "chest"}, {"items", dungeonLoot(kind, rr)}, {"lk", std::string("d:") + kind}}; if (mimic) be["mimic"] = 1; P.setEntity(i, be); }
     };
     ProcRoom pr;

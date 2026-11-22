@@ -655,6 +655,19 @@ int main(int argc, char** argv) {
     }
     check(fbad.empty(), "a fallen miner's things never leave a fixed metal piece (" + fbad + ")");
     check(sawMixedPick, "a fallen miner sometimes still carried a pick, mixed");
+    long fDia = 0, fGem = 0;
+    for (int x = 40; x < 240; x++) {
+      ww.setBlock(x, rg.Y + 1, 12, reg().blockId("remains_miner")); ww.setBlockEntity(x, rg.Y + 1, 12, nullptr);
+      json* e = containerEntity(ww, x, rg.Y + 1, 12);
+      if (!e || !e->contains("items")) continue;
+      for (const auto& s : (*e)["items"]) {
+        if (!s.is_object()) continue;
+        const std::string id = s.value("id", "");
+        if (id == "diamond") fDia += s.value("n", 1);
+        if (id == "ruby" || id == "sapphire" || id == "emerald" || id == "mithril_ingot") fGem += s.value("n", 1);
+      }
+    }
+    check(fDia == 0 && fGem == 0, "a fallen miner carries coal and iron, not gems (" + std::to_string(fDia) + " dia, " + std::to_string(fGem) + " gems)");
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

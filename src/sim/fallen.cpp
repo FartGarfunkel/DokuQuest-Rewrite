@@ -19,18 +19,18 @@ namespace {
 struct Loot { const char* id; int lo, hi; float chance; };
 // what each kind of adventurer carried (the ids not in this build are skipped)
 const std::vector<Loot>& lootFor(const std::string& kind) {
-  static const std::vector<Loot> traveller = {{"bread", 1, 3, 0.7f}, {"apple", 1, 3, 0.5f}, {"torch", 2, 6, 0.6f}, {"string", 1, 4, 0.4f}, {"arrow", 3, 9, 0.4f},
-                                              {"gold_coin", 2, 7, 0.6f}, {"compass", 1, 1, 0.12f}, {"empty_map", 1, 1, 0.15f}, {"iron_ingot", 1, 3, 0.3f}, {"leather", 1, 3, 0.3f}};
-  static const std::vector<Loot> desert = {{"gold_ingot", 1, 3, 0.5f}, {"gold_coin", 3, 10, 0.7f}, {"bone", 2, 5, 0.6f}, {"string", 1, 3, 0.4f},
-                                           {"emerald", 1, 2, 0.25f}, {"melon_slice", 1, 3, 0.3f}, {"potion_heal", 1, 1, 0.12f}, {"gunpowder", 1, 3, 0.3f}};
-  static const std::vector<Loot> snowy = {{"cooked_beef", 1, 3, 0.6f}, {"leather", 1, 4, 0.5f}, {"torch", 2, 6, 0.6f}, {"snowball", 2, 8, 0.4f},
-                                          {"iron_ingot", 1, 3, 0.4f}, {"packed_ice", 1, 4, 0.3f}, {"compass", 1, 1, 0.15f}, {"gold_coin", 2, 6, 0.5f}};
-  static const std::vector<Loot> jungle = {{"cocoa_beans", 1, 4, 0.6f}, {"glow_berries", 1, 4, 0.4f}, {"emerald", 1, 3, 0.35f}, {"gold_ingot", 1, 2, 0.3f},
-                                           {"arrow", 3, 10, 0.5f}, {"bow", 1, 1, 0.15f}, {"diamond", 1, 1, 0.06f}, {"gold_coin", 2, 8, 0.5f}};
-  static const std::vector<Loot> swamp = {{"bone", 2, 6, 0.7f}, {"rotten_flesh", 1, 4, 0.5f}, {"string", 1, 3, 0.4f}, {"potion_heal", 1, 1, 0.15f},
-                                          {"gold_coin", 1, 5, 0.5f}, {"lapis_lazuli", 2, 6, 0.3f}, {"candle", 1, 2, 0.3f}};
-  static const std::vector<Loot> miner = {{"coal", 3, 10, 0.7f}, {"torch", 4, 12, 0.7f}, {"iron_ingot", 1, 4, 0.5f}, {"gold_ingot", 1, 2, 0.3f},
-                                          {"lapis_lazuli", 2, 8, 0.35f}, {"diamond", 1, 2, 0.1f}, {"amethyst_shard", 1, 4, 0.3f}, {"bread", 1, 2, 0.4f}};
+  static const std::vector<Loot> traveller = {{"bread", 1, 3, 0.7f}, {"apple", 1, 2, 0.45f}, {"torch", 2, 5, 0.55f}, {"string", 1, 3, 0.35f}, {"arrow", 2, 6, 0.35f},
+                                              {"gold_coin", 1, 3, 0.35f}, {"leather", 1, 2, 0.25f}, {"stick", 1, 4, 0.3f}};
+  static const std::vector<Loot> desert = {{"gold_nugget", 2, 6, 0.45f}, {"gold_coin", 1, 4, 0.4f}, {"bone", 2, 5, 0.6f}, {"string", 1, 3, 0.4f},
+                                           {"melon_slice", 1, 2, 0.3f}, {"gunpowder", 1, 2, 0.22f}, {"bread", 1, 2, 0.3f}};
+  static const std::vector<Loot> snowy = {{"cooked_beef", 1, 2, 0.5f}, {"leather", 1, 3, 0.45f}, {"torch", 2, 5, 0.55f}, {"snowball", 2, 6, 0.4f},
+                                          {"coal", 1, 3, 0.3f}, {"packed_ice", 1, 3, 0.25f}, {"gold_coin", 1, 3, 0.3f}};
+  static const std::vector<Loot> jungle = {{"cocoa_beans", 1, 3, 0.55f}, {"glow_berries", 1, 3, 0.4f},
+                                           {"arrow", 2, 6, 0.4f}, {"gold_coin", 1, 3, 0.3f}, {"vine", 1, 3, 0.25f}, {"bread", 1, 2, 0.3f}};
+  static const std::vector<Loot> swamp = {{"bone", 2, 5, 0.65f}, {"rotten_flesh", 1, 3, 0.45f}, {"string", 1, 3, 0.4f},
+                                          {"gold_coin", 1, 3, 0.3f}, {"candle", 1, 2, 0.25f}, {"lily_pad", 1, 2, 0.2f}};
+  static const std::vector<Loot> miner = {{"coal", 2, 6, 0.7f}, {"torch", 3, 8, 0.65f}, {"iron_ingot", 1, 2, 0.35f},
+                                          {"bread", 1, 2, 0.4f}, {"string", 1, 3, 0.25f}, {"cobblestone", 2, 6, 0.35f}};
   if (kind == "desert") return desert;
   if (kind == "snowy") return snowy;
   if (kind == "jungle") return jungle;

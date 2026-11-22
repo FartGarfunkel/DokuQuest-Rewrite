@@ -26,7 +26,7 @@ json lootItem(JRandom& r) {
     case 10: return slot("cocoa_beans", r.nextInt(3) + 1);
     case 11: { static const char* G[] = {"gold_ingot", "coal", "bone", "rotten_flesh", "pumpkin_seeds", "melon_seeds"}; int k = r.nextInt(6); return slot(G[k], k < 1 ? r.nextInt(3) + 1 : r.nextInt(6) + 1); }
     case 12: { static const char* Q[] = {"silver_ingot", "tin_ingot", "copper_ingot", "book", "arrow", "lapis_lazuli"}; int k = r.nextInt(6); return slot(Q[k], r.nextInt(k == 3 ? 2 : 5) + 1); }
-    default: { static const char* R[] = {"diamond", "emerald", "ruby", "sapphire", "enchanted_book", "mithril_ingot"}; return r.nextInt(5) == 0 ? slot(R[r.nextInt(6)], 1) : json(); }
+    default: { static const char* R[] = {"coal", "bone", "iron_ingot", "book", "arrow", "string"}; return r.nextInt(5) == 0 ? slot(R[r.nextInt(6)], 1) : json(); }
   }
 }
 } // namespace

@@ -443,7 +443,7 @@ static bool minePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struc
   if (segs.size() < 5) return false;
   MineSeg& sp = segs[1 + jsFloor(rnd() * (segs.size() - 1))]; sp.spider = true;
   int x0 = x, x1 = x, z0 = z, z1 = z;
-  for (const auto& s : segs) { x0 = std::min(x0, s.x0 - 3); x1 = std::max(x1, s.x1 + 3); z0 = std::min(z0, s.z0 - 3); z1 = std::max(z1, s.z1 + 3); }
+  for (const auto& s : segs) { x0 = std::min(x0, s.x0 - 10); x1 = std::max(x1, s.x1 + 10); z0 = std::min(z0, s.z0 - 10); z1 = std::max(z1, s.z1 + 10); }
   int y = owUnder(yo);
   // (a deep world, terrain 21: anywhere from the imported data's y -55 to 30, kept 16 under the land)
   if (const OverworldGen* ow = owOf(t); ow && ow->deepStructs()) y = std::min(c.y - 16, -54 + (int)(hash32(t.seed() ^ 0x3A1, x, z, 77) % 86u));
@@ -459,7 +459,7 @@ static void mineBuild(ChunkWriter& w, const StructurePlan& S) {
   SP P(w); const MineExt& M = extOf<MineExt>(S);
   const int y = S.y; const BlockId BED = bid("bedrock"), RAIL = bid("rail");
   for (const auto& s : M.segs) {
-    if (s.x1 + 3 < P.bx || s.x0 - 3 > P.bx + 15 || s.z1 + 3 < P.bz || s.z0 - 3 > P.bz + 15) continue;
+    if (s.x1 + 10 < P.bx || s.x0 - 10 > P.bx + 15 || s.z1 + 10 < P.bz || s.z0 - 10 > P.bz + 15) continue;
     const bool alongX = s.dir == 1 || s.dir == 3;
     const int n = std::abs(alongX ? s.ex - s.x : s.ez - s.z);
     for (int k = 0; k <= n; k++) {
@@ -479,32 +479,58 @@ static void mineBuild(ChunkWriter& w, const StructurePlan& S) {
         if (P.h(x, 2, z, 3) < 0.06 && k % 4 != 0) P.put(x, y + 2, z, "cobweb");
         if (s.spider && P.h(x, 3, z, 4) < 0.3 && wv != 0) P.put(x, y + 1 + (k & 1), z, "cobweb");
       }
+      if (k % 4 == 1) {
+        const int wv = ((k / 4) & 1) ? 1 : -1;
+        const int x = alongX ? ax : ax + wv, z = alongX ? az + wv : az;
+        const int back = (s.dir + 2) & 3;
+        static const u8 T[4] = {3, 2, 4, 1};
+        if (P.in(x, z) && P.get(x, y + 1, z) == AIR && P.get(x, y, z) != RAIL)
+          P.put(x, y + 1, z, s.spider ? "soul_torch" : "torch", T[back]);
+      }
+      if (s.spider && k % 8 == 4 && P.in(ax, az) && P.get(ax, y + 2, az) == AIR)
+        P.put(ax, y + 2, az, "soul_lantern", 1);
       if (s.chest && k == 5) {
-        const int x = alongX ? ax : ax + 1, z = alongX ? az + 1 : az;
-        if (P.in(x, z)) {
-          if (!tSolid(P.get(x, y - 1, z))) P.put(x, y - 1, z, "planks");
-          P.chest(x, y, z, alongX ? 0 : 3, "mineshaft");
+        const int side = P.h(ax, 1, az, 7) < 0.5 ? -1 : 1;
+        const int ox = alongX ? 0 : side, oz = alongX ? side : 0;
+        const int x2 = ax + ox * 2, z2 = az + oz * 2, x3 = ax + ox * 3, z3 = az + oz * 3;
+        const int face = alongX ? (side > 0 ? 0 : 2) : (side > 0 ? 3 : 1);
+        if (P.in(x3, z3) && P.get(x2, y, z2) != RAIL && P.get(x3, y, z3) != RAIL) {
+          for (int yy = y; yy <= y + 1; yy++) {
+            if (P.get(x2, yy, z2) != BED && P.get(x2, yy, z2) != RAIL) P.put(x2, yy, z2, "air");
+            if (P.get(x3, yy, z3) != BED && P.get(x3, yy, z3) != RAIL) P.put(x3, yy, z3, "air");
+          }
+          if (!tSolid(P.get(x3, y - 1, z3))) P.put(x3, y - 1, z3, "planks");
+          if (P.get(x3, y, z3) != RAIL) P.chest(x3, y, z3, face, "mineshaft");
         }
       }
     }
-    // crossings: a small furnished room so two shafts never look the same
     for (auto [cx, cz] : {std::pair{s.x, s.z}, std::pair{s.ex, s.ez}}) {
-      if (cx == M.x && cz == M.z) continue;   // the ladder shaft
-      int deg = 0; for (const auto& o : M.segs)
-        if ((o.x == cx && o.z == cz) || (o.ex == cx && o.ez == cz)) deg++;
-      if (deg != 1) continue;   // through-stations stay rails and posts
-      for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {
-        const int x = cx + dx, z = cz + dz; if (!P.in(x, z)) continue;
-        for (int yy = y; yy <= y + 3; yy++) if (P.get(x, yy, z) != BED && P.get(x, yy, z) != RAIL) P.put(x, yy, z, "air");
+      if (cx == M.x && cz == M.z) continue;
+      int deg = 0, inDir = -1;
+      for (const auto& o : M.segs) {
+        if (o.ex == cx && o.ez == cz) { deg++; inDir = o.dir; }
+        else if (o.x == cx && o.z == cz) { deg++; inDir = (o.dir + 2) & 3; }
+      }
+      if (deg != 1 || inDir < 0) continue;
+      const int side = (inDir + (P.h(cx, 2, cz, 13) < 0.5 ? 1 : 3)) & 3;
+      const int ox = cx + DXL[side] * 5, oz = cz + DZL[side] * 5;
+      const int nx = cx + DXL[side] * 2, nz = cz + DZL[side] * 2;
+      for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {
+        const int x = ox + dx, z = oz + dz; if (!P.in(x, z) || P.get(x, y, z) == RAIL) continue;
+        for (int yy = y; yy <= y + 2; yy++) if (P.get(x, yy, z) != BED) P.put(x, yy, z, "air");
         if (!tSolid(P.get(x, y - 1, z))) P.put(x, y - 1, z, "planks");
+      }
+      if (P.in(nx, nz) && P.get(nx, y, nz) != RAIL) {
+        P.put(nx, y, nz, "air"); P.put(nx, y + 1, nz, "air");
+        if (!tSolid(P.get(nx, y - 1, nz))) P.put(nx, y - 1, nz, "planks");
       }
       ProcRoom pr;
       static const char* MK[] = {"office", "store", "forge", "workshop", "cells"};
-      pr.kind = MK[jsFloor(P.h(cx, 0, cz, 11) * 5)];
-      pr.x = cx; pr.y = y; pr.z = cz; pr.rx = 2; pr.rz = 2; pr.H = 3;
-      pr.seed = hash32(cx, y, cz, (i32)S.seed); pr.wood = "oak"; pr.light = "old_torch"; pr.hangLight = "lantern";
+      pr.kind = MK[jsFloor(P.h(ox, 0, oz, 11) * 5)];
+      pr.x = ox; pr.y = y; pr.z = oz; pr.rx = 2; pr.rz = 2; pr.H = 3;
+      pr.seed = hash32(ox, y, oz, (i32)S.seed); pr.wood = "oak"; pr.light = "torch"; pr.hangLight = "lantern";
       pr.pillar = "log"; pr.slab = "oak_slab"; pr.density = 0.55f;
-      furnishProcRoom(P, pr);   // the shaft's own chest is on the timber, not a pile in every crossing
+      furnishProcRoom(P, pr);
     }
   }
   // the cage, wrapped in webs

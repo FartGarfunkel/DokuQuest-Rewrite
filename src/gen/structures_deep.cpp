@@ -82,7 +82,7 @@ static void strongholdBuild(ChunkWriter& w, const StructurePlan& S) {
   // ---- the storeroom ----
   P.chest(cx + 17, cy + 1, cz - 33, 3, "stronghold");
   P.chest(cx + 17, cy + 1, cz - 25, 3, "stronghold");
-  for (auto [x, z] : {std::pair{cx + 13, cz - 34}, {cx + 16, cz - 30}, {cx + 14, cz - 26}}) P.put(x, cy + 1, z, "barrel");
+  for (auto [x, z] : {std::pair{cx + 13, cz - 34}, {cx + 16, cz - 30}, {cx + 14, cz - 26}}) P.barrel(x, cy + 1, z, 3, "stronghold");
   P.put(cx + 15, cy + 1, cz - 29, "lantern");
   for (auto [x, y, z] : {std::tuple{cx + 13, cy + 4, cz - 24}, {cx + 17, cy + 4, cz - 34}, {cx + 16, cy + 4, cz - 29}}) P.put(x, y, z, "cobweb");
   auto holdFurnish = [&](int x, int y, int z, int rx, int rz, int H, const char* kind, u32 salt) {

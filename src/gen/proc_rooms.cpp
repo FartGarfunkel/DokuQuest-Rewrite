@@ -61,6 +61,19 @@ void putFloor(SP& P, int x, int y, int z, std::string_view k, u8 meta = 0) {
   if (k.empty() || !floorOk(P, x, y, z)) return;
   P.put(x, y, z, k, meta);
 }
+// back of a north-default model (shelf, bookcase, desk, coffin) against wall `wallToward`
+void putAgainst(SP& P, int x, int y, int z, std::string_view k, int wallToward) {
+  putFloor(P, x, y, z, k, (u8)(wallToward & 3));
+}
+void putBarrel(SP& P, int x, int y, int z, int front, const char* table = "common") {
+  if (!floorOk(P, x, y, z)) return;
+  P.barrel(x, y, z, front & 3, table);
+}
+int frontTo(int x, int z, int cx, int cz) {
+  const int dx = cx - x, dz = cz - z;
+  if (std::abs(dx) >= std::abs(dz)) return dx >= 0 ? 1 : 3;
+  return dz >= 0 ? 2 : 0;
+}
 void putHang(SP& P, int x, int y, int z, std::string_view k) {
   if (k.empty() || !P.in(x, z) || !isAir(P, x, y, z) || isLadder(P, x, y, z)) return;
   if (!solidAt(P, x, y + 1, z)) return;
@@ -121,6 +134,13 @@ void clutterCorners(SP& P, const ProcRoom& r, Mulberry32& rnd) {
   }
 }
 
+void stockBooks(SP& P, int i) {
+  if (i < 0) return;
+  json items = json::array();
+  for (int k = 0; k < 6; k++) items.push_back(json{{"id", "book"}, {"n", 1}});
+  P.setEntity(i, json{{"type", "bookcase"}, {"items", items}});
+}
+
 void tableAgainst(SP& P, const ProcRoom& r, int dir) {
   int x, z; wallCell(r, dir, 0, x, z);
   putFloor(P, x, r.y, z, furn(r, "table"));
@@ -129,7 +149,7 @@ void tableAgainst(SP& P, const ProcRoom& r, int dir) {
 }
 
 void deskAgainst(SP& P, const ProcRoom& r, int dir) {
-  int x, z; wallCell(r, dir, 0, x, z);
+  int x, z; wallCell(r, dir, 1, x, z);
   const std::string desk = hasBlock("oak_desk") ? "oak_desk" : furn(r, "table");
   putFloor(P, x, r.y, z, desk, (u8)(dir & 3));   // backboard against the wall
   const int cx = x + DIRX[(dir + 2) & 3], cz = z + DIRZ[(dir + 2) & 3];
@@ -182,7 +202,7 @@ void furnishProcRoom(SP& P, const ProcRoom& r, const ProcChestFn& chest) {
   if (k == "entry") {
     putFloor(P, r.x + r.rx, y, r.z + r.rz, "decorated_pot");
     putFloor(P, wx, y, wz, furn(r, "stool"));
-    if (var & 1) putFloor(P, r.x - r.rx, y, r.z - r.rz, "barrel");
+    if (var & 1) putBarrel(P, r.x - r.rx, y, r.z - r.rz, frontTo(r.x - r.rx, r.z - r.rz, r.x, r.z));
   } else if (k == "hall") {
     cornerPillars(P, r, true);
     int x0, z0;
@@ -197,8 +217,8 @@ void furnishProcRoom(SP& P, const ProcRoom& r, const ProcChestFn& chest) {
   } else if (k == "loot") {
     ch(bx, y, bz, var == 0 ? "rare" : "common", rnd() < 0.08);
     int x, z; wallCell(r, back, 1, x, z);
-    putFloor(P, x, y, z, "barrel");
-    putFloor(P, wx, y, wz, furn(r, "standing_shelf"));
+    putBarrel(P, x, y, z, frontTo(x, z, r.x, r.z));
+    putAgainst(P, wx, y, wz, furn(r, "standing_shelf"), side);
     putFloor(P, r.x + r.rx, y, r.z - r.rz, "decorated_pot");
   } else if (k == "vault") {
     for (int i = -1; i <= 1; i++) {
@@ -216,17 +236,28 @@ void furnishProcRoom(SP& P, const ProcRoom& r, const ProcChestFn& chest) {
     int x, z; wallCell(r, 3, 0, x, z); putWall(P, x, y + 1, z, "iron_bars", 3);
     wallCell(r, 1, 0, x, z); putWall(P, x, y + 1, z, "iron_bars", 1);
   } else if (k == "library" || k == "scriptorium") {
-    for (int t = -(r.rz - 1); t <= (r.rz - 1); t++) {
-      if (std::abs(t) < 1) continue;
-      for (int yy = y; yy < y + std::min(3, r.H); yy++) {
-        P.put(r.x - r.rx, yy, r.z + t, PLK(furn(r, "bookcase"), "bookshelf"));
-        P.put(r.x + r.rx, yy, r.z + t, PLK(furn(r, "bookcase"), "bookshelf"));
+    const std::string books = PLK(furn(r, "bookcase"), "bookshelf");
+    if (var & 1) {
+      for (int t = -(r.rx - 1); t <= (r.rx - 1); t++) {
+        if (std::abs(t) < 1) continue;
+        for (int yy = y; yy < y + std::min(3, r.H); yy++) {
+          stockBooks(P, P.put(r.x + t, yy, r.z - r.rz, books, 0));
+          stockBooks(P, P.put(r.x + t, yy, r.z + r.rz, books, 2));
+        }
+      }
+    } else {
+      for (int t = -(r.rz - 1); t <= (r.rz - 1); t++) {
+        if (std::abs(t) < 1) continue;
+        for (int yy = y; yy < y + std::min(3, r.H); yy++) {
+          stockBooks(P, P.put(r.x - r.rx, yy, r.z + t, books, 3));
+          stockBooks(P, P.put(r.x + r.rx, yy, r.z + t, books, 1));
+        }
       }
     }
     if (k == "scriptorium" || var >= 2) deskAgainst(P, r, back);
     else tableAgainst(P, r, back);
     int lx, lz; wallCell(r, back, 1, lx, lz);
-    putFloor(P, lx, y, lz, "lectern", faceMeta(side));
+    putFloor(P, lx, y, lz, "lectern", (u8)(back & 3));
     wallCell(r, back, -1, lx, lz);
     putFloor(P, lx, y, lz, "candle");
   } else if (k == "boss" || k == "nave") {
@@ -252,7 +283,7 @@ void furnishProcRoom(SP& P, const ProcRoom& r, const ProcChestFn& chest) {
     placeBed(P, r.x - r.rx + 1, y, r.z + 1, 3, bed);
     placeBed(P, r.x + r.rx - 1, y, r.z - 1, 1, bed);
     placeBed(P, r.x + r.rx - 1, y, r.z + 1, 1, bed);
-    int x, z; wallCell(r, 2, 0, x, z); putFloor(P, x, y, z, "barrel");
+    int x, z; wallCell(r, 2, 0, x, z); putBarrel(P, x, y, z, 0);
     wallCell(r, 0, 0, x, z); putFloor(P, x, y, z, "armor_stand");
     if (var == 0) { wallCell(r, 2, 1, x, z); putFloor(P, x, y, z, furn(r, "stool")); }
   } else if (k == "dining" || k == "refectory") {
@@ -269,17 +300,17 @@ void furnishProcRoom(SP& P, const ProcRoom& r, const ProcChestFn& chest) {
         putFloor(P, r.x + t, y, r.z - 2, furn(r, "bench"), faceMeta(0));
       }
     }
-    putFloor(P, r.x - r.rx, y, r.z, "barrel");
-    putFloor(P, r.x + r.rx, y, r.z, "barrel");
+    putBarrel(P, r.x - r.rx, y, r.z, 1);
+    putBarrel(P, r.x + r.rx, y, r.z, 3);
   } else if (k == "chapel" || k == "shrine") {
     for (int row = 0; row < 2; row++) {
       const int zz = r.z - r.rz + 1 + row * 2;
       for (int i = -1; i <= 1; i++) putFloor(P, r.x + i, y, zz, furn(r, "bench"), faceMeta(0));
     }
     int azx, azz; wallCell(r, 2, 0, azx, azz);
-    if (hasBlock("chiseled_stone_bricks")) P.put(azx, y, azz, "chiseled_stone_bricks");
+    if (hasBlock("chiseled_stone_bricks")) P.put(azx, y - 1, azz, "chiseled_stone_bricks");
     const std::string top = hasBlock("altar") ? "altar" : "lectern";
-    putFloor(P, azx, y + (hasBlock("chiseled_stone_bricks") ? 1 : 0), azz, top, hasBlock("altar") ? (u8)2 : (u8)faceMeta(2));
+    putFloor(P, azx, y, azz, top, hasBlock("altar") ? (u8)2 : (u8)faceMeta(2));
     putFloor(P, azx - 1, y, azz, "candle");
     putFloor(P, azx + 1, y, azz, "candle");
     wallBanner(P, r, 3);
@@ -288,15 +319,15 @@ void furnishProcRoom(SP& P, const ProcRoom& r, const ProcChestFn& chest) {
     putFloor(P, wx, y, wz, PLK("smoker", "furnace"));
     int x, z; wallCell(r, side, 1, x, z); putFloor(P, x, y, z, "cauldron");
     tableAgainst(P, r, back);
-    putFloor(P, r.x - r.rx, y, r.z - r.rz, "barrel");
-    putFloor(P, r.x + r.rx, y, r.z - r.rz, furn(r, "cabinet"));
+    putBarrel(P, r.x - r.rx, y, r.z - r.rz, 1);
+    putAgainst(P, r.x + r.rx, y, r.z - r.rz, furn(r, "cabinet"), 1);
     if (var == 0) putFloor(P, r.x + r.rx, y, r.z + r.rz, "crafting_table");
   } else if (k == "armoury") {
     putFloor(P, wx, y, wz, PLK("weapon_rack", "armor_stand"));
     int x, z; wallCell(r, side, 1, x, z); putFloor(P, x, y, z, "armor_stand");
     int nx, nz; wallCell(r, 0, 0, nx, nz);
     putWall(P, nx, y + 1, nz, PLK("wall_weapon_rack", ""), 0);
-    putFloor(P, bx, y, bz, furn(r, "shelf"));
+    putAgainst(P, bx, y, bz, furn(r, "shelf"), back);
     wallCell(r, back, 1, x, z);
     ch(x, y, z, "rare", false);
   } else if (k == "cells" || k == "prison") {
@@ -324,17 +355,17 @@ void furnishProcRoom(SP& P, const ProcRoom& r, const ProcChestFn& chest) {
       deskAgainst(P, r, side);
       int x, z; wallCell(r, side, 1, x, z);
       putFloor(P, x, y, z, "lectern", faceMeta(back));
-      if (var >= 2) { wallCell(r, back, 0, x, z); putFloor(P, x, y, z, furn(r, "bookcase").empty() ? "bookshelf" : furn(r, "standing_shelf")); }
+      if (var >= 2) { wallCell(r, back, 0, x, z); putAgainst(P, x, y, z, furn(r, "standing_shelf"), back); }
     } else {
       putFloor(P, wx, y, wz, "crafting_table");
       tableAgainst(P, r, back);
-      putFloor(P, r.x + r.rx, y, r.z, "barrel");
+      putBarrel(P, r.x + r.rx, y, r.z, 3);
     }
   } else if (k == "crypt") {
     const std::string coffin = hasBlock("oak_coffin") ? "oak_coffin" : PLK("grave", "bone_block");
-    putFloor(P, r.x - r.rx, y, r.z, coffin, faceMeta(1));
-    putFloor(P, r.x + r.rx, y, r.z, coffin, faceMeta(3));
-    if (var >= 2) putFloor(P, r.x, y, r.z - 1, coffin, faceMeta(0));
+    putAgainst(P, r.x - r.rx, y, r.z, coffin, 3);
+    putAgainst(P, r.x + r.rx, y, r.z, coffin, 1);
+    if (var >= 2) putAgainst(P, r.x, y, r.z - r.rz, coffin, 0);
     P.put(r.x, y, r.z + r.rz, r.slab, 0);
     putHang(P, r.x - std::max(1, r.rx / 2), y + r.H - 1, r.z - std::max(1, r.rz / 2), "soul_lantern");
   } else if (k == "well") {
@@ -348,9 +379,9 @@ void furnishProcRoom(SP& P, const ProcRoom& r, const ProcChestFn& chest) {
     putFloor(P, r.x - 1, y, r.z - 1, furn(r, "bench"), faceMeta(1));
     if (var == 0) putFloor(P, r.x - r.rx, y, r.z, furn(r, "stool"));
   } else if (k == "store") {
-    for (int i = 0; i < 2; i++) {
-      putFloor(P, r.x - r.rx, y, r.z - 1 + i, "barrel");
-      putFloor(P, r.x + r.rx, y, r.z - 1 + i, furn(r, "standing_shelf"));
+    for (int i : {-2, -1}) {
+      putBarrel(P, r.x - r.rx, y, r.z + i, 1);
+      putAgainst(P, r.x + r.rx, y, r.z + i, furn(r, "standing_shelf"), 1);
     }
     if (var == 1) putFloor(P, r.x, y, r.z + r.rz, furn(r, "table"));
   } else {
