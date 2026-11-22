@@ -100,6 +100,8 @@ static void strongholdBuild(ChunkWriter& w, const StructurePlan& S) {
   holdFurnish((cx + 13 + cx + 17) / 2, cy + 1, (cz - 18 + cz - 12) / 2, 2, 3, 4, "kitchen", (u32)S.seed + 1);
   holdFurnish(cx, cy + 1, (cz + 8 + cz + 16) / 2, 4, 4, 4, "chapel", (u32)S.seed + 2);
   holdFurnish(cx, cy + 9, cz - 29, 4, 4, 5, "library", (u32)S.seed + 3);
+  holdFurnish((cx + 5 + cx + 12) / 2, cy + 1, (cz - 30 + cz - 28) / 2, 3, 1, 3, "hall", (u32)S.seed + 4);
+  holdFurnish((cx - 12 + cx - 5) / 2, cy + 1, (cz - 30 + cz - 28) / 2, 3, 1, 3, "hall", (u32)S.seed + 5);
   P.ladder(cx, cy + 6, cy + 9, cz - 29, 0);
   // ---- a stair up: a narrow shaft with a ladder, from the crossing towards the surface (it stops short; the
   // original's 32 rows above the stronghold, in band rows) ----

@@ -358,7 +358,12 @@ static void endCityBuild(ChunkWriter& w, const StructurePlan& S) {
     }
     for (int yy = y0 + 6 + half; yy <= y0 + 8 + half; yy++) P.put(cx, yy, cz, "end_rod");
     for (auto [dx, dz] : {std::pair{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}) P.put(cx + dx * half, y0 + 5, cz + dz * half, "end_rod");
-    if (loot) { P.chest(cx - half + 1, y0 + 1, cz + half - 1, 0, "end_city"); P.chest(cx + half - 1, y0 + 1, cz - half + 1, 2, "end_city"); }
+    if (loot) {
+      P.chest(cx - half + 1, y0 + 1, cz + half - 1, 0, "end_city");
+      P.chest(cx + half - 1, y0 + 1, cz - half + 1, 2, "end_city");
+      furnishPlaced(P, cx, y0 + 1, cz, std::max(1, half - 2), std::max(1, half - 2), 4, "vault",
+                    hash32(cx, y0, cz, (i32)S.seed), PAL_PURPUR, 1);
+    }
   };
   // the hall: an 11-wide two-storey base, its legs reaching down into the island
   P.fill(x - 6, y - 1, z - 6, x + 6, y - 1, z + 6, "purpur_block");
@@ -443,6 +448,7 @@ static void endCityBuild(ChunkWriter& w, const StructurePlan& S) {
   P.put(cx2, yS, cz2, "air");
   P.chest(cx2, yS - 1, cz2, E.dir, "end_city");
   auto [k1x, k1z] = at(-2, 0); P.chest(k1x, yS - 1, k1z, E.dir, "end_city");
+  furnishPlaced(P, cx2, yS - 1, cz2, 2, 1, 2, "store", hash32(cx2, yS, cz2, (i32)S.seed), PAL_PURPUR, 1);
 }
 
 // ---- registration ----

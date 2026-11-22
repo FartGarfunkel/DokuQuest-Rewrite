@@ -40,10 +40,10 @@ constexpr int DY = SkylandsGen::ISLES_DY;
 // the Skylands' treasure: what each dungeon's chests hold (only what this game has)
 json skyLoot(int tier, Mulberry32& r) {
   static const std::vector<std::pair<const char*, int>> T[3] = {
-    {{"zanite_ore", 6}, {"ambrosium_ore", 10}, {"gravitite_ore", 3}, {"golden_apple", 1}, {"iron_ingot", 6}, {"gold_ingot", 4},
-     {"arrow", 16}, {"bow", 1}, {"saddle", 1}, {"enchanted_book", 1}, {"music_disc_skylark", 1}, {"golden_feather", 1}},
-    {{"gravitite_ore", 4}, {"zanite_ore", 8}, {"golden_apple", 2}, {"gold_ingot", 6}, {"skyland_crystal", 6},
-     {"golden_feather", 1}, {"enchanted_book", 1}, {"experience_bottle", 4}, {"valkyrie_lance", 1}, {"heart_crystal", 1}},
+    {{"zanite_ore", 6}, {"ambrosium_ore", 10}, {"copper_ingot", 4}, {"gold_nugget", 6},
+     {"arrow", 16}, {"bow", 1}, {"saddle", 1}, {"music_disc_skylark", 1}, {"golden_feather", 1}},
+    {{"zanite_ore", 8}, {"golden_apple", 1}, {"gold_nugget", 8}, {"skyland_crystal", 6},
+     {"golden_feather", 1}, {"enchanted_book", 1}, {"experience_bottle", 4}},
     {{"gravitite_ore", 6}, {"golden_apple", 3}, {"gold_ingot", 6}, {"skyland_crystal", 8},
      {"heart_crystal", 1}, {"enchanted_book", 2}, {"experience_bottle", 6}, {"golden_feather", 2}, {"fire_charge", 8}}};
   json items = json::array(); for (int s = 0; s < 27; s++) items.push_back(nullptr);
@@ -60,7 +60,10 @@ void skyChest(SP& P, int x, int y, int z, int f, int tier) {
   const int i = P.putId(x, y, z, ak().chest, (u8)((2 - f) & 3));
   if (i < 0) return;
   Mulberry32 r(hash32(x, y, z, 0xAE7C + tier));
-  P.setEntity(i, json{{"type", "chest"}, {"items", skyLoot(tier, r)}});
+  json items = skyLoot(tier, r);
+  convertLootGear(items);
+  static const char* LK[] = {"s:skyship", "s:sky_sanctum", "s:sky_temple"};
+  P.setEntity(i, json{{"type", "chest"}, {"items", items}, {"lk", LK[std::clamp(tier, 0, 2)]}});
 }
 // a box: walls/floor/roof from shell(x, y, z), the inside cleared
 template <class F> void room(SP& P, int x0, int y0, int z0, int x1, int y1, int z1, F shell) {

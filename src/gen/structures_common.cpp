@@ -101,7 +101,7 @@ static void maybeTemplate(json& items, const std::string& kind) {
   }
 }
 
-static void convertLootGear(json& items) {
+void convertLootGear(json& items) {
   for (auto& s : items) if (s.is_object() && s.contains("id") && s["id"].is_string()) {
     const std::string id = s["id"].get<std::string>();
     const int n = s.value("n", 1), d = s.value("d", 0);
@@ -140,7 +140,7 @@ static json stripDumpGems(const json& src) {
   }
   return out;
 }
-// dumpGem leaves iron. At spawn (tier 0) a pirate wreck still rolled iron_sword; map those pieces to copper. Not iron_ingot.
+// dumpGem leaves iron. At spawn (tier 0) a pirate wreck still rolled iron_sword; map those pieces to copper.
 static void remapSpawnIron(json& table) {
   if (!table.is_array()) return;
   for (auto& e : table) {
@@ -150,15 +150,20 @@ static void remapSpawnIron(json& table) {
     else if (id == "iron_helmet") e[0] = "copper_helmet";
     else if (id == "iron_pickaxe") e[0] = "copper_pickaxe";
     else if (id == "iron_axe") e[0] = "copper_axe";
+    else if (id == "iron_shovel") e[0] = "copper_shovel";
+    else if (id == "iron_hoe") e[0] = "copper_hoe";
     else if (id == "iron_chestplate") e[0] = "copper_chestplate";
     else if (id == "iron_leggings") e[0] = "copper_leggings";
     else if (id == "iron_boots") e[0] = "copper_boots";
+    else if (id == "iron_ingot") e[0] = "copper_ingot";
+    else if (id == "gold_sword") e[0] = "copper_sword";
+    else if (id == "gold_ingot") e[0] = "gold_nugget";
   }
 }
 static json structTable(const std::string& kind, int tier = 0) {
   const json& L = SD()["STRUCT_LOOT"];
   const json& src = L.contains(kind) ? L[kind] : L["ruin"];
-  if (lateLootKind(kind) && tier > 0) return src;
+  if (lateLootKind(kind) && tier >= 3) return src;
   json out = stripDumpGems(src);
   if (tier <= 0) remapSpawnIron(out);
   if (tier >= 3) {

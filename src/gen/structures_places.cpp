@@ -280,6 +280,8 @@ static void desertBuild(ChunkWriter& w, const StructurePlan& S) {
       }
       if (ax == 8 && lz == -9) for (int yy = 1; yy <= 13; yy++) P.put(x, y + yy, z, "ladder", 0);
       if (ax == 8 && lz == -8) P.put(x, y + 14, z, "air");
+      if (ax == 8 && lz == -8)
+        furnishPlaced(P, x, y + 1, z, 1, 1, 3, "alcove", hash32(x, y, z, (i32)S.seed), PAL_SAND, 1);
     } else if (edge) {
       // the walls, banded, with the doorway at the front
       const bool door = lz == -10 && ax <= 1;
@@ -362,6 +364,9 @@ static void oceanBuild(ChunkWriter& w, const StructurePlan& S) {
   }
   P.chest(cx + 2, y + 1, cz + 2, 0, "ocean"); P.chest(cx - 2, y + 1, cz + 2, 0, "ocean");
   furnishPlaced(P, cx, y + 1, cz, 7, 7, 5, "shrine", hash32(cx, y, cz, (i32)S.seed), PAL_PRISM, 1);
+  for (auto [dx, dz] : {std::pair{9, -9}, {9, 9}, {-9, -9}, {-9, 9}})
+    furnishPlaced(P, cx + dx, y + 1, cz + dz, 1, 1, 3, "alcove",
+                  hash32(cx + dx, y, cz + dz, (i32)S.seed), PAL_PRISM, 1);
 }
 
 // ==== Shipwrecks =====================================================================================================
