@@ -1,5 +1,6 @@
 // gen/structures_places.cpp — game/structures.js: ruins, mage towers, desert temples, sunken temples, shipwrecks,
-// mineshafts and the Labyrinth (STRUCTS 0..6). The labyrinth's rooms follow the classic trap dungeon, written
+// mineshafts and the Labyrinth (STRUCTS 0..6), plus jungle temples, trail ruins and woodland mansions
+// (gen/structures_overworld_more.cpp). The labyrinth's rooms follow the classic trap dungeon, written
 // for this engine. The other places are built block for block as the original builds them.
 // Plans decide with the original's heights (jsY) and build at band heights; underground depths go through
 // vmap::owUnder. The residents/boss/spawners lists go in StructurePlan::data in the original's shape.
@@ -1039,6 +1040,13 @@ static void mazeBuild(ChunkWriter& w, const StructurePlan& S) {
   }
 }
 
+bool jungleTemplePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S);
+void jungleTempleBuild(ChunkWriter& w, const StructurePlan& S);
+bool trailRuinsPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S);
+void trailRuinsBuild(ChunkWriter& w, const StructurePlan& S);
+bool woodlandMansionPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S);
+void woodlandMansionBuild(ChunkWriter& w, const StructurePlan& S);
+
 // ---- registration (the original's STRUCTS 0..6, in its order) ----
 static void regPlace(const char* key, const char* name, int region, double chance, int margin, int jsIndex,
                 decltype(StructureType::plan) plan, decltype(StructureType::build) build) {
@@ -1058,6 +1066,9 @@ void registerStructurePlaces() {
   auto deepOn = [](const TerrainQuery& t) { const OverworldGen* ow = owOf(t); return ow && ow->deepStructs(); };
   regPlace("mineshaft", "Mineshaft", 480, 0.55, 64, 5, [deepOn](const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) { return !deepOn(t) && minePlan(t, x, z, rnd, S); }, mineBuild);
   regPlace("labyrinth", "The Labyrinth", 720, 0.6, 60, 6, mazePlan, mazeBuild);
+  regPlace("jungle_temple", "Jungle Temple", 480, 0.55, 40, -1, jungleTemplePlan, jungleTempleBuild);
+  regPlace("trail_ruins", "Trail Ruins", 400, 0.5, 32, -1, trailRuinsPlan, trailRuinsBuild);
+  regPlace("woodland_mansion", "Woodland Mansion", 900, 0.35, 64, -1, woodlandMansionPlan, woodlandMansionBuild);
 }
 
 // registered after every other kind, so their indices (their seeds) stay as they were

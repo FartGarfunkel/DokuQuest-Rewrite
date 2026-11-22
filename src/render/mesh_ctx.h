@@ -104,7 +104,7 @@ bool emitVoxelDoor(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, i
 // tell rail from tie). top: what's seen; under: the bottom (a rail on a slope).
 struct RailPlate { std::vector<PanelVert> top, under; };
 std::shared_ptr<const RailPlate> railPlate(const MeshTiles* tiles, int tile, int straight);
-void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross);
+void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross, float span = 1.f);
 
 // 3D grass: short blades over the top of a grass block, swaying, faded out with
 // distance in chunk.glsl (sway codes 80..95 mark a tuft's tip). blades per block, 0 = off (settings grass3d).

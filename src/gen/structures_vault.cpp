@@ -118,17 +118,16 @@ static void wayvaultBuild(ChunkWriter& w, const StructurePlan& S) {
   P.put(dx, dy + 1, dz, "iron_door", (u8)(face | 16));
   P.put(ox + v.lever[0], oy + v.lever[1], oz + v.lever[2], "lever", 0);
   const int cx = ox + v.chest[0], cy = oy + v.chest[1], cz = oz + v.chest[2];
-  const int ci = P.put(cx, cy, cz, "chest", 0);
+  const int cf = std::abs(v.door[0] - v.chest[0]) >= std::abs(v.door[2] - v.chest[2])
+               ? (v.door[0] >= v.chest[0] ? 1 : 3) : (v.door[2] >= v.chest[2] ? 2 : 0);
+  const int ci = P.put(cx, cy, cz, "chest", (u8)((2 - cf) & 3));
   if (ci >= 0) {
     Mulberry32 r(hash32(cx, cy, cz, (i32)S.seed));
     P.setEntity(ci, json{{"type", "chest"}, {"items", dungeonLoot("rare", r)}, {"lk", "d:rare"}});
   }
   P.spawner(ox + v.spawner[0], oy + v.spawner[1], oz + v.spawner[2], "skeleton");
-  for (const auto& r : v.rooms) {
-    const char* k = r.role == "vault" ? "vault" : r.role == "ante" ? "entry" : "hall";
-    furnishPlaced(P, ox + r.x, oy + kAir0, oz + r.z, std::max(1, r.rx - 1), std::max(1, r.rz - 1), 4, k,
-                  hash32(ox + r.x, oy, oz + r.z, (i32)S.seed), PAL_MOSSY, r.role == "vault" ? 2 : 1);
-  }
+  P.barrel(ox + v.chest[0] + 2, oy + kAir0, oz + v.chest[2], (cf + 2) & 3, "rare");
+  P.barrel(ox + v.chest[0] - 2, oy + kAir0, oz + v.chest[2], cf, "common");
   // Air from the ante ceiling up through the shaft top, cobblestone around it. The sleeve starts at the
   // ceiling, so it does not fill the ante. place stored the sampled surface; a higher column is opened too.
   const Wayvault::Room* ante = nullptr;
@@ -156,6 +155,20 @@ static void wayvaultBuild(ChunkWriter& w, const StructurePlan& S) {
     if (dx == 0 && dz == 0) { P.put(x, y, z, "air"); continue; }
     if (anteInside(x, y, z)) continue;
     P.put(x, y, z, "cobblestone");
+  }
+  for (const auto& r : v.rooms) {
+    const char* k = r.role == "vault" ? "treasury" : r.role == "ante" ? "entry" : "hall";
+    const int pal = r.role == "vault" ? PAL_CRYPT : PAL_MOSSY;
+    const int clut = r.role == "vault" ? 2 : r.role == "ante" ? 0 : 1;
+    furnishPlaced(P, ox + r.x, oy + kAir0, oz + r.z, std::max(1, r.rx - 1), std::max(1, r.rz - 1), 4, k,
+                  hash32(ox + r.x, oy, oz + r.z, (i32)S.seed), pal, clut);
+    P.hang(ox + r.x - 1, oy + kAir1, oz + r.z - 1, "lantern");
+    P.hang(ox + r.x + 1, oy + kAir1, oz + r.z + 1, "lantern");
+    P.put(ox + r.x, oy + kFloor, oz + r.z, "chiseled_stone_bricks");
+  }
+  for (const auto& r : v.rooms) if (r.role == "hall") {
+    P.wallTorch(ox + r.x, oy + 3, oz + r.z - r.rz, 0, "old_torch");
+    P.wallTorch(ox + r.x, oy + 3, oz + r.z + r.rz, 2, "old_torch");
   }
 }
 

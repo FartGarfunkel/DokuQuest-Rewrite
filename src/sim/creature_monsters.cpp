@@ -439,7 +439,8 @@ static OptMove monsterAI(Level& lv, Creature& m, Entity* p, float dist, float dy
   }
   if (t == "wraith") {
     m.noGravity = true; m.hasFlyVy = true;
-    if (dim == DIM_OVERWORLD && day > 0.55f && m.light(lv, 1).x >= 12) {   // daylight undoes them
+    if (dim == DIM_OVERWORLD && day > 0.55f && m.light(lv, 1).x >= 12
+        && lv.world(m.realm).openToSky(ifloor(m.pos.x), ifloor(m.pos.y + 1), ifloor(m.pos.z))) {   // daylight undoes them; a roof does not
       m.removed = true; mobBurst(lv, m.pos + vec3(0, 1, 0), "white", 18, 0.8f); lv.fx->voice("wraith", "death", m.pos + vec3(0, 1, 0));
       return Move{0, m.yaw};
     }

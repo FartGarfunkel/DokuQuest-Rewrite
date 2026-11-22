@@ -255,11 +255,14 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
     spaces.push_back({x, y0, z, x, y1, z});   // one column, not a 3x3 hole
   }
   const int ex = d.entX + 2, ez = d.entZ + 2;
-  spaces.push_back({ex, S.y, ez, ex, d.surf + 1, ez});
+  const int gh0 = P.ground(ex, ez);
+  const int well = (gh0 >= d.surf - 12 && gh0 <= d.surf + 12) ? gh0 : d.surf;
+  // 1x1 shaft into the shrine well; air stops under the roof (well+3) so sky cannot run down
+  spaces.push_back({ex, S.y, ez, ex, well + 2, ez});
   for (const auto& [x0, y0, z0, x1, y1, z1] : spaces)
     for (int z = z0 - 1; z <= z1 + 1; z++) for (int x = x0 - 1; x <= x1 + 1; x++) {
       if (!P.in(x, z)) continue;
-      for (int y = y0 - 1; y <= y1 + 1; y++) { if (y > d.surf - 2 && x == ex && z == ez) continue; P.put(x, y, z, wall(x, y, z)); }
+      for (int y = y0 - 1; y <= y1 + 1; y++) P.put(x, y, z, wall(x, y, z));
     }
   for (const auto& [x0, y0, z0, x1, y1, z1] : spaces)
     for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) {
@@ -267,7 +270,7 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
       for (int y = y0; y <= y1; y++) P.put(x, y, z, "air");
       if (!(x == ex && z == ez)) P.put(x, y0 - 1, z, flo(x, y0 - 1, z));
     }
-  for (int y = S.y; y <= d.surf; y++) P.put(ex, y, ez, "ladder", 2);
+  for (int y = S.y; y <= well + 1; y++) P.put(ex, y, ez, "ladder", 2);
   for (auto [ai, bi] : d.stairs) {
     const DRoom &a = d.rooms[ai], &b = d.rooms[bi];
     int x, z; stairCol(a, b, x, z);
@@ -278,23 +281,41 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
     const int x = ex + dx, z = ez + dz;
     if (!P.in(x, z)) continue;
     const int h = P.ground(x, z), m = std::max(std::abs(dx), std::abs(dz)); const bool edge = m == 3, mid = m <= 1;
-    if (dx == 0 && dz == 0) { for (int y = h + 1; y <= h + 3; y++) P.put(x, y, z, "air"); continue; }
+    const bool door = dx == 0 && dz == -2, approach = dx == 0 && dz == -3;   // north doorway into the well
+    if (dx == 0 && dz == 0) {
+      for (int y = h + 1; y <= h + 2; y++) P.put(x, y, z, "air");
+      P.put(x, h + 3, z, wall(x, h + 3, z));   // opaque roof over the shaft
+      continue;
+    }
     if (mid) {
-      P.put(x, h, z, wall(x, h, z)); for (int y = h + 1; y <= h + 3; y++) P.put(x, y, z, "air");
+      P.put(x, h, z, wall(x, h, z));
+      for (int y = h + 1; y <= h + 2; y++) P.put(x, y, z, "air");
+      P.put(x, h + 3, z, wall(x, h + 3, z));
       if (dx && dz) { P.put(x, h + 1, z, th.pillar); if (hashFloat(x, z, (i32)S.seed, 9) < 0.6) P.put(x, h + 2, z, th.pillar); }
       continue;
     }
     P.put(x, h, z, flo(x, h, z));
+    if (m == 2) {
+      if (door) { for (int y = h + 1; y <= h + 2; y++) P.put(x, y, z, "air"); }
+      else { for (int y = h + 1; y <= h + 2; y++) P.put(x, y, z, wall(x, y, z)); }
+      P.put(x, h + 3, z, wall(x, h + 3, z));
+      continue;
+    }
     if (edge) {
-      const int tall = jsFloor(hashFloat(x, z, (i32)S.seed, 8) * 4);
-      for (int y = h + 1; y <= h + tall; y++) P.put(x, y, z, wall(x, y, z));
-      for (int y = h + tall + 1; y <= h + 4; y++) { const BlockId id = P.get(x, y, z); if (id != AIR && id != NOBLOCK && !tSolid(id)) P.put(x, y, z, "air"); }
-    } else for (int y = h + 1; y <= h + 3; y++) {
-      const BlockId id = P.get(x, y, z);
-      if (id != AIR && id != NOBLOCK && (!tSolid(id) || blockKey(id).find("leaves") != std::string::npos || blockKey(id).find("log") != std::string::npos)) P.put(x, y, z, "air");
+      if (approach) {
+        for (int y = h + 1; y <= h + 2; y++) P.put(x, y, z, "air");
+        for (int y = h + 3; y <= h + 4; y++) { const BlockId id = P.get(x, y, z); if (id != AIR && id != NOBLOCK && !tSolid(id)) P.put(x, y, z, "air"); }
+      } else {
+        const int tall = jsFloor(hashFloat(x, z, (i32)S.seed, 8) * 4);
+        for (int y = h + 1; y <= h + tall; y++) P.put(x, y, z, wall(x, y, z));
+        for (int y = h + tall + 1; y <= h + 4; y++) { const BlockId id = P.get(x, y, z); if (id != AIR && id != NOBLOCK && !tSolid(id)) P.put(x, y, z, "air"); }
+      }
     }
   }
-  { const int h = P.ground(ex, ez); P.put(ex + 1, h + 1, ez - 1, th.light == "soul_torch" ? "soul_lantern" : "lantern"); }
+  { const int h = P.ground(ex, ez);
+    P.put(ex, well + 3, ez, wall(ex, well + 3, ez));
+    P.put(ex, h + 3, ez, wall(ex, h + 3, ez));
+    P.put(ex + 1, h + 1, ez - 1, th.light == "soul_torch" ? "soul_lantern" : "lantern"); }
   const std::string hang = th.light == "soul_torch" ? "soul_lantern" : "lantern";
   for (const auto& [at, mob] : d.spawners) P.spawner(at[0], at[1], at[2], mob);
   for (const DRoom& r : d.rooms) {

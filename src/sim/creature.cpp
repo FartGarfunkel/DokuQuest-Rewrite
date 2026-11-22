@@ -916,7 +916,9 @@ void Creature::update(Level& lv, float dt) {
   int dim = dimAt(*this);
   float day = envDay(lv, dim);
   if ((type == "ghoul" || T->undead) && dim == DIM_OVERWORLD && day > 0.65f && !c.water && !calm) {
-    if (light(lv, h - 0.1f).x >= 14 && armourPiece(0).empty()) burn = std::max(burn, 2.f);   // a helmet shades it
+    const int hx = ifloor(pos.x), hy = ifloor(pos.y + h - 0.1f), hz = ifloor(pos.z);
+    if (light(lv, h - 0.1f).x >= 14 && lv.world(realm).openToSky(hx, hy, hz) && armourPiece(0).empty())
+      burn = std::max(burn, 2.f);   // a helmet shades it; a roofed dungeon does not count as noon
   }
 
   // AI -> desired horizontal direction & speed

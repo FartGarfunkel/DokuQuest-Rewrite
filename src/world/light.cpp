@@ -39,6 +39,15 @@ static bool stopsSky(const Registry& R, BlockId b) {
   return b && (R.tOpaque[b] || R.tAtt[b] || R.tLiquid[b] || R.tAbsR[b] || R.tAbsG[b] || R.tAbsB[b]);
 }
 
+bool cellOpenToSky(const Chunk& c, int x, int y, int z) {
+  if (!skyTopLevel(c.dim)) return false;
+  const Registry& R = reg();
+  for (int yy = y + 1; yy < DIM_H; yy++) {
+    if (stopsSky(R, c.get(x, yy, z))) return false;
+  }
+  return true;
+}
+
 // One step out of a cell. Full white sun going straight down (d == 3, -Y) does not decay. After water
 // has pulled a channel below 255 the next downward step does decay.
 static void stepFrom(u8* dst, const u8* src, bool sun, int dir, const Registry& R, BlockId dest) {

@@ -113,11 +113,19 @@ static void bronzeBuild(ChunkWriter& w, const StructurePlan& S) {
   room(P, x + 6, y0, z - 5, x + 15, y0 + 6, z + 4, [&](int a, int b, int c) { return P.h(a, b, c, 3) < 0.1 ? K.sentry : K.carved; });
   carve(P, x + 6, y0 + 1, z - 1, x + 6, y0 + 3, z);
   carve(P, x + 15, y0 + 1, z - 1, x + 15, y0 + 3, z + 1);
-  skyChest(P, x + 13, y0 + 1, z - 4, 0, 0);
-  if (P.h(x, y0, z, 4) < 0.6) skyChest(P, x + 13, y0 + 1, z + 3, 2, 0);
-  furnishPlaced(P, x + 10, y0 + 1, z, 3, 3, 5, "store", hash32(x + 10, y0, z, (i32)S.seed), PAL_QUARTZ, 1);
-  // the reward behind the Slider
-  skyChest(P, x - 6, y0 + 1, z + 5, 2, 0);
+  skyChest(P, x + 13, y0 + 1, z - 4, 2, 0);
+  if (P.h(x, y0, z, 4) < 0.6) skyChest(P, x + 13, y0 + 1, z + 3, 0, 0);
+  P.barrel(x + 8, y0 + 1, z - 3, 2, "common");
+  P.barrel(x + 8, y0 + 1, z + 2, 0, "common");
+  P.hang(x + 10, y0 + 5, z, "lantern");
+  P.wallTorch(x + 7, y0 + 3, z, 3, "torch");
+  P.wallTorch(x + 14, y0 + 3, z, 1, "torch");
+  P.put(x + 10, y0, z, "chiseled_stone_bricks");
+  static const char* BK[] = {"store", "vault", "treasury", "armoury", "pantry"};
+  const u32 bs = hash32(x + 10, y0, z, (i32)S.seed);
+  furnishPlaced(P, x + 10, y0 + 1, z, 3, 3, 5, BK[bs % 5], bs, PAL_QUARTZ, 1 + (int)((bs >> 3) % 2));
+  // the reward behind the Slider; the hall itself stays empty
+  skyChest(P, x - 6, y0 + 1, z + 5, 0, 0);
 }
 
 // =====================================================================================================================
@@ -172,10 +180,17 @@ static void silverBuild(ChunkWriter& w, const StructurePlan& S) {
       const int u0 = cx * 7, v0 = cz * 7;
       P.putId(ox + u0 + 3, Y + 6, oz + v0 + 3, K.angelicLit);      // a light in each ceiling
       const double r = P.h(ox + u0, Y, oz + v0, 11);
-      if (r < 0.3) skyChest(P, ox + u0 + 1, Y + 1, oz + v0 + 1, (int)(r * 13) & 3, 1);
-      static const char* SK[] = {"hall", "shrine", "store", "sleeping", "office", "gallery", "chapel", "workshop"};
-      furnishPlaced(P, ox + u0 + 3, Y + 1, oz + v0 + 3, 2, 2, 5, SK[(cx + 3 * cz + 9 * f) % 8],
-                    hash32(ox + u0, Y, oz + v0, (i32)S.seed), PAL_QUARTZ, 1);
+      if (r < 0.3) skyChest(P, ox + u0 + 1, Y + 1, oz + v0 + 1, 1, 1);   // NW corner, front east into the cell
+      else if (r < 0.55) P.barrel(ox + u0 + 5, Y + 1, oz + v0 + 5, 3, "common");
+      P.hang(ox + u0 + 3, Y + 5, oz + v0 + 3, "lantern");
+      static const char* SK[] = {
+        "hall", "shrine", "store", "sleeping", "office", "gallery", "chapel", "workshop",
+        "library", "archive", "armoury", "treasury", "observatory", "pantry", "brewery", "kitchen",
+        "dining", "scriptorium", "bath", "refectory"
+      };
+      const u32 sk = hash32(ox + u0, Y, oz + v0, (i32)S.seed);
+      furnishPlaced(P, ox + u0 + 3, Y + 1, oz + v0 + 3, 2, 2, 5, SK[(cx + 3 * cz + 9 * f) % 20],
+                    sk, PAL_QUARTZ, (int)((sk >> 5) % 3));
     }
   }
   for (int f = 0; f < 2; f++) {   // a ladder up from one room of each floor, against its back wall
@@ -278,10 +293,16 @@ static void goldBuild(ChunkWriter& w, const StructurePlan& S) {
     const bool in = dy >= 1 && dy <= 3 && std::abs(dx) <= 2;
     if (in) P.putId(xx, yy, tz, AIR); else if (solidAt(P, xx, yy, tz)) P.putId(xx, yy, tz, hf(xx, yy, tz));
   }
+  for (int tz = cz - 28; tz < cz - 14; tz += 4) {
+    P.wallTorch(cx - 2, yc - 4, tz, 3, "soul_torch");
+    P.wallTorch(cx + 2, yc - 4, tz, 1, "soul_torch");
+    P.hang(cx, yc - 3, tz, "lantern");
+  }
   room(P, cx - 11, yc - 6, cz - 14, cx + 11, yc + 2, cz + 13, hf);
   carve(P, cx - 2, yc - 5, cz - 14, cx + 2, yc - 3, cz - 14);
   for (int a : {-7, 7}) for (int b : {-8, 0, 8}) for (int k = 1; k <= 7; k++) P.putId(cx + a, yc - 6 + k, cz + b, K.hellfireLit);   // burning pillars
-  skyChest(P, cx - 3, yc - 5, cz + 12, 2, 2); skyChest(P, cx + 3, yc - 5, cz + 12, 2, 2);
+  skyChest(P, cx - 3, yc - 5, cz + 12, 0, 2); skyChest(P, cx + 3, yc - 5, cz + 12, 0, 2);
+  // the hall is the Sun Spirit's arena: chests only, no furniture
   // golden oaks on top
   for (const auto& o : E.oaks) {
     if (o.x < P.bx - 3 || o.x > P.bx + 18 || o.z < P.bz - 3 || o.z > P.bz + 18) continue;

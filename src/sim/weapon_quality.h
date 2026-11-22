@@ -18,8 +18,8 @@ float weaponQualityFactor(const ItemStack& s);
 // The same factor for a procedural tool, a procedural armour piece, and a weapon. A missing tag is 1.
 float gearQualityFactor(const ItemStack& s);
 class Player;
-// Wood, flint, stone and copper always pass. Iron and above of a greatsword, spear or mace need Melee 15.
-// A sword or an axe always passes.
+// Wood, flint, stone and copper always pass. Iron and above of a greatsword, spear, mace, longsword, battleaxe or
+// warhammer need Melee 15. A sword or an axe always passes.
 bool weaponSkillMet(const Player& p, const ItemStack& s);
 
 }  // namespace dq

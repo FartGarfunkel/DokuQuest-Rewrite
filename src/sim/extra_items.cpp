@@ -163,6 +163,20 @@ void registerExtraItems() {
       sfxUi(pc.lv, p, "throw"); pc.swingArm();
       return true;
     }
+    {
+      const std::string mix = def.str("mixedTool");
+      const std::string pt = held.tag.is_object() && held.tag.contains("pt") && held.tag["pt"].is_object()
+                                 ? held.tag["pt"].value("t", std::string()) : std::string();
+      const bool throwAxe = mix == "throwing_axe" || pt == "throwing_axe" || def.key.find("throwing_axe") != std::string::npos;
+      const bool throwKnife = mix == "throwing_knife" || pt == "throwing_knife" || def.key.find("throwing_knife") != std::string::npos;
+      if (def.str("moveset") == "throw" || throwAxe || throwKnife) {
+        Player& p = pc.p; const vec3 L = lookVector(p.yaw, p.pitch);
+        spawnProjectile(pc.lv, p.realm, p.pos + vec3(0, p.eye - 0.1f, 0) + L * 0.5f, L * (throwAxe ? 18.f : 24.f) + vec3(0, 1.5f, 0), "snow", &p);
+        if (!p.creative() && --held.n <= 0) held.clear();
+        sfxUi(pc.lv, p, "throw"); pc.swingArm();
+        return true;
+      }
+    }
     if (def.key == "goat_horn") {   // a war horn: you and the people round you, quicker and stronger for a while
       Player& p = pc.p; Level& lv = pc.lv;
       const i64 now = unixMillis(), ready = p.stats.value("hornAt", (i64)0);

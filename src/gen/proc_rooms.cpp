@@ -1,5 +1,6 @@
 // gen/proc_rooms.cpp — furnished rooms. Furniture sits on the floor, against walls, with a walkway.
-// Beds are two blocks. Lights need a wall or a ceiling. Ladders and holes are left clear.
+// Beds and coffins are two blocks. Lights need a wall or a ceiling. Ladders and holes are left clear.
+// Furniture is waterloggable, so flooded rooms still get chairs.
 #include "gen/proc_rooms.h"
 #include "world/dirs.h"
 #include <algorithm>
@@ -113,8 +114,17 @@ bool isLadder(SP& P, int x, int y, int z) {
   const std::string& k = blockKey(P.get(x, y, z));
   return k.find("ladder") != std::string::npos;
 }
+bool isWater(SP& P, int x, int y, int z) {
+  const BlockId id = P.get(x, y, z);
+  return id != NOBLOCK && reg().tLiquid[id] == 1;
+}
 bool floorOk(SP& P, int x, int y, int z) {
-  return P.in(x, z) && isAir(P, x, y, z) && !isLadder(P, x, y, z) && solidAt(P, x, y - 1, z);
+  return P.in(x, z) && (isAir(P, x, y, z) || isWater(P, x, y, z)) && !isLadder(P, x, y, z) && solidAt(P, x, y - 1, z);
+}
+u8 wetMeta(SP& P, int x, int y, int z, std::string_view k, u8 meta) {
+  const BlockId id = bid(k);
+  if (id != NOBLOCK && reg().tWlog[id] && isWater(P, x, y, z)) meta |= WLOG;
+  return meta;
 }
 std::string furn(const ProcRoom& r, const char* piece) {
   return PLK(r.wood + "_" + piece, std::string("oak_") + piece);
@@ -148,9 +158,9 @@ bool skipPiece(const ProcRoom& r, Mulberry32& rnd) {
 
 void putFloor(SP& P, int x, int y, int z, std::string_view k, u8 meta = 0) {
   if (k.empty() || !floorOk(P, x, y, z)) return;
-  P.put(x, y, z, k, meta);
+  P.put(x, y, z, k, wetMeta(P, x, y, z, k, meta));
 }
-// back of a north-default model (shelf, bookcase, desk, coffin) against wall `wallToward`
+// back of a north-default model (shelf, bookcase, desk) against wall `wallToward`
 void putAgainst(SP& P, int x, int y, int z, std::string_view k, int wallToward) {
   putFloor(P, x, y, z, k, (u8)(wallToward & 3));
 }
@@ -190,8 +200,14 @@ void putWall(SP& P, int x, int y, int z, std::string_view k, int wallToward) {
 void placeBed(SP& P, int x, int y, int z, int facing, std::string_view key) {
   const int x2 = x + DIRX[facing & 3], z2 = z + DIRZ[facing & 3];
   if (!floorOk(P, x, y, z) || !floorOk(P, x2, y, z2)) return;
-  P.put(x, y, z, key, (u8)(facing & 3));
-  P.put(x2, y, z2, key, (u8)((facing & 3) | 4));
+  P.put(x, y, z, key, wetMeta(P, x, y, z, key, (u8)(facing & 3)));
+  P.put(x2, y, z2, key, wetMeta(P, x2, y, z2, key, (u8)((facing & 3) | 4)));
+}
+void placeCoffin(SP& P, int x, int y, int z, int facing, std::string_view key) {
+  const int x2 = x + DIRX[facing & 3], z2 = z + DIRZ[facing & 3];
+  if (!floorOk(P, x, y, z) || !floorOk(P, x2, y, z2)) return;
+  P.put(x, y, z, key, wetMeta(P, x, y, z, key, (u8)(facing & 3)));
+  P.put(x2, y, z2, key, wetMeta(P, x2, y, z2, key, (u8)((facing & 3) | 4)));
 }
 
 const char* wallLightOf(const ProcRoom& r) {
@@ -586,7 +602,11 @@ void furnishWorkshop(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
 
 void furnishCrypt(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
   const std::string coffin = hasBlock("oak_coffin") ? "oak_coffin" : PLK("grave", "bone_block");
-  auto coffins = [&](int d) { placeAgainst(P, r, rnd, d, 0, coffin); };
+  auto coffins = [&](int d) {
+    if (skipPiece(r, rnd)) return;
+    int x, z; inFrom(r, d, 0, 1, x, z);   // foot in the room, head against the wall
+    placeCoffin(P, x, r.y, z, rotDir(d, r.yaw), coffin);
+  };
   switch (pat) {
     case PL_LONG:    coffins(1); coffins(3); break;
     case PL_SHELVES: coffins(0); coffins(2); break;
@@ -599,10 +619,10 @@ void furnishCrypt(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
     case PL_CROSS:   coffins(0); coffins(2); coffins(1); coffins(3); break;
     case PL_CORNER:  coffins(2); coffins(3); break;
     case PL_RING:    coffins(0); coffins(1); coffins(2); coffins(3);
-                     { int x, z; rotCell(r, 0, 0, x, z); P.put(x, r.y, z, r.slab, 0); } break;
+                     { int x, z; rotCell(r, 0, 0, x, z); putFloor(P, x, r.y, z, r.slab); } break;
     default:         coffins(1); coffins(3); coffins(0); break;
   }
-  int x, z; wallAt(r, 2, 0, x, z); P.put(x, r.y, z, r.slab, 0);
+  int x, z; wallAt(r, 2, 0, x, z); putFloor(P, x, r.y, z, r.slab);
   putHang(P, r.x - std::max(1, r.rx / 2), r.y + r.H - 1, r.z - std::max(1, r.rz / 2), "soul_lantern");
 }
 

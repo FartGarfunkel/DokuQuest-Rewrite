@@ -77,6 +77,18 @@ u8 World::getLight(int x, int y, int z) const {
   Chunk* c = chunk(dimOfY(y), x >> 4, z >> 4);
   return c ? c->getLight(x & 15, y & 255, z & 15) : 0xF0;
 }
+bool World::openToSky(int x, int y, int z) const {
+  if (!inWorldY(y)) return y >= WORLD_H;
+  const int dim = dimOfY(y);
+  if (!skyTopLevel(dim)) return false;
+  const Registry& R = reg();
+  const int top = dimBase(dim) + DIM_H;
+  for (int yy = y + 1; yy < top; yy++) {
+    BlockId b = getBlock(x, yy, z);
+    if (b && (R.tOpaque[b] || R.tAtt[b] || R.tLiquid[b] || R.tAbsR[b] || R.tAbsG[b] || R.tAbsB[b])) return false;
+  }
+  return true;
+}
 int World::surfaceY(int x, int z, int dim) const {
   Chunk* c = chunk(dim, x >> 4, z >> 4);
   if (!c) return -1;

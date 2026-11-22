@@ -204,6 +204,10 @@ add_test(NAME life COMMAND test_life)
 add_executable(test_deep tools/test_deep.cpp)
 target_link_libraries(test_deep PRIVATE dqcore)
 add_test(NAME deep COMMAND test_deep)
+# Skylight in caves and modular rooms (headless). Run: build/test_light
+add_executable(test_light tools/test_light.cpp)
+target_link_libraries(test_light PRIVATE dqcore)
+add_test(NAME light COMMAND test_light)
 # Full legitimate playthroughs, classic and immersive, from an empty inventory (headless). Run: build/test_progression
 add_executable(test_progression tools/test_progression.cpp)
 target_link_libraries(test_progression PRIVATE dqcore)

@@ -80,6 +80,9 @@ public:
   int chest(int x, int y, int z, int f, const std::string& kind);
   int barrel(int x, int y, int z, int f, const std::string& kind);   // same facing as chest, a little scrap inside
   int lectern(int x, int y, int z, int f, const std::string& lore = "");
+  // hanging lantern (meta 1) only with a solid block above; wall torch T[N,E,S,W]={3,2,4,1}
+  int hang(int x, int y, int z, std::string_view key);
+  int wallTorch(int x, int y, int z, int toward, std::string_view key = "torch");
   void ladder(int x, int y0, int y1, int z, int f) { for (int y = y0; y <= y1; y++) put(x, y, z, "ladder", f); }
   int ground(int x, int z) const { return w.ground(x, z); }
   // a monster cage with what it breathes out (block entity {type:'spawner', mob} — an addition: the original kept

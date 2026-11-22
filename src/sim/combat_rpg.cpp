@@ -26,8 +26,18 @@ constexpr float PARRY_COST = 18;
 constexpr float BLOCK_KEEP = 0.35f;
 constexpr float SECOND_CHANCE_CD = 180;
 constexpr float BOSS_CAP_FRAC = 0.08f;
+constexpr float MASH_FLOOR = 0.05f;   // about one tick; extra mashes cannot shrink the window below this
+constexpr int MASH_FREE = 2;          // the first two re-taps leave the window as it was
+constexpr float MASH_STAM = 0.15f;    // each mash raises block/parry stamina a little
 
 bool holdingShield(const Player& p) { return shieldSide(p) != 0; }
+int mashCount(const Player& p) { return std::max(0, p.data.value("blkMash", 0)); }
+float mashStam(const Player& p) { return 1.f + MASH_STAM * (float)mashCount(p); }
+void setMash(Player& p, int n) {
+  if (n > 0) p.data["blkMash"] = n;
+  else p.data.erase("blkMash");
+}
+void clearMash(Player& p) { p.data.erase("blkMash"); }
 const json& mobDef(const std::string& type) {
   static const json none = json::object();
   const json& m = reg().mobs;
@@ -152,13 +162,30 @@ void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt) {
   const bool twoHand = twoHandWeapon(p);
   const bool shieldGuard = holdingShield(p) && !twoHand;
   const bool block = (shieldGuard || canWeaponGuard(p)) && !mainBusy && in.use && p.stamina > 0 && p.dodgeT <= 0;
+  const bool wasUse = p.data.value("blkUse", false);
+  int mash = mashCount(p);
+  const float idle = p.data.value("blkIdle", 0.f);
   if (block) {
+    // a rising use while the guard is already up, or a re-tap still inside the window, is a mash
+    if (in.use && !wasUse) {
+      if (p.blockT > 0.001f) mash++;
+      else if (idle > 0.f && idle <= PARRY_WINDOW) mash++;
+    }
     if (p.blockT <= 0) p.blockT = 0.001f;
     else p.blockT += dt;
-    const float cost = shieldGuard ? BLOCK_COST : BLOCK_COST * 1.5f;
+    const float cost = (shieldGuard ? BLOCK_COST : BLOCK_COST * 1.5f) * (1.f + MASH_STAM * (float)mash);
     spend(p, cost * (1 - stunResist(p)) * dt);   // (a weapon's guard costs half again; a shield stays as it was)
+    p.data["blkIdle"] = 0.f;
     if (p.stamina <= 0) p.blockT = 0;
-  } else p.blockT = 0;
+  } else {
+    p.blockT = 0;
+    const float down = idle + dt;
+    p.data["blkIdle"] = down;
+    if (down > PARRY_WINDOW) mash = 0;   // the guard has been down past the window
+  }
+  if (in.use) p.data["blkUse"] = true;
+  else p.data.erase("blkUse");
+  setMash(p, mash);
 }
 
 float combatRpgIncoming(Level& lv, Player& p, float amount, DamageSource& src) {
@@ -168,10 +195,11 @@ float combatRpgIncoming(Level& lv, Player& p, float amount, DamageSource& src) {
   // a locational body hit (the blade missed the guard) is not a parry or a keep
   const bool locational = src.armorSlot >= 0 && !src.metGuard;
   if (locational) return amount * (1 - conReduction(p)) * damageTakenFactor(p);
-  if (p.blockT > 0 && p.blockT < guardWindow(p) && p.stamina >= PARRY_COST && src.attacker) {
-    spend(p, PARRY_COST);
+  if (p.blockT > 0 && p.blockT < guardWindow(p) && p.stamina >= PARRY_COST * mashStam(p) && src.attacker) {
+    spend(p, PARRY_COST * mashStam(p));
     p.parryFlash = 0.35f;
     p.blockT = PARRY_WINDOW;
+    clearMash(p);
     if (Entity* a = lv.entity(src.attacker)) {
       a->staggerT = std::max(a->staggerT, 0.8f);
       a->posture = a->maxPosture;
@@ -247,12 +275,14 @@ bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& t
   }
   if (!hit) return false;
   const vec3 at = from + step * best;
-  const bool parry = hit->blockT > 0 && hit->blockT < guardWindow(*hit) && hit->stamina >= PARRY_COST;
+  const float parryCost = PARRY_COST * mashStam(*hit);
+  const bool parry = hit->blockT > 0 && hit->blockT < guardWindow(*hit) && hit->stamina >= parryCost;
   if (parry) {
-    hit->stamina = std::max(0.f, hit->stamina - PARRY_COST);
+    hit->stamina = std::max(0.f, hit->stamina - parryCost);
     hit->data["stamIdle"] = 0;
     hit->parryFlash = 0.35f;
     hit->blockT = PARRY_WINDOW;
+    clearMash(*hit);
     vec3 back = -arrow.vel;
     float sp = glm::length(back);
     if (sp < 0.5f) back = -step;
@@ -267,7 +297,7 @@ bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& t
     return true;
   }
   if (hit->blockT > 0) {
-    hit->stamina = std::max(0.f, hit->stamina - 8.f);
+    hit->stamina = std::max(0.f, hit->stamina - 8.f * mashStam(*hit));
     hit->data["stamIdle"] = 0;
   }
   hit->guardFlash = 0.35f;
@@ -298,9 +328,13 @@ float guardKeep(const Player& p) {
   return BLOCK_KEEP + 0.5f * (1.f - BLOCK_KEEP);
 }
 float guardWindow(const Player& p) {
-  if (holdingShield(p) && !twoHandWeapon(p)) return PARRY_WINDOW;
-  if (twoHandWeapon(p)) return PARRY_WINDOW * 0.8f;
-  return PARRY_WINDOW * 0.6f;
+  float w = PARRY_WINDOW;
+  if (holdingShield(p) && !twoHandWeapon(p)) w = PARRY_WINDOW;
+  else if (twoHandWeapon(p)) w = PARRY_WINDOW * 0.8f;
+  else w = PARRY_WINDOW * 0.6f;
+  const int extra = std::max(0, mashCount(p) - MASH_FREE);
+  if (extra) w *= std::pow(0.5f, (float)extra);
+  return std::max(MASH_FLOOR, w);
 }
 
 int shieldSide(const Player& p) {

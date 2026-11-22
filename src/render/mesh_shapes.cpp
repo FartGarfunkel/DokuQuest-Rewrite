@@ -346,8 +346,10 @@ void addShapeBox(MeshCtx& c, std::vector<ChunkVertex>& d, const ShapeBox& box, v
 }
 } // namespace
 
-void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross) {
-  float h = scale, a0 = inset, a1 = 1 - inset;
+void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross, float span) {
+  float h = scale;
+  float lo = 0.5f - span * 0.5f, hi = 0.5f + span * 0.5f;
+  float a0 = lo + inset, a1 = hi - inset;
   u8 mat = Mat::Cutout | Mat::NoRelief;
   auto pl = [&](float ax, float az, float bx, float bz) {
     MV v[4] = {{vec3(x + ax, y, z + az), {0, 1}, sk, bl, 1, 0}, {vec3(x + bx, y, z + bz), {1, 1}, sk, bl, 1, 0},
@@ -355,7 +357,7 @@ void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, floa
     c.quad2(d, v, tile, NORMAL_NONE, mat);
   };
   if (cross) { pl(a0, a0, a1, a1); pl(a0, a1, a1, a0); }
-  else { pl(0, a0, 1, a0); pl(0, a1, 1, a1); pl(a0, 0, a0, 1); pl(a1, 0, a1, 1); }
+  else { pl(lo, a0, hi, a0); pl(lo, a1, hi, a1); pl(a0, lo, a0, hi); pl(a1, lo, a1, hi); }
 }
 
 // an ore's specks over the rock it is drawn as (render/ore_overlay.h): the block's faces a hair out, culled as a cube's
@@ -550,7 +552,8 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   }
   if (T.brazier) {
     int ft = R.tile("campfire_fire");
-    if (ft >= 0) emitPlanes(c, d, ft, o.x, y + (lift + 9) / 16.f, o.z, 0.08f, 1, 15, 15, false);
+    // bowl inner 3..13/16, magma plate at y 8.5..9.5; keep the flame inside the dish
+    if (ft >= 0) emitPlanes(c, d, ft, o.x, y + (lift + 9) / 16.f, o.z, 0.06f, 0.38f, 15, 15, false, 10 / 16.f);
   }
   if (T.cauldron && (meta & 3) && (meta & 4)) {   // lava in a cauldron (sim/cave_drips.h): glowing, opaque, the lava's own picture
     ShapeBox lb(2, 4, 2, 14, 4 + (meta & 3) * 3.6f, 14); lb.side = lb.end = R.tile("lava");

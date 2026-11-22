@@ -86,6 +86,7 @@ const AttackMove& attackMove(u8 id) { return MOVES[id < MV_COUNT ? id : 0]; }
 
 Moveset movesetOf(const std::string& toolType, const std::string& key) {
   if (toolType.empty()) return Moveset::Fist;
+  if (key.find("throwing") != std::string::npos) return Moveset::Throw;
   if (toolType == "sword")
     return key.find("dagger") != std::string::npos || key.find("knife") != std::string::npos ? Moveset::Dagger : Moveset::Sword;
   if (toolType == "axe") return Moveset::Axe;
@@ -98,10 +99,12 @@ Moveset movesetOf(const ItemDef* it) {
   if (ms == "greatsword") return Moveset::Greatsword;
   if (ms == "spear") return Moveset::Spear;
   if (ms == "mace") return Moveset::Mace;
+  if (ms == "throw") return Moveset::Throw;
   return movesetOf(it->hasTool ? it->tool.type : std::string(), it->key);
 }
 
 int comboLength(Moveset m) {
+  if (m == Moveset::Throw) return 1;
   return m == Moveset::Axe || m == Moveset::Tool || m == Moveset::Greatsword || m == Moveset::Spear || m == Moveset::Mace ? 2 : 3;
 }
 
@@ -116,6 +119,7 @@ u8 attackMoveFor(Moveset m, int n, bool dash, bool air) {
     case Moveset::Greatsword: return air ? (u8)MV_SWORD_AIR : dash ? (u8)MV_AXE2 : (u8)(MV_GS1 + k);
     case Moveset::Spear: return air ? (u8)MV_SWORD_AIR : dash ? (u8)MV_AXE2 : (u8)(MV_SPEAR1 + k);
     case Moveset::Mace: return air ? (u8)MV_SWORD_AIR : dash ? (u8)MV_AXE2 : (u8)(MV_MACE1 + k);
+    case Moveset::Throw: return MV_NONE;
   }
   return MV_NONE;
 }

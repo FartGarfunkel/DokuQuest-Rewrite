@@ -3,9 +3,11 @@
   python3 tools/port/furniture_more.py <data-dir>
 Pictures are existing pack tiles (planks, stripped oak, stone bricks, red wool, candle, iron, torch, fire).
 - oak_desk: an oak table with a backboard and two drawer fronts
-- oak_coffin: a closed wooden box, one cell, not a chest
+- oak_coffin: a closed wooden box, two cells like a bed (same model, head is meta bit 4)
 - altar: a stone-brick dais, a cloth runner, two candles
-- sconce: an iron wall bracket holding a torch"""
+- sconce: an iron wall bracket holding a torch
+Chairs, stools, benches, tables, shelves, bookcases, cabinets, desks, coffins, altars, sconces
+and the other model furniture are waterloggable."""
 import json, sys, pathlib
 
 
@@ -60,10 +62,11 @@ def main(d):
                  {'b': [11, 9.8, 15.5, 12.2, 10.8, 16], 'side': L, 'end': L}]
         sj['shapes']['oak_desk'] = desk
     block('oak_desk', 'Oak Desk', {'render': 6, 'opaque': False, 'hardness': 2, 'tool': 'axe', 'sound': 'wood', 'fuel': 1.5,
-                                  'shape': 'oak_desk', 'tex': P, 'facingModel': True, 'furniture': 'desk', 'wood': 'oak'}, [tiles[P]] * 6)
+                                  'shape': 'oak_desk', 'tex': P, 'facingModel': True, 'furniture': 'desk', 'wood': 'oak',
+                                  'wlog': True}, [tiles[P]] * 6)
     recipe('oak_desk', 1, ['PPP', 'PSP', 'S S'], {'P': 'planks', 'S': 'stick'}, group='furniture')
 
-    # oak_coffin: one cell, a closed box with a lid seam; not a container
+    # oak_coffin: two cells like a bed; the same closed-box model on both, head marked with meta bit 4
     if 'oak_coffin' not in sj['shapes']:
         sj['shapes']['oak_coffin'] = [
             {'b': [2, 0, 1.5, 14, 7.5, 14.5], 'side': P, 'end': P},
@@ -71,7 +74,8 @@ def main(d):
             {'b': [1.5, 7.3, 1, 14.5, 8.2, 15], 'side': L, 'end': L},
             {'b': [3, 10, 1, 13, 11.2, 4], 'side': P, 'end': P}]
     block('oak_coffin', 'Oak Coffin', {'render': 6, 'opaque': False, 'hardness': 2, 'tool': 'axe', 'sound': 'wood', 'fuel': 1.5,
-                                      'shape': 'oak_coffin', 'tex': P, 'facingModel': True, 'furniture': 'coffin', 'wood': 'oak'}, [tiles[P]] * 6)
+                                      'shape': 'oak_coffin', 'tex': P, 'facingModel': True, 'furniture': 'coffin', 'wood': 'oak',
+                                      'wlog': True}, [tiles[P]] * 6)
     recipe('oak_coffin', 1, ['PPP', 'PSP'], {'P': 'planks', 'S': SLAB}, group='furniture')
 
     # altar: dais, cloth, two bone candlesticks with fire (candle sprites are hollow on a model box)
@@ -88,7 +92,7 @@ def main(d):
         {'b': [11.2, 10.5, 2.2, 11.8, 16, 5.8], 'side': FIRET, 'end': FIRET, 'nocol': True, 'tv': 8},
         {'b': [10.2, 10.5, 3.7, 12.8, 16, 4.3], 'side': FIRET, 'end': FIRET, 'nocol': True, 'tv': 8}]
     block('altar', 'Altar', {'render': 6, 'opaque': False, 'hardness': 2, 'tool': 'pickaxe', 'sound': 'stone', 'light': 8,
-                             'shape': 'altar', 'tex': SB, 'facingModel': True}, [tiles[SB]] * 6)
+                             'shape': 'altar', 'tex': SB, 'facingModel': True, 'wlog': True}, [tiles[SB]] * 6)
     recipe('altar', 1, ['C C', 'SSS'], {'C': 'candle', 'S': 'stone_bricks'})
 
     # sconce: iron plate on the north wall, an arm, a cup, a torch flame (nocol). facingModel meta 0-3.
@@ -100,7 +104,7 @@ def main(d):
             {'b': [7.2, 7.5, 6.5, 8.8, 13, 8.1], 'side': TORCH, 'end': TORCH, 'nocol': True},
             {'b': [6.5, 12, 5.8, 9.5, 15.5, 8.8], 'side': FIRE, 'end': FIRE, 'nocol': True}]
     block('sconce', 'Sconce', {'render': 6, 'solid': False, 'opaque': False, 'hardness': 1, 'sound': 'metal', 'light': 12, 'hot': True,
-                              'shape': 'sconce', 'tex': IRON, 'facingModel': True}, [tiles[IRON]] * 6)
+                              'shape': 'sconce', 'tex': IRON, 'facingModel': True, 'wlog': True}, [tiles[IRON]] * 6)
     recipe('sconce', 1, ['N', 'T'], {'N': 'iron_nugget', 'T': 'torch'})
 
     # brazier: a cross of fire in the bowl, not a solid fire cube
@@ -111,6 +115,11 @@ def main(d):
             {'b': [3, 9, 7.2, 13, 16, 8.8], 'side': FIRET, 'end': FIRET, 'nocol': True, 'tv': 8},
             {'b': [6, 9, 6, 10, 16, 10], 'side': FIRET, 'end': FIRET, 'nocol': True, 'tv': 8}]
         sj['shapes']['brazier'] = boxes
+
+    extra = {'altar', 'sconce'}
+    for b in blocks:
+        if b.get('furniture') or b.get('key') in extra:
+            b['wlog'] = True
 
     (d / 'blocks.json').write_text(json.dumps(bj, separators=(',', ':'), ensure_ascii=False))
     (d / 'shapes.json').write_text(json.dumps(sj, indent=1, ensure_ascii=False) + '\n')

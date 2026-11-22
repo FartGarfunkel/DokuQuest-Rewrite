@@ -339,6 +339,22 @@ int SP::lectern(int x, int y, int z, int f, const std::string& lore) {
   return i;
 }
 
+int SP::hang(int x, int y, int z, std::string_view key) {
+  if (!in(x, z) || get(x, y, z) != AIR) return -1;
+  const BlockId above = get(x, y + 1, z);
+  if (above == NOBLOCK || above == AIR || !tSolid(above) || tLiquid(above)) return -1;
+  return put(x, y, z, key, 1);
+}
+
+int SP::wallTorch(int x, int y, int z, int toward, std::string_view key) {
+  static const u8 T[4] = {3, 2, 4, 1};   // torch meta toward the supporting block (N E S W)
+  toward &= 3;
+  if (!in(x, z) || get(x, y, z) != AIR) return -1;
+  const BlockId wall = get(x + DIRX[toward], y, z + DIRZ[toward]);
+  if (wall == NOBLOCK || wall == AIR || !tSolid(wall) || tLiquid(wall)) return -1;
+  return put(x, y, z, key, T[toward]);
+}
+
 int SP::spawner(int x, int y, int z, const std::string& mob) {
   int i = put(x, y, z, "monster_spawner");
   if (i >= 0) setEntity(i, json{{"type", "spawner"}, {"mob", mob}, {"structure", S.id}});

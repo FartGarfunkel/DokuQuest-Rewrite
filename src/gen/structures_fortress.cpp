@@ -221,6 +221,9 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
         int back = 0; for (int d = 0; d < 4; d++) if (n.links & (1 << d)) back = (d + 2) & 3;
         const int chx = cx + DIRX[back] * (H - 1), chz = cz + DIRZ[back] * (H - 1);
         if (P.in(chx, chz)) P.chest(chx, y + 1, chz, (back + 2) & 3, "nether_fortress");
+        P.barrel(cx - DIRZ[back] * 2, y + 1, cz + DIRX[back] * 2, (back + 2) & 3, "nether_fortress");
+        P.wallTorch(cx + DIRX[(back + 1) & 3] * (H - 1), y + 3, cz + DIRZ[(back + 1) & 3] * (H - 1), (back + 1) & 3, "soul_torch");
+        P.wallTorch(cx + DIRX[(back + 3) & 3] * (H - 1), y + 3, cz + DIRZ[(back + 3) & 3] * (H - 1), (back + 3) & 3, "soul_torch");
         break;
       }
       case F_ROOM: {
@@ -228,31 +231,39 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
         const int bxx = cx + DIRX[back] * (H - 1), bzz = cz + DIRZ[back] * (H - 1);
         const int sx = -DIRZ[back], sz = DIRX[back];
         if (P.in(bxx + sx, bzz + sz)) P.chest(bxx + sx, y + 1, bzz + sz, (back + 2) & 3, "nether_fortress");
+        P.barrel(bxx - sx, y + 1, bzz - sz, (back + 2) & 3, "nether_fortress");
         if (((cx ^ cz) & 1) && P.in(cx, cz)) P.spawner(cx, y + 1, cz, "wither_skeleton");
         ProcRoom pr;
         static const char* FK[] = {"barracks", "armoury", "refectory", "forge", "shrine", "store",
-                                   "kitchen", "cells", "office", "chapel", "workshop", "sleeping"};
-        pr.kind = FK[(unsigned)(cx * 7 + cz + y) % 12];
-        pr.x = cx; pr.y = y + 1; pr.z = cz; pr.rx = std::max(3, H - 1); pr.rz = std::max(3, H - 1); pr.H = 4;
+                                   "kitchen", "cells", "office", "chapel", "workshop", "sleeping",
+                                   "brewery", "pantry", "archive", "gallery", "dining", "prison"};
+        pr.kind = FK[(unsigned)(cx * 7 + cz + y) % 18];
+        pr.x = cx; pr.y = y + 1; pr.z = cz; pr.rx = std::max(2, H - 1); pr.rz = std::max(2, H - 1); pr.H = 5;
         pr.seed = hash32(cx, y, cz, (i32)S.seed); pr.wood = "crimson"; pr.light = "soul_torch"; pr.hangLight = "soul_lantern";
         pr.pillar = "nether_bricks"; pr.slab = "nether_brick_slab"; pr.density = 0.7f;
-        applyProcLayout(pr, ProcLayout{(int)(pr.seed % 4), (int)((pr.seed >> 3) % PROC_PATTERN_N), PAL_NETHER, 1 + (int)((pr.seed >> 6) % 3)});
+        const int pal = (pr.seed >> 8) & 1 ? PAL_BLACK : PAL_NETHER;
+        applyProcLayout(pr, ProcLayout{(int)(pr.seed % 4), (int)((pr.seed >> 3) % PROC_PATTERN_N), pal, (int)((pr.seed >> 6) % 4)});
+        pr.light = "soul_torch"; pr.hangLight = "soul_lantern";
         furnishProcRoom(P, pr);
+        P.put(cx, y, cz, "chiseled_nether_bricks");
         break;
       }
       case F_END: {
-        // a lookout where the bridge stops: a chest now and then
+        // a lookout where the bridge stops: a chest now and then, a little clutter
         if (P.h(cx, 1, cz, 4) < 0.5 && P.in(cx, cz)) P.chest(cx, y + 1, cz, 0, "nether_fortress");
+        P.barrel(cx + 1, y + 1, cz, 3, "nether_fortress");
+        furnishPlaced(P, cx, y + 1, cz, 1, 1, 3, "alcove", hash32(cx, y, cz, (i32)S.seed), PAL_NETHER, 0);
         break;
       }
       case F_CROSS:
         if (n.castle) {
-          furnishPlaced(P, cx, y + 1, cz, 3, 3, 4, "hall",
-                        hash32(cx, y, cz, (i32)S.seed), PAL_NETHER, 1);
-          // hall hangs lanterns at y+4, but the roof is at y+6; hang them under the real roof, banners on closed walls
+          static const char* XK[] = {"hall", "gallery", "chapel", "armoury", "barracks", "dining", "shrine", "office"};
+          const u32 xs = hash32(cx, y, cz, (i32)S.seed);
+          furnishPlaced(P, cx, y + 1, cz, 3, 3, 5, XK[xs % 8], xs, (xs >> 4) & 1 ? PAL_BLACK : PAL_NETHER, (int)((xs >> 6) % 3));
+          // hang under the real roof (y+6), banners on closed walls
           for (int sx : {-1, 1}) for (int sz : {-1, 1}) {
             const int x = cx + sx * (H - 1), z = cz + sz * (H - 1);
-            if (P.in(x, z)) P.put(x, y + 5, z, "soul_lantern", 1);
+            P.hang(x, y + 5, z, "soul_lantern");
           }
           int chestDir = -1;
           for (int d = 0; d < 4; d++) {
@@ -269,6 +280,10 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
             const int z = cz + DIRZ[chestDir] * (H - 1) + DIRX[chestDir];
             if (P.in(x, z)) P.chest(x, y + 1, z, (chestDir + 2) & 3, "nether_fortress");
           }
+          P.barrel(cx + 1, y + 1, cz - 1, 2, "nether_fortress");
+        } else {
+          P.put(cx, y, cz, "chiseled_nether_bricks");
+          P.put(cx, y + 1, cz, "brazier");
         }
         break;
       default: break;

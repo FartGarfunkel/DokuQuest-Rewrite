@@ -105,6 +105,11 @@ std::string model3dKind(const std::string& key, const ItemDef* def) {
   if (def->hasTool && def->has("saw")) return "saw";
   if (def->hasTool && def->has("scythe")) return "scythe";
   if (def->hasTool && def->has("javelin")) return "javelin";
+  if (t == "throwing_knife" || key.find("throwing_knife") != std::string::npos) return "throwing_knife";
+  if (t == "throwing_axe" || key.find("throwing_axe") != std::string::npos) return "throwing_axe";
+  if (t == "battleaxe" || key.find("battleaxe") != std::string::npos) return "battleaxe";
+  if (t == "longsword" || key.find("longsword") != std::string::npos) return "longsword";
+  if (t == "warhammer" || key.find("warhammer") != std::string::npos) return "warhammer";
   if (def->hasTool && def->has("knife")) return "dagger";
   if (t == "pickaxe") return "pickaxe";
   if (t == "axe") return "axe";
@@ -226,25 +231,87 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     m.sseg(diag(0.84f), diag(0.98f), 0.07f, 0.16f, 0.05f, 0.06f, 1.02f, 0.04f);
     m.sseg(diag(0.98f), diag(1.14f), 0.16f, 0.02f, 0.06f, 0.02f, 1.1f, 0.04f);
     depth = 0.05f;
-  } else if (k == "sword" || k == "dagger" || k == "greatsword") {
-    // a greatsword is the same sword, much longer and broader, a long grip for two hands
-    depth = k == "dagger" ? sword(m, 0.92f, 0.13f, 0.16f) : k == "greatsword" ? sword(m, 1.72f, 0.26f, 0.38f) : sword(m);
+  } else if (k == "sword" || k == "dagger" || k == "greatsword" || k == "longsword" || k == "throwing_knife") {
+    // a greatsword is the same sword, much longer and broader, a long grip for two hands; a longsword sits between them
+    depth = k == "dagger" ? sword(m, 0.92f, 0.13f, 0.16f)
+          : k == "throwing_knife" ? sword(m, 0.70f, 0.10f, 0.08f)
+          : k == "greatsword" ? sword(m, 1.72f, 0.26f, 0.38f)
+          : k == "longsword" ? sword(m, 1.48f, 0.18f, 0.28f) : sword(m);
     if (k == "greatsword") m.sseg(diag(0.04f), diag(0.42f), 0.08f, 0.08f, 0.08f, 0.08f);   // the grip runs on, so the other hand has it
+    if (k == "longsword") m.sseg(diag(0.04f), diag(0.32f), 0.075f, 0.075f, 0.075f, 0.075f);
+  } else if (k == "battleaxe") {
+    handle(m, 1.02f);
+    m.sseg(diag(0.62f), diag(0.98f), 0.12f, 0.12f, 0.12f, 0.12f, 0.8f);
+    for (int side : {-1, 1}) {
+      for (int i = 0; i < 5; i++) {
+        float v0 = 0.04f + i * 0.07f, v1 = v0 + 0.07f, wd = 0.18f + i * 0.06f, dd = 0.09f - i * 0.012f;
+        m.sseg(diag(0.78f, side * v0), diag(0.78f, side * v1), wd, wd + 0.06f, dd, dd - 0.012f, i == 4 ? 1.12f : 1, 0.2f);
+      }
+      for (int i = 0; i < 6; i++) {
+        const float a0 = -1 + i / 3.f, a1 = a0 + 1 / 3.f, b0 = 0.40f + 0.03f * (1 - a0 * a0), b1 = 0.40f + 0.03f * (1 - a1 * a1);
+        m.sseg(diag(0.78f + a0 * 0.24f, side * (b0 - 0.03f * a0 * a0)), diag(0.78f + a1 * 0.24f, side * (b1 - 0.03f * a1 * a1)), 0.1f, 0.1f, 0.025f, 0.02f, 1.25f, 0.05f);
+      }
+    }
+    depth = 0.07f;
+  } else if (k == "warhammer") {
+    handle(m, 0.88f, 0.085f);
+    m.sseg(diag(0.88f, -0.32f), diag(0.88f, 0.32f), 0.20f, 0.20f, 0.18f, 0.18f, 1.0f, 0.05f, 0.02f);
+    m.sseg(diag(0.88f, -0.34f), diag(0.88f, -0.28f), 0.20f, 0.20f, 0.18f, 0.18f, 1.12f, 0.03f);
+    m.sseg(diag(0.88f, 0.28f), diag(0.88f, 0.38f), 0.12f, 0.04f, 0.12f, 0.04f, 1.15f, 0.03f);   // a spike on the back
+    depth = 0.10f;
+  } else if (k == "throwing_axe") {
+    handle(m, 0.52f, 0.07f);
+    m.sseg(diag(0.38f), diag(0.54f), 0.09f, 0.09f, 0.09f, 0.09f, 0.8f);
+    for (int i = 0; i < 4; i++) {
+      float v0 = 0.03f + i * 0.055f, v1 = v0 + 0.055f, wd = 0.12f + i * 0.045f, dd = 0.07f - i * 0.01f;
+      m.sseg(diag(0.48f, v0), diag(0.48f, v1), wd, wd + 0.045f, dd, dd - 0.01f, i == 3 ? 1.12f : 1, 0.2f);
+    }
+    depth = 0.05f;
   } else if (k == "spear") {
     handle(m, 1.35f, 0.065f);
     m.sseg(diag(1.32f), diag(1.52f), 0.08f, 0.18f, 0.045f, 0.06f, 1.04f, 0.04f);
     m.sseg(diag(1.52f), diag(1.78f), 0.18f, 0.02f, 0.06f, 0.02f, 1.12f, 0.04f);
     depth = 0.05f;
   } else if (k == "mace") {
-    handle(m, 0.58f, 0.08f);
-    m.sseg(diag(0.56f), diag(0.66f), 0.07f, 0.05f, 0.07f, 0.05f, 0.9f);   // the ring the chain hangs from
-    for (int i = 0; i < 4; i++) {
-      const float y0 = 0.66f - i * 0.09f;
-      m.sseg(diag(y0, 0.02f), diag(y0 - 0.08f, 0.f), 0.04f, 0.03f, 0.025f, 0.02f, 0.82f);
+    // a flail: a short haft, a ring at its head, and a chain that leaves the ring straight down the picture to a ball.
+    // The chain is also kept as its own pieces (ItemBuild::loose) so a held mace can swing each link.
+    handle(m, 0.62f, 0.075f);
+    const float head = 0.68f;
+    m.sseg(diag(head - 0.08f), diag(head + 0.02f), 0.09f, 0.06f, 0.09f, 0.06f, 0.9f);
+    b.haft = std::make_unique<VoxelGrid>(b.P.g);
+    auto hang = [&](vec3 a, vec3 c, float w0, float w1, float d0, float d1, float shade) {
+      VoxelPainter L(b.P.g.size, b.P.frame.origin, b.P.frame.voxel);
+      const PaintFn paint = m.F(shade);
+      const float len = std::hypot(c.x - a.x, c.y - a.y);
+      const int n = std::max(1, (int)std::lround(len / 0.05f));
+      for (int s = 0; s < n; s++) {
+        const float t0 = (float)s / n, t1 = (float)(s + 1) / n, tm = (t0 + t1) / 2;
+        const vec3 p = glm::mix(a, c, t0), q = glm::mix(a, c, t1);
+        const float w = w0 + (w1 - w0) * tm, d = d0 + (d1 - d0) * tm;
+        b.P.seg(p, q, w, d, paint); L.seg(p, q, w, d, paint);
+      }
+      ItemBuild::LooseBit bit; bit.g = std::move(L.g); bit.a = a; bit.b = c;
+      b.loose.push_back(std::move(bit));
+    };
+    vec3 prev = diag(head);
+    const int links = 4;
+    const float step = 0.11f;
+    for (int i = 0; i < links; i++) {
+      const vec3 nxt = diag(head - (i + 1) * step, -(i + 1) * step);
+      hang(prev, nxt, 0.045f, 0.034f, 0.030f, 0.024f, 0.82f);
+      prev = nxt;
     }
-    const vec3 c = diag(0.22f);
-    m.cbox(c.x - 0.12f, c.y - 0.12f, -0.12f, c.x + 0.12f, c.y + 0.12f, 0.12f, 1.08f);   // the ball
-    m.cbox(c.x - 0.06f, c.y - 0.06f, -0.14f, c.x + 0.06f, c.y + 0.06f, 0.14f, 1.15f);
+    {
+      const vec3 cen = diag(head - (links + 0.65f) * step, -(links + 0.65f) * step);
+      VoxelPainter L(b.P.g.size, b.P.frame.origin, b.P.frame.voxel);
+      const PaintFn body = m.F(1.08f), stud = m.F(1.15f);
+      const vec3 h(0.11f);
+      b.P.box(cen - h, cen + h, body); L.box(cen - h, cen + h, body);
+      b.P.box(cen - vec3(0.05f, 0.05f, 0.13f), cen + vec3(0.05f, 0.05f, 0.13f), stud);
+      L.box(cen - vec3(0.05f, 0.05f, 0.13f), cen + vec3(0.05f, 0.05f, 0.13f), stud);
+      ItemBuild::LooseBit bit; bit.g = std::move(L.g); bit.a = prev; bit.b = cen;
+      b.loose.push_back(std::move(bit));
+    }
     depth = 0.14f;
   }
   else if (k == "club") {
@@ -429,7 +496,7 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     depth = 0.09f;
   } else return false;
   // (the tools and weapons the same on both faces: an axe's head, a sword's blade, a hoe's...)
-  static const std::set<std::string> SYM = {"pickaxe", "axe", "shovel", "hoe", "sword", "dagger", "greatsword", "spear", "mace", "saw", "scythe", "javelin", "club", "hammer"};
+  static const std::set<std::string> SYM = {"pickaxe", "axe", "shovel", "hoe", "sword", "dagger", "greatsword", "spear", "mace", "saw", "scythe", "javelin", "club", "hammer", "longsword", "battleaxe", "warhammer", "throwing_knife", "throwing_axe"};
   if (SYM.count(k)) {   // both faces alike: the grid has no middle layer (its centres sit half a voxel either side of the blade's plane),
         // so where the blade thins to its edges one layer was left on one side: that face flat, the other stepped
       VoxelGrid& G = b.P.g; const int Z = G.size.z;

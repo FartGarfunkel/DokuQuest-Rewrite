@@ -22,6 +22,7 @@ namespace dq {
 
 u8 skyTopLevel(int dim);            // sky light entering a band from above (0 in the Ember Depths)
 void initialChunkLight(Chunk& c);   // worker thread: column sky + chunk-local flood fill + emitters
+bool cellOpenToSky(const Chunk& c, int x, int y, int z);  // air from this cell up to the sky (a roofed dungeon room is not)
 
 class LightEngine : public WorldSystem {
 public:

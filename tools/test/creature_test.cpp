@@ -278,7 +278,7 @@ int main(int argc, char** argv) {
       CHECK(!g3->removed && g3->hp < hp0, "a mixed iron sword swing lands on a ghoul in front (%.1f -> %.1f)", hp0, g3->hp);
       g3->hp = 200; g3->invulnT = 0; g3->hurtTime = 0; g3->removed = false; g3->data.erase("invulnT");
       ItemStack gs;
-      CHECK(makePartTool("greatsword", {"iron", "iron", "iron"}, "stick", gs), "a mixed iron greatsword for the swing");
+      CHECK(makePartTool("greatsword", {"iron", "iron", "iron", "iron", "iron", "iron"}, "stick", gs), "a mixed iron greatsword for the swing");
       p.inv[0] = gs; p.atkMove = 0; p.atkGap = 9; p.atkCombo = 0; hp0 = g3->hp;
       PlayerInput swing2; swing2.attackPressed = true;
       tickMelee(*lv, p, 0.01f, swing2, true, false);
@@ -302,6 +302,51 @@ int main(int argc, char** argv) {
       g4->meleeAt(*lv, p, 1.f, 0.f);
       driveMelee(*lv, *g4);
       CHECK(p.parryFlash > 0.f && p.hp >= 19.9f, "you can parry the cut you saw coming (flash %.2f, hp %.1f)", p.parryFlash, p.hp);
+      // re-tapping the guard inside the window shrinks it; a parry or dropping it clears the mash
+      {
+        p.data.erase("blkUse"); p.data.erase("blkMash"); p.data.erase("blkIdle");
+        p.invuln = 0; p.hp = 20; p.blockT = 0; p.stamina = 100; p.parryFlash = 0;
+        p.shield[0] = ItemStack("shield", 1);
+        CHECK(std::fabs(guardWindow(p) - 0.18f) < 0.001f, "an unmashed shield still opens 0.18s");
+        PlayerInput tap; tap.use = true;
+        combatRpgInput(*lv, p, tap, 0.01f);
+        CHECK(p.blockT > 0.f && p.data.value("blkMash", 0) == 0, "the first raise is not a mash");
+        const float stam0 = p.stamina;
+        p.stamina = 100; p.blockT = 0.05f;
+        combatRpgInput(*lv, p, tap, 0.10f);
+        const float unmashedSpend = 100.f - p.stamina;
+        for (int n = 0; n < 4; n++) {
+          combatRpgInput(*lv, p, PlayerInput{}, 0.01f);
+          p.stamina = 100;
+          combatRpgInput(*lv, p, tap, 0.01f);
+        }
+        CHECK(p.data.value("blkMash", 0) >= 3 && guardWindow(p) < 0.10f,
+              "four re-taps shrink the window (mash %d, window %.3f)", p.data.value("blkMash", 0), guardWindow(p));
+        p.data["blkUse"] = true;
+        p.stamina = 100; p.blockT = 0.05f;
+        combatRpgInput(*lv, p, tap, 0.10f);
+        const float mashedSpend = 100.f - p.stamina;
+        CHECK(mashedSpend > unmashedSpend * 1.2f && stam0 <= 100.f,
+              "mashing the guard costs more stamina (%.2f -> %.2f)", unmashedSpend, mashedSpend);
+        p.invuln = 0; p.hp = 20; p.blockT = 0.05f; p.stamina = 100; p.parryFlash = 0;
+        g4->staggerT = 0; g4->attackCd = 0; g4->atkMove = 0; g4->atkT = 0; g4->atkHit.clear();
+        g4->meleeAt(*lv, p, 1.f, 0.f);
+        driveMelee(*lv, *g4);
+        CHECK(p.parryFlash <= 0.f && p.hp < 20.f,
+              "a mashed guard does not parry that cut (flash %.2f, hp %.1f, window %.3f)",
+              p.parryFlash, p.hp, guardWindow(p));
+        p.data["blkMash"] = 4;
+        p.invuln = 0; p.hp = 20; p.blockT = 0.01f; p.stamina = 100; p.parryFlash = 0;
+        g4->staggerT = 0; g4->attackCd = 0; g4->atkMove = 0; g4->atkT = 0; g4->atkHit.clear();
+        g4->meleeAt(*lv, p, 1.f, 0.f);
+        driveMelee(*lv, *g4);
+        CHECK(p.parryFlash > 0.f && p.data.value("blkMash", 0) == 0 && p.hp >= 19.9f,
+              "a successful parry clears the mash (flash %.2f, mash %d)", p.parryFlash, p.data.value("blkMash", 0));
+        p.data["blkMash"] = 4; p.data["blkUse"] = true; p.blockT = 0.05f; p.stamina = 100;
+        for (int i = 0; i < 20; i++) combatRpgInput(*lv, p, PlayerInput{}, 0.02f);
+        CHECK(p.data.value("blkMash", 0) == 0 && std::fabs(guardWindow(p) - 0.18f) < 0.001f,
+              "dropping the guard past the window clears the mash");
+      }
       g4->removed = true;
       p.blockT = 0; p.shield[0].clear();
     } else CHECK(false, "a sword swing does not land on the press");

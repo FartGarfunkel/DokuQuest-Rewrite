@@ -30,6 +30,7 @@ static const char* movesetName(Moveset m) {
     case Moveset::Greatsword: return "greatsword";
     case Moveset::Spear: return "spear";
     case Moveset::Mace: return "mace";
+    case Moveset::Throw: return "throw";
   }
   return "?";
 }
@@ -72,6 +73,10 @@ int main() {
   unknown.props["moveset"] = "halberd";
   CHECK(movesetOf(&unknown) == Moveset::Sword, "an unknown moveset keeps the old sword rule (got %s)",
         movesetName(movesetOf(&unknown)));
+  ItemDef thrown = flagged;
+  thrown.props["moveset"] = "throw";
+  CHECK(movesetOf(&thrown) == Moveset::Throw, "moveset throw is a throw (got %s)", movesetName(movesetOf(&thrown)));
+  CHECK(attackMoveFor(Moveset::Throw, 0, false, false) == MV_NONE, "a throw has no melee cut");
 
   printf("quality\n");
   ItemStack plain("iron_sword", 1);
@@ -158,7 +163,7 @@ int main() {
   CHECK(reg().item("iron_greatsword") == nullptr && reg().item("mixed_greatsword") != nullptr, "a greatsword is not a fixed item");
   CHECK(reg().item("iron_spear") == nullptr && reg().item("iron_mace") == nullptr, "a spear and a mace are not fixed items");
   ItemStack plainSword, plainGreat;
-  CHECK(makePartTool("sword", {"iron", "iron"}, "stick", plainSword) && makePartTool("greatsword", {"iron", "iron", "iron"}, "stick", plainGreat),
+  CHECK(makePartTool("sword", {"iron", "iron"}, "stick", plainSword) && makePartTool("greatsword", {"iron", "iron", "iron", "iron", "iron", "iron"}, "stick", plainGreat),
         "iron mixes into a sword and a greatsword");
   CHECK(plainGreat.id == "mixed_greatsword" && movesetOf(plainGreat.def()) == Moveset::Greatsword && plainGreat.def()->num("hands") == 2,
         "the greatsword uses both hands");
@@ -169,14 +174,14 @@ int main() {
     return matchGrid(g, 3);
   };
   const ItemStack ingot("iron_ingot", 1), stick("stick", 1);
-  CraftMatch gsGrid = gridOf({{0, ingot}, {1, ingot}, {3, ingot}, {6, stick}});   // a long blade, wide at the tip
+  CraftMatch gsGrid = gridOf({{0, ingot}, {1, ingot}, {2, ingot}, {3, ingot}, {4, ingot}, {5, ingot}, {7, stick}});   // six head cells, stick at (1,2)
   CraftMatch spGrid = gridOf({{0, ingot}, {1, ingot}, {3, stick}, {6, stick}});     // a point on a long shaft
   CraftMatch mcGrid = gridOf({{0, ingot}, {1, ingot}, {2, ingot}, {4, stick}});     // a heavy head over a short haft
   auto qualOk = [](const ItemStack& s) {
     const std::string q = s.tag.value("qual", "");
     return q == "poor" || q == "normal" || q == "fine" || q == "great" || q == "legendary";
   };
-  CHECK(gsGrid && gsGrid.result().id == "mixed_greatsword" && qualOk(gsGrid.result()), "three irons over a stick make a mixed greatsword with a quality");
+  CHECK(gsGrid && gsGrid.result().id == "mixed_greatsword" && qualOk(gsGrid.result()), "six irons and a stick at 0,1,2,3,4,5 and 7 make a mixed greatsword with a quality");
   CraftMatch ironCraft = gridOf({{0, ingot}, {3, ingot}, {6, stick}});
   ItemStack ironMade = ironCraft ? ironCraft.result() : ItemStack();
   CHECK(ironCraft && ironMade.id == "mixed_sword" && ironMade.id == ironCraft.out && ironMade.n == 1 && qualOk(ironMade),
@@ -190,10 +195,54 @@ int main() {
         woodMade.id.c_str(), woodMade.n, woodMade.tag.value("qual", "").c_str());
   CHECK(spGrid && spGrid.result().id == "mixed_spear" && spGrid.result().def()->num("hands") == 2, "two irons and a stick in a line make a spear");
   CHECK(mcGrid && mcGrid.result().id == "mixed_mace" && mcGrid.result().def()->num("hands") == 1, "two irons over a stick make a mace");
-  ItemStack again = gsGrid.result();
-  const std::string kept = again.tag["qual"];
+  CHECK(reg().item("mixed_longsword") && reg().item("mixed_battleaxe") && reg().item("mixed_warhammer")
+        && reg().item("mixed_throwing_knife") && reg().item("mixed_throwing_axe"),
+        "longsword, battleaxe, warhammer and throwing weapons are items");
+  CraftMatch lsGrid = gridOf({{1, ingot}, {4, ingot}, {6, ingot}, {8, ingot}, {7, stick}});   // blade and a crossguard
+  CraftMatch baGrid = gridOf({{0, ingot}, {2, ingot}, {3, ingot}, {4, ingot}, {5, ingot}, {7, stick}});   // two bits
+  CraftMatch whGrid = gridOf({{0, ingot}, {1, ingot}, {2, ingot}, {4, ingot}, {7, stick}});   // a heavy head
+  CraftMatch tkGrid = gridOf({{0, ingot}, {3, stick}});   // a short blade over a grip
+  CraftMatch taGrid = gridOf({{0, ingot}, {1, ingot}, {4, stick}});   // a small head, stick at (1,1)
+  CHECK(lsGrid && lsGrid.result().id == "mixed_longsword" && lsGrid.result().def()->num("hands") == 1
+        && movesetOf(lsGrid.result().def()) == Moveset::Sword && qualOk(lsGrid.result()),
+        "four irons and a stick make a mixed longsword");
+  CHECK(baGrid && baGrid.result().id == "mixed_battleaxe" && baGrid.result().def()->num("hands") == 2
+        && movesetOf(baGrid.result().def()) == Moveset::Axe && qualOk(baGrid.result()),
+        "five irons and a stick make a mixed battleaxe");
+  CHECK(whGrid && whGrid.result().id == "mixed_warhammer" && whGrid.result().def()->num("hands") == 2
+        && movesetOf(whGrid.result().def()) == Moveset::Mace && qualOk(whGrid.result()),
+        "four irons and a stick make a mixed warhammer");
+  CHECK(tkGrid && tkGrid.result().id == "mixed_throwing_knife" && movesetOf(tkGrid.result().def()) == Moveset::Throw
+        && attackMoveFor(Moveset::Throw, 0, false, false) == MV_NONE && qualOk(tkGrid.result()),
+        "an iron and a stick make a throwing knife");
+  CHECK(taGrid && taGrid.result().id == "mixed_throwing_axe" && movesetOf(taGrid.result().def()) == Moveset::Throw
+        && qualOk(taGrid.result()),
+        "two irons and a stick make a throwing axe");
+  {
+    ItemStack ls, ba, wh, tk, ta;
+    CHECK(makePartTool("longsword", {"iron", "iron", "iron", "iron"}, "stick", ls)
+          && makePartTool("battleaxe", {"iron", "iron", "iron", "iron", "iron"}, "stick", ba)
+          && makePartTool("warhammer", {"iron", "iron", "iron", "iron"}, "stick", wh)
+          && makePartTool("throwing_knife", {"iron"}, "stick", tk)
+          && makePartTool("throwing_axe", {"iron", "iron"}, "stick", ta),
+          "the new mixed kinds craft from parts");
+    CHECK(toolOf(ls).damage > toolOf(plainSword).damage && toolOf(plainGreat).damage > toolOf(ls).damage,
+          "a longsword sits between a sword and a greatsword (%.1f / %.1f / %.1f)",
+          toolOf(plainSword).damage, toolOf(ls).damage, toolOf(plainGreat).damage);
+    ItemStack ax, mc;
+    CHECK(makePartTool("axe", {"iron", "iron", "iron"}, "stick", ax) && makePartTool("mace", {"iron", "iron", "iron"}, "stick", mc),
+          "an iron axe and mace for the mix check");
+    CHECK(toolOf(ba).damage > toolOf(ax).damage, "a battleaxe hits harder than an axe (%.1f > %.1f)", toolOf(ba).damage, toolOf(ax).damage);
+    CHECK(toolOf(wh).damage > toolOf(mc).damage && toolOf(wh).speed < toolOf(mc).speed,
+          "a warhammer is slower and hits harder than a mace (%.1f @ %.2f vs %.1f @ %.2f)",
+          toolOf(wh).damage, toolOf(wh).speed, toolOf(mc).damage, toolOf(mc).speed);
+    CHECK(attackMove(attackMoveFor(movesetOf(wh.def()), 0, false, false)).pierce >= 0.2f, "a warhammer's blows pierce");
+  }
+  ItemStack again = gsGrid ? gsGrid.result() : ItemStack();
+  const std::string kept = again.tag.is_object() ? again.tag.value("qual", "") : "";
   stampGearQuality(again);
-  CHECK(again.tag["qual"] == kept, "a quality already on the piece stays");
+  CHECK(gsGrid && again.tag.is_object() && again.tag.value("qual", "") == kept, "a quality already on the piece stays");
+  if (!again.tag.is_object()) again.tag = json::object();
   again.tag["qual"] = "fine";
   stampGearQuality(again);
   CHECK(again.id == "mixed_greatsword" && again.n == 1 && again.tag.value("qual", "") == "fine", "a pre-set qual fine stays fine");
@@ -233,14 +282,18 @@ int main() {
   int shapedSwords = 0, badOut = 0, recipeRows = 0;
   bool swordOk = false;
   auto familyName = [](const std::string& s) {
-    return s.find("greatsword") != std::string::npos || s.find("spear") != std::string::npos || s.find("mace") != std::string::npos;
+    return s.find("greatsword") != std::string::npos || s.find("spear") != std::string::npos || s.find("mace") != std::string::npos
+        || s.find("longsword") != std::string::npos || s.find("battleaxe") != std::string::npos || s.find("warhammer") != std::string::npos
+        || s.find("throwing_knife") != std::string::npos || s.find("throwing_axe") != std::string::npos;
   };
   auto castName = [](const std::string& s) {
     return s.find("mold") != std::string::npos || s.find("_head") != std::string::npos;
   };
   for (const Recipe& r : reg().recipes) {
     if (r.out == "iron_greatsword" || r.out == "iron_spear" || r.out == "iron_mace" ||
-        r.out == "mixed_greatsword" || r.out == "mixed_spear" || r.out == "mixed_mace") recipeRows++;
+        r.out == "mixed_greatsword" || r.out == "mixed_spear" || r.out == "mixed_mace" ||
+        r.out == "mixed_longsword" || r.out == "mixed_battleaxe" || r.out == "mixed_warhammer" ||
+        r.out == "mixed_throwing_knife" || r.out == "mixed_throwing_axe") recipeRows++;
     bool family = familyName(r.out), cast = castName(r.out);
     auto note = [&](const std::string& s) { family = family || familyName(s); cast = cast || castName(s); };
     for (const auto& kv : r.key) note(kv.second);
@@ -262,8 +315,8 @@ int main() {
 
   printf("who may hold one, and a new roll\n");
   ItemStack ironGs, copperGs;
-  CHECK(makePartTool("greatsword", {"iron", "iron", "iron"}, "stick", ironGs), "iron greatsword");
-  CHECK(makePartTool("greatsword", {"copper", "copper", "copper"}, "stick", copperGs), "copper greatsword");
+  CHECK(makePartTool("greatsword", {"iron", "iron", "iron", "iron", "iron", "iron"}, "stick", ironGs), "iron greatsword");
+  CHECK(makePartTool("greatsword", {"copper", "copper", "copper", "copper", "copper", "copper"}, "stick", copperGs), "copper greatsword");
   Player hand;
   hand.inv.assign(9, ItemStack());
   hand.selected = 0;
@@ -276,6 +329,27 @@ int main() {
   hand.mode = "survival";
   hand.stats["skills"]["melee"] = skillXpFor(15);
   CHECK(skillLv(hand, "melee") >= 15 && weaponSkillMet(hand, ironGs), "melee 15 can hold the iron greatsword");
+  {
+    ItemStack ironLs, copperLs, ironBa, copperBa, ironWh, copperWh, ironTk;
+    CHECK(makePartTool("longsword", {"iron", "iron", "iron", "iron"}, "stick", ironLs)
+          && makePartTool("longsword", {"copper", "copper", "copper", "copper"}, "stick", copperLs)
+          && makePartTool("battleaxe", {"iron", "iron", "iron", "iron", "iron"}, "stick", ironBa)
+          && makePartTool("battleaxe", {"copper", "copper", "copper", "copper", "copper"}, "stick", copperBa)
+          && makePartTool("warhammer", {"iron", "iron", "iron", "iron"}, "stick", ironWh)
+          && makePartTool("warhammer", {"copper", "copper", "copper", "copper"}, "stick", copperWh)
+          && makePartTool("throwing_knife", {"iron"}, "stick", ironTk),
+          "iron and copper mix the new heavy and throwing kinds");
+    const int meleeXp = hand.stats["skills"].value("melee", 0);
+    hand.stats["skills"]["melee"] = 0;
+    CHECK(weaponSkillMet(hand, copperLs) && weaponSkillMet(hand, copperBa) && weaponSkillMet(hand, copperWh),
+          "copper longsword, battleaxe and warhammer need no melee practice");
+    CHECK(!weaponSkillMet(hand, ironLs) && !weaponSkillMet(hand, ironBa) && !weaponSkillMet(hand, ironWh),
+          "iron longsword, battleaxe and warhammer need melee 15");
+    CHECK(weaponSkillMet(hand, ironTk), "an iron throwing knife needs no melee practice");
+    hand.stats["skills"]["melee"] = meleeXp;
+    CHECK(weaponSkillMet(hand, ironLs) && weaponSkillMet(hand, ironBa) && weaponSkillMet(hand, ironWh),
+          "melee 15 can hold the iron longsword, battleaxe and warhammer");
+  }
   ironGs.tag["qual"] = "poor";
   ItemStack wornGs = ironGs;
   wornGs.d = std::max(2, toolMaxDurability(wornGs) / 2);
@@ -316,8 +390,9 @@ int main() {
   struct MixKind { const char* kind; int n; Moveset want; };
   const MixKind kinds[] = {
     {"sword", 2, Moveset::Sword}, {"axe", 3, Moveset::Axe}, {"pickaxe", 3, Moveset::Tool},
-    {"shovel", 1, Moveset::Tool}, {"hoe", 2, Moveset::Tool}, {"greatsword", 3, Moveset::Greatsword},
+    {"shovel", 1, Moveset::Tool}, {"hoe", 2, Moveset::Tool}, {"greatsword", 6, Moveset::Greatsword},
     {"spear", 2, Moveset::Spear}, {"mace", 3, Moveset::Mace}, {"knife", 1, Moveset::Dagger},
+    {"longsword", 4, Moveset::Sword}, {"battleaxe", 5, Moveset::Axe}, {"warhammer", 4, Moveset::Mace},
     {"hammer", 1, Moveset::Tool}, {"javelin", 1, Moveset::Sword}, {"saw", 1, Moveset::Axe},
     {"scythe", 1, Moveset::Tool}, {"propick", 1, Moveset::Tool}, {"chisel", 1, Moveset::Tool},
   };
@@ -397,7 +472,7 @@ int main() {
         "the same swing misses a shield behind you");
 
   ItemStack gs;
-  CHECK(makePartTool("greatsword", {"iron", "iron", "iron"}, "stick", gs), "iron greatsword for the guard");
+  CHECK(makePartTool("greatsword", {"iron", "iron", "iron", "iron", "iron", "iron"}, "stick", gs), "iron greatsword for the guard");
   blocker.inv[0] = gs;
   blocker.selected = 0;
   blocker.shield[0] = ItemStack("shield", 1);
