@@ -217,6 +217,10 @@ float seasonPhase(const Level& lv) {
 int seasonOf(const Level& lv) { const float p = seasonPhase(lv); return p < 0 ? -1 : (int)p & 3; }
 const char* seasonName(int s) { static const char* N[4] = {"Spring", "Summer", "Autumn", "Winter"}; return s >= 0 && s < 4 ? N[s] : ""; }
 
+bool WeatherSystem::rainAt(World& w, float x, float y, float z) {
+  return rain > 0.3f && precipAt(w, x, y, z) == 1;
+}
+
 int WeatherSystem::precipAt(World& w, float x, float y, float z) {
   if (w.realm != REALM_MAIN || skyLandOf(dimOfY(clampv(ifloor(y), 0, WORLD_H - 1))) != DIM_OVERWORLD || !lvl) return 0;
   bool shower = showerK > 0.01f && kind == "clear";

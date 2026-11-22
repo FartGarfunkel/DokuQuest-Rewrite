@@ -47,7 +47,7 @@ static OptMove endermanAI(Level& lv, Creature& m, Entity* p, float dist, float d
   m.voiceTick(lv, dt, dist, 7, 10);
   // water burns: off it goes
   bool wet = m.inWater;
-  if (!wet && dimHere(m) == DIM_OVERWORLD) if (WeatherSystem* W = weatherOf(lv); W && W->rain > 0.3f && m.light(lv, 2.5f).x >= 12) wet = true;
+  if (!wet && dimHere(m) == DIM_OVERWORLD) if (WeatherSystem* W = weatherOf(lv); W && W->rainAt(lv.world(m.realm), m.pos.x, m.pos.y + 2.5f, m.pos.z) && m.light(lv, 2.5f).x >= 12) wet = true;
   if (wet && (M.wetCd -= dt) <= 0) { M.wetCd = 0.7f; DamageSrc s; s.type = "drown"; m.hurt(lv, 1, s); if (!m.alive()) return Move{0, m.yaw}; enderBlink(lv, m, m.pos.x, m.pos.z, 18, false); }
   // looked in the eye
   auto* P = dynamic_cast<Player*>(p);

@@ -64,6 +64,7 @@ public:
   float stormAt(float x, float z) const;            // 0..1 how far into the storm a spot is
   std::string stormKind() const { return front.on ? front.kind : kind; }
   int precipAt(World& w, float x, float y, float z);   // 0 none, 1 rain, 2 snow (overworld only)
+  bool rainAt(World& w, float x, float y, float z);     // liquid rain here (not snow, not a sandstorm)
   int topAt(World& w, int x, int z);                   // global y above the highest rain-stopping block
   WeatherColumn column(Level& lv, int x, int z) const;
   std::string skyZone(Level& lv, float x, float z) const;
