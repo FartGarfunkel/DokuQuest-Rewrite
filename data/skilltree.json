@@ -40,7 +40,7 @@
           "title": "Deeper Cut",
           "desc": "Your blows bite deeper.",
           "x": 56.0,
-          "y": 0.0,
+          "y": -56.0,
           "size": 0,
           "bonus": [
             {
@@ -63,7 +63,7 @@
           "title": "Quick Hands",
           "desc": "You recover into the next swing sooner.",
           "x": 112.0,
-          "y": 0.0,
+          "y": -112.0,
           "size": 0,
           "bonus": [
             {
@@ -86,7 +86,7 @@
           "title": "Guard Break",
           "desc": "Hits shake a stance harder.",
           "x": 168.0,
-          "y": 0.0,
+          "y": -168.0,
           "size": 0,
           "bonus": [
             {
@@ -109,7 +109,7 @@
           "title": "Planted Hit",
           "desc": "A blow that lands also shoves.",
           "x": 224.0,
-          "y": 0.0,
+          "y": -224.0,
           "size": 1,
           "bonus": [
             {
@@ -134,14 +134,14 @@
         },
         {
           "id": "w_might5",
-          "title": "Faster Follow",
-          "desc": "The next cut comes quicker still.",
+          "title": "Through Plate",
+          "desc": "More of a blow ignores armour.",
           "x": 280.0,
-          "y": 0.0,
+          "y": -280.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "attack_speed",
+              "attr": "armor_pierce",
               "v": 0.08,
               "op": 1
             }
@@ -160,7 +160,7 @@
           "title": "Breaker",
           "desc": "You crack a guard open and the blow hits harder.",
           "x": 336.0,
-          "y": 0.0,
+          "y": -336.0,
           "size": 2,
           "bonus": [
             {
@@ -189,7 +189,7 @@
           "title": "Long Breath",
           "desc": "More stamina to spend.",
           "x": 0.0,
-          "y": 56.0,
+          "y": -56.0,
           "size": 0,
           "bonus": [
             {
@@ -209,10 +209,10 @@
         },
         {
           "id": "w_guard2",
-          "title": "Thick Hide",
+          "title": "Padded Coat",
           "desc": "A little less of every blow reaches you.",
           "x": 0.0,
-          "y": 112.0,
+          "y": -112.0,
           "size": 0,
           "bonus": [
             {
@@ -235,7 +235,7 @@
           "title": "Set Feet",
           "desc": "You are harder to shove.",
           "x": 0.0,
-          "y": 168.0,
+          "y": -168.0,
           "size": 0,
           "bonus": [
             {
@@ -258,7 +258,7 @@
           "title": "Mail",
           "desc": "Armour sits better and stamina comes back.",
           "x": 0.0,
-          "y": 224.0,
+          "y": -224.0,
           "size": 1,
           "bonus": [
             {
@@ -286,7 +286,7 @@
           "title": "Steady Head",
           "desc": "Stuns and chills bite less.",
           "x": 0.0,
-          "y": 280.0,
+          "y": -280.0,
           "size": 0,
           "bonus": [
             {
@@ -309,7 +309,7 @@
           "title": "Bulwark",
           "desc": "Less harm, and more of you to take it.",
           "x": 0.0,
-          "y": 336.0,
+          "y": -336.0,
           "size": 2,
           "bonus": [
             {
@@ -335,10 +335,10 @@
         },
         {
           "id": "w_wound1",
-          "title": "Nick",
+          "title": "First Blood",
           "desc": "Blows sometimes open a bleed.",
           "x": -56.0,
-          "y": 0.0,
+          "y": -56.0,
           "size": 0,
           "bonus": [
             {
@@ -358,14 +358,14 @@
         },
         {
           "id": "w_wound2",
-          "title": "Wider Cut",
-          "desc": "That bleed comes more often.",
+          "title": "Crushing Blow",
+          "desc": "A blow that lands also shoves harder.",
           "x": -112.0,
-          "y": 0.0,
+          "y": -112.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "bleed_chance",
+              "attr": "knockback",
               "v": 0.12,
               "op": 1
             }
@@ -384,7 +384,7 @@
           "title": "Take It Back",
           "desc": "A share of the harm you deal returns as health.",
           "x": -168.0,
-          "y": 0.0,
+          "y": -168.0,
           "size": 0,
           "bonus": [
             {
@@ -407,7 +407,7 @@
           "title": "Open Veins",
           "desc": "Bleeding is a habit of your blade.",
           "x": -224.0,
-          "y": 0.0,
+          "y": -224.0,
           "size": 1,
           "bonus": [
             {
@@ -430,7 +430,7 @@
           "title": "Cornered",
           "desc": "The lower you are, the harder you hit.",
           "x": -280.0,
-          "y": 0.0,
+          "y": -280.0,
           "size": 0,
           "bonus": [
             {
@@ -450,10 +450,10 @@
         },
         {
           "id": "w_wound6",
-          "title": "Last Stand",
+          "title": "Last Blood",
           "desc": "Low health hits harder still, and more of the harm comes back.",
           "x": -336.0,
-          "y": 0.0,
+          "y": -336.0,
           "size": 2,
           "bonus": [
             {
@@ -519,7 +519,7 @@
           "title": "Heavier Shaft",
           "desc": "Arrows hit harder.",
           "x": 56.0,
-          "y": 0.0,
+          "y": -56.0,
           "size": 0,
           "bonus": [
             {
@@ -542,7 +542,7 @@
           "title": "True Flight",
           "desc": "Arrows fly faster.",
           "x": 112.0,
-          "y": 0.0,
+          "y": -112.0,
           "size": 0,
           "bonus": [
             {
@@ -565,7 +565,7 @@
           "title": "Nocked",
           "desc": "The string comes back sooner.",
           "x": 168.0,
-          "y": 0.0,
+          "y": -168.0,
           "size": 0,
           "bonus": [
             {
@@ -588,7 +588,7 @@
           "title": "Spent Shafts",
           "desc": "Sometimes the arrow is still yours after the shot.",
           "x": 224.0,
-          "y": 0.0,
+          "y": -224.0,
           "size": 1,
           "bonus": [
             {
@@ -611,7 +611,7 @@
           "title": "Split Nock",
           "desc": "A second arrow sometimes flies with the first.",
           "x": 280.0,
-          "y": 0.0,
+          "y": -280.0,
           "size": 0,
           "bonus": [
             {
@@ -634,7 +634,7 @@
           "title": "Twin Flight",
           "desc": "Two arrows more often, and they hit harder.",
           "x": 336.0,
-          "y": 0.0,
+          "y": -336.0,
           "size": 2,
           "bonus": [
             {
@@ -663,7 +663,7 @@
           "title": "Downwind",
           "desc": "Sneaking, creatures notice you later.",
           "x": 0.0,
-          "y": 56.0,
+          "y": -56.0,
           "size": 0,
           "bonus": [
             {
@@ -686,7 +686,7 @@
           "title": "Easy Stride",
           "desc": "You move a little quicker.",
           "x": 0.0,
-          "y": 112.0,
+          "y": -112.0,
           "size": 0,
           "bonus": [
             {
@@ -709,7 +709,7 @@
           "title": "Drawn Walk",
           "desc": "You keep more speed with a bow drawn.",
           "x": 0.0,
-          "y": 168.0,
+          "y": -168.0,
           "size": 0,
           "bonus": [
             {
@@ -732,7 +732,7 @@
           "title": "Quiet Draw",
           "desc": "Harder to spot, and you still walk with the string back.",
           "x": 0.0,
-          "y": 224.0,
+          "y": -224.0,
           "size": 1,
           "bonus": [
             {
@@ -757,15 +757,15 @@
         },
         {
           "id": "r_hunt5",
-          "title": "Spring",
-          "desc": "You jump a little higher.",
+          "title": "Pack Light",
+          "desc": "The load on your back counts for less.",
           "x": 0.0,
-          "y": 280.0,
+          "y": -280.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "jump",
-              "v": 0.05,
+              "attr": "weight",
+              "v": -0.04,
               "op": 1
             }
           ],
@@ -783,7 +783,7 @@
           "title": "Soft Step",
           "desc": "Very hard to notice, and quicker on your feet.",
           "x": 0.0,
-          "y": 336.0,
+          "y": -336.0,
           "size": 2,
           "bonus": [
             {
@@ -812,7 +812,7 @@
           "title": "Finders",
           "desc": "Drops come a little more often.",
           "x": -56.0,
-          "y": 0.0,
+          "y": -56.0,
           "size": 0,
           "bonus": [
             {
@@ -832,15 +832,15 @@
         },
         {
           "id": "r_gift2",
-          "title": "Double Pouch",
-          "desc": "A kill sometimes drops its loot twice.",
+          "title": "River Luck",
+          "desc": "The water is a little kinder to you.",
           "x": -112.0,
-          "y": 0.0,
+          "y": -112.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "loot_double",
-              "v": 0.08,
+              "attr": "fishing",
+              "v": 0.12,
               "op": 1
             }
           ],
@@ -855,16 +855,16 @@
         },
         {
           "id": "r_gift3",
-          "title": "Lessons Stick",
-          "desc": "You gain a little more experience.",
+          "title": "Trail Sense",
+          "desc": "You step a little higher over the land.",
           "x": -168.0,
-          "y": 0.0,
+          "y": -168.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "xp_gain",
-              "v": 0.05,
-              "op": 1
+              "attr": "step",
+              "v": 1.0,
+              "op": 0
             }
           ],
           "links": [
@@ -879,9 +879,9 @@
         {
           "id": "r_gift4",
           "title": "Full Bag",
-          "desc": "Luckier finds, and more of them.",
+          "desc": "Luckier finds, and the water is kinder still.",
           "x": -224.0,
-          "y": 0.0,
+          "y": -224.0,
           "size": 1,
           "bonus": [
             {
@@ -890,8 +890,8 @@
               "op": 1
             },
             {
-              "attr": "loot_double",
-              "v": 0.08,
+              "attr": "fishing",
+              "v": 0.1,
               "op": 1
             }
           ],
@@ -906,15 +906,15 @@
         },
         {
           "id": "r_gift5",
-          "title": "Kind Rest",
-          "desc": "Healing you take goes further.",
+          "title": "Long Draught",
+          "desc": "Good potions and spells last longer on you.",
           "x": -280.0,
-          "y": 0.0,
+          "y": -280.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "heal_received",
-              "v": 0.08,
+              "attr": "effect_duration",
+              "v": 0.1,
               "op": 1
             }
           ],
@@ -932,7 +932,7 @@
           "title": "Root the Foe",
           "desc": "You learn Entangle, and luck still favours you.",
           "x": -336.0,
-          "y": 0.0,
+          "y": -336.0,
           "size": 2,
           "bonus": [
             {
@@ -998,7 +998,7 @@
           "title": "Through Cloth",
           "desc": "More of a blow ignores armour.",
           "x": 56.0,
-          "y": 0.0,
+          "y": -56.0,
           "size": 0,
           "bonus": [
             {
@@ -1021,7 +1021,7 @@
           "title": "Flick",
           "desc": "Cuts come quicker.",
           "x": 112.0,
-          "y": 0.0,
+          "y": -112.0,
           "size": 0,
           "bonus": [
             {
@@ -1044,7 +1044,7 @@
           "title": "Numb",
           "desc": "Blows sometimes slow what they hit.",
           "x": 168.0,
-          "y": 0.0,
+          "y": -168.0,
           "size": 0,
           "bonus": [
             {
@@ -1067,7 +1067,7 @@
           "title": "Through the Seam",
           "desc": "Armour counts for less.",
           "x": 224.0,
-          "y": 0.0,
+          "y": -224.0,
           "size": 1,
           "bonus": [
             {
@@ -1087,15 +1087,15 @@
         },
         {
           "id": "g_edge5",
-          "title": "Night Oil",
-          "desc": "Blows sometimes poison.",
+          "title": "Thin Pack",
+          "desc": "You carry less, so you move a little quicker and a roll costs less.",
           "x": 280.0,
-          "y": 0.0,
+          "y": -280.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "poison_chance",
-              "v": 0.12,
+              "attr": "weight",
+              "v": -0.05,
               "op": 1
             }
           ],
@@ -1111,9 +1111,9 @@
         {
           "id": "g_edge6",
           "title": "Grave Oil",
-          "desc": "Poison more often, and it takes on the undead.",
+          "desc": "A blow or arrow can poison the undead, and that poison can kill.",
           "x": 336.0,
-          "y": 0.0,
+          "y": -336.0,
           "size": 2,
           "bonus": [
             {
@@ -1123,6 +1123,11 @@
             },
             {
               "attr": "venom_undead",
+              "v": 1.0,
+              "op": 0
+            },
+            {
+              "attr": "venom_lethal",
               "v": 1.0,
               "op": 0
             }
@@ -1142,7 +1147,7 @@
           "title": "Low Profile",
           "desc": "Sneaking, you are noticed later.",
           "x": 0.0,
-          "y": 56.0,
+          "y": -56.0,
           "size": 0,
           "bonus": [
             {
@@ -1165,7 +1170,7 @@
           "title": "Slip",
           "desc": "A chance to evade a blow outright.",
           "x": 0.0,
-          "y": 112.0,
+          "y": -112.0,
           "size": 0,
           "bonus": [
             {
@@ -1185,15 +1190,15 @@
         },
         {
           "id": "g_shad3",
-          "title": "Light Feet",
-          "desc": "You move a little quicker.",
+          "title": "Soft Tread",
+          "desc": "The load on your back counts for less.",
           "x": 0.0,
-          "y": 168.0,
+          "y": -168.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "speed",
-              "v": 0.04,
+              "attr": "weight",
+              "v": -0.04,
               "op": 1
             }
           ],
@@ -1211,7 +1216,7 @@
           "title": "Sidestep",
           "desc": "Harder to hit and harder to see.",
           "x": 0.0,
-          "y": 224.0,
+          "y": -224.0,
           "size": 1,
           "bonus": [
             {
@@ -1236,16 +1241,16 @@
         },
         {
           "id": "g_shad5",
-          "title": "Bound",
-          "desc": "You jump a little higher.",
+          "title": "High Step",
+          "desc": "You step a little higher over the land.",
           "x": 0.0,
-          "y": 280.0,
+          "y": -280.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "jump",
-              "v": 0.05,
-              "op": 1
+              "attr": "step",
+              "v": 1.0,
+              "op": 0
             }
           ],
           "links": [
@@ -1259,10 +1264,10 @@
         },
         {
           "id": "g_shad6",
-          "title": "Afterimage",
+          "title": "Ghost Cut",
           "desc": "You duck more blows and cut faster.",
           "x": 0.0,
-          "y": 336.0,
+          "y": -336.0,
           "size": 2,
           "bonus": [
             {
@@ -1291,7 +1296,7 @@
           "title": "Telling Blow",
           "desc": "Critical hits a little more often.",
           "x": -56.0,
-          "y": 0.0,
+          "y": -56.0,
           "size": 0,
           "bonus": [
             {
@@ -1314,7 +1319,7 @@
           "title": "Meaner Crit",
           "desc": "Those hits hurt more.",
           "x": -112.0,
-          "y": 0.0,
+          "y": -112.0,
           "size": 0,
           "bonus": [
             {
@@ -1334,14 +1339,14 @@
         },
         {
           "id": "g_fort3",
-          "title": "Cut Purse",
-          "desc": "A kill sometimes drops loot twice.",
+          "title": "Loaded Draw",
+          "desc": "Luckier finds from a kill.",
           "x": -168.0,
-          "y": 0.0,
+          "y": -168.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "loot_double",
+              "attr": "luck",
               "v": 0.08,
               "op": 1
             }
@@ -1360,7 +1365,7 @@
           "title": "Loaded Dice",
           "desc": "Luckier, and more criticals.",
           "x": -224.0,
-          "y": 0.0,
+          "y": -224.0,
           "size": 1,
           "bonus": [
             {
@@ -1385,16 +1390,16 @@
         },
         {
           "id": "g_fort5",
-          "title": "Quick Study",
-          "desc": "You gain a little more experience.",
+          "title": "Long Run",
+          "desc": "More stamina to spend.",
           "x": -280.0,
-          "y": 0.0,
+          "y": -280.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "xp_gain",
-              "v": 0.06,
-              "op": 1
+              "attr": "stamina",
+              "v": 8.0,
+              "op": 0
             }
           ],
           "links": [
@@ -1411,7 +1416,7 @@
           "title": "High Stakes",
           "desc": "Criticals hit much harder, and loot comes twice more often.",
           "x": -336.0,
-          "y": 0.0,
+          "y": -336.0,
           "size": 2,
           "bonus": [
             {
@@ -1474,10 +1479,10 @@
         },
         {
           "id": "m_fire1",
-          "title": "Ember",
+          "title": "Hotter Spark",
           "desc": "Fire spells hit harder.",
           "x": 56.0,
-          "y": 0.0,
+          "y": -56.0,
           "size": 0,
           "bonus": [
             {
@@ -1497,16 +1502,16 @@
         },
         {
           "id": "m_fire2",
-          "title": "Spark",
-          "desc": "Blows and spells sometimes set a foe alight.",
+          "title": "Bright Core",
+          "desc": "More mana to spend on the next word.",
           "x": 112.0,
-          "y": 0.0,
+          "y": -112.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "burn_chance",
-              "v": 0.12,
-              "op": 1
+              "attr": "mana",
+              "v": 8.0,
+              "op": 0
             }
           ],
           "links": [
@@ -1520,15 +1525,15 @@
         },
         {
           "id": "m_fire3",
-          "title": "Hotter Word",
+          "title": "Roaring Word",
           "desc": "Fire spells hit harder still.",
           "x": 168.0,
-          "y": 0.0,
+          "y": -168.0,
           "size": 0,
           "bonus": [
             {
               "attr": "spell_power.fire",
-              "v": 0.12,
+              "v": 0.18,
               "op": 1
             }
           ],
@@ -1543,20 +1548,20 @@
         },
         {
           "id": "m_fire4",
-          "title": "Kindling",
-          "desc": "Flame takes more often, and fire spells bite.",
+          "title": "Searing Word",
+          "desc": "Fire spells bite, and mana comes back.",
           "x": 224.0,
-          "y": 0.0,
+          "y": -224.0,
           "size": 1,
           "bonus": [
             {
-              "attr": "burn_chance",
-              "v": 0.18,
+              "attr": "spell_power.fire",
+              "v": 0.1,
               "op": 1
             },
             {
-              "attr": "spell_power.fire",
-              "v": 0.1,
+              "attr": "mana_regen",
+              "v": 0.08,
               "op": 1
             }
           ],
@@ -1571,10 +1576,10 @@
         },
         {
           "id": "m_fire5",
-          "title": "Short Rest",
+          "title": "Short Recite",
           "desc": "Spells ready a little sooner.",
           "x": 280.0,
-          "y": 0.0,
+          "y": -280.0,
           "size": 0,
           "bonus": [
             {
@@ -1597,7 +1602,7 @@
           "title": "The Great Spark",
           "desc": "You learn Fireball, and fire spells hit harder.",
           "x": 336.0,
-          "y": 0.0,
+          "y": -336.0,
           "size": 2,
           "bonus": [
             {
@@ -1623,10 +1628,10 @@
         },
         {
           "id": "m_frost1",
-          "title": "Rime",
+          "title": "Cold Word",
           "desc": "Frost spells hit harder.",
           "x": 0.0,
-          "y": 56.0,
+          "y": -56.0,
           "size": 0,
           "bonus": [
             {
@@ -1646,15 +1651,15 @@
         },
         {
           "id": "m_frost2",
-          "title": "Numb Air",
-          "desc": "Hits sometimes slow a foe.",
+          "title": "Iced Veins",
+          "desc": "You take a little less from spells.",
           "x": 0.0,
-          "y": 112.0,
+          "y": -112.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "slow_chance",
-              "v": 0.12,
+              "attr": "spell_resist",
+              "v": 0.06,
               "op": 1
             }
           ],
@@ -1669,15 +1674,15 @@
         },
         {
           "id": "m_frost3",
-          "title": "Deeper Cold",
+          "title": "Biting Cold",
           "desc": "Frost spells hit harder still.",
           "x": 0.0,
-          "y": 168.0,
+          "y": -168.0,
           "size": 0,
           "bonus": [
             {
               "attr": "spell_power.frost",
-              "v": 0.12,
+              "v": 0.18,
               "op": 1
             }
           ],
@@ -1695,7 +1700,7 @@
           "title": "Ice Mail",
           "desc": "You take less from spells, and frost bites.",
           "x": 0.0,
-          "y": 224.0,
+          "y": -224.0,
           "size": 1,
           "bonus": [
             {
@@ -1723,7 +1728,7 @@
           "title": "Quick Tongue",
           "desc": "Spells leave your mouth sooner.",
           "x": 0.0,
-          "y": 280.0,
+          "y": -280.0,
           "size": 0,
           "bonus": [
             {
@@ -1746,7 +1751,7 @@
           "title": "Shatter",
           "desc": "You learn Ice Nova, and frost spells hit harder.",
           "x": 0.0,
-          "y": 336.0,
+          "y": -336.0,
           "size": 2,
           "bonus": [
             {
@@ -1775,7 +1780,7 @@
           "title": "Louder Word",
           "desc": "Spells of every school hit a little harder.",
           "x": -56.0,
-          "y": 0.0,
+          "y": -56.0,
           "size": 0,
           "bonus": [
             {
@@ -1795,15 +1800,15 @@
         },
         {
           "id": "m_word2",
-          "title": "Ready Again",
-          "desc": "Cooldowns shrink a little.",
+          "title": "Steady Breath",
+          "desc": "Mana returns a little faster.",
           "x": -112.0,
-          "y": 0.0,
+          "y": -112.0,
           "size": 0,
           "bonus": [
             {
-              "attr": "cooldown",
-              "v": 0.06,
+              "attr": "mana_regen",
+              "v": 0.1,
               "op": 1
             }
           ],
@@ -1818,10 +1823,10 @@
         },
         {
           "id": "m_word3",
-          "title": "Deep Breath",
+          "title": "Full Lungs",
           "desc": "More mana to spend.",
           "x": -168.0,
-          "y": 0.0,
+          "y": -168.0,
           "size": 0,
           "bonus": [
             {
@@ -1844,7 +1849,7 @@
           "title": "Afterglow",
           "desc": "Healing past full becomes a ward, and mana returns faster.",
           "x": -224.0,
-          "y": 0.0,
+          "y": -224.0,
           "size": 1,
           "bonus": [
             {
@@ -1872,7 +1877,7 @@
           "title": "Called Aid",
           "desc": "Summoned allies hit harder.",
           "x": -280.0,
-          "y": 0.0,
+          "y": -280.0,
           "size": 0,
           "bonus": [
             {
@@ -1895,7 +1900,7 @@
           "title": "Hearth Ward",
           "desc": "You learn Stoneskin, and all spells hit a little harder.",
           "x": -336.0,
-          "y": 0.0,
+          "y": -336.0,
           "size": 2,
           "bonus": [
             {

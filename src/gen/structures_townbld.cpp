@@ -4,6 +4,7 @@
 // plastered storeys jettied out over the street, steep tiled or thatched roofs) and every TOWN_VT building.
 #include "gen/town_mine.h"
 #include "gen/structures_town.h"
+#include "core/tool_parts.h"
 #include "common/fs.h"
 #include "common/holiday.h"
 #include <optional>
@@ -133,7 +134,10 @@ public:
   }
   // ---- towns.js ----
   std::string pick(const char* kind) { const auto& l = townDecor(kind); const int k = salt++; return l.empty() ? std::string() : l[hash32((i32)b.seed, k, 77, 3) % l.size()]; }
-  static json stack(const std::string& id) { return !id.empty() && hasItem(id) ? json{{"id", id}, {"n", 1}} : json(nullptr); }
+  static json stack(const std::string& id) {
+    if (id.empty() || !hasItem(id)) return nullptr;
+    return proceduralOf(id, 1).toJson();
+  }
   void pile(int lx, int ly, int lz, const std::vector<std::string>& ids) {
     json items = json::array(); bool any = false;
     for (int k = 0; k < 4; k++) { json s = stack(k < (int)ids.size() ? ids[k] : ""); any |= !s.is_null(); items.push_back(s); }
@@ -162,7 +166,7 @@ public:
   void hang(int lx, int ly, int lz, int f, const std::string& id, double rot = 0) {
     if (id.empty()) return;
     const int i = set(lx, ly, lz, "item_frame", (d(f) + 2) & 3);
-    if (i >= 0) P.setEntity(i, json{{"type", "frame"}, {"item", {{"id", id}, {"n", 1}}}, {"rot", rot}});
+    if (i >= 0) P.setEntity(i, json{{"type", "frame"}, {"item", proceduralOf(id, 1).toJson()}, {"rot", rot}});
   }
   void book(int lx, int ly, int lz, int f) { const int i = set(lx, ly, lz, "lectern", (d(f) + 2) & 3); if (i >= 0) P.setEntity(i, json{{"type", "lectern"}, {"book", true}}); }
   void table(int lx, int lz, int ly = 1) { set(lx, ly, lz, VB(fw + "_table", st.slab)); }

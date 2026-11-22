@@ -6,6 +6,7 @@
 // workstream's (the plan's data: boss, spawners, lair type).
 #include "gen/structures_common.h"
 #include "gen/structures_vault.h"
+#include "gen/proc_rooms.h"
 #include "core/registry.h"
 #include <algorithm>
 
@@ -16,7 +17,7 @@ static const int* DXL = DIRX;
 static const int* DZL = DIRZ;
 
 // ==== Dungeons =======================================================================================================
-constexpr int DREG = 288, DGRID = 4, DCELL = 11;
+constexpr int DREG = 288, HSPAN = 8;
 struct DTheme { std::string key, name, pillar, stairs, slab, light; std::vector<std::string> wall, floor, mobs, bosses; bool webs = false; };
 static const DTheme& dtheme(int k) {
   static const std::array<DTheme, 3> T = [] {
@@ -35,75 +36,114 @@ static const DTheme& dtheme(int k) {
   }();
   return T[k];
 }
-struct DRoom { std::string kind; int x, z, y, R, H; u32 seed; std::string key; };
-struct DungeonExt { int theme, entX, entZ, surf; std::vector<DRoom> rooms; std::vector<std::pair<int, int>> corridors; std::vector<std::pair<std::array<int, 3>, std::string>> spawners; };
+struct DRoom { std::string kind; int x, z, y, R, H; u32 seed; std::string key; int rx = 0, rz = 0, fl = 0; };
+struct DungeonExt {
+  int theme = 0, entX = 0, entZ = 0, surf = 0, grid = 6, cell = 11, floors = 2;
+  std::string wood = "oak"; float density = 0.65f;
+  std::vector<DRoom> rooms;
+  std::vector<std::pair<int, int>> corridors, stairs;
+  std::vector<std::pair<std::array<int, 3>, std::string>> spawners;
+};
 
 static bool dungeonPlace(const StructureIndex& idx, const TerrainQuery& t, int rx, int rz, StructurePlan& S) {
   const i32 seed = t.seed();
   Mulberry32 rnd(hash32(seed, rx, rz, 5151));
   if (rnd() > 0.8) return false;
-  const int SZ = DGRID * DCELL;
-  const int ox = rx * DREG + 40 + jsFloor(rnd() * (DREG - 80 - SZ)), oz = rz * DREG + 40 + jsFloor(rnd() * (DREG - 80 - SZ));
-  // keep clear of villages
+  const int grid = DUNGEON_GRID_MIN + jsFloor(rnd() * (DUNGEON_GRID_MAX - DUNGEON_GRID_MIN + 1));
+  const int cell = DUNGEON_CELL_MIN + 2 * jsFloor(rnd() * ((DUNGEON_CELL_MAX - DUNGEON_CELL_MIN) / 2 + 1));
+  const int floors = DUNGEON_FLOORS_MIN + jsFloor(rnd() * (DUNGEON_FLOORS_MAX - DUNGEON_FLOORS_MIN + 1));
+  const int SZ = grid * cell;
+  const int span = DREG - 80 - SZ; if (span < 8) return false;
+  const int ox = rx * DREG + 40 + jsFloor(rnd() * span), oz = rz * DREG + 40 + jsFloor(rnd() * span);
   { const int vk = structureTypeIndex("village"); std::vector<const StructurePlan*> v; if (vk >= 0) idx.near(ox + SZ / 2, oz + SZ / 2, 40, v, vk); if (!v.empty()) return false; }
   const bool deep = rnd() < 0.3;
   const int theme = deep ? 2 : rnd() < 0.35 ? 1 : 0;
-  // the rooms: a random walk over a 4x4 grid from the entrance
-  const int s0 = jsFloor(rnd() * DGRID), s1 = jsFloor(rnd() * DGRID);
-  struct Cell { int gx, gz, d; };
-  std::vector<Cell> cells;   // in insertion order (the original's Map)
-  auto find = [&](int gx, int gz) { for (int i = 0; i < (int)cells.size(); i++) if (cells[i].gx == gx && cells[i].gz == gz) return i; return -1; };
-  std::vector<std::pair<int, int>> edges;   // cell indices
-  cells.push_back({s0, s1, 0});
-  const int want = 7 + jsFloor(rnd() * 5);
-  for (int tries = 0; (int)cells.size() < want && tries < 200; tries++) {
+  const int s0 = jsFloor(rnd() * grid), s1 = jsFloor(rnd() * grid);
+  struct Cell { int gx, gz, fl, d; };
+  std::vector<Cell> cells;
+  auto find = [&](int gx, int gz, int fl) {
+    for (int i = 0; i < (int)cells.size(); i++) if (cells[i].gx == gx && cells[i].gz == gz && cells[i].fl == fl) return i;
+    return -1;
+  };
+  std::vector<std::pair<int, int>> edges, stairs;
+  cells.push_back({s0, s1, 0, 0});
+  const int want = DUNGEON_ROOMS_MIN + jsFloor(rnd() * (DUNGEON_ROOMS_MAX - DUNGEON_ROOMS_MIN + 1));
+  for (int tries = 0; (int)cells.size() < want && tries < 400; tries++) {
     const int fi = jsFloor(rnd() * cells.size()); const Cell from = cells[fi];
-    const int dir = jsFloor(rnd() * 4), nx = from.gx + DXL[dir], nz = from.gz + DZL[dir];
-    if (nx < 0 || nz < 0 || nx >= DGRID || nz >= DGRID || find(nx, nz) >= 0) continue;
-    cells.push_back({nx, nz, from.d + 1}); edges.push_back({fi, (int)cells.size() - 1});
+    const int dir = jsFloor(rnd() * 6);
+    int nx = from.gx, nz = from.gz, nfl = from.fl;
+    if (dir < 4) { nx += DXL[dir]; nz += DZL[dir]; }
+    else if (dir == 4) nfl++;
+    else nfl--;
+    if (nx < 0 || nz < 0 || nx >= grid || nz >= grid || nfl < 0 || nfl >= floors || find(nx, nz, nfl) >= 0) continue;
+    cells.push_back({nx, nz, nfl, from.d + 1});
+    if (nfl == from.fl) edges.push_back({fi, (int)cells.size() - 1});
+    else stairs.push_back({fi, (int)cells.size() - 1});
   }
-  if (cells.size() < 5) return false;
-  // a loop or two
+  if ((int)cells.size() < DUNGEON_ROOMS_MIN) return false;
   for (int ci = 0; ci < (int)cells.size(); ci++) for (int dir = 1; dir <= 2; dir++) {
-    const int n = find(cells[ci].gx + DXL[dir], cells[ci].gz + DZL[dir]);
+    const int n = find(cells[ci].gx + DXL[dir], cells[ci].gz + DZL[dir], cells[ci].fl);
     if (n < 0) continue;
     if (rnd() < 0.18) {
       bool has = false; for (auto& e : edges) if ((e.first == n && e.second == ci) || (e.second == n && e.first == ci)) { has = true; break; }
       if (!has) edges.push_back({ci, n});
     }
   }
-  const int entX = ox + s0 * DCELL + 5, entZ = oz + s1 * DCELL + 5;
+  const int entX = ox + s0 * cell + cell / 2, entZ = oz + s1 * cell + cell / 2;
   const TerrainColumn sc = t.terrainColumn(entX + 2, entZ + 2);
   if (sc.jsY <= JS_SEA) return false;
-  const int yo = std::max(8, std::min(sc.jsY - 18, (deep ? 14 : 24) + jsFloor(rnd() * 10)));
-  if (sc.jsY - yo < 10) return false;
+  const int yo = std::max(8, std::min(sc.jsY - 18 - floors * HSPAN, (deep ? 14 : 24) + jsFloor(rnd() * 10)));
+  if (sc.jsY - yo < 10 + floors * 4) return false;
   int y = owUnder(yo);
-  // (a deep world, terrain 21: from the imported data's y -50 to 50, kept 14 under the land)
-  if (const OverworldGen* ow = owOf(t); ow && ow->deepStructs()) y = std::min(sc.y - 14, -49 + (int)(hash32(seed, rx, rz, 5153) % 101u));
-  auto e = std::make_shared<DungeonExt>(); e->theme = theme; e->entX = entX; e->entZ = entZ; e->surf = sc.y;
+  if (const OverworldGen* ow = owOf(t); ow && ow->deepStructs()) y = std::min(sc.y - 14 - floors * HSPAN, -49 + (int)(hash32(seed, rx, rz, 5153) % 101u));
+  auto e = std::make_shared<DungeonExt>();
+  e->theme = theme; e->entX = entX; e->entZ = entZ; e->surf = sc.y;
+  e->grid = grid; e->cell = cell; e->floors = floors;
+  e->density = rnd() < 0.25 ? 0.35f : rnd() < 0.7 ? 0.65f : 0.9f;
+  static const char* WOODS[3][2] = {{"oak", "dark_oak"}, {"oak", "spruce"}, {"dark_oak", "spruce"}};
+  e->wood = procWood(WOODS[theme][rnd() < 0.33 ? 1 : 0]);
   int far = 0; for (int i = 0; i < (int)cells.size(); i++) if (cells[i].d > cells[far].d) far = i;
-  static const char* kinds[10] = {"hall", "loot", "spawner", "hall", "library", "spawner", "loot", "hall", "loot", "spawner"};
-  int ki = 0;
+  int spawnersLeft = 2 + jsFloor(rnd() * 3);
   for (int i = 0; i < (int)cells.size(); i++) {
     const Cell& c = cells[i];
-    const std::string kind = i == far ? "boss" : (c.gx == s0 && c.gz == s1) ? "entry" : kinds[ki++ % 10];
-    const int R = kind == "boss" ? 5 : 3 + (rnd() < 0.4 ? 1 : 0);
-    e->rooms.push_back({kind, ox + c.gx * DCELL + 5, oz + c.gz * DCELL + 5, y, R, kind == "boss" ? 7 : 4, hash32(seed, c.gx, c.gz, rx * 7 + rz),
-                        std::to_string(c.gx) + "," + std::to_string(c.gz)});
+    std::string role;
+    if (i == far) role = "boss";
+    else if (c.gx == s0 && c.gz == s1 && c.fl == 0) role = "entry";
+    else if (spawnersLeft > 0 && rnd() < 0.28) { role = "spawner"; spawnersLeft--; }
+    const std::string kind = pickProcKind(rnd, role, i);
+    int rxr = 3, rzr = 3, H = 4, R = 3;
+    if (kind == "boss" || kind == "nave") { rxr = rzr = R = std::min(5, cell / 2 - 1); H = 6; }
+    else if (kind == "entry") { rxr = rzr = R = 2; H = 3; }
+    else switch (jsFloor(rnd() * 5)) {
+      case 0: rxr = 2; rzr = 2; H = 3; break;
+      case 1: rxr = std::min(4, cell / 2 - 1); rzr = 2; H = 4; break;
+      case 2: rxr = 2; rzr = std::min(4, cell / 2 - 1); H = 4; break;
+      case 3: rxr = 3; rzr = 3; H = 6; break;
+      default: rxr = std::min(4, cell / 2 - 1); rzr = 3; H = 4; break;
+    }
+    if (kind != "boss" && kind != "nave" && kind != "entry") R = std::min(rxr, rzr);
+    const int ry = y + c.fl * HSPAN;
+    DRoom room{kind, ox + c.gx * cell + cell / 2, oz + c.gz * cell + cell / 2, ry, R, H,
+               hash32(seed, c.gx, c.gz, c.fl * 17 + rx * 7 + rz),
+               std::to_string(c.gx) + "," + std::to_string(c.gz) + "," + std::to_string(c.fl)};
+    room.rx = rxr; room.rz = rzr; room.fl = c.fl;
+    e->rooms.push_back(room);
   }
-  e->corridors = edges;
+  e->corridors = edges; e->stairs = stairs;
   const DTheme& th = dtheme(theme);
-  const DRoom* boss = nullptr; for (auto& r : e->rooms) if (r.kind == "boss") boss = &r;
+  const DRoom* boss = nullptr; for (auto& r : e->rooms) if (r.kind == "boss" || r.kind == "nave") { boss = &r; if (r.kind == "boss") break; }
+  if (!boss && !e->rooms.empty()) boss = &e->rooms.back();
   const std::string bossType = th.bosses[jsFloor(rnd() * th.bosses.size())];
   json spawners = json::array();
-  for (auto& r : e->rooms) if (r.kind == "spawner") {
+  for (auto& r : e->rooms) if (r.kind == "spawner" || r.kind == "cells" || r.kind == "prison") {
     const std::string mob = th.mobs[jsFloor(rnd() * th.mobs.size())];
     spawners.push_back(mobAt(r.x, r.y, r.z, mob.c_str())); e->spawners.push_back({{r.x, r.y, r.z}, mob});
   }
   S.id = "d" + std::to_string(rx) + "_" + std::to_string(rz); S.seed = hash32(seed, rx, rz, 5152);
   S.x0 = ox - 3; S.z0 = oz - 3; S.x1 = ox + SZ + 3; S.z1 = oz + SZ + 3; S.cx = ox + SZ / 2; S.cz = oz + SZ / 2; S.y = y; S.hashDy = yo - y;
   S.name = th.name;
-  S.data = {{"theme", th.key}, {"ent", json::array({entX, entZ})}, {"surf", sc.y}, {"boss", {{"at", jat(boss->x, boss->y, boss->z)}, {"type", bossType}}}, {"spawners", spawners}};
+  S.data = {{"theme", th.key}, {"ent", json::array({entX, entZ})}, {"surf", sc.y}, {"floors", floors}, {"grid", grid},
+            {"boss", {{"at", jat(boss->x, boss->y, boss->z)}, {"type", bossType}}}, {"spawners", spawners}};
   S.ext = e;
   return true;
 }
@@ -113,15 +153,22 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
   auto pick = [&](const std::vector<std::string>& list, int x, int y, int z, int salt) -> const std::string& { return list[jsFloor(hashFloat(x * 3 + salt, y + S.hashDy, z, (i32)S.seed) * list.size())]; };
   auto wall = [&](int x, int y, int z) -> const std::string& { return pick(th.wall, x, y, z, 1); };
   auto flo = [&](int x, int y, int z) -> const std::string& { return pick(th.floor, x, y, z, 2); };
-  // boxes of space: every room and corridor; shells first, then the insides
   std::vector<std::array<int, 6>> spaces;
-  for (const auto& r : d.rooms) spaces.push_back({r.x - r.R, r.y, r.z - r.R, r.x + r.R, r.y + r.H - 1, r.z + r.R});
+  for (const auto& r : d.rooms) {
+    const int rxr = r.rx > 0 ? r.rx : r.R, rzr = r.rz > 0 ? r.rz : r.R;
+    spaces.push_back({r.x - rxr, r.y, r.z - rzr, r.x + rxr, r.y + r.H - 1, r.z + rzr});
+  }
   for (auto [ai, bi] : d.corridors) {
     const DRoom &a = d.rooms[ai], &b = d.rooms[bi];
     const int x0 = std::min(a.x, b.x), x1 = std::max(a.x, b.x), z0 = std::min(a.z, b.z), z1 = std::max(a.z, b.z);
     if (a.x == b.x) spaces.push_back({a.x - 1, a.y, z0, a.x + 1, a.y + 2, z1}); else spaces.push_back({x0, a.y, a.z - 1, x1, a.y + 2, a.z + 1});
   }
-  // the shaft up from the entrance
+  for (auto [ai, bi] : d.stairs) {
+    const DRoom &a = d.rooms[ai], &b = d.rooms[bi];
+    const int x = (a.x + b.x) / 2, z = (a.z + b.z) / 2;
+    const int y0 = std::min(a.y, b.y), y1 = std::max(a.y + 2, b.y + 2);
+    spaces.push_back({x - 1, y0, z - 1, x + 1, y1, z + 1});
+  }
   const int ex = d.entX + 2, ez = d.entZ + 2;
   spaces.push_back({ex, S.y, ez, ex, d.surf + 1, ez});
   for (const auto& [x0, y0, z0, x1, y1, z1] : spaces)
@@ -135,8 +182,14 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
       for (int y = y0; y <= y1; y++) P.put(x, y, z, "air");
       if (!(x == ex && z == ez)) P.put(x, y0 - 1, z, flo(x, y0 - 1, z));
     }
-  // the ladder up the shaft (on its north wall) and the ruined shrine around the top
   for (int y = S.y; y <= d.surf; y++) P.put(ex, y, ez, "ladder", 2);
+  for (auto [ai, bi] : d.stairs) {
+    const DRoom &a = d.rooms[ai], &b = d.rooms[bi];
+    const int x = (a.x + b.x) / 2, z = (a.z + b.z) / 2;
+    const int y0 = std::min(a.y, b.y), y1 = std::max(a.y + a.H - 1, b.y + b.H - 1);
+    for (int y = y0; y <= y1; y++) P.put(x, y, z, "ladder", 2);
+    P.put(x, y0, z + 1, th.light, 3);
+  }
   for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {
     const int x = ex + dx, z = ez + dz;
     if (!P.in(x, z)) continue;
@@ -158,50 +211,24 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
     }
   }
   { const int h = P.ground(ex, ez); P.put(ex + 1, h + 1, ez - 1, th.light == "soul_torch" ? "soul_lantern" : "lantern"); }
-  // the rooms' furnishings
+  const std::string hang = th.light == "soul_torch" ? "soul_lantern" : "lantern";
   for (const DRoom& r : d.rooms) {
     Mulberry32 rr(r.seed);
-    auto torch = [&](int x, int y, int z, int meta) { P.put(x, y, z, th.light, meta); };
-    // torches on the walls, dim and old
-    for (auto [x, z, m] : {std::tuple{r.x, r.z - r.R, 3}, {r.x, r.z + r.R, 4}, {r.x - r.R, r.z, 1}, {r.x + r.R, r.z, 2}})
-      if (rr() < 0.7 && P.get(x, r.y + 2, z) == AIR && tSolid(P.get(x + (m == 1 ? -1 : m == 2 ? 1 : 0), r.y + 2, z + (m == 3 ? -1 : m == 4 ? 1 : 0)))) torch(x, r.y + 2, z, m);
-    // cobwebs and bones in the corners
-    for (auto [sx, sz] : {std::pair{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}) {
-      const int x = r.x + sx * r.R, z = r.z + sz * r.R;
-      if (th.webs || rr() < 0.4) P.put(x, r.y + r.H - 1, z, "cobweb");
-      if (th.webs && rr() < 0.6) P.put(x, r.y, z, "cobweb");
-      else if (rr() < 0.3) { const bool bone = rr() < 0.5; P.put(x, r.y, z, bone ? "bone_block" : "decorated_pot"); }
-    }
     auto chest = [&](int x, int y, int z, const char* kind, bool mimic) {
       const int meta = jsFloor(rr() * 4);
       const int i = P.put(x, y, z, "chest", meta);
       if (i >= 0) { json be{{"type", "chest"}, {"items", dungeonLoot(kind, rr)}, {"lk", std::string("d:") + kind}}; if (mimic) be["mimic"] = 1; P.setEntity(i, be); }
     };
-    if (r.kind == "hall") {
-      for (auto [sx, sz] : {std::pair{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}) for (int y = r.y; y < r.y + r.H; y++) P.put(r.x + sx * 2, y, r.z + sz * 2, th.pillar);
-      if (rr() < 0.5) { const bool mm = rr() < 0.2; chest(r.x, r.y, r.z, "common", mm); }
-    } else if (r.kind == "loot") {
-      { const bool mm = rr() < 0.18; chest(r.x - 1, r.y, r.z, "common", mm); }
-      { const char* k = rr() < 0.4 ? "rare" : "common"; const bool mm = rr() < 0.18; chest(r.x + 1, r.y, r.z, k, mm); }
-      P.put(r.x, r.y, r.z, "decorated_pot");
-    } else if (r.kind == "spawner") {
-      P.put(r.x, r.y - 1, r.z, th.pillar);
+    if (r.kind == "spawner" || r.kind == "cells" || r.kind == "prison") {
       std::string mob; for (auto& [at, m] : d.spawners) if (at[0] == r.x && at[2] == r.z) mob = m;
-      P.spawner(r.x, r.y, r.z, mob);
-      chest(r.x + 2, r.y, r.z + 2, "common", false);
-    } else if (r.kind == "library") {
-      for (int k = -r.R + 1; k <= r.R - 1; k++) for (int y = r.y; y < r.y + 3; y++) if (std::abs(k) > 1 || y > r.y) { P.put(r.x - r.R, y, r.z + k, "bookshelf"); P.put(r.x + r.R, y, r.z + k, "bookshelf"); }
-      P.put(r.x, r.y, r.z + 1, "lectern", 0);
-      chest(r.x, r.y, r.z - 1, "rare", false);
-    } else if (r.kind == "boss") {
-      for (auto [sx, sz] : {std::pair{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}) {
-        for (int y = r.y; y < r.y + r.H; y++) P.put(r.x + sx * 3, y, r.z + sz * 3, th.pillar);
-        P.put(r.x + sx * 3 - sx, r.y + 3, r.z + sz * 3, "soul_torch", sx < 0 ? 2 : 1);
-      }
-      // the hoard behind the dais
-      for (int x = r.x - 2; x <= r.x + 2; x++) P.put(x, r.y, r.z + r.R - 1, th.slab, 0);
-      chest(r.x, r.y + 1, r.z + r.R - 1, "boss", false); chest(r.x - 1, r.y + 1, r.z + r.R - 1, "rare", false); chest(r.x + 1, r.y + 1, r.z + r.R - 1, "rare", false);
-    } else if (r.kind == "entry") P.put(r.x - 2, r.y, r.z - 2, "decorated_pot");
+      if (!mob.empty()) P.spawner(r.x, r.y, r.z, mob);
+    }
+    ProcRoom pr;
+    pr.kind = r.kind; pr.x = r.x; pr.y = r.y; pr.z = r.z;
+    pr.rx = r.rx > 0 ? r.rx : r.R; pr.rz = r.rz > 0 ? r.rz : r.R; pr.H = r.H;
+    pr.seed = r.seed; pr.wood = d.wood; pr.light = th.light; pr.hangLight = hang;
+    pr.pillar = th.pillar; pr.slab = th.slab; pr.stairs = th.stairs; pr.webs = th.webs; pr.density = d.density;
+    furnishProcRoom(P, pr, chest);
   }
 }
 

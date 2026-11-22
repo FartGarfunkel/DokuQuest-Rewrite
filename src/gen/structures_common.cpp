@@ -101,14 +101,23 @@ static void maybeTemplate(json& items, const std::string& kind) {
   }
 }
 
+static void convertLootGear(json& items) {
+  for (auto& s : items) if (s.is_object() && s.contains("id") && s["id"].is_string()) {
+    const std::string id = s["id"].get<std::string>();
+    const int n = s.value("n", 1), d = s.value("d", 0);
+    const ItemStack p = proceduralOf(id, n);
+    if (p.id == id) continue;
+    json j = p.toJson();
+    if (d) j["d"] = d;
+    s = std::move(j);
+  }
+}
+
 json structLoot(const std::string& kind, Mulberry32& rnd) {
   json items = emptySlots();
   const json& L = SD()["STRUCT_LOOT"];
   rollTable(items, L.contains(kind) ? L[kind] : L["ruin"], rnd);
-  for (auto& s : items) if (s.is_object() && s.contains("id") && s["id"].is_string()) {   // metal gear: procedural (core/tool_parts.h)
-    const ItemStack p = proceduralOf(s["id"].get<std::string>(), s.value("n", 1));
-    if (p.id != s["id"].get<std::string>()) s = p.toJson();
-  }
+  convertLootGear(items);
   // a chest is never quite empty
   bool any = false; for (auto& s : items) if (!s.is_null()) { any = true; break; }
   if (!any) { int k = jsFloor(rnd() * 27); items[k] = json{{"id", hasItem("emerald") ? "emerald" : "coal"}, {"n", 1 + jsFloor(rnd() * 3)}}; }
@@ -130,6 +139,22 @@ static json dungeonTable(const std::string& kind) {
   json table = L[kind];
   if (kind == "boss") for (auto& e : L["rare"]) table.push_back(e);
   else if (kind == "rare") for (int i = 0; i < 8 && i < (int)L["common"].size(); i++) table.push_back(L["common"][i]);
+  // found metal gear: converted after the roll (mixer baselines stay in the table)
+  if (kind == "common") {
+    table.push_back(json::array({"iron_sword", 1, 1, 0.14}));
+    table.push_back(json::array({"iron_pickaxe", 1, 1, 0.10}));
+  } else if (kind == "rare") {
+    table.push_back(json::array({"iron_sword", 1, 1, 0.22}));
+    table.push_back(json::array({"steel_sword", 1, 1, 0.14}));
+    table.push_back(json::array({"iron_helmet", 1, 1, 0.16}));
+    table.push_back(json::array({"iron_chestplate", 1, 1, 0.12}));
+    table.push_back(json::array({"gold_sword", 1, 1, 0.10}));
+  } else if (kind == "boss") {
+    table.push_back(json::array({"steel_sword", 1, 1, 0.28}));
+    table.push_back(json::array({"steel_chestplate", 1, 1, 0.20}));
+    table.push_back(json::array({"gold_sword", 1, 1, 0.18}));
+    table.push_back(json::array({"mithril_sword", 1, 1, 0.12}));
+  }
   return table;
 }
 
@@ -149,7 +174,7 @@ int lootTopUp(json& items, const std::string& tableKind, int tier, Mulberry32& r
     json extra = emptySlots(); rollTable(extra, table, rnd, mul);
     for (auto& s : extra) {
       if (!s.is_object()) continue;
-      if (!dungeon && s["id"].is_string()) { const ItemStack p = proceduralOf(s["id"].get<std::string>(), s.value("n", 1)); if (p.id != s["id"].get<std::string>()) s = p.toJson(); }
+      if (s["id"].is_string()) { const ItemStack p = proceduralOf(s["id"].get<std::string>(), s.value("n", 1)); if (p.id != s["id"].get<std::string>()) s = p.toJson(); }
       for (size_t k = 0; k < items.size(); k++) if (items[k].is_null()) { items[k] = s; added++; break; }
     }
   }
@@ -158,10 +183,10 @@ int lootTopUp(json& items, const std::string& tableKind, int tier, Mulberry32& r
 
 json dungeonLoot(const std::string& kind, Mulberry32& rnd) {
   json items = emptySlots();
-  const json& L = SD()["DUNGEON_LOOT"];
   json table = dungeonTable(kind);
   rollTable(items, table, rnd);
   maybeScroll(items, rnd, kind == "boss" ? 0.85 : kind == "rare" ? 0.45 : 0.2, kind == "boss" ? 9 : kind == "rare" ? 6 : 3);
+  convertLootGear(items);
   return items;
 }
 
@@ -169,6 +194,7 @@ json vLoot(const std::string& kind, Mulberry32& rnd) {
   json items = emptySlots();
   const json& L = SD()["VLOOT"];
   if (L.contains(kind)) rollTable(items, L[kind], rnd);
+  convertLootGear(items);
   return items;
 }
 

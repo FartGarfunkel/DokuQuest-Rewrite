@@ -4,6 +4,7 @@
 #include "sim/player.h"
 #include "sim/creature.h"
 #include "core/registry.h"
+#include "core/tool_parts.h"
 #include "sim/creature_rig.h"
 #include "world/shapes.h"
 #include "world/dims.h"
@@ -55,8 +56,11 @@ void fallenFill(World& w, int x, int y, int z, json& be) {
     items.push_back(json{{"id", l.id}, {"n", std::min(n, l.hi)}});
   }
   if (rnd() < 0.3f && (int)items.size() < 9) if (const ItemDef* gd = reg().item(gearFor(kind))) {   // their gear, worn
-    json g{{"id", gd->key}, {"n", 1}};
-    if (gd->hasTool && gd->tool.durability > 0) g["d"] = (int)(gd->tool.durability * (0.55f + 0.35f * rnd()));
+    ItemStack gs = proceduralOf(gd->key, 1);
+    json g = gs.toJson();
+    const int maxd = toolMaxDurability(gs);
+    if (maxd > 0) g["d"] = (int)(maxd * (0.55f + 0.35f * rnd()));
+    else if (gd->hasTool && gd->tool.durability > 0) g["d"] = (int)(gd->tool.durability * (0.55f + 0.35f * rnd()));
     items.push_back(g);
   }
   while ((int)items.size() < 9) items.push_back(nullptr);

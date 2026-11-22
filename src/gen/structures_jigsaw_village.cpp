@@ -10,6 +10,7 @@
 #include "gen/town_mine.h"
 #include <cstdlib>
 #include <cstring>
+#include "core/tool_parts.h"
 #include "gen/structures_town.h"
 #include "gen/village_pieces.h"
 #include "gen/village_mill_lift.h"
@@ -1073,7 +1074,7 @@ void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
           size_t b0 = s.items.find(',', a0); if (b0 == std::string::npos) b0 = s.items.size();
           std::string id = s.items.substr(a0, b0 - a0); a0 = b0 + 1; int n = 1;
           if (const size_t st2 = id.find('*'); st2 != std::string::npos) { n = std::max(1, std::atoi(id.c_str() + st2 + 1)); id = id.substr(0, st2); }
-          items.push_back(!id.empty() && reg().item(id) ? json{{"id", id}, {"n", n}} : json(nullptr));
+          items.push_back(!id.empty() && reg().item(id) ? proceduralOf(id, n).toJson() : json(nullptr));
         }
         const std::string& et = s.etype;
         if (et == "pile") {

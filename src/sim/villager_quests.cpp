@@ -266,7 +266,7 @@ bool questFinish(Level& lv, Player& p, const std::string& qid) {
   }
   const json R = q.value("reward", json::object());
   if (R.value("em", 0) > 0) vGive(lv, p, ItemStack(COIN, R.value("em", 0)));
-  if (R.contains("item") && R["item"].is_array() && reg().item(R["item"][0].get<std::string>())) vGive(lv, p, ItemStack(R["item"][0].get<std::string>(), R["item"][1].get<int>()));
+  if (R.contains("item") && R["item"].is_array() && reg().item(R["item"][0].get<std::string>())) vGive(lv, p, proceduralOf(R["item"][0].get<std::string>(), R["item"][1].get<int>()));
   if (R.value("xp", 0) > 0) grantXp(lv, p, R.value("xp", 0), p.pos + vec3(0, 1, 0));
   if (R.contains("skill") && R["skill"].is_array()) skillGain(lv, p, R["skill"][0].get<std::string>(), R["skill"][1].get<double>());
   npcRep(lv, p, q.value("vid", std::string()), R.value("rep", 5));

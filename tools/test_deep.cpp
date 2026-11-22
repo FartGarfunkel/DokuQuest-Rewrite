@@ -12,6 +12,7 @@
 #include "world/dims.h"
 #include "world/light.h"
 #include "gen/structures_vault.h"
+#include "gen/proc_rooms.h"
 #include <thread>
 #include <cstdio>
 #include <map>
@@ -53,6 +54,19 @@ int main(int argc, char** argv) {
     check(landFloorAt(dimBase(DIM_UNDER4)) && !landFloorAt(dimBase(DIM_OVERWORLD)) && !landFloorAt(dimBase(DIM_UNDER1)) && landRoofAt(dimBase(DIM_SKY2) + 255), "the seams between worlds: under the Underworld and over the open sky, not inside the Overworld's land");
     setWorldLayout(1);
     check(WORLD_H == 1024 && dimOfY(600) == DIM_OVERWORLD && dimBase(DIM_SKYLANDS) == 768 && displayY(512 + 64) == 64, "back to layout 1: exactly as before");
+  }
+
+  printf("[procedural rooms]\n");
+  {
+    check(PROC_ROOM_KIND_N >= 16, "at least sixteen furnished room kinds");
+    check(DUNGEON_GRID_MIN >= 6 && DUNGEON_FLOORS_MIN >= 2 && DUNGEON_ROOMS_MIN >= 12,
+          "crypts walk a large multi-floor grid");
+    int missing = 0;
+    for (int i = 0; i < PROC_FURNITURE_N; i++) {
+      const char* k = PROC_FURNITURE[i];
+      if (!reg().blockId(k) && !reg().item(k)) { missing++; printf("    missing %s\n", k); }
+    }
+    check(missing == 0, "every furniture id used in large structures exists");
   }
 
   printf("[a wayvault]\n");

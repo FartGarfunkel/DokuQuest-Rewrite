@@ -299,6 +299,39 @@ int main(int argc, char** argv) {
     const TreeNode* start = nullptr; if (W) for (auto& n : W->nodes) if (n.start) start = &n;
     check(W && W->nodes.size() >= 18 && W->nodes.size() <= 22, "the Knight tree is short");
     check(start && start->id == "warrior", "Knight start id stays warrior");
+    {
+      int armsUp = 0;
+      if (W) for (const TreeNode& n : W->nodes) if (!n.start && n.y < -10.f) armsUp++;
+      check(W && armsUp == (int)W->nodes.size() - 1, "the Knight tree is a Y: every arm leaves the start up the page");
+    }
+    {
+      bool unique = true, mageOnHit = true, banned = false;
+      std::string why;
+      static const char* BAN[] = {
+        "Last Stand", "Afterimage", "Thick Hide", "Light Feet", "Deep Breath", "Night Oil", "Kind Rest",
+        "Wider Cut", "Hotter Word", "Deeper Cold", "Short Rest", "Ready Again", "Spring", "Bound",
+        "Lessons Stick", "Quick Study", "Double Pouch", "Cut Purse", "Spark", "Kindling", "Numb Air", "Ember", "Rime", "Nick"
+      };
+      for (const SkillTree& t : skillTrees()) {
+        std::map<std::string, std::string> titles, sigs;
+        for (const TreeNode& n : t.nodes) {
+          if (!n.start && titles.count(n.title)) { unique = false; why += " title " + n.title; }
+          titles[n.title] = n.id;
+          std::string sig;
+          for (const auto& b : n.bonus) sig += b.attr + ":" + std::to_string(b.v) + ":" + std::to_string(b.pct) + ";";
+          if (!n.start && !sig.empty() && sigs.count(sig)) { unique = false; why += " clone " + n.id + "/" + sigs[sig]; }
+          if (!sig.empty()) sigs[sig] = n.id;
+          if (t.key == "mage") for (const auto& b : n.bonus)
+            if (b.attr == "burn_chance" || b.attr == "slow_chance" || b.attr == "bleed_chance" || b.attr == "poison_chance") {
+              mageOnHit = false; why += " mage " + n.id + " " + b.attr;
+            }
+          for (const char* b : BAN) if (n.title == b) { banned = true; why += " banned " + n.title; }
+        }
+      }
+      check(unique, "every tree node has its own title and its own bonus" + why);
+      check(mageOnHit, "mage nodes use spell verbs, not melee-on-hit chances" + why);
+      check(!banned, "no leftover clone or imported titles" + why);
+    }
     int nTrees = 0, keystones = 0; bool fat = true, named = true;
     for (const SkillTree& t : skillTrees()) {
       nTrees++;

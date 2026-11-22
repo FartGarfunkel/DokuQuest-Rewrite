@@ -5,6 +5,7 @@
 //   game/seas.js        pirate coves on lonely beaches
 // Depths below the land go through vmap::owUnder; the parts that reach the surface (shafts, stairs) follow the band.
 #include "gen/structures_common.h"
+#include "gen/proc_rooms.h"
 #include <optional>
 
 namespace dq {
@@ -27,7 +28,7 @@ static void strongholdGlobal(const TerrainQuery& t, std::vector<StructurePlan>& 
     const int cyo = std::clamp(c.jsY - 30, 12, 34), cy = owUnder(cyo);
     StructurePlan S;
     S.id = "sh_" + std::to_string(k); S.name = "a Stronghold"; S.cx = x; S.cz = z; S.y = cy; S.hashDy = cyo - cy;
-    S.x0 = x - 19; S.x1 = x + 19; S.z0 = z - 39; S.z1 = z + 9; S.seed = hash32(x, cyo, z, seed);
+    S.x0 = x - 22; S.x1 = x + 22; S.z0 = z - 42; S.z1 = z + 18; S.seed = hash32(x, cyo, z, seed);
     S.data = {{"spawners", json::array({mobAt(x, cy + 1, z + 6, "cave_spider")})}, {"portal", {x + 0.5, cy + 3, z + 2.5}}, {"top", c.y}};
     auto e = std::make_shared<HoldExt>(); e->cx = x; e->cy = cy; e->cz = z; e->top = c.y; S.ext = e;
     out.push_back(std::move(S));
@@ -39,14 +40,18 @@ static void strongholdBuild(ChunkWriter& w, const StructurePlan& S) {
   static const std::vector<const char*> walls = {"stone_bricks", "stone_bricks", "stone_bricks", "mossy_stone_bricks", "cracked_stone_bricks"};
   auto wallK = [&](int x, int y, int z) { return P.pickw(walls, x, y, z, 3); };
   // the rooms and halls (inside measurements); each gets a shell of brick, then they're hollowed out together
-  const int rooms[7][6] = {
+  const int rooms[11][6] = {
     {cx - 4, cy + 1, cz - 7, cx + 4, cy + 8, cz + 7},        // the portal room
     {cx - 1, cy + 1, cz - 24, cx + 1, cy + 4, cz - 8},       // the hall from it
     {cx - 4, cy + 1, cz - 33, cx + 4, cy + 6, cz - 25},      // the crossing
     {cx + 5, cy + 1, cz - 30, cx + 12, cy + 4, cz - 28},     // east hall
     {cx - 12, cy + 1, cz - 30, cx - 5, cy + 4, cz - 28},     // west hall
     {cx - 18, cy + 1, cz - 37, cx - 13, cy + 7, cz - 21},    // the library
-    {cx + 13, cy + 1, cz - 34, cx + 17, cy + 4, cz - 24}};   // the storeroom
+    {cx + 13, cy + 1, cz - 34, cx + 17, cy + 4, cz - 24},    // the storeroom
+    {cx - 18, cy + 1, cz - 12, cx - 13, cy + 4, cz - 6},     // barracks
+    {cx + 13, cy + 1, cz - 18, cx + 17, cy + 4, cz - 12},    // kitchen
+    {cx - 4, cy + 1, cz + 8, cx + 4, cy + 4, cz + 16},       // chapel beyond the portal
+    {cx - 4, cy + 9, cz - 33, cx + 4, cy + 14, cz - 25}};    // upper crossing
   for (auto& r : rooms) P.fillf(r[0] - 1, r[1] - 1, r[2] - 1, r[3] + 1, r[4] + 1, r[5] + 1, wallK);
   for (auto& r : rooms) P.fill(r[0], r[1], r[2], r[3], r[4], r[5], "air");
   // ---- the portal room: a raised dais, the frames round a pool of lava, a cage of spiders behind ----
@@ -80,6 +85,18 @@ static void strongholdBuild(ChunkWriter& w, const StructurePlan& S) {
   for (auto [x, z] : {std::pair{cx + 13, cz - 34}, {cx + 16, cz - 30}, {cx + 14, cz - 26}}) P.put(x, cy + 1, z, "barrel");
   P.put(cx + 15, cy + 1, cz - 29, "lantern");
   for (auto [x, y, z] : {std::tuple{cx + 13, cy + 4, cz - 24}, {cx + 17, cy + 4, cz - 34}, {cx + 16, cy + 4, cz - 29}}) P.put(x, y, z, "cobweb");
+  auto holdFurnish = [&](int x, int y, int z, int rx, int rz, int H, const char* kind, u32 salt) {
+    ProcRoom pr;
+    pr.kind = kind; pr.x = x; pr.y = y; pr.z = z; pr.rx = rx; pr.rz = rz; pr.H = H;
+    pr.seed = hash32(x, y, z, salt); pr.wood = "oak"; pr.light = "lantern"; pr.hangLight = "lantern";
+    pr.pillar = "stone_bricks"; pr.slab = "stone_brick_slab"; pr.density = 0.7f;
+    furnishProcRoom(P, pr, [&](int xx, int yy, int zz, const char* loot, bool) { if (P.in(xx, zz)) P.chest(xx, yy, zz, 0, loot && std::string(loot) == "rare" ? "stronghold_library" : "stronghold"); });
+  };
+  holdFurnish((cx - 18 + cx - 13) / 2, cy + 1, (cz - 12 + cz - 6) / 2, 2, 3, 4, "barracks", (u32)S.seed);
+  holdFurnish((cx + 13 + cx + 17) / 2, cy + 1, (cz - 18 + cz - 12) / 2, 2, 3, 4, "kitchen", (u32)S.seed + 1);
+  holdFurnish(cx, cy + 1, (cz + 8 + cz + 16) / 2, 4, 4, 4, "chapel", (u32)S.seed + 2);
+  holdFurnish(cx, cy + 9, cz - 29, 4, 4, 5, "library", (u32)S.seed + 3);
+  P.ladder(cx, cy + 6, cy + 9, cz - 29, 0);
   // ---- a stair up: a narrow shaft with a ladder, from the crossing towards the surface (it stops short; the
   // original's 32 rows above the stronghold, in band rows) ----
   const int top = std::min(H.top - 7, cy + owUnder(32));

@@ -21,6 +21,10 @@
 #include "sim/anvil.h"
 #include "sim/bloomery.h"
 #include "sim/prospect.h"
+#include "sim/fallen.h"
+#include "sim/inv_ops.h"
+#include "sim/controller.h"
+#include "gen/structures_common.h"
 #include "common/threadpool.h"
 #include "world/world.h"
 #include "world/dims.h"
@@ -451,6 +455,48 @@ int main(int argc, char** argv) {
     ItemStack ih = proceduralOf("iron_helmet"); ih.d = 40;
     StationResult mend = stationResult("anvil", ih, ItemStack("iron_ingot", 2));
     check(mend.ok && mend.out.d < 40, "a worn procedural iron helmet mends at the anvil with iron");
+    {   // found metal gear is the mixed piece, never the mixer baseline
+      auto leftover = [](const json& items) {
+        std::string bad;
+        if (!items.is_array()) return bad;
+        for (const auto& s : items) {
+          if (!s.is_object() || !s.contains("id") || !s["id"].is_string()) continue;
+          const std::string id = s["id"].get<std::string>();
+          if (proceduralOf(id).id != id) bad += id + " ";
+        }
+        return bad;
+      };
+      auto sawMixed = [](const json& items) {
+        if (!items.is_array()) return false;
+        for (const auto& s : items) if (s.is_object() && s.value("id", "").rfind("mixed_", 0) == 0) return true;
+        return false;
+      };
+      std::string bad; bool mixedSmithy = false, mixedDungeon = false, mixedStruct = false, mixedTop = false;
+      for (int i = 0; i < 800; i++) {
+        Mulberry32 r((u32)(2000 + i));
+        json smithy = vLoot("smithy", r);
+        json rare = dungeonLoot("rare", r);
+        json boss = dungeonLoot("boss", r);
+        json common = dungeonLoot("common", r);
+        json mine = structLoot("mineshaft", r);
+        json hold = structLoot("stronghold", r);
+        json pirate = structLoot("pirate", r);
+        json nether = structLoot("nether_fortress", r);
+        json extra = dungeonLoot("rare", r);
+        Mulberry32 r2((u32)(9000 + i));
+        lootTopUp(extra, "d:rare", 8, r2);
+        for (const json* t : {&smithy, &rare, &boss, &common, &mine, &hold, &pirate, &nether, &extra}) bad += leftover(*t);
+        mixedSmithy = mixedSmithy || sawMixed(smithy);
+        mixedDungeon = mixedDungeon || sawMixed(rare) || sawMixed(boss) || sawMixed(common);
+        mixedStruct = mixedStruct || sawMixed(mine) || sawMixed(hold) || sawMixed(pirate) || sawMixed(nether);
+        mixedTop = mixedTop || sawMixed(extra);
+      }
+      check(bad.empty(), "chests never leave a fixed metal tool, weapon or armour piece (" + bad + ")");
+      check(mixedSmithy, "a village smithy still rolls metal gear, as mixed");
+      check(mixedDungeon, "a dungeon chest still rolls metal gear, as mixed");
+      check(mixedStruct, "mineshafts, strongholds, pirate wrecks and nether fortresses still roll metal gear, as mixed");
+      check(mixedTop, "a later-opened dungeon chest tops up with mixed gear too");
+    }
   }
 
   printf("[immersive progression: no shortcuts]\n");
@@ -538,6 +584,33 @@ int main(int argc, char** argv) {
     recipeGate().immersive = false;
     m = matchGrid(g, 3);
     check(m && m.out == "mixed_pickaxe" && stackName(m.result()) == "Iron Pickaxe", "classic: an iron pickaxe as ever (the procedural one)");
+  }
+
+  {
+    InvOpen o; InvSession sess(*rg.P, nullptr, o, true);
+    rg.P->cursor.clear();
+    sess.creativePick("iron_sword", false);
+    check(rg.P->cursor.id == "mixed_sword" && isPartTool(rg.P->cursor), "creative pick of an iron sword: the mixed iron sword");
+    sess.creativePick("wood_sword", false);
+    check(rg.P->cursor.id == "wood_sword", "  ...wood stays wood");
+    sess.creativePick("diamond_sword", false);
+    check(rg.P->cursor.id == "diamond_sword", "  ...diamond stays diamond");
+    rg.P->cursor.clear();
+    World& ww = rg.lv->world();
+    std::string fbad; bool sawMixedPick = false;
+    for (int x = 10; x < 30; x++) {
+      ww.setBlock(x, rg.Y + 1, 10, reg().blockId("remains_miner")); ww.setBlockEntity(x, rg.Y + 1, 10, nullptr);
+      json* e = containerEntity(ww, x, rg.Y + 1, 10);
+      if (!e || !e->contains("items")) continue;
+      for (const auto& s : (*e)["items"]) {
+        if (!s.is_object() || !s.contains("id") || !s["id"].is_string()) continue;
+        const std::string id = s["id"].get<std::string>();
+        if (proceduralOf(id).id != id) fbad += id + " ";
+        if (id == "mixed_pickaxe") sawMixedPick = true;
+      }
+    }
+    check(fbad.empty(), "a fallen miner's things never leave a fixed metal piece (" + fbad + ")");
+    check(sawMixedPick, "a fallen miner sometimes still carried a pick, mixed");
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

@@ -4,6 +4,7 @@
 // chests. The layout is a small grid graph decided once per plan (deterministic) and written chunk by chunk.
 // Placement and registration stay in structures_far.cpp (the original's index 20, same region and seeds).
 #include "gen/structures_common.h"
+#include "gen/proc_rooms.h"
 #include <bit>
 
 namespace dq {
@@ -36,13 +37,13 @@ bool fortressPlanMC(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struct
   std::vector<std::pair<int, int>> queue{{0, 0}};   // node, depth
   for (size_t q = 0; q < queue.size(); q++) {
     const auto [ni, depth] = queue[q];
-    const double p = depth == 0 ? 0.9 : depth == 1 ? 0.62 : depth == 2 ? 0.38 : 0.0;
+    const double p = depth == 0 ? 0.9 : depth == 1 ? 0.7 : depth == 2 ? 0.5 : depth == 3 ? 0.28 : 0.0;
     const int d0 = jsFloor(rnd() * 4);
     for (int k = 0; k < 4; k++) {
       const int d = (d0 + k) & 3;
       if (rnd() >= p) continue;
       const int gx = N[ni].gx + DIRX[d], gz = N[ni].gz + DIRZ[d];
-      if (std::abs(gx) > 3 || std::abs(gz) > 3 || find(gx, gz) >= 0) continue;
+      if (std::abs(gx) > 5 || std::abs(gz) > 5 || find(gx, gz) >= 0) continue;
       const bool castle = castleAt(gx, gz) && castleAt(N[ni].gx, N[ni].gz) ? true : castleAt(gx, gz);
       N.push_back({gx, gz, F_CROSS, 0, castle});
       const int nj = (int)N.size() - 1;
@@ -63,6 +64,7 @@ bool fortressPlanMC(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struct
   }
   if (!wart) for (size_t i = N.size() - 1; i > 0 && !wart; i--) if (N[i].kind == F_CROSS) { N[i].kind = F_WART; wart = true; }
   if (!blaze) for (size_t i = N.size() - 1; i > 0 && !blaze; i--) if (N[i].kind == F_CROSS) { N[i].kind = F_BLAZE; blaze = true; }
+  for (size_t i = 1; i < N.size(); i++) if (N[i].castle && N[i].kind == F_CROSS && rnd() < 0.45) N[i].kind = F_ROOM;
   int x0 = x, x1 = x, z0 = z, z1 = z;
   json spawners = json::array();
   for (const FNode& n : N) {
@@ -198,6 +200,13 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
         if (P.in(bxx + sx, bzz + sz)) P.chest(bxx + sx, y + 1, bzz + sz, (back + 2) & 3, "nether_fortress");
         if (P.in(bxx - sx, bzz - sz)) P.chest(bxx - sx, y + 1, bzz - sz, (back + 2) & 3, "nether_fortress");
         if (((cx ^ cz) & 1) && P.in(cx, cz)) P.spawner(cx, y + 1, cz, "wither_skeleton");
+        ProcRoom pr;
+        static const char* FK[] = {"barracks", "armoury", "refectory", "forge", "shrine", "store"};
+        pr.kind = FK[(unsigned)(cx * 7 + cz) % 6];
+        pr.x = cx; pr.y = y + 1; pr.z = cz; pr.rx = std::max(2, H - 2); pr.rz = std::max(2, H - 2); pr.H = 4;
+        pr.seed = hash32(cx, y, cz, (i32)S.seed); pr.wood = "crimson"; pr.light = "soul_torch"; pr.hangLight = "soul_lantern";
+        pr.pillar = "nether_bricks"; pr.slab = "nether_brick_slab"; pr.density = 0.7f;
+        furnishProcRoom(P, pr);
         break;
       }
       case F_END: {

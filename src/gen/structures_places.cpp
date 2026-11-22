@@ -4,6 +4,7 @@
 // Plans decide with the original's heights (jsY) and build at band heights; underground depths go through
 // vmap::owUnder. The residents/boss/spawners lists go in StructurePlan::data in the original's shape.
 #include "gen/structures_common.h"
+#include "gen/proc_rooms.h"
 #include "core/itemstack.h"
 #include <unordered_map>
 
@@ -28,7 +29,7 @@ static const RuinPal& ruinPal(int style) {
   }();
   return P[style];
 }
-struct RuinExt { int W, D, style, door, breach0, maxH; double breach1; bool cellar, lectern; };
+struct RuinExt { int W, D, style, door, breach0, maxH; double breach1; bool cellar, lectern; int mx0 = 0, mz0 = 0, mx1 = 0, mz1 = 0, ax0 = 0, az0 = 0, aW = 0, aD = 0, aH = 0, aSide = 0; };
 
 static bool ruinPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
   TerrainColumn c = t.terrainColumn(x, z); if (!sLandy(c)) return false;
@@ -42,6 +43,19 @@ static bool ruinPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struc
   e->cellar = rnd() < 0.35; e->lectern = rnd() < 0.5; e->door = side;
   e->breach0 = jsFloor(rnd() * 4); e->breach1 = rnd(); e->maxH = 3 + jsFloor(rnd() * 3);
   S.x0 = x0; S.z0 = z0; S.x1 = x0 + W - 1; S.z1 = z0 + D - 1; S.cx = (S.x0 + S.x1) >> 1; S.cz = (S.z0 + S.z1) >> 1;
+  e->mx0 = S.x0; e->mz0 = S.z0; e->mx1 = S.x1; e->mz1 = S.z1;
+  // a second room, smaller and shorter, on a side wall: a ruin of two rooms, not one box
+  if (rnd() < 0.8) {
+    e->aSide = (e->door + 1 + jsFloor(rnd() * 2)) & 3;
+    e->aW = 4 + jsFloor(rnd() * 2); e->aD = 3 + jsFloor(rnd() * 2); e->aH = std::max(2, e->maxH - 2);
+    const int along = e->aW, out = e->aD - 1;
+    if (e->aSide == 0) { e->ax0 = S.cx - along / 2; e->az0 = S.z0 - out; }
+    else if (e->aSide == 1) { e->ax0 = S.x1; e->az0 = S.cz - along / 2; }
+    else if (e->aSide == 2) { e->ax0 = S.cx - along / 2; e->az0 = S.z1; }
+    else { e->ax0 = S.x0 - out; e->az0 = S.cz - along / 2; }
+    const int ax1 = e->ax0 + ((e->aSide & 1) ? out : along - 1), az1 = e->az0 + ((e->aSide & 1) ? along - 1 : out);
+    S.x0 = std::min(S.x0, e->ax0); S.z0 = std::min(S.z0, e->az0); S.x1 = std::max(S.x1, ax1); S.z1 = std::max(S.z1, az1);
+  }
   S.y = L.mean; S.hashDy = L.jmean - L.mean; S.surface = true;
   S.name = style == 1 ? "Sandstone Ruins" : "Ruins";
   S.data = {{"spawners", json::array()}};
@@ -52,21 +66,22 @@ static bool ruinPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struc
 static void ruinBuild(ChunkWriter& w, const StructurePlan& S) {
   SP P(w); const RuinExt& R = extOf<RuinExt>(S); const RuinPal& pal = ruinPal(R.style);
   const bool sand = R.style == 1;
-  const int cx = (S.x0 + S.x1) >> 1, cz = (S.z0 + S.z1) >> 1;
-  for (int z = S.z0 - 1; z <= S.z1 + 1; z++) for (int x = S.x0 - 1; x <= S.x1 + 1; x++) {
+  const int x0m = R.mx1 > R.mx0 ? R.mx0 : S.x0, z0m = R.mz1 > R.mz0 ? R.mz0 : S.z0, x1m = R.mx1 > R.mx0 ? R.mx1 : S.x1, z1m = R.mz1 > R.mz0 ? R.mz1 : S.z1;
+  const int cx = (x0m + x1m) >> 1, cz = (z0m + z1m) >> 1;
+  for (int z = z0m - 1; z <= z1m + 1; z++) for (int x = x0m - 1; x <= x1m + 1; x++) {
     if (!P.in(x, z)) continue;
-    const bool out = x < S.x0 || x > S.x1 || z < S.z0 || z > S.z1; const int gh = P.ground(x, z);
+    const bool out = x < x0m || x > x1m || z < z0m || z > z1m; const int gh = P.ground(x, z);
     if (out) { if (gh < S.y) P.fill(x, gh + 1, z, x, S.y, z, sand ? "sand" : "dirt"); if (gh >= S.y) P.put(x, S.y, z, sand ? "sand" : "grass"); continue; }
     // the floor, on a footing down to the land
     for (int y = std::min(gh, S.y) - 2; y < S.y; y++) P.put(x, y, z, pal.found);
     for (int y = S.y + 1; y <= std::max(gh, S.y) + 3; y++) P.put(x, y, z, "air");
     const double fl = P.h(x, 0, z, 1);
     P.put(x, S.y, z, fl < 0.15 ? (sand ? "sand" : "grass") : std::string_view(P.pick(pal.floor, x, 0, z, 2)));
-    const bool edge = x == S.x0 || x == S.x1 || z == S.z0 || z == S.z1, corner = (x == S.x0 || x == S.x1) && (z == S.z0 || z == S.z1);
+    const bool edge = x == x0m || x == x1m || z == z0m || z == z1m, corner = (x == x0m || x == x1m) && (z == z0m || z == z1m);
     if (edge) {
       // the walls, broken down to stumps where they fell, worst at the breach
-      const int side = z == S.z0 ? 0 : x == S.x1 ? 1 : z == S.z1 ? 2 : 3;
-      const double along = side == 0 || side == 2 ? (x - S.x0) / (double)(R.W - 1) : (z - S.z0) / (double)(R.D - 1);
+      const int side = z == z0m ? 0 : x == x1m ? 1 : z == z1m ? 2 : 3;
+      const double along = side == 0 || side == 2 ? (x - x0m) / (double)(R.W - 1) : (z - z0m) / (double)(R.D - 1);
       int h = corner ? R.maxH + 1 : jsRound(R.maxH * (0.35 + 0.65 * P.h(x, 1, z, 3)));
       if (side == R.breach0) h -= jsRound(std::max(0.0, 3 - std::fabs(along - R.breach1) * 10));
       const bool door = side == R.door && std::fabs(along - 0.5) < 0.6 / ((side & 1) ? R.D : R.W) + 0.01;
@@ -98,7 +113,30 @@ static void ruinBuild(ChunkWriter& w, const StructurePlan& S) {
     P.ladder(cx, y0 + 1, S.y - 1, cz + 1, 2); P.put(cx, y0 + 1, cz + 2, pal.found); for (int y = y0 + 1; y < S.y; y++) P.put(cx, y, cz + 2, pal.found);
     P.chest(cx - 1, y0 + 1, cz - 1, 2, "ruin"); P.chest(cx + 1, y0 + 1, cz - 1, 2, "ruin");
     P.put(cx + 1, y0 + 3, cz, "cobweb"); P.put(cx - 1, y0 + 3, cz + 1, "cobweb"); P.put(cx, y0 + 3, cz - 1, "old_torch", 3);
-  } else P.chest(S.x0 + 1, S.y + 1, S.z0 + 1, 2, "ruin");
+  } else P.chest(x0m + 1, S.y + 1, z0m + 1, 2, "ruin");
+  // the smaller room off one wall, with a door through into the main hall
+  if (R.aW > 0) {
+    const bool odd = R.aSide & 1;
+    const int ax0 = R.ax0, az0 = R.az0, ax1 = R.ax0 + (odd ? R.aD : R.aW) - 1, az1 = R.az0 + (odd ? R.aW : R.aD) - 1;
+    for (int z = az0; z <= az1; z++) for (int x = ax0; x <= ax1; x++) {
+      if (!P.in(x, z)) continue;
+      const int gh = P.ground(x, z);
+      const bool edge = x == ax0 || x == ax1 || z == az0 || z == az1;
+      const bool shared = (R.aSide == 0 && z == z0m) || (R.aSide == 2 && z == z1m) || (R.aSide == 1 && x == x1m) || (R.aSide == 3 && x == x0m);
+      for (int y = std::min(gh, S.y) - 1; y < S.y; y++) P.put(x, y, z, pal.found);
+      for (int y = S.y + 1; y <= std::max(gh, S.y) + R.aH + 1; y++) P.put(x, y, z, "air");
+      P.put(x, S.y, z, P.pick(pal.floor, x, 0, z, 2));
+      if (!edge || shared) continue;
+      const bool corner = (x == ax0 || x == ax1) && (z == az0 || z == az1);
+      for (int y = 1; y <= (corner ? R.aH : std::max(1, R.aH - (P.h(x, 3, z, 5) < 0.4 ? 1 : 0))); y++)
+        P.put(x, S.y + y, z, corner ? std::string_view(pal.corner) : std::string_view(P.pick(pal.wall, x, y, z, 5)));
+    }
+    const int mx = (ax0 + ax1) >> 1, mz = (az0 + az1) >> 1;
+    const int doorX = odd ? (R.aSide == 1 ? x1m : x0m) : mx;
+    const int doorZ = odd ? mz : (R.aSide == 0 ? z0m : z1m);
+    for (int y = 1; y <= 2; y++) P.put(doorX, S.y + y, doorZ, "air");
+    P.chest(mx, S.y + 1, mz, R.aSide, "ruin");
+  }
 }
 
 // ==== Mage towers ====================================================================================================
@@ -127,16 +165,23 @@ static void towerBuild(ChunkWriter& w, const StructurePlan& S) {
   static const std::vector<const char*> floors = {"spruce_planks", "dark_oak_planks"};
   auto wall = [&](int x, int yy, int z) { return P.pickw(walls, x, yy, z, 1); };
   const int dx0 = DXL[T.door], dz0 = DZL[T.door];
-  const int la0 = cx - dx0 * (R - 1), la1 = cz - dz0 * (R - 1);   // up the wall opposite the door
+  // floors are different rooms: a wide workroom, a small library, a study, then the master's room back out to the full width.
+  // The ladder sits inside the smallest of them.
+  auto radOf = [&](int level) { return level == 1 ? R - 2 : level == 2 ? R - 1 : R; };
+  const int la0 = cx - dx0 * 2, la1 = cz - dz0 * 2;   // up the wall opposite the door, inside every floor
   for (int z = S.z0; z <= S.z1; z++) for (int x = S.x0; x <= S.x1; x++) {
     if (!P.in(x, z)) continue;
     const double d = std::hypot(x - cx, z - cz); const int gh = P.ground(x, z);
     if (d > R + 1.6) continue;
     if (d > R + 0.5) { if (gh < y) P.fill(x, gh + 1, z, x, y - 1, z, "cobblestone"); P.put(x, y, z, "grass"); for (int yy = y + 1; yy <= std::max(gh, y) + 2; yy++) P.put(x, yy, z, "air"); continue; }
     for (int yy = std::min(gh, y) - 3; yy < y; yy++) P.put(x, yy, z, "cobblestone");
-    const bool ring = d > R - 0.5;
     for (int yy = y; yy <= top; yy++) {
       const int lv = (yy - y) % TOWER_LV, level = (yy - y) / TOWER_LV;
+      const int rNow = radOf(level), rFloor = std::max(rNow, level > 0 ? radOf(level - 1) : rNow);
+      if (d > rFloor + 0.5) { P.put(x, yy, z, "air"); continue; }   // the setback above a wider floor
+      const bool ledge = d > rNow + 0.5;   // still on the wider floor's roof, outside this room
+      const bool ring = d > rNow - 0.5 && !ledge;
+      if (ledge) { P.put(x, yy, z, lv == 0 ? (yy == y ? "stone_bricks" : P.pick(floors, x, 0, z, 2)) : "air"); continue; }
       if (ring) {
         // windows on each floor, the door at the bottom
         const bool card = std::abs(x - cx) < 0.6 || std::abs(z - cz) < 0.6;
@@ -166,7 +211,8 @@ static void towerBuild(ChunkWriter& w, const StructurePlan& S) {
   // first floor: the library
   for (int z = cz - R + 1; z <= cz + R - 1; z++) for (int x = cx - R + 1; x <= cx + R - 1; x++) {
     const double d = std::hypot(x - cx, z - cz);
-    if (d > R - 1.5 && d <= R - 0.5 && !(x == la0 && z == la1) && !(std::abs(x - la0) <= 1 && std::abs(z - la1) <= 1)) {
+    const int rLib = R - 2;   // the library is the small floor
+    if (d > rLib - 1.5 && d <= rLib - 0.5 && !(x == la0 && z == la1) && !(std::abs(x - la0) <= 1 && std::abs(z - la1) <= 1)) {
       P.put(x, L(1), z, "bookshelf"); P.put(x, L(1) + 1, z, "bookshelf"); if (P.h(x, 1, z, 3) < 0.6) P.put(x, L(1) + 2, z, "bookshelf");
     }
   }
@@ -376,10 +422,11 @@ static bool minePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struc
   if (c.jsY - yo < 16 && !deepOw) return false;
   // corridors, branching out from the start
   auto e = std::make_shared<MineExt>(); auto& segs = e->segs;
-  const int LIM = 56;
+  const int LIM = 48 + jsFloor(rnd() * 33);   // 48..80
   struct Q { int x, z, dir, d; };
   std::vector<Q> q{{x, z, jsFloor(rnd() * 4), 0}}; size_t qi = 0;
-  while (qi < q.size() && segs.size() < 28) {
+  const int wantSegs = 18 + jsFloor(rnd() * 23);   // 18..40
+  while (qi < q.size() && (int)segs.size() < wantSegs) {
     const Q s = q[qi++];
     const int len = 8 + jsFloor(rnd() * 18), ex = s.x + DXL[s.dir] * len, ez = s.z + DZL[s.dir] * len;
     if (std::abs(ex - x) > LIM || std::abs(ez - z) > LIM) continue;
@@ -434,11 +481,20 @@ static void mineBuild(ChunkWriter& w, const StructurePlan& S) {
       }
       if (s.chest && k == 5) { const int x = alongX ? ax : ax + 2, z = alongX ? az + 2 : az; if (P.in(x, z)) P.chest(x, y, z, alongX ? 0 : 3, "mineshaft"); }
     }
-    // crossings
-    for (auto [cx, cz] : {std::pair{s.x, s.z}, std::pair{s.ex, s.ez}}) for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {
-      const int x = cx + dx, z = cz + dz; if (!P.in(x, z)) continue;
-      for (int yy = y; yy <= y + 3; yy++) if (P.get(x, yy, z) != BED && P.get(x, yy, z) != RAIL) P.put(x, yy, z, "air");
-      if (!tSolid(P.get(x, y - 1, z))) P.put(x, y - 1, z, "planks");
+    // crossings: a small furnished room so two shafts never look the same
+    for (auto [cx, cz] : {std::pair{s.x, s.z}, std::pair{s.ex, s.ez}}) {
+      for (int dz = -3; dz <= 3; dz++) for (int dx = -3; dx <= 3; dx++) {
+        const int x = cx + dx, z = cz + dz; if (!P.in(x, z)) continue;
+        for (int yy = y; yy <= y + 3; yy++) if (P.get(x, yy, z) != BED && P.get(x, yy, z) != RAIL) P.put(x, yy, z, "air");
+        if (!tSolid(P.get(x, y - 1, z))) P.put(x, y - 1, z, "planks");
+      }
+      ProcRoom pr;
+      static const char* MK[] = {"office", "store", "sleeping", "forge", "shrine", "hall"};
+      pr.kind = MK[jsFloor(P.h(cx, 0, cz, 11) * 6)];
+      pr.x = cx; pr.y = y; pr.z = cz; pr.rx = 3; pr.rz = 3; pr.H = 4;
+      pr.seed = hash32(cx, y, cz, (i32)S.seed); pr.wood = "oak"; pr.light = "old_torch"; pr.hangLight = "lantern";
+      pr.pillar = "log"; pr.slab = "oak_slab"; pr.density = 0.55f;
+      furnishProcRoom(P, pr, [&](int x, int yy, int z, const char*, bool) { if (P.in(x, z)) P.chest(x, yy, z, 0, "mineshaft"); });
     }
   }
   // the cage, wrapped in webs

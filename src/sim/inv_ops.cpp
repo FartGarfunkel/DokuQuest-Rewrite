@@ -6,6 +6,7 @@
 #include "world/world.h"
 #include "sim/machines.h"
 #include "sim/skills.h"
+#include "core/tool_parts.h"
 
 namespace dq {
 bool isCrafter(BlockId id); int crafterLocked(const json* be);   // sim/redstone.h
@@ -525,9 +526,10 @@ int InvSession::takeOutput(bool shift) {
 
 // Creative: every item, free.
 void InvSession::creativePick(const std::string& key, bool all) {
-  ItemStack st(key, maxStackOf(key));
+  ItemStack st = proceduralOf(key, maxStackOf(key));
+  if (st.id != key) st.n = std::max(1, std::min(st.n, maxStackOf(st.id)));
   if (all) bagAdd(st);
-  else if (!p.cursor.empty() && p.cursor.id == key) p.cursor.n = maxStackOf(key);
+  else if (!p.cursor.empty() && p.cursor.id == st.id) p.cursor.n = maxStackOf(st.id);
   else p.cursor = st;
   sound("click");
   changed(Grp::Main);
