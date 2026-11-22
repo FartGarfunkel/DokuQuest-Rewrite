@@ -26,6 +26,7 @@
 #include "sim/controller.h"
 #include "gen/structures_common.h"
 #include "gen/proc_rooms.h"
+#include "gen/structures_town.h"
 #include "common/threadpool.h"
 #include "world/world.h"
 #include "world/dims.h"
@@ -591,6 +592,12 @@ int main(int argc, char** argv) {
             if (!sawYaw[L.yaw & 3]) { sawYaw[L.yaw & 3] = true; nYaw++; }
           }
           check(nPat == PROC_PATTERN_N && nYaw == PROC_YAW_N, "layouts cover 8 patterns and 4 yaws (" + std::to_string(nPat) + " / " + std::to_string(nYaw) + ")");
+        }
+        {
+          bool ironHang = false;
+          for (const auto& id : townDecor("weapons")) if (id.find("iron") != std::string::npos || id.find("steel") != std::string::npos) ironHang = true;
+          for (const auto& id : townDecor("tools")) if (id == "iron_pickaxe" || id == "iron_sword" || id == "iron_axe") ironHang = true;
+          check(!ironHang && !townDecor("weapons").empty(), "a village smithy hangs copper and bronze, not iron");
         }
       }
     }

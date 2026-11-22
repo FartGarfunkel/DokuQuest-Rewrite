@@ -122,8 +122,13 @@ static bool lateLootKind(const std::string& k) {
       || k == "skyship" || k == "deep" || k == "forge";
 }
 static bool dumpGem(const std::string& id) {
+  if (id == "flint_and_steel") return false;
   return id == "emerald" || id == "diamond" || id == "ruby" || id == "sapphire"
-      || id == "mithril_ingot" || id == "emerald_block" || id == "gold_block";
+      || id == "mithril_ingot" || id == "steel_ingot" || id == "adamantite_ingot"
+      || id == "emerald_block" || id == "gold_block"
+      || id.rfind("diamond_", 0) == 0 || id.rfind("mithril_", 0) == 0
+      || id.rfind("steel_", 0) == 0 || id.rfind("adamantite_", 0) == 0
+      || id.rfind("ruby_", 0) == 0 || id.rfind("sapphire_", 0) == 0;
 }
 static json stripDumpGems(const json& src) {
   json out = json::array();
@@ -138,7 +143,7 @@ static json stripDumpGems(const json& src) {
 static json structTable(const std::string& kind, int tier = 0) {
   const json& L = SD()["STRUCT_LOOT"];
   const json& src = L.contains(kind) ? L[kind] : L["ruin"];
-  if (lateLootKind(kind)) return src;
+  if (lateLootKind(kind) && tier > 0) return src;
   json out = stripDumpGems(src);
   if (tier >= 3) {
     out.push_back(json::array({"gold_ingot", 1, 2, 0.12}));

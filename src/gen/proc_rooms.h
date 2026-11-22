@@ -86,4 +86,9 @@ int pickDungeonPal(int theme, Mulberry32& rnd);
 ProcLayout pickProcLayout(Mulberry32& rnd, int dungeonPal, int dungeonClutter);
 void applyProcLayout(ProcRoom& r, const ProcLayout& L);
 
+// one furnished room from a seed: yaw, pattern and clutter from the seed, palette chosen by the caller
+void furnishPlaced(SP& P, int x, int y, int z, int rx, int rz, int H,
+                   const std::string& kind, u32 seed, int pal, int clutter = 1,
+                   const ProcChestFn& chest = {});
+
 } // namespace dq

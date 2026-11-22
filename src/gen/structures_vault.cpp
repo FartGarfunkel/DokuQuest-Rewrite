@@ -1,6 +1,7 @@
 // gen/structures_vault.cpp — one buried vault. Three rooms share a plan the test and the builder both use.
 #include "gen/structures_vault.h"
 #include "gen/structures_common.h"
+#include "gen/proc_rooms.h"
 #include <algorithm>
 
 namespace dq {
@@ -123,6 +124,11 @@ static void wayvaultBuild(ChunkWriter& w, const StructurePlan& S) {
     P.setEntity(ci, json{{"type", "chest"}, {"items", dungeonLoot("rare", r)}, {"lk", "d:rare"}});
   }
   P.spawner(ox + v.spawner[0], oy + v.spawner[1], oz + v.spawner[2], "skeleton");
+  for (const auto& r : v.rooms) {
+    const char* k = r.role == "vault" ? "vault" : r.role == "ante" ? "entry" : "hall";
+    furnishPlaced(P, ox + r.x, oy + kAir0, oz + r.z, std::max(1, r.rx - 1), std::max(1, r.rz - 1), 4, k,
+                  hash32(ox + r.x, oy, oz + r.z, (i32)S.seed), 1, r.role == "vault" ? 2 : 1);
+  }
   // Air from the ante ceiling up through the shaft top, cobblestone around it. The sleeve starts at the
   // ceiling, so it does not fill the ante. place stored the sampled surface; a higher column is opened too.
   const Wayvault::Room* ante = nullptr;

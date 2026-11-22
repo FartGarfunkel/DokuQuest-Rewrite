@@ -136,7 +136,17 @@ static void ruinBuild(ChunkWriter& w, const StructurePlan& S) {
     const int doorZ = odd ? mz : (R.aSide == 0 ? z0m : z1m);
     for (int y = 1; y <= 2; y++) P.put(doorX, S.y + y, doorZ, "air");
     P.chest(mx, S.y + 1, mz, R.aSide, "ruin");
+    const int arx = std::max(1, (ax1 - ax0) / 2 - 1), arz = std::max(1, (az1 - az0) / 2 - 1);
+    Mulberry32 ra(hash32(mx, S.y, mz, 11));
+    furnishPlaced(P, mx, S.y + 1, mz, arx, arz, std::max(3, R.aH), pickProcKind(ra, "", 0),
+                  hash32(mx, S.y, mz, (i32)S.seed), R.style == 2 ? 2 : R.style == 1 ? 0 : 1, 3);
   }
+  const int hrx = std::max(2, (x1m - x0m) / 2 - 1), hrz = std::max(2, (z1m - z0m) / 2 - 1);
+  Mulberry32 rh(hash32(cx, S.y, cz, 7));
+  furnishPlaced(P, cx, S.y + 1, cz, hrx, hrz, std::max(3, R.maxH), pickProcKind(rh, "", 1),
+                hash32(cx, S.y, cz, (i32)S.seed), R.style == 2 ? 2 : R.style == 1 ? 0 : 1, 3);
+  if (R.cellar)
+    furnishPlaced(P, cx, S.y - 4, cz, 1, 1, 3, "store", hash32(cx, S.y, cz, 19), 1, 3);
 }
 
 // ==== Mage towers ====================================================================================================
@@ -226,6 +236,11 @@ static void towerBuild(ChunkWriter& w, const StructurePlan& S) {
   P.put(cx, L(3), cz - 3, "amethyst_block"); P.put(cx, L(3) + 1, cz - 3, "sea_lantern"); P.put(cx + 3, L(3), cz, "amethyst_block"); P.put(cx - 3, L(3), cz, "amethyst_block");
   P.chest(cx, L(3), cz + 3, 0, "archmage");
   for (auto [a, b] : {std::pair{2, 2}, {-2, 2}, {2, -2}, {-2, -2}}) P.put(cx + a, L(3), cz + b, "soul_lantern");
+  const int tr = std::max(2, R - 2);
+  furnishPlaced(P, cx, L(0), cz, tr, tr, 4, "workshop", hash32(cx, L(0), cz, (i32)S.seed), 2, 1);
+  furnishPlaced(P, cx, L(1), cz, std::max(2, R - 3), std::max(2, R - 3), 4, "library", hash32(cx, L(1), cz, (i32)S.seed), 2, 1);
+  furnishPlaced(P, cx, L(2), cz, tr, tr, 4, "office", hash32(cx, L(2), cz, (i32)S.seed), 2, 2);
+  furnishPlaced(P, cx, L(3), cz, tr, tr, 4, "nave", hash32(cx, L(3), cz, (i32)S.seed), 2, 1);
 }
 
 // ==== Desert temples =================================================================================================
@@ -286,6 +301,10 @@ static void desertBuild(ChunkWriter& w, const StructurePlan& S) {
   for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) P.put(cx + dx, yf - 1, cz + dz, "tnt");
   for (auto [dx, dz, f] : {std::tuple{0, -3, 2}, {3, 0, 3}, {0, 3, 0}, {-3, 0, 1}}) P.chest(cx + dx, yf + 1, cz + dz, f, "temple");
   for (auto [dx, dz] : {std::pair{-3, -3}, {3, -3}, {-3, 3}, {3, 3}}) { P.put(cx + dx, yf + 1, cz + dz, chis); P.put(cx + dx, yf + 2, cz + dz, OT); }
+  Mulberry32 rd(hash32(cx, y, cz, 3));
+  furnishPlaced(P, cx, y + 1, cz, 6, 5, 6, pickProcKind(rd, "", 2),
+                hash32(cx, y, cz, (i32)S.seed), 0, 1);
+  furnishPlaced(P, cx, yf + 1, cz, 2, 2, 3, "vault", hash32(cx, yf, cz, (i32)S.seed), 0, 2);
 }
 
 // ==== Sunken temples =================================================================================================
@@ -339,6 +358,7 @@ static void oceanBuild(ChunkWriter& w, const StructurePlan& S) {
     }
   }
   P.chest(cx + 2, y + 1, cz + 2, 0, "ocean"); P.chest(cx - 2, y + 1, cz + 2, 0, "ocean");
+  furnishPlaced(P, cx, y + 1, cz, 7, 7, 5, "shrine", hash32(cx, y, cz, (i32)S.seed), 2, 1);
 }
 
 // ==== Shipwrecks =====================================================================================================
@@ -409,6 +429,10 @@ static void wreckBuild(ChunkWriter& w, const StructurePlan& S) {
   P.chest(bx, yb + 2, bz, fwd, "wreck_supply");
   P.chest(sx, yb + 5, sz, (fwd + 2) & 3, "wreck_treasure");
   auto [mx, mz] = W(half - 3, 1); P.put(mx, yb + 5, mz, "lantern");
+  furnishPlaced(P, sx, yb + 5, sz, 2, 2, 3, "office", hash32(sx, yb, sz, (i32)S.seed),
+                E.wood == "spruce" ? 5 : 4, E.sunk ? 3 : 1);
+  furnishPlaced(P, bx, yb + 2, bz, 2, 1, 3, "store", hash32(bx, yb, bz, (i32)S.seed),
+                E.wood == "spruce" ? 5 : 4, E.sunk ? 3 : 2);
 }
 
 // ==== Mineshafts =====================================================================================================
@@ -569,11 +593,13 @@ struct LabPos {
 struct LabPosHash { size_t operator()(const LabPos& p) const { return (size_t)hash32(p.x, p.y, p.z, 0x4C4142); } };
 struct LabCell { u8 kind = 0, meta = 0, mob = 0; u32 salt = 0; };
 
+struct LabFurnish { int x = 0, y = 0, z = 0, rx = 3, rz = 3, H = 3; std::string kind; };
 struct LabExt {
   std::unordered_map<LabPos, LabCell, LabPosHash> cells;
   std::string wallA, wallB, brickA, brickB, slab, plate, plank, log;
   bool cold = false, hasBoss = false;
   int bossX = 0, bossY = 0, bossZ = 0;
+  std::vector<LabFurnish> rooms;
 };
 
 struct LabGen {
@@ -771,6 +797,8 @@ struct LabGen {
       const u8 mob = (u8)nextInt(e.cold ? 3 : 2);
       place(blockX, blockY - 1, blockZ, LK_SPAWN, 0, mob);
     }
+    static const char* DK[] = {"crypt", "armoury", "store", "office"};
+    if (doSpawner) e.rooms.push_back({blockX, blockY - 1, blockZ, 3, 3, 4, DK[nextInt(4)]});
   }
 
   void cornerPost(int x, int y, int z, int blockX, int blockZ, int zRoom) {
@@ -809,6 +837,7 @@ struct LabGen {
           cornerPost(x, y, z, blockX, blockZ, zRoom);
         }
     generateDrop(blockX, blockY, blockZ);
+    // shelves already stand; furnishLibrary would land on aisle plates
   }
 
   void generateTrophy(int blockX, int blockY, int blockZ, int rot) {
@@ -834,6 +863,11 @@ struct LabGen {
           } else place(x, y, z, LK_AIR);
           cornerPost(x, y, z, blockX, blockZ, zRoom);
         }
+    e.rooms.erase(std::remove_if(e.rooms.begin(), e.rooms.end(),
+        [&](const LabFurnish& r) { return r.x == blockX && r.z == blockZ && r.y == blockY - 1; }),
+        e.rooms.end());
+    static const char* TK[] = {"chapel", "armoury", "crypt"};
+    e.rooms.push_back({blockX, blockY - 1, blockZ, 6, 6, 6, TK[nextInt(3)]});
     hasPlatform = true;
     platRot = rot; platX = blockX; platY = blockY; platZ = blockZ;
   }
@@ -987,6 +1021,11 @@ static void mazeBuild(ChunkWriter& w, const StructurePlan& S) {
     case LK_PLANK: P.put(x, y, z, M.plank); break;
     default: break;
     }
+  }
+  for (const auto& r : M.rooms) {
+    if (r.kind == "library") continue;
+    furnishPlaced(P, r.x, r.y, r.z, r.rx, r.rz, r.H, r.kind,
+                  hash32(r.x, r.y, r.z, (i32)S.seed), M.cold ? 2 : 1, 1);
   }
 }
 

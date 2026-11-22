@@ -8,6 +8,7 @@
 //    oaks on top; a hellfire-stone hall inside, reached by a tunnel, where the Sun Spirit burns. One in four regions.
 // The shapes follow their templates' sizes; the blocks are ours (tools/port/skyland_blocks.py).
 #include "gen/structures_common.h"
+#include "gen/proc_rooms.h"
 #include <cmath>
 
 namespace dq {
@@ -168,6 +169,9 @@ static void silverBuild(ChunkWriter& w, const StructurePlan& S) {
       P.putId(ox + u0 + 3, Y + 6, oz + v0 + 3, K.angelicLit);      // a light in each ceiling
       const double r = P.h(ox + u0, Y, oz + v0, 11);
       if (r < 0.3) skyChest(P, ox + u0 + 1, Y + 1, oz + v0 + 1, (int)(r * 13) & 3, 1);
+      static const char* SK[] = {"hall", "shrine", "store", "sleeping", "office", "gallery", "chapel", "workshop"};
+      furnishPlaced(P, ox + u0 + 3, Y + 1, oz + v0 + 3, 2, 2, 5, SK[(cx + 3 * cz + 9 * f) % 8],
+                    hash32(ox + u0, Y, oz + v0, (i32)S.seed), 0, 1);
     }
   }
   for (int f = 0; f < 2; f++) {   // a ladder up from one room of each floor, against its back wall

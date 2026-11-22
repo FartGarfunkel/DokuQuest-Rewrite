@@ -112,7 +112,9 @@ MobLoot mobLoot(int level, bool elite, const Player* killer) {
   else if (level >= GEAR_FROM) l.gearChance = std::min(GEAR_CHANCE_MAX, (level - GEAR_FROM + 1) * GEAR_CHANCE_PER_LEVEL);
   if (l.gearChance > 0) l.gearChance = std::min(1.f, l.gearChance * (1 + luck));
   const int tiers = (int)(sizeof GEAR_TIERS / sizeof GEAR_TIERS[0]);
-  l.gearTier = std::min(tiers - 1, up / GEAR_LEVELS_PER_TIER + (elite ? 1 : 0));
+  const int fromLevel = std::min(tiers - 1, up / GEAR_LEVELS_PER_TIER + (elite ? 1 : 0));
+  const int fromProgress = std::min(tiers - 1, progressTier(*killer) + (elite ? 1 : 0));
+  l.gearTier = std::min(fromLevel, fromProgress);
   return l;
 }
 

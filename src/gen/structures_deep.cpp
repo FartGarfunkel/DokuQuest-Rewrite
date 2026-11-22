@@ -199,6 +199,8 @@ static void cityBuild(ChunkWriter& w, const StructurePlan& S) {
     P.put(hx, y + 4, hz, "soul_lantern");
     P.chest(hx - dsx * 3 + (doorX ? 0 : 2), y, hz - dsz * 3 + (doorX ? 2 : 0), 0, "ancient_city");
     P.put(hx - dsx * 3 - (doorX ? 0 : 2), y, hz - dsz * 3 - (doorX ? 2 : 0), "candle");
+    static const char* CK[] = {"sleeping", "store", "library", "shrine", "office", "crypt"};
+    furnishPlaced(P, hx, y, hz, 3, 3, 4, CK[k % 6], hash32(hx, y, hz, (i32)S.seed), 2, 1);
     for (int t = 0; t < 4; t++) { const int x = hx - 2 + jsFloor(P.h(hx, t, hz, 21) * 5), z = hz - 2 + jsFloor(P.h(hx, t, hz, 22) * 5); if (P.get(x, y, z) == AIR) P.put(x, y, z, "sculk_vein"); }
     // a path of polished deepslate to the dais
     for (int s = 5; s < 14; s++) { const int x = jsRound(hx - std::cos(a) * s), z = jsRound(hz - std::sin(a) * s); P.put(x, fy, z, "polished_slate"); }
@@ -403,6 +405,10 @@ static void dhBuild(ChunkWriter& w, const StructurePlan& S) {
     if (role == "hall" && P.hw(x, F.y, z, 4) < 0.5) P.chest(x, F.y + 1, z, 0, "deep");
     if (role == "secret") { P.chest(x, F.y + 1, z, 0, "deep_secret"); P.chest(x + 4, F.y + 1, z, 0, "deep_secret"); }
     if (role == "vault") { P.chest(x, F.y + 1, z, 0, "deep_vault"); P.chest(x + 2, F.y + 1, z, 0, "deep_vault"); P.chest(x + 4, F.y + 1, z, 0, "deep_vault"); }
+    const int mx = X0 + q[0] * C + (C >> 1), mz = Z0 + q[1] * C + (C >> 1);
+    const char* k = role == "boss" ? "boss" : role == "vault" ? "vault" : role == "secret" ? "armoury"
+                   : role == "key" ? "office" : role == "cage" ? "cells" : "hall";
+    furnishPlaced(P, mx, F.y + 1, mz, 4, 4, 6, k, hash32(mx, F.y, mz, (i32)S.seed), F.f == 2 ? 2 : 0, 1);
   }
   // the levers (on the floor, all off)
   if (E.puzzle) for (const auto& [x, y, z] : E.levers) P.put(x, y, z, "lever", 0);
@@ -524,6 +530,7 @@ static void coveBuild(ChunkWriter& w, const StructurePlan& S) {
   P.put(cx, y + 1, cz, "campfire");
   P.chest(cx - 2, gy(cx - 2, cz + 1) + 1, cz + 1, 2, "pirate"); P.chest(cx + 2, gy(cx + 2, cz + 1) + 1, cz + 1, 2, "pirate"); P.chest(cx, gy(cx, cz - 5) + 1, cz - 5, 2, "pirate");
   for (auto [bx, bz] : {std::pair{cx + 5, cz + 1}, {cx + 5, cz + 2}, {cx - 5, cz + 2}}) P.put(bx, gy(bx, bz) + 1, bz, "barrel");
+  furnishPlaced(P, cx, y + 1, cz, 5, 5, 4, "store", hash32(cx, y, cz, (i32)S.seed), 4, 2);
   const int fx = cx + 6, fz = cz - 5, fy = gy(fx, fz);
   for (int k = 1; k <= 6; k++) P.put(fx, fy + k, fz, "oak_fence");
   for (int k = 0; k < 3; k++) for (int j = 0; j < 2; j++) P.put(fx + 1 + k, fy + 5 + j, fz, hasBlock("black_wool") ? "black_wool" : "wool");

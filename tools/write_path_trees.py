@@ -150,7 +150,7 @@ rogue = tree("rogue", "Rogue", "rogue_1",
             ("shad2", "Slip", "A chance to evade a blow outright.", 0, [B("dodge", 0.04, True)]),
             ("shad3", "Soft Tread", "The load on your back counts for less.", 0, [B("weight", -0.04, True)]),
             ("shad4", "Sidestep", "Harder to hit and harder to see.", 1, [B("dodge", 0.06, True), B("stealth", 0.08, True)]),
-            ("shad5", "High Step", "You step a little higher over the land.", 0, [B("step", 1.0)]),
+            ("shad5", "Long Stride", "You step a little higher over the land.", 0, [B("step", 1.0)]),
             ("shad6", "Ghost Cut", "You duck more blows and cut faster.", 2, [B("dodge", 0.08, True), B("attack_speed", 0.10, True)]),
         ], "g"),
         series("d8a04a", up_left, [

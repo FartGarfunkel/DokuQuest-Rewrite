@@ -615,4 +615,17 @@ void furnishProcRoom(SP& P, const ProcRoom& r, const ProcChestFn& chest) {
   if (r.clutter >= 2) extraBarrels(P, r, rnd);
 }
 
+void furnishPlaced(SP& P, int x, int y, int z, int rx, int rz, int H,
+                   const std::string& kind, u32 seed, int pal, int clutter,
+                   const ProcChestFn& chest) {
+  if (rx < 1 || rz < 1 || H < 2) return;
+  ProcRoom pr;
+  pr.kind = kind.empty() ? "hall" : kind;
+  pr.x = x; pr.y = y; pr.z = z; pr.rx = rx; pr.rz = rz; pr.H = H;
+  pr.seed = seed ? seed : 1;
+  Mulberry32 rnd(pr.seed);
+  applyProcLayout(pr, pickProcLayout(rnd, pal, clutter));
+  furnishProcRoom(P, pr, chest);
+}
+
 } // namespace dq

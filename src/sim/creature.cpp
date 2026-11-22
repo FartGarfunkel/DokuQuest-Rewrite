@@ -372,7 +372,7 @@ void Creature::rollArmour() {
   static const bool all = std::getenv("DQ_ARMOUR") != nullptr;   // tests: every one dressed
   if (!wears || frand() >= (all ? 2.f : 0.11f)) return;
   float r = frand();
-  const char* mat = r < 0.28f ? "leather" : r < 0.50f ? "chainmail" : r < 0.66f ? "copper" : r < 0.80f ? "gold" : r < 0.97f ? "iron" : "diamond";   // (chainmail is only found on them)
+  const char* mat = r < 0.28f ? "leather" : r < 0.50f ? "chainmail" : r < 0.66f ? "copper" : r < 0.80f ? "gold" : "iron";   // (chainmail is only found on them)
   static const char* PIECE[] = {"helmet", "chestplate", "leggings", "boots"};
   json a = json::array({"", "", "", ""});
   for (int i = 0; i < 4; i++) {

@@ -413,7 +413,7 @@ static void lairBuild(ChunkWriter& w, const StructurePlan& S) {
     if (d < 10.5) {
       const double q = hf(x, z, 5);
       if (q < 0.05) P.put(x, Ly + 1, z, "bone_block");
-      else if (q < 0.056 && d > 3) P.put(x, Ly + 1, z, "gold_block");
+      else if (q < 0.056 && d > 3) P.put(x, Ly + 1, z, "gravel");
       else if (q < 0.075 && d > 3) P.put(x, Ly + 1, z, sea ? "sea_lantern" : deep ? "magma_block" : L.type == "frost" ? "packed_ice" : "gravel");
       else if (sea && q < 0.2 && d > 2) {
         static const char* COR[5] = {"tube", "brain", "bubble", "fire", "horn"};

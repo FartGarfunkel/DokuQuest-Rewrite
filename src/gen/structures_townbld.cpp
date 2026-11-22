@@ -58,6 +58,11 @@ const std::vector<std::string>& townDecor(const std::string& kind) {
   static const std::unordered_map<std::string, std::vector<std::string>> M = [] {
     std::unordered_map<std::string, std::vector<std::string>> m;
     for (auto& [k, v] : SD()["TOWN_DECOR"].items()) m[k] = strList(v);
+    // a village at spawn hangs copper and bronze, not a finished iron kit
+    m["weapons"] = {"copper_sword", "bronze_sword", "copper_axe"};
+    m["tools"] = {"copper_pickaxe", "copper_shovel", "bronze_axe", "shears", "copper_ingot", "coal"};
+    m["chest"] = {"copper_chestplate", "bronze_chestplate"};
+    m["helm"] = {"copper_helmet", "bronze_helmet"};
     return m;
   }();
   static const std::vector<std::string> none;
