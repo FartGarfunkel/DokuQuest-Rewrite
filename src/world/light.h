@@ -16,6 +16,7 @@
 //     it gathers sections to mesh, so a placed torch lights up in the same frame.
 #pragma once
 #include "world/world.h"
+#include <algorithm>
 #include <unordered_set>
 
 namespace dq {
@@ -23,6 +24,24 @@ namespace dq {
 u8 skyTopLevel(int dim);            // sky light entering a band from above (0 in the Ember Depths)
 void initialChunkLight(Chunk& c);   // worker thread: column sky + chunk-local flood fill + emitters
 bool cellOpenToSky(const Chunk& c, int x, int y, int z);  // air from this cell up to the sky (a roofed dungeon room is not)
+
+// MAX of packed sky<<4|block samples that are loaded. An unloaded neighbour is omitted so a missing
+// chunk is never noon — that was painting chest lids daylight underground while the body used the
+// meshed RGB (dark). Real daylight in a loaded cell still counts.
+inline u8 packedLightMaxLoaded(const u8* packed, const bool* loaded, int n) {
+  int s = 0, b = 0;
+  bool any = false;
+  for (int i = 0; i < n; i++) {
+    if (!loaded[i]) continue;
+    s = std::max(s, packed[i] >> 4);
+    b = std::max(b, packed[i] & 15);
+    any = true;
+  }
+  return any ? (u8)((s << 4) | b) : 0;
+}
+// air around a block (its own cell if it holds light, plus open neighbours). Unloaded and opaque
+// cells are skipped. 0 when nothing loaded is open.
+u8 aroundAirLight(const World& w, int x, int y, int z);
 
 class LightEngine : public WorldSystem {
 public:

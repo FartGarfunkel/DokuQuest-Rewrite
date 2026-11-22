@@ -92,6 +92,7 @@ namespace ShapePurpose { enum : int { Draw = 0, Collide = 1, Select = 2 }; }
 // original); true with `out` possibly empty for "nothing" (an open gate, dust's collision).
 bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector<ShapeBox>& out);
 int sinkOffset(BlockId id, const ShapeNb& nb);          // pixels: -8 when it sits on a bottom half slab
+void restShift(BlockId id, const ShapeNb& nb, int& ox, int& oy, int& oz);  // sit on a bottom half and nestle into a vertical slab gap
 float torchSetBack(u8 meta, const ShapeNb& nb);          // 0.5 when a wall torch leans on a vertical slab's open face
 bool slabGap(BlockId id, u8 meta, int side, u8 carve = 0);   // carve: a chiseled slab counts too
 

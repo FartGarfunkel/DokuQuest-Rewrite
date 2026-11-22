@@ -198,6 +198,52 @@ int main(int argc, char** argv) {
   initBlockTraits();
   loadStations();
   const Registry& R = reg();
+  int restFails = 0;
+  {
+    const BlockId stone = R.blockId("stone"), chest = R.blockId("chest");
+    Nb nb{};
+    nb.c[1][1][1] = chest;
+    nb.c[1][0][1] = stone;
+    nb.cv[1][0][1] = carveLayer(0, 1, 0);   // top octants gone: a chiseled bottom half
+    const int sink = sinkOffset(chest, nb);
+    if (sink != -8) {
+      printf("FAIL chest on a chiseled bottom half should sit 8 px down (sink %d)\n", sink);
+      restFails++;
+    } else printf("ok   a chest sits on a chiseled bottom half slab\n");
+    Nb flat{};
+    flat.c[1][1][1] = chest;
+    flat.c[1][0][1] = stone;
+    const int onFull = sinkOffset(chest, flat);
+    if (onFull != 0) {
+      printf("FAIL a chest on whole stone does not sink (sink %d)\n", onFull);
+      restFails++;
+    } else printf("ok   a chest on whole stone stays put\n");
+    BlockId slab = 0;
+    for (const auto& b : R.blocks) if (b.shapeKind == ShapeKind::Slab) { slab = b.id; break; }
+    if (!slab) {
+      printf("FAIL no slab block in the registry\n");
+      restFails++;
+    } else {
+      Nb onSlab{};
+      onSlab.c[1][1][1] = chest;
+      onSlab.c[1][0][1] = slab;   // bottom half (meta 0)
+      const int s = sinkOffset(chest, onSlab);
+      if (s != -8) {
+        printf("FAIL chest on a bottom half slab should sit 8 px down (sink %d)\n", s);
+        restFails++;
+      } else printf("ok   a chest sits on a bottom half slab\n");
+      Nb vert{};
+      vert.c[1][1][1] = chest;
+      vert.c[1][1][0] = slab;   // north neighbour: vertical slab against north (meta 2)
+      vert.m[1][1][0] = 2;
+      int ox = 0, oy = 0, oz = 0;
+      restShift(chest, vert, ox, oy, oz);
+      if (oz != -8) {
+        printf("FAIL chest beside a north vertical slab nestles 8 px north (oz %d)\n", oz);
+        restFails++;
+      } else printf("ok   a chest nestles into a vertical slab\n");
+    }
+  }
   int brazierFails = 0;
   {
     // braziers burn like a campfire (animated campfire_fire planes), not boxed "fire" cubes
@@ -298,5 +344,5 @@ int main(int argc, char** argv) {
   }
   (void)fixedNone;
   printf("\n%d shaped blocks audited, %d with differences: %zu differences, %d allowlisted, %d mismatches\n", blocks, mismatched, hits.size(), allowN, real);
-  return real + brazierFails;
+  return real + brazierFails + restFails;
 }

@@ -4,6 +4,7 @@
 #include "render/chest_layer.h"
 #include "render/mesher.h"
 #include "world/shapes.h"
+#include <algorithm>
 
 namespace dq {
 
@@ -125,6 +126,22 @@ inline bool meshApron(int x, int y, int z) {
 inline LightRgb rgbAt(const MeshCtx& c, int x, int y, int z) {
   if (!meshApron(x, y, z)) return y < 0 ? LightRgb{} : fullSunRgb();
   return c.in.rgb[c.I(x, y, z)];
+}
+// brightest open cell round a station (a chest, an anvil): never the missing-chunk noon rgbAt would give
+inline LightRgb aroundAirRgb(const MeshCtx& c, int x, int y, int z) {
+  LightRgb L{};
+  static const int D[7][3] = {{0, 0, 0}, {0, 1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}};
+  bool any = false;
+  for (int i = 0; i < 7; i++) {
+    const int ax = x + D[i][0], ay = y + D[i][1], az = z + D[i][2];
+    if (!meshApron(ax, ay, az)) continue;
+    const BlockId id = c.at(ax, ay, az);
+    if (id && c.R.tOpaque[id] && !c.carveAt(ax, ay, az)) continue;
+    const LightRgb S = rgbAt(c, ax, ay, az);
+    for (int k = 0; k < 3; k++) { L.s[k] = std::max(L.s[k], S.s[k]); L.b[k] = std::max(L.b[k], S.b[k]); }
+    any = true;
+  }
+  return any ? L : LightRgb{};
 }
 // smooth bias: along the face normal, a neighbour up to 8 darker pulls this sample down by 2.5 times that gap.
 inline void biasLightChannel(u8& a, u8 nxt) {

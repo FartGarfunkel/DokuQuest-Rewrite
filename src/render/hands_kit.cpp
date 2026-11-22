@@ -7,6 +7,7 @@
 #include "core/item_glint.h"
 #include "client/app.h"
 #include "world/world.h"
+#include "world/light.h"
 #include <map>
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -104,11 +105,8 @@ void handsText(ContentDraw& cd, const TPose& pose, float cx, float y, float cz, 
 }
 
 VoxelLight handsLight(World& w, ivec3 at) {
-  u8 best = w.getLight(at.x, at.y, at.z);
-  static const int D[6][3] = {{0, 1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}};
-  int s = best >> 4, b = best & 15;
-  for (auto& d : D) { const u8 l = w.getLight(at.x + d[0], at.y + d[1], at.z + d[2]); s = std::max(s, l >> 4); b = std::max(b, l & 15); }
-  return VoxelLight{s / 15.f, b / 15.f};
+  const u8 l = aroundAirLight(w, at.x, at.y, at.z);
+  return VoxelLight{(l >> 4) / 15.f, (l & 15) / 15.f};
 }
 
 float handsEase(ivec3 at, int part, bool open, double dt) {

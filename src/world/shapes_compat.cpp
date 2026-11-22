@@ -41,7 +41,9 @@ bool worldBoxes(const World& w, int x, int y, int z, BlockId id, int purpose, st
     ox = sh.x; oy = sh.y; oz = sh.z;
     stretch = sh.hang && sh.hy == 1;
   } else {
-    oy = (float)sinkOffset(id, nb);
+    int ix = 0, iy = 0, iz = 0;
+    restShift(id, nb, ix, iy, iz);
+    ox = (float)ix; oy = (float)iy; oz = (float)iz;
     if (reg().tRender[id] == (u8)Render::Torch) {
       int m = meta & 7;
       if (torchSetBack((u8)m, nb) > 0) { ox = m == 1 ? -8.f : m == 2 ? 8.f : 0; oz = m == 3 ? -8.f : m == 4 ? 8.f : 0; }

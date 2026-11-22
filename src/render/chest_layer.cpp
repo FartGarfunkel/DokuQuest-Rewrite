@@ -22,6 +22,8 @@
 #include "render/hands_kit.h"
 #include "render/content_draw.h"
 #include "sim/physics.h"
+#include "world/light.h"
+#include "world/shapes.h"
 #include <map>
 #include <set>
 
@@ -352,17 +354,13 @@ public:
         // open side round it
         static const vec3 CAB_FRONT[4] = {vec3(0, 0, 1), vec3(-1, 0, 0), vec3(0, 0, -1), vec3(1, 0, 0)};   // (as the mesher turns its model: sim/chest_work.cpp CABINET_FRONT)
         const ivec3 fr = pos + ivec3(CAB_FRONT[o.facing & 3]);
-        u8 l = w.getLight(fr.x, fr.y, fr.z);
-        if (reg().tOpaque[w.getBlock(fr.x, fr.y, fr.z)]) {
-          int sk = 0, bl = 0;
-          for (const ivec3 d : {ivec3(1, 0, 0), ivec3(-1, 0, 0), ivec3(0, 0, 1), ivec3(0, 0, -1), ivec3(0, 1, 0)}) {
-            const ivec3 q = pos + d; if (reg().tOpaque[w.getBlock(q.x, q.y, q.z)]) continue;
-            const u8 ql = w.getLight(q.x, q.y, q.z); sk = std::max(sk, ql >> 4); bl = std::max(bl, ql & 15);
-          }
-          l = (u8)((sk << 4) | bl);
-        }
+        u8 l = aroundAirLight(w, pos.x, pos.y, pos.z);
+        if (w.isLoaded(fr.x, fr.y, fr.z) && !reg().tOpaque[w.getBlock(fr.x, fr.y, fr.z)]) l = w.getLight(fr.x, fr.y, fr.z);
         const VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
-        mat4 m = glm::translate(mat4(1), rel + vec3(0.5f, 0, 0.5f));
+        WorldShapeNb cnb(w, pos.x, pos.y, pos.z);
+        int cx = 0, cy = 0, cz = 0;
+        restShift(o.id, cnb, cx, cy, cz);
+        mat4 m = glm::translate(mat4(1), rel + vec3(0.5f + cx / 16.f, cy / 16.f, 0.5f + cz / 16.f));
         m = glm::rotate(m, -(o.facing & 3) * PI / 2, vec3(0, 1, 0));   // (the mesher's turn, world/shapes.cpp rotBox: +z to -x for meta 1)
         m = glm::translate(m, vec3(-0.5f, 0, -0.5f));
         VR.draw(cab.base.gl, m * cab.base.matrix(), L);
@@ -372,7 +370,7 @@ public:
         VR.draw(cab.lid.gl, dm * cab.lid.matrix(), L);
         if (s.app.settings.handsStations && e > 0.6f) doorThings.push_back({pos, dm, L, e});   // (the note and sort button on its inside: below)
         if (o.settling || o.t < 0.2f) continue;
-        drawInside(s, w, VR, o, pos, glm::translate(mat4(1), rel), L, (float)f.time);
+        drawInside(s, w, VR, o, pos, glm::translate(mat4(1), rel + vec3(cx / 16.f, cy / 16.f, cz / 16.f)), L, (float)f.time);
         continue;
       }
       const int half = reg().block(o.id).str("shape").empty() && doubleChestFor(reg().block(o.id).faces[4])
@@ -382,9 +380,12 @@ public:
       const vec3 rel = f.cam.rel(glm::dvec3(pos));
       if (!f.cam.frustum.sphere(rel + vec3(0.5f), 1.2f)) continue;
       if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
-      const u8 l = w.getLight(pos.x, pos.y + 1, pos.z);
+      const u8 l = aroundAirLight(w, pos.x, pos.y, pos.z);
       const VoxelLight L{(l >> 4) / 15.f, (l & 15) / 15.f};
-      const mat4 m = glm::translate(mat4(1), rel);
+      WorldShapeNb nb(w, pos.x, pos.y, pos.z);
+      int ox = 0, oy = 0, oz = 0;
+      restShift(o.id, nb, ox, oy, oz);
+      const mat4 m = glm::translate(mat4(1), rel + vec3(ox / 16.f, oy / 16.f, oz / 16.f));
       VR.draw(cm.base.gl, m * cm.base.matrix(), L);
       // the lid turns about its back edge: the front rises
       const vec3 d = FRONT[o.facing & 3];

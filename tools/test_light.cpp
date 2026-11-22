@@ -73,6 +73,22 @@ int main(int argc, char** argv) {
     check(!cellOpenToSky(c, 2, 22, 10), "the far corner of the room has a stone roof");
   }
 
+  printf("[chest lid light: skip unloaded noon]\n");
+  {
+    // a dark cave chest (sky 0) beside a missing chunk (getLight would return 0xF0): the lid must
+    // stay dark, not pick up phantom daylight
+    const u8 packed[2] = {0x00, 0xF0};
+    const bool loaded[2] = {true, false};
+    const u8 got = packedLightMaxLoaded(packed, loaded, 2);
+    check((got >> 4) == 0, strFormat("an unloaded neighbour is not noon on a dark chest (sky %d)", got >> 4));
+    const bool both[2] = {true, true};
+    const u8 sun = packedLightMaxLoaded(packed, both, 2);
+    check((sun >> 4) == 15, "real daylight in a loaded cell still lights it");
+    const u8 room[2] = {0x03, 0x08};
+    const u8 mix = packedLightMaxLoaded(room, both, 2);
+    check((mix >> 4) == 0 && (mix & 15) == 8, strFormat("a torch next to a dark chest is block 8 (got %d)", mix & 15));
+  }
+
   printf("%d passed, %d failed\n", passes, fails);
   return fails ? 1 : 0;
 }

@@ -1026,10 +1026,25 @@ bool carveBoxes(std::vector<ShapeBox>& out, u8 carve, const ShapeNb& nb) {   // 
 
 int sinkOffset(BlockId id, const ShapeNb& nb) {
   const Registry& R = reg();
-  if (!R.tSink[id]) return 0;
+  const int k = R.tShape[id];
+  // a slab or stair on another slab stays in its own cell (two bottom slabs combine by meta, not by sinking)
+  if (k == ShapeKind::Slab || k == ShapeKind::Stairs || k == ShapeKind::Carpet || k == ShapeKind::Layer || k == ShapeKind::Path)
+    return 0;
   BlockId b = nb.id(0, -1, 0);
   if (u8 cv = nb.carve(0, -1, 0)) return R.tOpaque[b] && carveFaceDepth(cv, 0, 1, 0) == 8 ? -8 : 0;   // a chiseled bottom half
   return R.tShape[b] == ShapeKind::Slab && (nb.meta(0, -1, 0) & 7) == 0 ? -8 : 0;
+}
+void restShift(BlockId id, const ShapeNb& nb, int& ox, int& oy, int& oz) {
+  ox = oz = 0;
+  oy = sinkOffset(id, nb);
+  const int k = reg().tShape[id];
+  if (k == ShapeKind::Slab || k == ShapeKind::Stairs || k == ShapeKind::Carpet || k == ShapeKind::Layer || k == ShapeKind::Path)
+    return;
+  for (int f = 0; f < 4; f++) {
+    if (!slabGap(nb.id(DIRX[f], 0, DIRZ[f]), nb.meta(DIRX[f], 0, DIRZ[f]), f, nb.carve(DIRX[f], 0, DIRZ[f]))) continue;
+    ox += DIRX[f] * 8;
+    oz += DIRZ[f] * 8;
+  }
 }
 float torchSetBack(u8 m, const ShapeNb& nb) {
   if (m < 1 || m > 4) return 0;
@@ -1047,8 +1062,10 @@ bool blockShapeBoxes(const World& w, int x, int y, int z, int purpose, std::vect
   static thread_local std::vector<ShapeBox> boxes;
   if (!shapeBoxes(id, meta, nb, purpose, boxes)) return false;
   SeatShift sh = seatShiftOf(id, meta, carve, nb);
-  float sink = sh.micro ? sh.y : (float)sinkOffset(id, nb);
-  vec3 off(sh.micro ? sh.x : 0, 0, sh.micro ? sh.z : 0);
+  int rx = 0, ry = 0, rz = 0;
+  if (!sh.micro) restShift(id, nb, rx, ry, rz);
+  float sink = sh.micro ? sh.y : (float)ry;
+  vec3 off(sh.micro ? sh.x : (float)rx, 0, sh.micro ? sh.z : (float)rz);
   if (!sh.micro && reg().tRender[id] == (u8)Render::Torch) {
     int m = meta & 7; float back = torchSetBack((u8)m, nb);
     if (back > 0) off = vec3(m == 1 ? -8 : m == 2 ? 8 : 0, 0, m == 3 ? -8 : m == 4 ? 8 : 0);
