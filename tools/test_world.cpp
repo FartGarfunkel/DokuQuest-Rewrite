@@ -41,6 +41,8 @@ int ruinStyle(int biome, double temp, std::string_view landName);
 int ruinRubbleY(int wallH, int rubbleGh, int wallGh, int meanY);
 int dungeonEntryY(int surfY, int minGround, int maxRoomH);
 bool dungeonWellOk(int surfY, int entryY);
+int mineCorridorH();
+int minePal(double temp, int yo);
 }
 static int fails = 0, passes = 0;
 static void check(bool ok, const std::string& what) { printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str()); (ok ? passes : fails)++; }
@@ -576,6 +578,13 @@ int main(int argc, char** argv) {
     check(desertFoundationTop(42, 44) == 42, "high ground under a column stops at that ground");
     check(desertFoundationTop(38, 44) == 38, "buried columns pour foundation down, not up");
     check(desertFoundationTop(50, 44) == 44, "foundation never pours above the floor");
+  }
+  printf("[mineshaft pal]\n");
+  {
+    check(mineCorridorH() == 4, "mineshaft corridors are 4 high");
+    check(minePal(0.4, 10) == 2, "a deep mine uses the stone-brick pal");
+    check(minePal(-0.3, 24) == 2, "a cold mine uses the stone-brick pal");
+    check(minePal(0.4, 24) != 2, "a warm shallow mine stays timber");
   }
   printf("[dungeon well]\n");
   {

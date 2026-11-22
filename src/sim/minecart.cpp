@@ -5,6 +5,11 @@
 #include "sim/player.h"
 #include "sim/physics.h"
 #include "sim/worldsys.h"
+#include "gen/structures.h"
+#include "gen/structures_api.h"
+#include "gen/generator.h"
+#include "world/dims.h"
+#include <set>
 
 namespace dq {
 using namespace rs;
@@ -579,6 +584,79 @@ void railRefreshAround(World& w, int x, int y, int z) {
     int sh = railShapeFor(w, nx, ny, nz, id, ex[0] ? 1 : 0);
     if (sh != cur) w.setBlock(nx, ny, nz, id, rs::T().rail[id] == RAIL_NORMAL ? sh : (m & 8) | sh);
   }
+}
+
+json structLoot(const std::string& kind, Mulberry32& rnd);   // gen/structures_common.cpp
+
+// Abandoned mineshafts list carts on the plan (band-local y). The first time someone is near, they go on the rails.
+namespace {
+class MineShaftCarts : public LevelSystem {
+public:
+  const char* name() const override { return "mineshaft-carts"; }
+  void tick(Level& l, double dt) override {
+    if (l.isRemote() || !l.gen || (t -= dt) > 0) return;
+    t = 1;
+    std::vector<Player*> ps;
+    for (auto& e : l.entities()) if (auto* p = dynamic_cast<Player*>(e.get()))
+      if (!p->removed && !p->dead && p->realm == REALM_MAIN && p->mode != "spectator") ps.push_back(p);
+    if (ps.empty()) return;
+    const int mine = structureTypeIndex("mineshaft"), deep = structureTypeIndex("mineshaft_deep");
+    World& w = l.world(REALM_MAIN);
+    std::set<std::string> seen;
+    for (Player* p : ps) {
+      if (landOf(dimOfY(ifloor(p->pos.y))) != DIM_OVERWORLD) continue;
+      const StructureIndex* idx = structureIndexOf(l.gen->forDim(DIM_OVERWORLD));
+      if (!idx || !idx->active()) continue;
+      const int base = dimBase(DIM_OVERWORLD);
+      std::vector<const StructurePlan*> plans;
+      if (mine >= 0) idx->near(ifloor(p->pos.x), ifloor(p->pos.z), 48, plans, mine);
+      if (deep >= 0) idx->near(ifloor(p->pos.x), ifloor(p->pos.z), 48, plans, deep);
+      if (mine < 0 && deep < 0) idx->near(ifloor(p->pos.x), ifloor(p->pos.z), 48, plans, NEAR_PLACES);
+      for (const StructurePlan* S : plans) {
+        if (!S || S->id.empty() || !seen.insert(S->id).second) continue;
+        if (!S->data.is_object() || !S->data["carts"].is_array()) continue;
+        json& recs = l.info.data["structs"];
+        if (!recs.is_object()) recs = json::object();
+        json& rec = recs[S->id];
+        if (!rec.is_object()) rec = json::object();
+        if (rec.value("cartsUp", 0)) continue;
+        const json& carts = S->data["carts"];
+        bool ready = true;
+        for (const auto& C : carts) {
+          if (!C.is_object() || !C["at"].is_array() || C["at"].size() < 3) continue;
+          const json& a = C["at"];
+          if (!a[0].is_number() || !a[1].is_number() || !a[2].is_number()) continue;
+          const int x = (int)a[0].get<double>(), y = (int)a[1].get<double>() + base, z = (int)a[2].get<double>();
+          if (!w.isLoaded(x, y, z)) { ready = false; break; }
+        }
+        if (!ready) continue;
+        for (const auto& C : carts) {
+          if (!C.is_object() || !C["at"].is_array() || C["at"].size() < 3) continue;
+          const json& a = C["at"];
+          if (!a[0].is_number() || !a[1].is_number() || !a[2].is_number()) continue;
+          const int x = (int)a[0].get<double>(), y = (int)a[1].get<double>() + base, z = (int)a[2].get<double>();
+          const std::string kind = C.value("kind", "minecart");
+          if (cartAt(l, REALM_MAIN, x, y, z)) continue;
+          if (!T().rail[w.getBlock(x, y, z)]) continue;
+          Minecart* c = placeCart(l, REALM_MAIN, kind, x, y, z, 0);
+          if (!c || kind != "chest") continue;
+          Mulberry32 r(hash32(x, y + S->hashDy, z, (i32)S->seed));
+          c->data["items"] = structLoot("mineshaft", r);
+        }
+        rec["cartsUp"] = 1;
+      }
+    }
+  }
+private:
+  double t = 0;
+};
+} // namespace
+
+void registerMineShaftCarts() {
+  static bool done = false;
+  if (done) return;
+  done = true;
+  registerLevelSystem([](Level&) -> std::shared_ptr<LevelSystem> { return std::make_shared<MineShaftCarts>(); });
 }
 
 } // namespace dq

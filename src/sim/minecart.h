@@ -56,6 +56,7 @@ private:
 Minecart* cartAt(Level& lv, int realm, int x, int y, int z, bool withItems = false);
 Minecart* placeCart(Level& lv, int realm, const std::string& kind, int x, int y, int z, int dir);
 bool placeCartItem(Level& lv, Player& p, ItemStack& held, ivec3 rail);   // rsplace.js placeCartItem
+void registerMineShaftCarts();   // abandoned mineshafts: their carts, once, when someone is near
 std::vector<Minecart*> trainOf(Level& lv, Minecart* c);
 void trainStep(Level& lv, double dt);   // joined carts hold their distance and share their speed
 // laying track
