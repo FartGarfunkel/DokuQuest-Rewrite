@@ -14,6 +14,10 @@
 #include <unordered_map>
 
 namespace dq {
+
+bool stoneHoodoosOn() { return false; }   // eroded / sugi / stratified stone spires: they always look broken
+
+
 using namespace vmap;
 
 OverworldGen::OverworldGen(const WorldGenOptions& o)
@@ -621,8 +625,7 @@ void OverworldGen::surfaceV15(GenBuf& b, OwColumn* cols, int cx, int cz) const {
 }
 
 // a column's extras before its surface (the imported data's y throughout; top: the world-surface height + 1):
-// the eroded badlands and frozen ocean extensions, the sugi pillars and the
-// stratified desert pillars. Each raises stone (or ice) from the ground up to a height its noises give.
+// frozen-ocean icebergs, and (when stoneHoodoosOn) the eroded-badlands / sugi / stratified stone pillars.
 void OverworldGen::surfaceExtras(GenBuf& b, int x, int z, int wx, int wz, int top, int prelim) const {
   const DensityGraph& g = *vg_;
   const int bio = landBiomeAt(wx, top, wz);
@@ -633,7 +636,7 @@ void OverworldGen::surfaceExtras(GenBuf& b, int x, int z, int wx, int wz, int to
     if (built) return;
     for (int k = std::min(j, DIM_H - 2); k >= 0; k--) { BlockId& h = at(k); if (h == AIR || (water && h == B.water)) h = B.stone; else break; }
   };
-  if (bio == bEroded_) {
+  if (stoneHoodoosOn() && bio == bEroded_) {
     const double e = std::min(std::abs(N(0, wx, wz) * 8.25), N(1, wx * 0.2, wz * 0.2) * 15.0);
     if (e > 0) {
       const double f = std::abs(N(2, wx * 0.75, wz * 0.75) * 1.5);
@@ -667,7 +670,7 @@ void OverworldGen::surfaceExtras(GenBuf& b, int x, int z, int wx, int wz, int to
       }
     }
   }
-  if (bio >= 0 && (bio == bSugi_ || bio == bSugi2_ || bio == bStrat_ || bio == bLively_ || bio == bBlooming_)) {
+  if (stoneHoodoosOn() && bio >= 0 && (bio == bSugi_ || bio == bSugi2_ || bio == bStrat_ || bio == bLively_ || bio == bBlooming_)) {
     int o = 0; for (int y = DIM_H - 1; y > 0; y--) { const BlockId h = b.blocks[colIdx(x, y, z)]; if (h != AIR && h != B.water && reg().tSolid[h]) { o = y + 1; break; } }   // (the ocean-floor height, + 1)
     if (bio == bSugi_ || bio == bSugi2_) {
       const double e = std::min(std::abs(N(6, wx, wz) * 8.5), N(8, wx * 0.2, wz * 0.2) * 12.0);

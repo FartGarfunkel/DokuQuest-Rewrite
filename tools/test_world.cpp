@@ -604,6 +604,29 @@ int main(int argc, char** argv) {
     check(lf && reg().block(lf).has("isLeaves"), "oak leaves stay walk-through");
     const BlockId cat = reg().blockId("cattail");
     check(cat && reg().tWlog[cat], "cattails can hold water");
+    check(lf && reg().tWlog[lf], "oak leaves can hold water");
+    const BlockId mg = reg().blockId("mangrove_leaves");
+    check(mg && reg().tWlog[mg], "mangrove leaves can hold water");
+    {
+      GenBlocks B; B.resolve();
+      GenBuf& b = GenBuf::local();
+      const int y = 40;
+      b.blocks[colIdx(8, y, 8)] = B.water;
+      TreeSpec t; t.x = 8; t.y = y; t.z = 8; t.kind = TREE_OAK;
+      std::vector<TreePart> parts{{8.0, (double)y, 8.0, lf, true, -1}};
+      writeTreeParts(B, b, 0, 0, t, parts);
+      const int i = colIdx(8, y, 8);
+      check(b.blocks[i] == lf, "leaves spawn in water instead of skipping it");
+      check((b.meta[i] & WLOG) != 0, "leaves in water are waterlogged");
+    }
+  }
+  printf("[banana slug]\n");
+  {
+    check(!reg().mobs.contains("banana_slug"), "the banana slug is not in the game");
+  }
+  printf("[stone hoodoos]\n");
+  {
+    check(!stoneHoodoosOn(), "eroded badlands and sugi/strat biomes grow no stone spires");
   }
   printf("[structure spacing]\n");
   {

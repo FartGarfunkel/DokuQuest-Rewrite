@@ -312,13 +312,17 @@ bool growTree(Level& lv, World& w, int x, int y, int z, double r) {
     for (auto& p : parts) {
       if (p[1] == y && p[0] == x && p[2] == z) continue;
       BlockId b = w.getBlock(p[0], p[1], p[2]);
-      if (b && !bhas(b, BF::IsLeaves) && !R.tReplaceable[b] && R.block(b).key != "tall_grass") return false;
+      if (b && !bhas(b, BF::IsLeaves) && !R.tReplaceable[b] && R.block(b).key != "tall_grass"
+          && !(R.tLiquid[b] == 1 && R.tWlog[(BlockId)p[3]])) return false;
     }
     w.setBlock(x, y, z, AIR);
     for (auto& p : parts) {
       BlockId b = w.getBlock(p[0], p[1], p[2]);
-      if (p[4] && b && !R.tReplaceable[b]) continue;
-      w.setBlock(p[0], p[1], p[2], (BlockId)p[3], (u8)p[5]);
+      const bool wet = R.tLiquid[b] == 1 && R.tWlog[(BlockId)p[3]];
+      if (p[4] && b && !R.tReplaceable[b] && !wet) continue;
+      u8 meta = (u8)p[5];
+      if (wet) meta |= WLOG;
+      w.setBlock(p[0], p[1], p[2], (BlockId)p[3], meta);
     }
     return true;
   };

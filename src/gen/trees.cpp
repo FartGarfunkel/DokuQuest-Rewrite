@@ -306,13 +306,13 @@ void writeTreeParts(const GenBlocks& B, GenBuf& b, int cx, int cz, const TreeSpe
     if (lx < 0 || lx > 15 || lz < 0 || lz > 15 || p.y < 1 || p.y >= DIM_H) continue;
     int i = colIdx(jsTrunc(lx), jsTrunc(p.y), jsTrunc(lz));
     BlockId cur = b.blocks[i];
-    if (p.onlyAir && cur != AIR && cur != B.tall_grass && cur != B.fern) continue;
+    const bool wet = B.liquid[cur] && B.wlog[p.id];
+    if (p.onlyAir && cur != AIR && cur != B.tall_grass && cur != B.fern && !wet) continue;
     if (p.id == B.vine) {
       if (cur != AIR) continue;
       double ddx = p.x - t.x, ddz = p.z - t.z;
       b.meta[i] = ddx == 1 ? 3 : ddx == -1 ? 1 : ddz == 1 ? 0 : 2;
     }
-    if (!p.onlyAir && B.liquid[cur] && B.wlog[p.id]) b.meta[i] |= WLOG;
     BlockId id = p.id;
     if (t.mossy && ((id == B.dark_oak_log && B.mossy_dark_oak_log) || (id == B.mangrove_log && B.mossy_mangrove_log)) && hash32(jsTrunc(p.x), jsTrunc(p.y), jsTrunc(p.z), 77) % 100 < 45)
       id = id == B.dark_oak_log ? B.mossy_dark_oak_log : B.mossy_mangrove_log;
@@ -322,6 +322,7 @@ void writeTreeParts(const GenBlocks& B, GenBuf& b, int cx, int cz, const TreeSpe
     b.blocks[i] = id;
     if (p.meta >= 0) b.meta[i] = (u8)p.meta;
     if (B.axis[p.id] && p.meta < 0) b.meta[i] = 0;   // logs stand upright unless a branch turned them
+    if (wet) b.meta[i] |= WLOG;
   }
 }
 

@@ -909,7 +909,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
             int j = 0; while (j < k && cand[j] != nb) j++; if (j == k) { cand[k] = nb; cn[k++] = 0; } cn[j]++;
           }
           BlockId host = 0; int best = 0; for (int j = 0; j < k; j++) if (cn[j] > best) { best = cn[j]; host = cand[j]; }
-          if (host && host != ores->baseOf(id)) {
+          if (host) {
             emitCube(c, gm, 0, out.opaque, host, x, y, z, 0);
             emitOreSpecks(c, out.cutout, id, x, y, z, sp);
             break;

@@ -9,6 +9,7 @@
 #include "render/mesher.h"
 #include "render/chest_layer.h"
 #include "render/mesh_ctx.h"
+#include "render/ore_overlay.h"
 #include "world/carve_forms.h"
 #include <cmath>
 #include <cstdio>
@@ -235,6 +236,65 @@ int main(int argc, char** argv) {
       CHECK(chiselSky >= 0, "chiseled_stone_bricks in a dark room draws vertices");
       CHECK(chiselSky < 40, "chiseled_stone_bricks in a dark room is not noon (packed sky %d)", chiselSky);
     }
+    cases++;
+  }
+  // ores take on the rock beside them (render/ore_overlay.cpp): zinc and bismuth in cobble look like cobble
+  {
+    applyResourcePack(ts, "");
+    buildOreOverlays(ts);
+    setMeshTiles(ts);
+    const auto ores = oreTables();
+    const BlockId zinc = R.blockId("zinc_ore"), bis = R.blockId("bismuth_ore");
+    const BlockId cobble = R.blockId("cobblestone"), copper = R.blockId("copper_ore");
+    CHECK(zinc && bis && cobble, "zinc, bismuth and cobblestone are registered");
+    CHECK(ores->isHost(cobble), "cobblestone is a host rock ores can take on");
+    CHECK(ores->specks(zinc) >= 0, "zinc ore has specks so it can take on its rock");
+    CHECK(ores->specks(bis) >= 0, "bismuth ore has specks so it can take on its rock");
+    CHECK(ores->specks(copper) >= 0, "copper ore keeps its specks");
+    auto speckN = [&](BlockId id) {
+      const int sp = ores->specks(id); if (sp < 0) return -1;
+      const u8* p = ts.tile(sp); int n = 0;
+      for (int i = 0, S = ts.size * ts.size; i < S; i++) if (p[i * 4 + 3] > 128) n++;
+      return n;
+    };
+    const int cap = ts.size * ts.size / 2, copperN = speckN(copper), zincN = speckN(zinc), bisN = speckN(bis);
+    printf("     (specks copper %d zinc %d bismuth %d of %d, cap %d)\n", copperN, zincN, bisN, ts.size * ts.size, cap);
+    CHECK(zincN > 0 && zincN <= cap, "zinc specks are sparse like copper (%d of %d, copper %d)", zincN, ts.size * ts.size, copperN);
+    CHECK(bisN > 0 && bisN <= cap, "bismuth specks are sparse like copper (%d of %d, copper %d)", bisN, ts.size * ts.size, copperN);
+    auto tileOf = [](const ChunkVertex& v) { return (int)((v.b >> 14) & 0xFFF) | (int)(((v.d >> 16) & 1) << 12); };
+    auto opaqueTileInCell = [&](const MeshOutput& o, int bx, int by, int bz) {
+      auto pos = [](u32 w) { return (float)w / 256.f - 16.f; };
+      for (size_t q = 0; q + 3 < o.opaque.size(); q += 4) {
+        vec3 c(0);
+        for (int k = 0; k < 4; k++) {
+          const ChunkVertex& v = o.opaque[q + k];
+          c += vec3(pos(v.a & 16383), pos((v.a >> 14) & 16383), pos(v.b & 16383)) * 0.25f;
+        }
+        const int n = (o.opaque[q].a >> 28) & 7;
+        if (n > 5) continue;
+        const vec3 in = c - vec3((float)FACES[n].n[0], (float)FACES[n].n[1], (float)FACES[n].n[2]) * 0.01f;
+        if (in.x >= bx && in.x < bx + 1 && in.y >= by && in.y < by + 1 && in.z >= bz && in.z < bz + 1) return tileOf(o.opaque[q]);
+      }
+      return -1;
+    };
+    auto meshOreInCobble = [&](BlockId ore) {
+      auto in = emptyInput();
+      put(*in, SX, SY, SZ, ore);
+      put(*in, SX - 1, SY, SZ, cobble);
+      put(*in, SX, SY - 1, SZ, cobble);
+      put(*in, SX, SY, SZ - 1, cobble);
+      buildSectionMesh(*in, out, opt);
+      return opaqueTileInCell(out, SX, SY, SZ);
+    };
+    const int cobbleTile = R.block(cobble).faces[0];
+    const int zincOwn = R.block(zinc).faces[0];
+    const int bisOwn = R.block(bis).faces[0];
+    const int zincDrawn = meshOreInCobble(zinc);
+    const int bisDrawn = meshOreInCobble(bis);
+    CHECK(zincDrawn == cobbleTile, "zinc in cobble is drawn as cobble (tile %d, cobble %d, zinc %d)", zincDrawn, cobbleTile, zincOwn);
+    CHECK(bisDrawn == cobbleTile, "bismuth in cobble is drawn as cobble (tile %d, cobble %d, bismuth %d)", bisDrawn, cobbleTile, bisOwn);
+    CHECK(zincDrawn != zincOwn, "zinc in cobble is not its own unique cube");
+    CHECK(bisDrawn != bisOwn, "bismuth in cobble is not its own unique cube");
     cases++;
   }
   printf("mesher carve checks: %d cases, %d passed, %d failed\n", cases, passes, fails);

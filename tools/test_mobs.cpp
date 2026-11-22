@@ -181,6 +181,7 @@ int main(int argc, char** argv) {
         if (m.is_object() && m.contains("spawnDim")) for (auto& e : m["spawnDim"]) if (e.size() >= 6) for (auto& p : e[5]) s += p.get<std::string>() + " ";
         return s; };
       CHECK(!reg().mobs.contains("farseer") && !creatureType("farseer"), "the farseer is not in the game");
+      CHECK(!reg().mobs.contains("banana_slug") && !creatureType("banana_slug"), "the banana slug is not in the game");
       CHECK(livesIn("guster").find("desert") != std::string::npos && livesIn("guster").find("forest") == std::string::npos, "the guster comes out only in deserts and the badlands (%s)", livesIn("guster").c_str());
       CHECK(livesIn("crimson_mosquito") == "crimson " && livesIn("warped_toad") == "warped " && livesIn("soul_vulture") == "soul ", "the Ember Depths' creatures each in their own woods and valleys");
       const json& lv = reg().mobs.value("laviathan", json());
