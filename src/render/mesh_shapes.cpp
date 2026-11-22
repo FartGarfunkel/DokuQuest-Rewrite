@@ -136,7 +136,14 @@ void emitBox(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, u8 meta, int x
           sample.s[i] = (u8)clampv((int)std::lround(ss[i]), 0, 255);
           sample.b[i] = (u8)clampv((int)std::lround(sb[i]), 0, 255);
         }
-      } else { sk = own.sky; bl = own.bl; sample = rgbAt(c, x, y, z); }
+      } else {
+        // internal faces of a carved octant (and any box not on the cell boundary): adjacent air,
+        // never the opaque cell's leftover noon
+        const LightRgb air = aroundAirRgb(c, x, y, z);
+        sk = (float)(max3u(air.s[0], air.s[1], air.s[2]) >> 4);
+        bl = (float)(max3u(air.b[0], air.b[1], air.b[2]) >> 4);
+        sample = air;
+      }
       { u8 em[3]; blockLightRgb(id, (u8)clampv((int)std::lround(own.l0), 0, 15), em); for (int i = 0; i < 3; i++) if (em[i] > sample.b[i]) sample.b[i] = em[i]; }
       float shade = FACES[f].shade * ao;
       v[k] = {vec3(x + X * P, y + (Y + sink) * P, z + Z * P), vec2(clampv(st.x, 0.f, 16.f) / 16, clampv(st.y, 0.f, 16.f) / 16), sk, bl, shade, 0, markRgbLit(packRgbLight(sample))};
@@ -423,7 +430,10 @@ void emitCarvedBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x,
   thread_local std::vector<ShapeBox> boxes;
   if (!carveBoxes(boxes, carveMask, nb)) return;   // caller gate already checked the carve flag
   int side = self.faces[0], top = self.faces[2], bot = self.faces[3];
-  Own own{(float)c.skyAt(x, y, z), std::max<float>((float)c.blAt(x, y, z), (float)R.tLight[id]), (float)R.metaLight(id, c.metaAt(x, y, z))};
+  const LightRgb air = aroundAirRgb(c, x, y, z);
+  const float sk = (float)(max3u(air.s[0], air.s[1], air.s[2]) >> 4);
+  const float bl = (float)std::max((int)(max3u(air.b[0], air.b[1], air.b[2]) >> 4), (int)R.tLight[id]);
+  Own own{sk, bl, (float)R.metaLight(id, c.metaAt(x, y, z))};
   u8 mat = Mat::Cutout | (R.tTrans[id] ? Mat::Translucent : 0);
   // grass and leaves keep their climate colour when carved (the grey picture is tinted, as the plain cube's)
   const BlockTraits& T = traits(id);

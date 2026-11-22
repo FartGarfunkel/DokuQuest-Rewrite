@@ -32,6 +32,11 @@
 #include <cmath>
 
 using namespace dq;
+namespace dq {
+int ruinFloorY(int gh, int meanY);
+int ruinStyle(int biome, double temp, std::string_view landName);
+int ruinRubbleY(int wallH, int rubbleGh, int wallGh, int meanY);
+}
 static int fails = 0, passes = 0;
 static void check(bool ok, const std::string& what) { printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str()); (ok ? passes : fails)++; }
 
@@ -543,6 +548,21 @@ int main(int argc, char** argv) {
     check(g26 > 0, "terrain 26: fallen hollow poplar logs");
     check(s26 > 0, "terrain 26: red shrubs");
     check(p25 == 0 && l25 == 0 && g25 == 0 && s25 == 0, "terrain 25 (an old world) has none of it: its land is unchanged");
+  }
+  printf("[ruins sit and pal]\n");
+  {
+    check(ruinFloorY(40, 46) == 40, "ruin floor follows local ground, not the mean");
+    check(ruinFloorY(52, 46) == 52, "ruin floor steps up with the hill");
+    check(ruinStyle(BIOME_DESERT, 0.4, "main:desert") == 1, "sandstone pal in a named desert");
+    check(ruinStyle(BIOME_DESERT, 0.4, "") == 1, "sandstone pal when the land is desert and unnamed");
+    check(ruinStyle(BIOME_DESERT, 0.4, "nature:flower_meadow") != 1, "no sandstone pal in a flower meadow");
+    check(ruinStyle(BIOME_PLAINS, 0.2, "main:plains") != 1, "no sandstone pal on plains");
+    check(ruinStyle(BIOME_FOREST, 0.1, "main:flower_forest") != 1, "no sandstone pal in a forest");
+    check(ruinStyle(BIOME_PLAINS, -0.3, "") == 2, "cold pal in the frost");
+    check(ruinRubbleY(3, 40, 40, 46) == 41, "rubble sits on local ground");
+    check(ruinRubbleY(0, 40, 40, 46) < 0, "no rubble without a wall stump");
+    check(ruinRubbleY(2, 30, 40, 46) < 0, "no rubble over a 3-block drop");
+    check(ruinRubbleY(2, 38, 40, 46) == 39, "rubble allowed on a 2-block step");
   }
   printf("\n%d passed, %d failed\n", passes, fails);
   rg.lv->close();

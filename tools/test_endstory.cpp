@@ -3,6 +3,7 @@
 //   test_endstory [--userdir DIR]       exit code 0 = everything passed
 #include "core/init.h"
 #include "sim/endstory.h"
+#include "sim/endstory_int.h"
 #include "sim/creature.h"
 #include "sim/creature_rig.h"
 #include "sim/mob_combat.h"
@@ -56,9 +57,47 @@ static int countItems(const std::string& id) {
 static void kill(Creature& c, Entity* by = nullptr) { DamageSrc s; s.type = "mob"; if (by) s.attacker = by->id; c.invulnT = 0; c.hurt(*L, 1e5f, s); }
 static bool use(const std::string& item, ivec3 hit = ivec3(0), int face = -1) { return bus.emit("itemUse", json::array({P->name, item, hit.x, hit.y, hit.z, face})); }
 
+static void testTwinVaultPlates() {
+  World& w = L->world(REALM_MAIN);
+  const int OB = dimBase(DIM_OVERWORLD);
+  const int Y = OB + 80, px = 3204, pz = 40, py = Y + 1;
+  const int px2 = 3210, pz2 = 40;
+  P->realm = REALM_MAIN;
+  P->dead = false;
+  P->pos = vec3(px + 0.5f, (float)py, pz + 0.5f);
+  load(P->pos, 2);
+  for (int x = 3190; x < 3222; x++) for (int z = 28; z < 52; z++) {
+    w.setBlock(x, Y, z, B("stone"));
+    for (int y = Y + 1; y < Y + 8; y++) w.setBlock(x, y, z, AIR);
+  }
+  w.setBlock(px, py, pz, B("stone_pressure_plate"));
+  w.setBlock(px2, py, pz2, B("stone_pressure_plate"));
+  for (int dx = -1; dx <= 1; dx++) for (int dy = 0; dy < 3; dy++) w.setBlock(3207 + dx, py + dy, 36, B("ward_stone"));
+  const vec3 plate((float)px, (float)py, (float)pz);
+  const vec3 plate2((float)px2, (float)py, (float)pz2);
+  printf("\n[twin vault plates]\n");
+  P->pos = vec3(px + 0.5f, (float)py, pz + 0.5f);
+  check(es::onPlate(*L, plate), "onPlate: player feet in the plate cell (global y)");
+  P->pos = vec3(px + 0.5f, (float)py + 1.0f, pz + 0.5f);
+  check(es::onPlate(*L, plate), "onPlate: player standing on the plate block (AABB / global y)");
+  P->pos = vec3(px + 2.5f, (float)py + 1.0f, pz + 0.5f);
+  check(!es::onPlate(*L, plate), "onPlate: player two blocks away is off");
+  P->pos = vec3(px + 0.5f, (float)py + 2.5f, pz + 0.5f);
+  check(!es::onPlate(*L, plate), "onPlate: player well above the plate is off");
+  P->pos = vec3(3100.5f, (float)py, 10.5f);
+  check(!es::onPlate(*L, plate) && !es::onPlate(*L, plate2), "onPlate: empty plates are off");
+  Entity* it = dropItem(*L, REALM_MAIN, ItemStack("cobblestone", 1), vec3(px2 + 0.5f, (float)py + 0.2f, pz2 + 0.5f), vec3(0));
+  check(it && it->type == "item" && es::onPlate(*L, plate2), "onPlate: a dropped item holds the plate");
+  if (it) it->removed = true;
+}
+
 int main(int argc, char** argv) {
   std::string ud = (fs::temp_directory_path() / "dq-test-endstory").string();
-  for (int i = 1; i < argc; i++) if (std::string(argv[i]) == "--userdir" && i + 1 < argc) ud = argv[++i];
+  bool onlyTwin = false;
+  for (int i = 1; i < argc; i++) {
+    if (std::string(argv[i]) == "--userdir" && i + 1 < argc) ud = argv[++i];
+    if (std::string(argv[i]) == "--twin-vault") onlyTwin = true;
+  }
   std::error_code ec; fs::remove_all(ud, ec);
   CoreOptions co; co.server = true; co.userDirOverride = ud;
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
@@ -69,6 +108,12 @@ int main(int argc, char** argv) {
   L = lvp.get(); L->fx = &fx;
   World& w = L->world();
   { auto p = std::make_unique<Player>(); p->name = "Tester"; P = static_cast<Player*>(L->spawn(std::move(p))); }
+  if (onlyTwin) {
+    testTwinVaultPlates();
+    printf("\n%d passed, %d failed\n", passes, fails);
+    L->close();
+    return fails ? 1 : 0;
+  }
 
   check(!isCreatureType("phantom"), "no phantoms, ever");
   check(rigModel("ender_dragon") && rigModel("ender_dragon")->rig == "dragon" && rigModel("end_crystal"), "dragon and crystal rigs load");
@@ -430,6 +475,7 @@ int main(int argc, char** argv) {
     for (auto* o : st2) o->removed = true;
     L->info.data = saved;
   }
+  testTwinVaultPlates();
   printf("\n%d passed, %d failed\n", passes, fails);
   L->close();
   return fails ? 1 : 0;

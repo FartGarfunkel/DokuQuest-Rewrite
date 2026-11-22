@@ -4,7 +4,6 @@
 // Skylands heights are the original's + SKY_DY, the End's + END_DY; the Depths' through vmap::netherY, with the
 // pillars that reach down into the lava stretched by NETHER_K so they still reach it.
 #include "gen/structures_common.h"
-#include "gen/proc_rooms.h"
 
 namespace dq {
 using namespace vmap;
@@ -85,9 +84,13 @@ static void skyShrineBuild(ChunkWriter& w, const StructurePlan& S) {
   P.barrel(cx - 2, y, cz, 1, "sky_shrine");
   P.barrel(cx + 2, y, cz, 3, "sky_shrine");
   P.put(cx, y - 1, cz, "chiseled_quartz_block");
-  static const char* SK[] = {"shrine", "chapel", "alcove"};
-  const u32 ss = hash32(cx, y, cz, (i32)S.seed);
-  furnishPlaced(P, cx, y, cz, 2, 2, 3, SK[ss % 3], ss, PAL_QUARTZ, (int)(ss % 3));
+  const std::string qs = PLK("quartz_stairs", PLK("smooth_quartz_stairs", "stone_brick_stairs"));
+  P.put(cx, y, cz - 2, qs, 2);   // seat facing the lectern (south)
+  P.put(cx - 3, y, cz, qs, 1);
+  P.put(cx + 3, y, cz, qs, 3);
+  P.put(cx - 1, y, cz + 3, "flower_pot");
+  P.put(cx + 1, y, cz + 3, "flower_pot");
+  P.hang(cx, y + 3, cz, "lantern");
 }
 
 static bool skyshipPlan(const TerrainQuery&, int x, int z, Mulberry32& rnd, StructurePlan& S) {
@@ -112,9 +115,15 @@ static void skyshipBuild(ChunkWriter& w, const StructurePlan& S) {
   P.put(cx - 2, y - 2, cz, "air"); P.chest(cx - 3, y - 2, cz, 1, "skyship"); P.chest(cx + 3, y - 2, cz, 3, "skyship"); P.put(cx, y, cz, "air"); P.put(cx, y - 1, cz, "air"); P.ladder(cx, y - 2, y - 1, cz, 2);
   P.barrel(cx - 1, y - 2, cz - 1, 2, "skyship");
   P.barrel(cx + 1, y - 2, cz + 1, 0, "skyship");
-  furnishPlaced(P, cx, y - 2, cz, 3, 1, 2, "store", hash32(cx, y, cz, (i32)S.seed), PAL_SPRUCE, 2);
-  furnishPlaced(P, cx - 7, y + 1, cz, 2, 1, 3, "sleeping", hash32(cx - 7, y, cz, (i32)S.seed), PAL_SPRUCE, 1);
-  furnishPlaced(P, cx + 6, y + 1, cz, 1, 1, 3, "office", hash32(cx + 6, y, cz, (i32)S.seed), PAL_OAK, 0);
+  // bunks at the stern, a chart table at the bow
+  const char* bed = hasBlock("red_bed") ? "red_bed" : "bed";
+  P.put(cx - 7, y + 1, cz - 1, bed, 1);
+  P.put(cx - 6, y + 1, cz - 1, bed, 1 | 4);
+  P.put(cx - 7, y + 1, cz + 1, bed, 1);
+  P.put(cx - 6, y + 1, cz + 1, bed, 1 | 4);
+  P.put(cx + 6, y + 1, cz, PLK("oak_table", "planks"));
+  P.put(cx + 7, y + 1, cz, PLK("oak_chair", PLK("oak_stairs", "spruce_stairs")), 3);
+  P.put(cx + 6, y + 1, cz - 1, "flower_pot");
   P.hang(cx - 4, y + 2, cz, "lantern");
   P.hang(cx + 4, y + 2, cz, "lantern");
   // the mast and its sail, and the great balloon above held by chains
@@ -188,9 +197,13 @@ static void bastionBuild(ChunkWriter& w, const StructurePlan& S) {
   // the inner hall is the Ember Lord's arena: magma, chests and lectern only
   for (auto [dx, dz] : {std::pair{-9, 9}, {9, -9}}) P.spawner(cx + dx, y + 1, cz + dz, "charred_ghoul");
   for (auto [a, b] : {std::pair{-3, -3}, {3, -3}, {-3, 3}, {3, 3}}) P.hang(cx + a, y + 8, cz + b, "soul_lantern");
-  // courtyard corners away from the cages: barracks and a store
-  furnishPlaced(P, cx - 9, y + 1, cz - 9, 2, 2, 4, "armoury", hash32(cx - 9, y, cz - 9, (i32)S.seed), PAL_NETHER, 1);
-  furnishPlaced(P, cx + 9, y + 1, cz + 9, 2, 2, 4, "store", hash32(cx + 9, y, cz + 9, (i32)S.seed), PAL_BLACK, 2);
+  // courtyard corners away from the cages: a rack of arms, a store of barrels
+  P.put(cx - 9, y + 1, cz - 9, PLK("armor_stand", "cobblestone"));
+  P.put(cx - 10, y + 1, cz - 9, PLK("weapon_rack", PLK("anvil", "nether_bricks")));
+  P.chest(cx - 9, y + 1, cz - 10, 0, "ember_bastion");
+  P.chest(cx + 9, y + 1, cz + 9, 2, "ember_bastion");
+  P.barrel(cx + 10, y + 1, cz + 9, 1, "ember_bastion");
+  P.barrel(cx + 9, y + 1, cz + 10, 2, "ember_bastion");
   P.barrel(cx - R + 2, y + 1, cz + 3, 1, "ember_bastion");
   P.barrel(cx + R - 2, y + 1, cz - 3, 3, "ember_bastion");
   P.wallTorch(cx - 5, y + 3, cz, 3, "soul_torch");
@@ -233,8 +246,9 @@ static void spireBuild(ChunkWriter& w, const StructurePlan& S) {
   P.chest(cx - 1, top - 5, cz - 1, 0, "ember_spire");
   P.hang(cx + 1, top - 5, cz - 1, "soul_lantern");
   P.barrel(cx + 1, top - 5, cz + 1, 0, "ember_spire");
-  furnishPlaced(P, cx, top - 5, cz, 2, 2, 4, "treasury", hash32(cx, top, cz, (i32)S.seed), PAL_BLACK, 2);
-  furnishPlaced(P, cx, y + 1, cz, 2, 1, 4, "entry", hash32(cx, y, cz, (i32)S.seed), PAL_NETHER, 0);
+  P.put(cx, top - 6, cz, "chiseled_polished_blackstone");
+  P.put(cx - 1, y + 1, cz, PLK("oak_chair", PLK("nether_brick_stairs", "stone_brick_stairs")), 2);
+  P.put(cx + 1, y + 1, cz, "decorated_pot");
   P.wallTorch(cx - 1, y + 2, cz - 2, 0, "soul_torch");
   P.wallTorch(cx + 1, y + 2, cz - 2, 0, "soul_torch");
   P.put(cx, top - 6, cz, "chiseled_polished_blackstone");
@@ -265,8 +279,11 @@ static void forgeBuild(ChunkWriter& w, const StructurePlan& S) {
   P.wallTorch(cx - 5, y + 3, cz - 3, 3, "soul_torch");
   P.wallTorch(cx + 5, y + 3, cz - 3, 1, "soul_torch");
   P.put(cx, y, cz - 4, "chiseled_polished_blackstone");
-  furnishPlaced(P, cx, y + 1, cz, 4, 4, 5, "forge", hash32(cx, y, cz, (i32)S.seed), PAL_NETHER, 3);
-  furnishPlaced(P, cx - 3, y + 1, cz + 4, 1, 1, 3, "pantry", hash32(cx, y, cz + 4, (i32)S.seed), PAL_BLACK, 2);
+  P.put(cx - 1, y + 1, cz - 3, PLK("grindstone", "anvil"));
+  P.put(cx + 1, y + 1, cz - 3, PLK("smithing_table", "crafting_table"));
+  P.put(cx - 5, y + 1, cz - 2, "cauldron");
+  P.put(cx + 5, y + 2, cz + 3, "chain");
+  P.put(cx + 5, y + 3, cz + 3, "chain");
 }
 
 static bool bonePitPlan(const TerrainQuery& t, int x, int z, Mulberry32&, StructurePlan& S) {
@@ -289,8 +306,10 @@ static void bonePitBuild(ChunkWriter& w, const StructurePlan& S) {
   P.chest(cx + 2, y - 2, cz + 1, 1, "bone_pit");
   P.barrel(cx - 2, y - 2, cz - 1, 1, "bone_pit");
   P.put(cx - 4, y, cz - 2, "soul_lantern"); P.put(cx + 4, y, cz + 3, "soul_lantern");
-  furnishPlaced(P, cx, y - 2, cz, 2, 2, 3, "crypt", hash32(cx, y, cz, (i32)S.seed), PAL_BLACK, 0);
-  furnishPlaced(P, cx + 3, y - 1, cz - 3, 1, 1, 3, "alcove", hash32(cx + 3, y, cz, (i32)S.seed), PAL_NETHER, 1);
+  P.put(cx - 3, y - 2, cz + 2, bone);
+  P.put(cx + 3, y - 2, cz - 2, bone);
+  P.put(cx, y - 2, cz - 3, "cobweb");
+  P.put(cx, y - 1, cz + 3, "cobweb");
 }
 
 // ---- Nether fortresses: bridges and castle (gen/structures_fortress.cpp) ----
@@ -337,9 +356,13 @@ static void sanctumBuild(ChunkWriter& w, const StructurePlan& S) {
   P.chest(cx, y, cz, 2, "sky_sanctum");
   P.barrel(cx - 1, y, cz + 1, 2, "sky_sanctum");
   P.put(cx, y - 1, cz, "chiseled_quartz_block");
-  static const char* NK[] = {"shrine", "chapel", "observatory"};
-  const u32 ns = hash32(cx, y, cz, (i32)S.seed);
-  furnishPlaced(P, cx, y, cz, 2, 2, 4, NK[ns % 3], ns, PAL_QUARTZ, 1 + (int)(ns % 2));
+  P.lectern(cx, y, cz - 2, 0, "skylands_temple");
+  const std::string qs2 = PLK("quartz_stairs", "stone_brick_stairs");
+  P.put(cx - 2, y, cz, qs2, 1);
+  P.put(cx + 2, y, cz, qs2, 3);
+  P.put(cx - 2, y, cz - 2, "flower_pot");
+  P.put(cx + 2, y, cz - 2, "flower_pot");
+  P.hang(cx, y + 3, cz, "lantern");
 }
 
 // ---- End cities: a purpur hall on an outer island, its tower rising in stages to a crowned top room, bridges
@@ -388,6 +411,26 @@ static void endCityBuild(ChunkWriter& w, const StructurePlan& S) {
     for (int d = 0; d < 4; d++) for (int yy = y0 + 2; yy <= std::min(y0 + 3, y0 + h - 2); yy++) P.put(cx + D[d][0] * half, yy, cz + D[d][1] * half, "magenta_stained_glass");
     P.put(cx, y0 + h - 1, cz, "end_rod");
   };
+  // a floor's furniture: one kind, not a dumped office. 0 store, 1 bunks, 2 shrine, 3 library
+  auto endRoom = [&](int cx, int cz, int y1, int kind) {
+    const std::string st = PLK("purpur_stairs", "stone_brick_stairs");
+    const char* bed = hasBlock("magenta_bed") ? "magenta_bed" : (hasBlock("purple_bed") ? "purple_bed" : "bed");
+    if (kind == 0) {
+      P.chest(cx - 1, y1, cz - 1, 2, "end_city");
+      P.barrel(cx + 1, y1, cz - 1, 0, "end_city");
+    } else if (kind == 1) {
+      P.put(cx - 1, y1, cz, bed, 1);
+      P.put(cx, y1, cz, bed, 1 | 4);
+    } else if (kind == 2) {
+      P.put(cx, y1, cz, st, 2);
+      P.put(cx, y1, cz - 1, "end_rod");
+      P.put(cx, y1, cz + 1, "flower_pot");
+    } else {
+      P.put(cx - 1, y1, cz - 1, "bookshelf");
+      P.put(cx + 1, y1, cz - 1, "bookshelf");
+      P.put(cx, y1, cz, PLK("oak_table", "purpur_block"));
+    }
+  };
   // a crown: a top room open at the sides, a parapet, a stepped purpur roof and a spire of end rods
   auto crown = [&](int cx, int cz, int y0, int half, bool loot) {
     P.fill(cx - half, y0, cz - half, cx + half, y0, cz + half, "purpur_block");
@@ -405,10 +448,8 @@ static void endCityBuild(ChunkWriter& w, const StructurePlan& S) {
       P.chest(cx + half - 1, y0 + 1, cz - half + 1, 2, "end_city");
       P.barrel(cx - half + 1, y0 + 1, cz - half + 1, 1, "end_city");
       P.hang(cx - 1, y0 + 4, cz - 1, "lantern");
-      static const char* CK[] = {"vault", "treasury", "observatory"};
-      const u32 cs = hash32(cx, y0, cz, (i32)S.seed);
-      furnishPlaced(P, cx, y0 + 1, cz, std::max(1, half - 2), std::max(1, half - 2), 4, CK[cs % 3],
-                    cs, PAL_PURPUR, 1 + (int)((cs >> 3) % 2));
+      P.put(cx, y0, cz, "purpur_pillar");
+      P.put(cx, y0 + 1, cz, "end_rod");
     }
   };
   // the hall: an 11-wide two-storey base, its legs reaching down into the island
@@ -421,17 +462,17 @@ static void endCityBuild(ChunkWriter& w, const StructurePlan& S) {
   P.chest(x - 4, y, z - 4, 2, "end_city");
   P.barrel(x + 4, y, z - 4, 3, "end_city");
   P.hang(x - 2, y + 4, z - 2, "lantern");
-  static const char* HK[] = {"gallery", "hall", "library", "dining"};
-  const u32 hs = hash32(x, y, z, (i32)S.seed);
-  furnishPlaced(P, x, y, z, 4, 4, 5, HK[hs % 4], hs, PAL_PURPUR, 1 + (int)((hs >> 4) % 2));
+  P.put(x - 3, y, z, "bookshelf");
+  P.put(x - 3, y + 1, z, "bookshelf");
+  P.put(x + 3, y, z, "bookshelf");
+  P.put(x + 3, y + 1, z, "bookshelf");
+  P.put(x, y, z - 3, PLK("purpur_stairs", "stone_brick_stairs"), 2);
+  P.put(x, y, z + 3, PLK("purpur_stairs", "stone_brick_stairs"), 0);
   // the tower: storeys of five on the hall, a ladder up the inside of its north wall through every floor
   const int tb = y + 5, topY = tb + E.floors * 5;
-  static const char* EK[] = {"office", "sleeping", "store", "shrine", "library", "archive",
-                             "treasury", "observatory", "pantry", "workshop", "armoury", "gallery"};
   for (int f = 0; f < E.floors; f++) {
     storey(x, z, tb + f * 5, 5, 3, true);
-    const u32 fs = hash32(x, tb + f, z, (i32)S.seed);
-    furnishPlaced(P, x, tb + f * 5 + 1, z, 2, 2, 4, EK[(f + (int)(fs & 3)) % 12], fs, PAL_PURPUR, (int)((fs >> 5) % 3));
+    endRoom(x, z, tb + f * 5 + 1, f % 4);
     P.barrel(x + 2, tb + f * 5 + 1, z + 2, 3, "end_city");
   }
   for (int yy = y; yy < topY; yy++) { P.put(x, yy, z - 2, "air"); }
@@ -454,8 +495,7 @@ static void endCityBuild(ChunkWriter& w, const StructurePlan& S) {
     for (int k = 1; k <= 4; k++) { const int r = 3 - (k > 1 ? k - 1 : 0); if (r < 0) break; P.fill(cx - r, by - k, cz - r, cx + r, by - k, cz + r, "purpur_block"); }
     for (int f = 0; f < b.segs; f++) {
       storey(cx, cz, by + f * 5, 5, 3, true);
-      const u32 bs = hash32(cx, by + f, cz, (i32)S.seed);
-      furnishPlaced(P, cx, by + f * 5 + 1, cz, 2, 2, 4, EK[(f + 5 + (int)(bs & 3)) % 12], bs, PAL_PURPUR, 1 + (int)((bs >> 4) % 2));
+      endRoom(cx, cz, by + f * 5 + 1, (f + 2) % 4);
       P.hang(cx - 1, by + f * 5 + 4, cz - 1, "lantern");
     }
     P.fill(cx - ax * 3, by + 1, cz - az * 3, cx - ax * 3, by + 2, cz - az * 3, "air");   // its door from the bridge
@@ -504,9 +544,11 @@ static void endCityBuild(ChunkWriter& w, const StructurePlan& S) {
   P.chest(cx2, yS - 1, cz2, E.dir, "end_city");
   auto [k1x, k1z] = at(-2, 0); P.chest(k1x, yS - 1, k1z, E.dir, "end_city");
   auto [bx, bz] = at(-4, 1); P.barrel(bx, yS - 1, bz, E.dir, "end_city");
-  furnishPlaced(P, cx2, yS - 1, cz2, 2, 1, 2, "store", hash32(cx2, yS, cz2, (i32)S.seed), PAL_PURPUR, 2);
   auto [sleepX, sleepZ] = at(2, 0);
-  furnishPlaced(P, sleepX, yS + 1, sleepZ, 1, 1, 3, "sleeping", hash32(sleepX, yS, sleepZ, (i32)S.seed), PAL_PURPUR, 1);
+  const char* shipBed = hasBlock("magenta_bed") ? "magenta_bed" : "bed";
+  P.put(sleepX, yS + 1, sleepZ, shipBed, E.dir & 3);
+  auto [sleepX2, sleepZ2] = at(3, 0);
+  P.put(sleepX2, yS + 1, sleepZ2, shipBed, (E.dir & 3) | 4);
 }
 
 // ---- registration ----

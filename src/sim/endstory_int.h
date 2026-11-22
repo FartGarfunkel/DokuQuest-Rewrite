@@ -134,6 +134,7 @@ bool hurtPawn(Level& lv, Entity& who, float amount, Entity* by, const std::strin
 // structures (plans from the band generator's StructureIndex; data in the original's shape)
 struct Plan { std::string id, name; int dim = 0, x0 = 0, z0 = 0, x1 = 0, z1 = 0, y = 0, cx = 0, cz = 0; json data; };
 std::vector<Plan> plansNear(Level& lv, int dim, const std::string& key, int x, int z, int pad);
+bool onPlate(Level& lv, vec3 plateAt);   // player, item or living creature on this plate (global y)
 const json& mobType(const std::string& key);
 std::string capLabel(const std::string& label);   // "the Ender Dragon" -> "The Ender Dragon"
 

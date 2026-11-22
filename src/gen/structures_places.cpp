@@ -32,12 +32,32 @@ static const RuinPal& ruinPal(int style) {
 }
 struct RuinExt { int W, D, style, door, breach0, maxH; double breach1; bool cellar, lectern; int mx0 = 0, mz0 = 0, mx1 = 0, mz1 = 0, ax0 = 0, az0 = 0, aW = 0, aD = 0, aH = 0, aSide = 0; };
 
+int ruinFloorY(int gh, int meanY) {
+  (void)meanY;
+  return gh;
+}
+int ruinStyle(int biome, double temp, std::string_view landName) {
+  auto has = [&](const char* k) { return landName.find(k) != std::string_view::npos; };
+  const bool namedGreen = has("flower") || has("meadow") || has("plains") || has("forest") || has("wood");
+  const bool sand = (biome == BIOME_DESERT || has("desert")) && !namedGreen;
+  if (sand) return 1;
+  if (temp < -0.2) return 2;
+  return 0;
+}
+int ruinRubbleY(int wallH, int rubbleGh, int wallGh, int meanY) {
+  (void)meanY;
+  if (wallH < 1 || rubbleGh < 0 || wallGh - rubbleGh >= 3) return -1;
+  return rubbleGh + 1;
+}
+
 static bool ruinPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
   TerrainColumn c = t.terrainColumn(x, z); if (!sLandy(c)) return false;
   const int W = 7 + 2 * jsFloor(rnd() * 3), D = 7 + 2 * jsFloor(rnd() * 3), x0 = x - (W >> 1), z0 = z - (D >> 1);
   Land L = sLand(t, x0, z0, x0 + W - 1, z0 + D - 1);
   if (L.jhi - L.jlo > 5) return false;
-  const int style = c.biome == BIOME_DESERT ? 1 : c.temp < -0.2 ? 2 : 0;
+  std::string land;
+  if (const OverworldGen* ow = owOf(t); ow && t.genVersion() >= 15) land = ow->landBiomeName(x, z);
+  const int style = ruinStyle(c.biome, c.temp, land);
   const int side = jsFloor(rnd() * 4);
   auto e = std::make_shared<RuinExt>();
   e->W = W; e->D = D; e->style = style;
@@ -69,88 +89,93 @@ static void ruinBuild(ChunkWriter& w, const StructurePlan& S) {
   const bool sand = R.style == 1;
   const int x0m = R.mx1 > R.mx0 ? R.mx0 : S.x0, z0m = R.mz1 > R.mz0 ? R.mz0 : S.z0, x1m = R.mx1 > R.mx0 ? R.mx1 : S.x1, z1m = R.mz1 > R.mz0 ? R.mz1 : S.z1;
   const int cx = (x0m + x1m) >> 1, cz = (z0m + z1m) >> 1;
-  for (int z = z0m - 1; z <= z1m + 1; z++) for (int x = x0m - 1; x <= x1m + 1; x++) {
+  bool wallStands = false;
+  for (int z = z0m; z <= z1m; z++) for (int x = x0m; x <= x1m; x++) {
     if (!P.in(x, z)) continue;
-    const bool out = x < x0m || x > x1m || z < z0m || z > z1m; const int gh = P.ground(x, z);
-    if (out) { if (gh < S.y) P.fill(x, gh + 1, z, x, S.y, z, sand ? "sand" : "dirt"); if (gh >= S.y) P.put(x, S.y, z, sand ? "sand" : "grass"); continue; }
-    // the floor, on a footing down to the land
-    for (int y = std::min(gh, S.y) - 2; y < S.y; y++) P.put(x, y, z, pal.found);
-    for (int y = S.y + 1; y <= std::max(gh, S.y) + 3; y++) P.put(x, y, z, "air");
+    const int gh = P.ground(x, z);
+    if (gh < 0) continue;
+    const int fy = ruinFloorY(gh, S.y);
+    for (int y = fy - 2; y < fy; y++) P.put(x, y, z, pal.found);
     const double fl = P.h(x, 0, z, 1);
-    P.put(x, S.y, z, fl < 0.15 ? (sand ? "sand" : "grass") : std::string_view(P.pick(pal.floor, x, 0, z, 2)));
+    P.put(x, fy, z, fl < 0.15 ? (sand ? "sand" : "grass") : std::string_view(P.pick(pal.floor, x, 0, z, 2)));
     const bool edge = x == x0m || x == x1m || z == z0m || z == z1m, corner = (x == x0m || x == x1m) && (z == z0m || z == z1m);
     if (edge) {
-      // the walls, broken down to stumps where they fell, worst at the breach
       const int side = z == z0m ? 0 : x == x1m ? 1 : z == z1m ? 2 : 3;
       const double along = side == 0 || side == 2 ? (x - x0m) / (double)(R.W - 1) : (z - z0m) / (double)(R.D - 1);
       int h = corner ? R.maxH + 1 : jsRound(R.maxH * (0.35 + 0.65 * P.h(x, 1, z, 3)));
       if (side == R.breach0) h -= jsRound(std::max(0.0, 3 - std::fabs(along - R.breach1) * 10));
+      if (h >= 1) wallStands = true;
       const bool door = side == R.door && std::fabs(along - 0.5) < 0.6 / ((side & 1) ? R.D : R.W) + 0.01;
       for (int y = 1; y <= h; y++) {
         if (door && y <= 2) continue;
         const bool win = !corner && y == 2 && h >= 3 && P.h(x, 2, z, 4) < 0.25;
-        P.put(x, S.y + y, z, corner ? std::string_view(pal.corner) : win ? std::string_view("iron_bars") : std::string_view(P.pick(pal.wall, x, y, z, 5)));
+        P.put(x, fy + y, z, corner ? std::string_view(pal.corner) : win ? std::string_view("iron_bars") : std::string_view(P.pick(pal.wall, x, y, z, 5)));
       }
-      // what fell off lies at its foot
       if (!corner && h < R.maxH - 1 && P.h(x, 9, z, 6) < 0.5) {
         const int ox = side == 1 ? 1 : side == 3 ? -1 : 0, oz = side == 0 ? -1 : side == 2 ? 1 : 0;
-        if (P.in(x + ox, z + oz)) P.put(x + ox, S.y + 1, z + oz, P.pick(pal.rubble, x, 3, z, 7));
+        const int rx = x + ox, rz = z + oz;
+        if (P.in(rx, rz)) {
+          const int ry = ruinRubbleY(h, P.ground(rx, rz), gh, S.y);
+          if (ry >= 0) P.put(rx, ry, rz, P.pick(pal.rubble, x, 3, z, 7));
+        }
       }
     } else {
-      const double q = P.h(x, 2, z, 8);
-      if (q < 0.07) P.put(x, S.y + 1, z, P.pick(pal.rubble, x, 4, z, 9));
-      else if (q < 0.11 && !sand) P.put(x, S.y + 1, z, "tall_grass");
-      else if (q < 0.13 && R.style == 0) P.put(x, S.y + 1, z, "cobweb");
+      for (int y = fy + 1; y <= fy + R.maxH; y++) P.put(x, y, z, "air");
     }
   }
-  // a book left open, and a chest
-  if (R.lectern) P.lectern(cx, S.y + 1, cz, R.door);
+  if (wallStands) {
+    for (int z = z0m + 1; z <= z1m - 1; z++) for (int x = x0m + 1; x <= x1m - 1; x++) {
+      if (!P.in(x, z)) continue;
+      const int gh = P.ground(x, z);
+      if (gh < 0) continue;
+      const int fy = ruinFloorY(gh, S.y);
+      const double q = P.h(x, 2, z, 8);
+      if (q < 0.11 && !sand) P.put(x, fy + 1, z, "tall_grass");
+      else if (q < 0.13 && R.style == 0) P.put(x, fy + 1, z, "cobweb");
+    }
+  }
+  const int fyC = ruinFloorY(P.ground(cx, cz), S.y);
+  if (R.lectern) P.lectern(cx, fyC + 1, cz, R.door);
   if (R.cellar) {
-    // a trapdoor in the floor, a ladder down to a little cellar
-    const int y0 = S.y - 5;
-    P.fill(cx - 2, y0, cz - 2, cx + 2, S.y - 1, cz + 2, pal.found);
+    const int y0 = fyC - 5;
+    P.fill(cx - 2, y0, cz - 2, cx + 2, fyC - 1, cz + 2, pal.found);
     P.fill(cx - 1, y0 + 1, cz - 1, cx + 1, y0 + 3, cz + 1, "air");
-    P.put(cx, S.y - 1, cz + 1, "air"); P.put(cx, S.y, cz + 1, R.style == 2 ? "spruce_trapdoor" : "oak_trapdoor", 2 | 8);
-    P.ladder(cx, y0 + 1, S.y - 1, cz + 1, 2); P.put(cx, y0 + 1, cz + 2, pal.found); for (int y = y0 + 1; y < S.y; y++) P.put(cx, y, cz + 2, pal.found);
+    P.put(cx, fyC - 1, cz + 1, "air"); P.put(cx, fyC, cz + 1, R.style == 2 ? "spruce_trapdoor" : "oak_trapdoor", 2 | 8);
+    P.ladder(cx, y0 + 1, fyC - 1, cz + 1, 2); P.put(cx, y0 + 1, cz + 2, pal.found); for (int y = y0 + 1; y < fyC; y++) P.put(cx, y, cz + 2, pal.found);
     P.chest(cx - 1, y0 + 1, cz - 1, 2, "ruin"); P.chest(cx + 1, y0 + 1, cz - 1, 2, "ruin");
-    P.put(cx + 1, y0 + 3, cz, "cobweb"); P.put(cx - 1, y0 + 3, cz + 1, "cobweb"); P.put(cx, y0 + 3, cz - 1, "old_torch", 3);
-  } else P.chest(x0m + 1, S.y + 1, z0m + 1, 2, "ruin");
-  // the smaller room off one wall, with a door through into the main hall
+    P.put(cx + 1, y0 + 3, cz, "cobweb"); P.put(cx, y0 + 3, cz - 1, "old_torch", 3);
+  } else {
+    const int fyCh = ruinFloorY(P.ground(x0m + 1, z0m + 1), S.y);
+    P.chest(x0m + 1, fyCh + 1, z0m + 1, 2, "ruin");
+  }
   if (R.aW > 0) {
     const bool odd = R.aSide & 1;
     const int ax0 = R.ax0, az0 = R.az0, ax1 = R.ax0 + (odd ? R.aD : R.aW) - 1, az1 = R.az0 + (odd ? R.aW : R.aD) - 1;
     for (int z = az0; z <= az1; z++) for (int x = ax0; x <= ax1; x++) {
       if (!P.in(x, z)) continue;
       const int gh = P.ground(x, z);
+      if (gh < 0) continue;
+      const int fy = ruinFloorY(gh, S.y);
       const bool edge = x == ax0 || x == ax1 || z == az0 || z == az1;
       const bool shared = (R.aSide == 0 && z == z0m) || (R.aSide == 2 && z == z1m) || (R.aSide == 1 && x == x1m) || (R.aSide == 3 && x == x0m);
-      for (int y = std::min(gh, S.y) - 1; y < S.y; y++) P.put(x, y, z, pal.found);
-      for (int y = S.y + 1; y <= std::max(gh, S.y) + R.aH + 1; y++) P.put(x, y, z, "air");
-      P.put(x, S.y, z, P.pick(pal.floor, x, 0, z, 2));
-      if (!edge || shared) continue;
+      for (int y = fy - 2; y < fy; y++) P.put(x, y, z, pal.found);
+      P.put(x, fy, z, P.pick(pal.floor, x, 0, z, 2));
+      if (!edge) {
+        for (int y = fy + 1; y <= fy + R.aH; y++) P.put(x, y, z, "air");
+        continue;
+      }
+      if (shared) continue;
       const bool corner = (x == ax0 || x == ax1) && (z == az0 || z == az1);
       for (int y = 1; y <= (corner ? R.aH : std::max(1, R.aH - (P.h(x, 3, z, 5) < 0.4 ? 1 : 0))); y++)
-        P.put(x, S.y + y, z, corner ? std::string_view(pal.corner) : std::string_view(P.pick(pal.wall, x, y, z, 5)));
+        P.put(x, fy + y, z, corner ? std::string_view(pal.corner) : std::string_view(P.pick(pal.wall, x, y, z, 5)));
     }
     const int mx = (ax0 + ax1) >> 1, mz = (az0 + az1) >> 1;
     const int doorX = odd ? (R.aSide == 1 ? x1m : x0m) : mx;
     const int doorZ = odd ? mz : (R.aSide == 0 ? z0m : z1m);
-    for (int y = 1; y <= 2; y++) P.put(doorX, S.y + y, doorZ, "air");
-    P.chest(mx, S.y + 1, mz, R.aSide, "ruin");
-    const int arx = std::max(1, (ax1 - ax0) / 2 - 1), arz = std::max(1, (az1 - az0) / 2 - 1);
-    Mulberry32 ra(hash32(mx, S.y, mz, 11));
-    furnishPlaced(P, mx, S.y + 1, mz, arx, arz, std::max(3, R.aH), pickProcKind(ra, "", 0),
-                  hash32(mx, S.y, mz, (i32)S.seed),
-                  R.style == 2 ? PAL_ICE : R.style == 1 ? PAL_SAND : PAL_MOSSY, 3);
+    const int fyDoor = ruinFloorY(P.ground(doorX, doorZ), S.y);
+    for (int y = 1; y <= 2; y++) P.put(doorX, fyDoor + y, doorZ, "air");
+    P.chest(mx, ruinFloorY(P.ground(mx, mz), S.y) + 1, mz, R.aSide, "ruin");
   }
-  const int hrx = std::max(2, (x1m - x0m) / 2 - 1), hrz = std::max(2, (z1m - z0m) / 2 - 1);
-  Mulberry32 rh(hash32(cx, S.y, cz, 7));
-  furnishPlaced(P, cx, S.y + 1, cz, hrx, hrz, std::max(3, R.maxH), pickProcKind(rh, "", 1),
-                hash32(cx, S.y, cz, (i32)S.seed),
-                R.style == 2 ? PAL_ICE : R.style == 1 ? PAL_SAND : PAL_MOSSY, 3);
-  if (R.cellar)
-    furnishPlaced(P, cx, S.y - 4, cz, 1, 1, 3, "store", hash32(cx, S.y, cz, 19),
-                  R.style == 2 ? PAL_ICE : R.style == 1 ? PAL_SAND : PAL_MOSSY, 3);
 }
 
 // ==== Mage towers ====================================================================================================
@@ -240,10 +265,6 @@ static void towerBuild(ChunkWriter& w, const StructurePlan& S) {
   P.put(cx, L(3), cz - 3, "amethyst_block"); P.put(cx, L(3) + 1, cz - 3, "sea_lantern"); P.put(cx + 3, L(3), cz, "amethyst_block"); P.put(cx - 3, L(3), cz, "amethyst_block");
   P.chest(cx, L(3), cz + 3, 0, "archmage");
   for (auto [a, b] : {std::pair{2, 2}, {-2, 2}, {2, -2}, {-2, -2}}) P.put(cx + a, L(3), cz + b, "soul_lantern");
-  const int tr = std::max(2, R - 2);
-  furnishPlaced(P, cx, L(0), cz, tr, tr, 4, "workshop", hash32(cx, L(0), cz, (i32)S.seed), PAL_SLATE, 1);
-  furnishPlaced(P, cx, L(1), cz, std::max(2, R - 3), std::max(2, R - 3), 4, "library", hash32(cx, L(1), cz, (i32)S.seed), PAL_SLATE, 1);
-  furnishPlaced(P, cx, L(2), cz, tr, tr, 4, "office", hash32(cx, L(2), cz, (i32)S.seed), PAL_SLATE, 2);
   // the top is the archmage's arena: crystal and chest only
 }
 
@@ -281,8 +302,6 @@ static void desertBuild(ChunkWriter& w, const StructurePlan& S) {
       }
       if (ax == 8 && lz == -9) for (int yy = 1; yy <= 13; yy++) P.put(x, y + yy, z, "ladder", 0);
       if (ax == 8 && lz == -8) P.put(x, y + 14, z, "air");
-      if (ax == 8 && lz == -8)
-        furnishPlaced(P, x, y + 1, z, 1, 1, 3, "alcove", hash32(x, y, z, (i32)S.seed), PAL_SAND, 1);
     } else if (edge) {
       // the walls, banded, with the doorway at the front
       const bool door = lz == -10 && ax <= 1;
@@ -307,10 +326,8 @@ static void desertBuild(ChunkWriter& w, const StructurePlan& S) {
   for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) P.put(cx + dx, yf - 1, cz + dz, "tnt");
   for (auto [dx, dz, f] : {std::tuple{0, -3, 2}, {3, 0, 3}, {0, 3, 0}, {-3, 0, 1}}) P.chest(cx + dx, yf + 1, cz + dz, f, "temple");
   for (auto [dx, dz] : {std::pair{-3, -3}, {3, -3}, {-3, 3}, {3, 3}}) { P.put(cx + dx, yf + 1, cz + dz, chis); P.put(cx + dx, yf + 2, cz + dz, OT); }
-  Mulberry32 rd(hash32(cx, y, cz, 3));
-  furnishPlaced(P, cx, y + 1, cz, 6, 5, 6, pickProcKind(rd, "", 2),
-                hash32(cx, y, cz, (i32)S.seed), PAL_SAND, 1);
-  furnishPlaced(P, cx, yf + 1, cz, 2, 2, 3, "vault", hash32(cx, yf, cz, (i32)S.seed), PAL_SAND, 2);
+  P.put(cx - 6, y, cz, OT); P.put(cx + 6, y, cz, OT);
+  P.chest(cx - 4, y + 1, cz + 8, 0, "temple"); P.chest(cx + 4, y + 1, cz + 8, 0, "temple");
 }
 
 // ==== Sunken temples =================================================================================================
@@ -364,10 +381,8 @@ static void oceanBuild(ChunkWriter& w, const StructurePlan& S) {
     }
   }
   P.chest(cx + 2, y + 1, cz + 2, 0, "ocean"); P.chest(cx - 2, y + 1, cz + 2, 0, "ocean");
-  furnishPlaced(P, cx, y + 1, cz, 7, 7, 5, "shrine", hash32(cx, y, cz, (i32)S.seed), PAL_PRISM, 1);
-  for (auto [dx, dz] : {std::pair{9, -9}, {9, 9}, {-9, -9}, {-9, 9}})
-    furnishPlaced(P, cx + dx, y + 1, cz + dz, 1, 1, 3, "alcove",
-                  hash32(cx + dx, y, cz + dz, (i32)S.seed), PAL_PRISM, 1);
+  P.put(cx, y + 1, cz - 2, PLK("prismarine_stairs", "stone_brick_stairs"), 2);
+  P.put(cx, y + 1, cz + 3, "sea_lantern");
 }
 
 // ==== Shipwrecks =====================================================================================================
@@ -438,10 +453,8 @@ static void wreckBuild(ChunkWriter& w, const StructurePlan& S) {
   P.chest(bx, yb + 2, bz, fwd, "wreck_supply");
   P.chest(sx, yb + 5, sz, (fwd + 2) & 3, "wreck_treasure");
   auto [mx, mz] = W(half - 3, 1); P.put(mx, yb + 5, mz, "lantern");
-  furnishPlaced(P, sx, yb + 5, sz, 2, 2, 3, "office", hash32(sx, yb, sz, (i32)S.seed),
-                E.wood == "spruce" ? 5 : 4, E.sunk ? 3 : 1);
-  furnishPlaced(P, bx, yb + 2, bz, 2, 1, 3, "store", hash32(bx, yb, bz, (i32)S.seed),
-                E.wood == "spruce" ? 5 : 4, E.sunk ? 3 : 2);
+  auto [cxb, czb] = W(-half + 5, 1);
+  P.barrel(cxb, yb + 2, czb, fwd, "wreck_supply");
 }
 
 // ==== Mineshafts =====================================================================================================

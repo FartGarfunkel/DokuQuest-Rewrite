@@ -532,39 +532,56 @@ static void tvBuild(ChunkWriter& w, const StructurePlan& S) {
   room(E.ante, 5); room(E.arena, 9); room(E.vault, 5);
   // the doors: the vault door between antechamber and arena, the inner door to the vault (both ward stone)
   for (const auto& d : E.doors) for (int z = d[2]; z <= d[5]; z++) for (int x = d[0]; x <= d[3]; x++) for (int yy = d[1]; yy <= d[4]; yy++) P.put(x, yy, z, "ward_stone");
-  // the plates, each in a lit alcove; braziers in the arena
+  // plates in opposite alcoves; a barrel beside one so a dropped item can hold it
   for (const auto& [x, yy, z] : E.plates) { P.put(x, yy, z, "stone_pressure_plate"); P.put(x, yy + 3, z, "soul_lantern", 1); }
+  P.barrel(E.plates[0][0], y + 1, E.plates[0][2] + 1, 0, "ruin");
+  // dust along the floor from each plate toward the ward-stone door (the open is still dhOpen)
+  {
+    const int wx = E.plates[0][0], wz = E.plates[0][2], ex = E.plates[1][0], ez = E.plates[1][2];
+    const int zDoor = E.ante[1], mid = E.x;
+    for (int zz = wz - 1; zz >= zDoor; --zz) P.put(wx, y + 1, zz, "redstone_wire");
+    for (int zz = ez - 1; zz >= zDoor; --zz) P.put(ex, y + 1, zz, "redstone_wire");
+    for (int xx = wx + 1; xx <= mid; ++xx) P.put(xx, y + 1, zDoor, "redstone_wire");
+    for (int xx = ex - 1; xx >= mid; --xx) P.put(xx, y + 1, zDoor, "redstone_wire");
+  }
+  // braziers on chiseled corners; the arena stays empty of furniture dumps
   for (auto [a, b] : {std::pair{0, 0}, {1, 0}, {0, 1}, {1, 1}}) { const int x = a ? E.arena[2] - 2 : E.arena[0] + 2, z = b ? E.arena[3] - 2 : E.arena[1] + 2; P.put(x, y + 1, z, "chiseled_stone_bricks"); P.put(x, y + 2, z, "campfire"); }
   for (int k = 0; k < 4; k++) P.chest(E.vault[0] + 1 + k * 2, y + 1, E.vault[1] + 1, 2, "twin_vault");
   P.barrel(E.vault[0] + 2, y + 1, E.vault[3] - 1, 0, "twin_vault");
   P.barrel(E.vault[2] - 2, y + 1, E.vault[3] - 1, 0, "twin_vault");
   P.lectern(E.ante[0] + 4, y + 1, E.ante[3] - 1, 0, "twin_vault");
+  P.put(E.ante[0] + 5, y + 1, E.ante[3] - 1, PLK("oak_chair", "oak_stairs"), 3);
   {
     const int ax = (E.ante[0] + E.ante[2]) / 2, az = (E.ante[1] + E.ante[3]) / 2;
-    const int arx = std::max(1, (E.ante[2] - E.ante[0]) / 2 - 1);
-    const int arz = std::max(1, (E.ante[3] - E.ante[1]) / 2 - 1);
     P.hang(ax - 1, y + 5, az - 1, "soul_lantern");
     P.hang(ax + 1, y + 5, az + 1, "soul_lantern");
     P.wallTorch(E.ante[0] + 1, y + 3, az, 3, "soul_torch");
     P.wallTorch(E.ante[2] - 1, y + 3, az, 1, "soul_torch");
     P.put(ax, y, az, "chiseled_stone_bricks");
-    furnishPlaced(P, ax, y + 1, az, arx, arz, 5, "office", hash32(ax, y, az, (i32)S.seed), PAL_SLATE, 1);
     const int vx = (E.vault[0] + E.vault[2]) / 2, vz = (E.vault[1] + E.vault[3]) / 2;
-    const int vrx = std::max(1, (E.vault[2] - E.vault[0]) / 2 - 1);
-    const int vrz = std::max(1, (E.vault[3] - E.vault[1]) / 2 - 1);
     P.hang(vx - 1, y + 5, vz, "soul_lantern");
     P.hang(vx + 1, y + 5, vz, "soul_lantern");
     P.put(vx, y, vz, "chiseled_polished_blackstone");
-    furnishPlaced(P, vx, y + 1, vz, vrx, vrz, 5, "treasury", hash32(vx, y, vz, (i32)S.seed), PAL_BLACK, 2);
   }
-  // the way down, and two black obelisks on the land
+  // the way down, and a ruined black frame on the land that marks the shaft
   for (int yy = E.shBottom; yy <= E.shTop; yy++) P.put(E.shX, yy, E.shZ, "ladder", 2);
   for (int yy = y + 6; yy <= E.shTop + 3; yy++) for (auto [dx, dz] : {std::pair{-1, 0}, {1, 0}, {0, 1}, {-1, 1}, {1, 1}})
     if (P.in(E.shX + dx, E.shZ + dz)) P.put(E.shX + dx, yy, E.shZ + dz, yy <= P.ground(E.shX + dx, E.shZ + dz) ? std::string_view(wall(E.shX, yy, E.shZ)) : std::string_view("air"));
-  for (int dx : {-3, 3}) {
-    const int ox = E.shX + dx, oz = E.shZ; if (!P.in(ox, oz)) continue;
-    const int g0 = P.ground(ox, oz);
-    for (int yy = g0 + 1; yy <= g0 + 5; yy++) P.put(ox, yy, oz, yy == g0 + 5 ? "crying_obsidian" : "obsidian");
+  {
+    const int oz = E.shZ, fx0 = E.shX - 1;
+    int gSit = P.ground(E.shX, E.shZ);
+    for (int i = 0; i < 4; i++) gSit = std::min(gSit, P.ground(fx0 + i, oz));
+    if (gSit < 1) gSit = 64;
+    for (int i = 0; i < 4; i++) {
+      const int ox = fx0 + i; if (!P.in(ox, oz)) continue;
+      if (ox != E.shX) for (int yy = gSit; yy >= gSit - 3; yy--) P.put(ox, yy, oz, "obsidian");
+      for (int ly = 0; ly <= 4; ly++) {
+        const bool side = i == 0 || i == 3, top = ly == 4, bot = ly == 0;
+        if (!(side || top || bot)) continue;
+        if (bot && ox == E.shX) continue;   // one missing block: the way down
+        P.put(ox, gSit + 1 + ly, oz, (top && side) ? "crying_obsidian" : "obsidian");
+      }
+    }
   }
 }
 
@@ -619,10 +636,14 @@ static void coveBuild(ChunkWriter& w, const StructurePlan& S) {
   P.chest(cx, gy(cx, cz - 5) + 1, cz - 5, faceC(cx, cz - 5), "pirate");
   for (auto [bx, bz] : {std::pair{cx + 5, cz + 1}, {cx + 5, cz + 2}, {cx - 5, cz + 2}})
     P.barrel(bx, gy(bx, bz) + 1, bz, faceC(bx, bz), "pirate");
-  furnishPlaced(P, cx, y + 1, cz, 1, 1, 3, "kitchen", hash32(cx, y, cz, (i32)S.seed), PAL_OAK, 1);
-  furnishPlaced(P, cx + 5, gy(cx + 5, cz + 1) + 1, cz + 1, 1, 1, 3, "pantry", hash32(cx + 5, y, cz, (i32)S.seed), PAL_SPRUCE, 2);
-  furnishPlaced(P, cx - 4, gy(cx - 4, cz - 3) + 1, cz - 3, 1, 1, 3, "sleeping", hash32(cx - 4, y, cz, (i32)S.seed), PAL_OAK, 1);
-  furnishPlaced(P, cx + 3, gy(cx + 3, cz - 3) + 1, cz - 3, 1, 1, 3, "sleeping", hash32(cx + 3, y, cz, (i32)S.seed + 1), PAL_SPRUCE, 0);
+  {
+    const char* bed = hasBlock("red_bed") ? "red_bed" : "bed";
+    for (auto [tx, tz] : {std::pair{cx - 4, cz - 3}, {cx + 3, cz - 3}}) {
+      const int y0 = gy(tx, tz);
+      P.put(tx - 1, y0 + 1, tz, bed, 1);
+      P.put(tx, y0 + 1, tz, bed, 1 | 4);
+    }
+  }
   P.hang(cx - 4, gy(cx - 4, cz - 3) + 2, cz - 3, "lantern");
   P.hang(cx + 3, gy(cx + 3, cz - 3) + 2, cz - 3, "lantern");
   const int fx = cx + 6, fz = cz - 5, fy = gy(fx, fz);

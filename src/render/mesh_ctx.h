@@ -119,15 +119,16 @@ void applyGrassSetting(const struct Settings& s);   // world_renderer.cpp: setti
 struct FaceCorners { float sky[4], bl[4], ao[4]; int aoi[4]; LightRgb rgb[4]; u32 lit[4]; };
 void faceCorners(const MeshCtx& c, int x, int y, int z, int f, FaceCorners& fc);
 
-// Apron sample. Outside the gathered neighbourhood: dark below the world, full sun elsewhere.
+// Apron sample. Outside the gathered neighbourhood: dark, never noon (a missing chunk is not sky 15).
 inline bool meshApron(int x, int y, int z) {
   return x >= -1 && x <= 16 && z >= -1 && z <= 16 && y >= MeshInput::Y0 && y <= 16;
 }
 inline LightRgb rgbAt(const MeshCtx& c, int x, int y, int z) {
-  if (!meshApron(x, y, z)) return y < 0 ? LightRgb{} : fullSunRgb();
+  if (!meshApron(x, y, z)) return LightRgb{};
   return c.in.rgb[c.I(x, y, z)];
 }
-// brightest open cell round a station (a chest, an anvil): never the missing-chunk noon rgbAt would give
+// brightest open cell round a station or a carved cube. Skip leftover noon in opaque cells
+// (the cell itself even when carved) and skip the unloaded apron.
 inline LightRgb aroundAirRgb(const MeshCtx& c, int x, int y, int z) {
   LightRgb L{};
   static const int D[7][3] = {{0, 0, 0}, {0, 1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}};
@@ -136,7 +137,7 @@ inline LightRgb aroundAirRgb(const MeshCtx& c, int x, int y, int z) {
     const int ax = x + D[i][0], ay = y + D[i][1], az = z + D[i][2];
     if (!meshApron(ax, ay, az)) continue;
     const BlockId id = c.at(ax, ay, az);
-    if (id && c.R.tOpaque[id] && !c.carveAt(ax, ay, az)) continue;
+    if (id && c.R.tOpaque[id] && (i == 0 || !c.carveAt(ax, ay, az))) continue;
     const LightRgb S = rgbAt(c, ax, ay, az);
     for (int k = 0; k < 3; k++) { L.s[k] = std::max(L.s[k], S.s[k]); L.b[k] = std::max(L.b[k], S.b[k]); }
     any = true;

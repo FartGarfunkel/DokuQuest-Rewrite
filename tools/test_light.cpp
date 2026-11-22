@@ -89,6 +89,27 @@ int main(int argc, char** argv) {
     check((mix >> 4) == 0 && (mix & 15) == 8, strFormat("a torch next to a dark chest is block 8 (got %d)", mix & 15));
   }
 
+  printf("[chiseled cube in a sealed room]\n");
+  {
+    const BlockId CH = reg().blockId("chiseled_stone_bricks");
+    check(CH != 0, "chiseled_stone_bricks is registered");
+    Chunk c(DIM_OVERWORLD, 0, 0);
+    for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) for (int y = 0; y <= 80; y++) c.set(x, y, z, ST);
+    for (int z = 2; z <= 10; z++) for (int x = 2; x <= 10; x++) for (int y = 20; y <= 24; y++) c.set(x, y, z, AIR);
+    if (CH) {
+      c.set(6, 22, 6, CH);
+      c.setCarve(6, 22, 6, 0x80);   // player-chiseled: takes light in, passes none on
+    }
+    c.recomputeMaxY();
+    initialChunkLight(c);
+    c.compact();
+    check(sky(c, 5, 22, 6) < 4, strFormat("air beside a chiseled cube in a sealed room is dark (sky %d)", sky(c, 5, 22, 6)));
+    check(sky(c, 6, 22, 7) < 4, strFormat("air the other side of it is dark (sky %d)", sky(c, 6, 22, 7)));
+    check(!cellOpenToSky(c, 6, 22, 6), "a chiseled cube in a sealed room has no sky column");
+    check((c.getLight(6, 22, 6) >> 4) < 4, strFormat("the carved cell itself does not keep noon (sky %d)", c.getLight(6, 22, 6) >> 4));
+    check(sky(c, 8, 22, 8) < 4, strFormat("the rest of the sealed room stays dark (sky %d)", sky(c, 8, 22, 8)));
+  }
+
   printf("%d passed, %d failed\n", passes, fails);
   return fails ? 1 : 0;
 }

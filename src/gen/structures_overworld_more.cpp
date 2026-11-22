@@ -66,7 +66,7 @@ bool jungleTemplePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Stru
   Land L = sLand(t, x - 7, z - 7, x + 7, z + 7);
   if (L.jhi - L.jlo > 10 || L.mean < 12) return false;
   S.x0 = x - 7; S.z0 = z - 7; S.x1 = x + 7; S.z1 = z + 7; S.cx = x; S.cz = z;
-  S.y = L.mean; S.hashDy = L.jmean - L.mean; S.surface = true;
+  S.y = L.hi; S.hashDy = L.jhi - L.hi; S.surface = true;
   S.rot = 0;
   S.name = "Jungle Temple";
   S.data = {{"residents", json::array({mobAt(x, S.y + 1, z, "jungle_skeleton"),
@@ -84,13 +84,10 @@ void jungleTempleBuild(ChunkWriter& w, const StructurePlan& S) {
     if (!P.in(x, z)) continue;
     const int lz = z - cz, ax = std::abs(x - cx), az = std::abs(lz), gh = P.ground(x, z);
     const bool out = x < S.x0 || x > S.x1 || z < S.z0 || z > S.z1;
-    if (out) {
-      if (gh < y) P.fill(x, gh + 1, z, x, y, z, "dirt");
-      if (gh >= y) P.put(x, y, z, "grass");
-      continue;
-    }
+    // skirt stays at local ground — no dirt terrace into the air
+    if (out) continue;
+    // moss footing from the land up to the floor, only under the box
     for (int yy = std::min(gh, y) - 3; yy < y; yy++) P.put(x, yy, z, moss(x, yy, z, 1));
-    for (int yy = y + 1; yy <= std::max(gh, y) + 2; yy++) P.put(x, yy, z, "air");
     P.put(x, y, z, moss(x, 0, z, 2));
     const int ring = std::max(ax, az);
     int top = ring <= 3 ? 10 : ring <= 5 ? 7 : 5;
@@ -195,39 +192,40 @@ void trailRuinsBuild(ChunkWriter& w, const StructurePlan& S) {
   static const std::vector<const char*> floor = {"mud_bricks", "packed_mud", "gravel", "gravel", "bricks", "coarse_dirt"};
   const int y = S.y;
   for (const TrailBit& B : E.bits) {
-    const int fy = y - B.bury;
     const int mx = (B.x0 + B.x1) >> 1, mz = (B.z0 + B.z1) >> 1;
     for (int z = B.z0; z <= B.z1; z++) for (int x = B.x0; x <= B.x1; x++) {
       if (!P.in(x, z)) continue;
       const int gh = P.ground(x, z);
+      if (gh < 4) continue;
       const bool edge = x == B.x0 || x == B.x1 || z == B.z0 || z == B.z1;
       const bool corner = (x == B.x0 || x == B.x1) && (z == B.z0 || z == B.z1);
       const int poke = corner ? B.h + 1 : B.h;
-      const int top = y + poke;
-      for (int yy = std::min(gh, fy) - 1; yy < fy; yy++) P.put(x, yy, z, "packed_mud");
+      const int fy = std::max(2, gh - B.bury);
+      for (int yy = fy - 1; yy < fy; yy++) P.put(x, yy, z, "packed_mud");
       P.put(x, fy, z, P.h(x, 0, z, 2) < 0.4 ? "gravel" : P.pick(floor, x, 0, z, 3));
       if (edge) {
         const double along = (x == B.x0 || x == B.x1) ? (z - B.z0) / (double)std::max(1, B.z1 - B.z0) : (x - B.x0) / (double)std::max(1, B.x1 - B.x0);
         int h = poke + B.bury;
         if (P.h(x, 1, z, 4) < 0.22 + along * 0.15) h -= 1 + jsFloor(P.h(x, 2, z, 5) * 2);
         if (h < 1) h = 1;
+        const int maxWall = gh + (corner ? 2 : 1);
         for (int k = 1; k <= h; k++) {
           const int yy = fy + k;
-          if (yy > top) break;
-          if (yy > y && P.h(x, k, z, 6) < 0.28) continue;
+          if (yy > maxWall) break;
+          if (yy > gh && P.h(x, k, z, 6) < 0.28) continue;
           P.put(x, yy, z, P.h(x, k, z, 7) < 0.22 ? "gravel" : P.pick(wall, x, k, z, 8));
         }
-        for (int yy = fy + h + 1; yy <= std::max(gh, y) + 1; yy++) {
+        for (int yy = fy + 1; yy <= gh + 1; yy++) {
           const BlockId id = P.get(x, yy, z);
           if (id != AIR && id != NOBLOCK && !tSolid(id)) P.put(x, yy, z, "air");
         }
       } else {
-        for (int yy = fy + 1; yy <= std::max(gh, y) + 1; yy++) P.put(x, yy, z, yy < y && P.h(x, yy, z, 9) < 0.18 ? "gravel" : "air");
+        for (int yy = fy + 1; yy <= gh; yy++) P.put(x, yy, z, P.h(x, yy, z, 9) < 0.18 ? "gravel" : "air");
         if (P.h(x, 3, z, 10) < 0.12) P.put(x, fy + 1, z, "gravel");
         else if (P.h(x, 4, z, 11) < 0.08) P.put(x, fy + 1, z, "cobweb");
       }
     }
-    if (B.chest) P.chest(mx, fy + 1, mz, 2, "ruin");
+    if (B.chest) P.chest(mx, std::max(2, P.ground(mx, mz) - B.bury) + 1, mz, 2, "ruin");
   }
   for (int z = S.z0; z <= S.z1; z++) for (int x = S.x0; x <= S.x1; x++) {
     if (!P.in(x, z)) continue;
@@ -335,9 +333,9 @@ bool woodlandMansionPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, S
   if (!sLandy(c) || !darkForestLand(t, x, z, c)) return false;
   const int hx = (MX * MCS) / 2, hz = (MZ * MCS) / 2;
   Land L = sLand(t, x - hx, z - hz, x + hx, z + hz);
-  if (L.jhi - L.jlo > 14 || L.mean < 12 || L.mean + MFL * MFH + 6 >= DIM_H - 2) return false;
+  if (L.jhi - L.jlo > 14 || L.mean < 12 || L.hi + MFL * MFH + 6 >= DIM_H - 2) return false;
   S.x0 = x - hx; S.z0 = z - hz; S.x1 = x - hx + MX * MCS; S.z1 = z - hz + MZ * MCS;
-  S.cx = x; S.cz = z; S.y = L.mean; S.hashDy = L.jmean - L.mean; S.surface = true;
+  S.cx = x; S.cz = z; S.y = L.hi; S.hashDy = L.jhi - L.hi; S.surface = true;
   S.name = "Woodland Mansion";
   const int y = S.y;
   json res = json::array();
@@ -378,10 +376,7 @@ void woodlandMansionBuild(ChunkWriter& w, const StructurePlan& S) {
       if (z == z1 + 1 && x >= cx - 2 && x <= cx + 2) {
         for (int yy = std::min(gh, y) - 1; yy < y; yy++) P.put(x, yy, z, "cobblestone");
         P.put(x, y, z, "cobblestone");
-        for (int yy = y + 1; yy <= std::max(gh, y) + 2; yy++) P.put(x, yy, z, "air");
-      } else {
-        if (gh < y) P.fill(x, gh + 1, z, x, y, z, "dirt");
-        if (gh >= y) P.put(x, y, z, "grass");
+        for (int yy = y + 1; yy <= y + 2; yy++) P.put(x, yy, z, "air");
       }
       continue;
     }
@@ -391,7 +386,8 @@ void woodlandMansionBuild(ChunkWriter& w, const StructurePlan& S) {
     const bool wall = xw || zw;
     const bool corner = (x == x0 || x == x1) && (z == z0 || z == z1);
     for (int yy = std::min(gh, y) - 3; yy < y; yy++) P.put(x, yy, z, "cobblestone");
-    for (int yy = y; yy <= std::max(gh, top) + 2; yy++) P.put(x, yy, z, "air");
+    const int carveTop = (gz == 0 ? y + 2 * MFH : top) + 2;
+    for (int yy = y; yy <= carveTop; yy++) P.put(x, yy, z, "air");
     for (int fl = 0; fl < MFL; fl++) {
       if (fl >= 2 && gz == 0) continue;   // no back rooms on the top floor
       const int fy = y + fl * MFH;

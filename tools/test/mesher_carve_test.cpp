@@ -55,6 +55,43 @@ static void put(MeshInput& in, int x, int y, int z, BlockId id, u8 meta = 0, u8 
   in.ids[i] = id; in.meta[i] = meta; in.carve[i] = carve; in.light[i] = 0;
 }
 
+// every gathered cell dark (emptyInput's default is noon sky / fullSun RGB)
+static std::unique_ptr<MeshInput> darkInput() {
+  auto in = emptyInput();
+  for (int i = 0; i < MeshInput::N * MeshInput::N * MeshInput::NY; i++) {
+    in->light[i] = 0;
+    in->rgb[i] = LightRgb{};
+  }
+  return in;
+}
+static void leftoverNoon(MeshInput& in, int x, int y, int z) {
+  const int i = MeshInput::idx(x, y, z);
+  in.light[i] = 0xF0;
+  in.rgb[i] = fullSunRgb();
+}
+// brightest packed sky (cv.d & 255) on quads whose centroid sits in this cell
+static int maxPackedSkyInCell(const MeshOutput& out, int bx, int by, int bz) {
+  int mx = 0;
+  bool any = false;
+  auto pos = [](u32 v) { return (float)v / 256.f - 16.f; };
+  for (const std::vector<ChunkVertex>* list : {&out.opaque, &out.cutout, &out.trans})
+    for (size_t q = 0; q + 3 < list->size(); q += 4) {
+      vec3 p[4];
+      for (int k = 0; k < 4; k++) {
+        const ChunkVertex& v = (*list)[q + k];
+        p[k] = vec3(pos(v.a & 16383), pos((v.a >> 14) & 16383), pos(v.b & 16383));
+      }
+      const vec3 c = (p[0] + p[1] + p[2] + p[3]) * 0.25f;
+      if (c.x < bx || c.x > bx + 1 || c.y < by || c.y > by + 1 || c.z < bz || c.z > bz + 1) continue;
+      for (int k = 0; k < 4; k++) {
+        const int sky = (int)((*list)[q + k].d & 255);
+        if (sky > mx) mx = sky;
+        any = true;
+      }
+    }
+  return any ? mx : -1;
+}
+
 int main(int argc, char** argv) {
   CoreOptions co; co.userDirOverride = "/tmp/dq-mesher-test";
   for (int i = 1; i < argc; i++) if (std::string(argv[i]) == "--userdir" && i + 1 < argc) co.userDirOverride = argv[++i];
@@ -155,6 +192,50 @@ int main(int argc, char** argv) {
       if (k.id == candle) CHECK(own > 0, "%s draw something (%d quads)", k.what, own);
       cases++;
     }
+  }
+  // rgbAt outside the gathered neighbourhood is dark, never noon (missing-chunk / out-of-apron leak)
+  {
+    auto in = darkInput();
+    MeshOutput dummy;
+    MeshCtx ctx(*in, dummy, opt, R, nullptr);
+    const LightRgb outX = rgbAt(ctx, -2, 8, 8);
+    const LightRgb outY = rgbAt(ctx, 8, 20, 8);
+    const LightRgb below = rgbAt(ctx, 8, -20, 8);
+    const LightRgb inApron = rgbAt(ctx, SX, SY, SZ);
+    CHECK(outX.s[0] == 0 && outX.s[1] == 0 && outX.s[2] == 0, "rgbAt x=-2 is dark, not noon (s0=%d)", outX.s[0]);
+    CHECK(outY.s[0] == 0 && outY.s[1] == 0 && outY.s[2] == 0, "rgbAt y=20 is dark, not noon (s0=%d)", outY.s[0]);
+    CHECK(below.s[0] == 0 && below.s[1] == 0 && below.s[2] == 0, "rgbAt below the world is dark (s0=%d)", below.s[0]);
+    CHECK(inApron.s[0] == 0, "rgbAt inside a dark apron stays dark (s0=%d)", inApron.s[0]);
+    cases++;
+  }
+  // a sealed stone room, every cell dark, leftover noon only on the carved / chiseled cells:
+  // internal carved faces must sample adjacent air (0), not the opaque cell's leftover sun
+  {
+    auto in = darkInput();
+    for (int y = 0; y < 16; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+      const bool wall = x == 0 || x == 15 || y == 0 || y == 15 || z == 0 || z == 15;
+      put(*in, x, y, z, wall ? stone : AIR);
+      in->light[MeshInput::idx(x, y, z)] = 0;
+      in->rgb[MeshInput::idx(x, y, z)] = LightRgb{};
+    }
+    put(*in, SX, SY, SZ, stone, 0, 0x80);
+    leftoverNoon(*in, SX, SY, SZ);
+    const BlockId chisel = R.blockId("chiseled_stone_bricks");
+    CHECK(chisel != 0, "chiseled_stone_bricks is registered");
+    if (chisel) {
+      put(*in, SX + 2, SY, SZ, chisel);
+      leftoverNoon(*in, SX + 2, SY, SZ);
+    }
+    buildSectionMesh(*in, out, opt);
+    const int carvedSky = maxPackedSkyInCell(out, SX, SY, SZ);
+    CHECK(carvedSky >= 0, "a carved stone in a dark room draws vertices");
+    CHECK(carvedSky < 40, "carved stone in a dark room is not noon (packed sky %d)", carvedSky);
+    if (chisel) {
+      const int chiselSky = maxPackedSkyInCell(out, SX + 2, SY, SZ);
+      CHECK(chiselSky >= 0, "chiseled_stone_bricks in a dark room draws vertices");
+      CHECK(chiselSky < 40, "chiseled_stone_bricks in a dark room is not noon (packed sky %d)", chiselSky);
+    }
+    cases++;
   }
   printf("mesher carve checks: %d cases, %d passed, %d failed\n", cases, passes, fails);
   return fails;
