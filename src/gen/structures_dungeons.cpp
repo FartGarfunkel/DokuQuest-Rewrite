@@ -18,9 +18,17 @@ static const int* DZL = DIRZ;
 
 // ==== Dungeons =======================================================================================================
 constexpr int DREG = 288, HSPAN = 8;
-int dungeonEntryY(int surfY, int floors) {
-  (void)floors;   // extra floors stack down from the entry; they do not deepen the well
-  return std::max(8, surfY - 12);
+constexpr int DUNGEON_COVER = 4;     // land left above the tallest room
+constexpr int DUNGEON_WELL = 12;     // preferred ladder
+constexpr int DUNGEON_WELL_MAX = 20; // longest climb we will ask
+constexpr int DUNGEON_HEAD = 6;      // tallest floor-0 room (boss / nave)
+int dungeonEntryY(int surfY, int minGround, int maxRoomH) {
+  const int buried = minGround - maxRoomH - DUNGEON_COVER;
+  return std::max(8, std::min(surfY - DUNGEON_WELL, buried));
+}
+bool dungeonWellOk(int surfY, int entryY) {
+  const int d = surfY - entryY;
+  return d >= 8 && d <= DUNGEON_WELL_MAX;
 }
 struct DTheme { std::string key, name, pillar, stairs, slab, light; std::vector<std::string> wall, floor, mobs, bosses; bool webs = false; };
 static const DTheme& dtheme(int k) {
@@ -97,7 +105,17 @@ static bool dungeonPlace(const StructureIndex& idx, const TerrainQuery& t, int r
   const int entX = ox + s0 * cell + cell / 2, entZ = oz + s1 * cell + cell / 2;
   const TerrainColumn sc = t.terrainColumn(entX + 2, entZ + 2);
   if (sc.jsY <= JS_SEA) return false;
-  const int y = dungeonEntryY(sc.y, floors);
+  int lo = sc.y;
+  bool wet = sc.water >= 0;
+  for (int z = oz; z <= oz + SZ; z += cell)
+    for (int x = ox; x <= ox + SZ; x += cell) {
+      const TerrainColumn c = t.terrainColumn(x, z);
+      lo = std::min(lo, c.y);
+      if (c.water >= 0 || c.jsY <= JS_SEA) wet = true;
+    }
+  if (wet) return false;   // no crypt in the sea or hanging over it
+  const int y = dungeonEntryY(sc.y, lo, DUNGEON_HEAD);
+  if (!dungeonWellOk(sc.y, y)) return false;   // a cliff would poke out, or the ladder would be too long
   if (y - (floors - 1) * HSPAN < 8) return false;   // lowest room would sit on bedrock: skip this hill
   auto e = std::make_shared<DungeonExt>();
   e->theme = theme; e->entX = entX; e->entZ = entZ; e->surf = sc.y;

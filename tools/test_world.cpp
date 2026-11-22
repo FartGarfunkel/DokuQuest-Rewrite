@@ -39,7 +39,8 @@ int desertFloorY(int gh, int centreY);
 int desertFoundationTop(int groundY, int floorY);
 int ruinStyle(int biome, double temp, std::string_view landName);
 int ruinRubbleY(int wallH, int rubbleGh, int wallGh, int meanY);
-int dungeonEntryY(int surfY, int floors);
+int dungeonEntryY(int surfY, int minGround, int maxRoomH);
+bool dungeonWellOk(int surfY, int entryY);
 }
 static int fails = 0, passes = 0;
 static void check(bool ok, const std::string& what) { printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str()); (ok ? passes : fails)++; }
@@ -578,10 +579,13 @@ int main(int argc, char** argv) {
   }
   printf("[dungeon well]\n");
   {
-    check(dungeonEntryY(70, 2) == 58, "two-floor crypt starts 12 below the land");
-    check(dungeonEntryY(70, 4) == 58, "extra floors do not deepen the well");
-    check(dungeonEntryY(70, 4) <= 70 - 8, "the entry is under the land");
-    check(dungeonEntryY(12, 2) == 8, "a low hill still keeps the entry above bedrock");
+    check(dungeonEntryY(70, 70, 6) == 58, "flat land: the well is 12 down");
+    check(dungeonEntryY(70, 62, 6) == 52, "a slope: buried under the low side, not hanging out");
+    check(dungeonEntryY(70, 62, 6) + 6 + 4 <= 62, "the tallest room stays under the lowest ground");
+    check(dungeonWellOk(70, 58), "a 12-block well is allowed");
+    check(dungeonWellOk(70, 50), "a 20-block well is the longest climb");
+    check(!dungeonWellOk(70, 49), "longer than 20 is refused");
+    check(dungeonEntryY(12, 12, 6) == 8, "a low hill still keeps the entry above bedrock");
   }
   printf("[water leaves]\n");
   {
