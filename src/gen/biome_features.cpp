@@ -145,8 +145,11 @@ BiomeFeatures::State BiomeFeatures::state(const json& j) {
   { std::lock_guard<std::mutex> lk(mx); if (auto it = memo.find(k); it != memo.end()) { s.id = it->second; } else { s.id = blockFromState(j); memo[k] = s.id; } }
   if (s.id != OUT) {
     // a plant's own stages and props we don't keep; the pickles' count is ours
-    const std::string pk = j.contains("Properties") && j["Properties"].contains("pickles") ? j["Properties"]["pickles"].get<std::string>() : "";
+    const json& pr = j.contains("Properties") && j["Properties"].is_object() ? j["Properties"] : json::object();
+    const std::string pk = pr.contains("pickles") && pr["pickles"].is_string() ? pr["pickles"].get<std::string>() : "";
     if (!pk.empty()) s.meta = (u8)std::clamp(std::atoi(pk.c_str()) - 1, 0, 3);
+    if (pr.contains("waterlogged") && pr["waterlogged"].is_string() && pr["waterlogged"].get<std::string>() == "true")
+      s.meta |= WLOG;   // waterlogged
   }
   return s;
 }
@@ -277,6 +280,12 @@ bool BiomeFeatures::survives(BlockId id, Ctx& c, int x, int y, int z) const {
   auto in = [&](const std::vector<u8>& m, BlockId b) { return b < m.size() && m[b]; };
   if (d.has("onWater")) return below == water_ && (here == AIR || R.tReplaceable[here]);
   if (id == seagrass_ || id == kelp_ || id == pickle_) return here == water_ && (below == id || (R.tSolid[below] && !R.tLiquid[below] && below != ice_));
+  if (d.key == "cattail") {
+    if (here != AIR && here != water_ && !R.tReplaceable[here]) return false;
+    if (here == water_ && !R.tWlog[id]) return false;
+    const BlockId clay = R.blockId("clay"), gravel = R.blockId("gravel");
+    return in(dirt_, below) || in(sand_, below) || (clay && below == clay) || (gravel && below == gravel);
+  }
   if (id == vine_) { for (int k = 0; k < 4; k++) { const BlockId w = c.get(x + DIRX[k], y, z + DIRZ[k]); if (w != OUT && R.tSolid[w] && R.tOpaque[w]) return true; } return false; }
   if (id == cactus_) {
     for (int k = 0; k < 4; k++) { const BlockId w = c.get(x + DIRX[k], y, z + DIRZ[k]); if (w == OUT || (w != AIR && R.tSolid[w])) return false; }
@@ -531,11 +540,12 @@ bool BiomeFeatures::setState(Ctx& c, int x, int y, int z, State s) const {
   if (s.id == OUT) return false;
   const Registry& R = reg();
   u8 meta = s.meta;
-  if (R.tWlog[s.id] && c.get(x, y, z) == water_) meta |= 0x80;
+  if (R.tWlog[s.id] && c.get(x, y, z) == water_) meta |= WLOG;
+  else meta &= (u8)~WLOG;
   if (s.id != AIR && R.block(s.id).has("double")) {
     if (c.get(x, y + 1, z) != AIR) return false;
     c.set(x, y + 1, z, s.id, 1);
-    meta = 0;
+    meta &= WLOG;   // lower half; keep waterlogged
   }
   return c.set(x, y, z, s.id, meta);
 }

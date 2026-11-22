@@ -250,7 +250,11 @@ void buildPoi(ChunkWriter& w, const StructurePlan& S) {
     // on its own kind of land (a desert palace in the desert, its garden lawn and all) it stays as it was made
     const std::string& tk = RG.block(t).key;
     const char land = tk.find("sand") != std::string::npos ? 's' : (tk.find("snow") != std::string::npos || tk == "packed_ice") ? 'n' : 'g';
-    if (E->ground && land == E->ground) return own;
+    if (E->ground && land == E->ground) {
+      // the land's own ground (litter, podzol, desert sand): keep it, not a lawn of the builder's grass
+      if (t < isGround.size() && isGround[t] == 1) return t;
+      return own;
+    }
     return t;
   };
   for (const Placed& q : E->pcs) {
@@ -346,14 +350,14 @@ void poiExpected(const StructurePlan& S, const std::function<void(int, int, int,
 void registerStructurePois() {
   StructureType t;
   t.key = "poi"; t.name = "a place of note";
-  t.region = 112; t.margin = 16; t.chance = 0.9; t.clearance = 8;   // (about three for every one of our own places)
+  t.region = 160; t.margin = 16; t.chance = 0.40; t.clearance = 8; t.separation = 384;   // (fewer, and farther from other places)
   t.jsIndex = 30;   // the index before the wayvault was registered ahead of this: seeds and ids stay
   t.flags = SF_SURFACE;
   t.plan = [](const TerrainQuery& tq, int x, int z, Mulberry32& rnd, StructurePlan& out) -> bool {
     const PoiPack* pk = poiPack();
     if (!pk || tq.dim() != DIM_OVERWORLD) return false;
     const TerrainColumn c = tq.terrainColumn(x, z);
-    if (c.y < 0 || c.water >= 0) return false;
+    if (c.y < 0 || c.water >= 0 || c.river) return false;
     const std::vector<std::string> lands = landsAt(tq, c);
     // the structures this land may have, the rarer ones (a wider spacing in their data) less often
     std::vector<std::pair<double, const PoiDef*>> cand;
@@ -380,11 +384,32 @@ void registerStructurePois() {
       for (auto& o : E->pcs) if (&o != &q && !o.p->terrain && o.y0 < q.y0 && o.y0 + o.p->sy >= q.y0 - 1 &&
                                  o.x0 <= qx1 && o.x0 + o.w - 1 >= q.x0 && o.z0 <= qz1 && o.z0 + o.d - 1 >= q.z0) { under = true; break; }
       if (under) continue;
-      // the skirt: wide enough that the land never climbs more than about a block in two to the floor (beard_box
-      // reaches 12 blocks; a floor raised well above the land had a sheer wall of earth under it)
-      // (a floor below the land: the land comes down only on the piece itself and a step round it, never in a wide funnel)
-      const int rise = q.y0 - 1 - g;
-      E->flat.push_back({q.x0, q.z0, qx1, qz1, q.y0 - 1, rise < 0 ? std::min(14, -rise * 2 + 2) : std::max(E->flatR, std::min(28, rise * 2 + 2))});
+      const int floorY = q.y0 - 1, rise = floorY - g;
+      if (floorY > g + 4) continue;   // upper floors sit on pieces below, not on the land
+      bool skipFlat = false;
+      for (int zz = q.z0; zz <= qz1 && !skipFlat; zz += 2) for (int xx = q.x0; xx <= qx1 && !skipFlat; xx += 2) {
+        const TerrainColumn cc = tq.terrainColumn(xx, zz);
+        if (cc.water >= 0 || cc.river || floorY - cc.y > 2) skipFlat = true;
+      }
+      // a ground piece that would hang over a fall or sit more than two up: refuse the place, do not emit a floating pad
+      if (rise > 2 || skipFlat) {
+        if (std::getenv("DQ_POI_WHY")) DQ_LOG("poi why %s: hang rise %d skip %d", d->key.c_str(), rise, (int)skipFlat);
+        return false;
+      }
+      // the skirt: only when the floor is below the land (ease the hill down). A raise stays inside the footprint.
+      int skirt = rise < 0 ? std::min(14, -rise * 2 + 2) : 0;
+      if (skirt > 0) {
+        const int x0 = q.x0 - skirt, x1 = qx1 + skirt, z0 = q.z0 - skirt, z1 = qz1 + skirt;
+        for (int zz = z0; zz <= z1; zz += 2) for (int xx = x0; xx <= x1; xx += 2) {
+          if (xx >= q.x0 && xx <= qx1 && zz >= q.z0 && zz <= qz1) continue;
+          const TerrainColumn cc = tq.terrainColumn(xx, zz);
+          if (cc.water >= 0 || cc.river || floorY - cc.y > 2) {
+            const int dx = std::max({q.x0 - xx, 0, xx - qx1}), dz = std::max({q.z0 - zz, 0, zz - qz1});
+            skirt = std::min(skirt, std::max(0, (int)std::floor(std::hypot((double)dx, (double)dz)) - 1));
+          }
+        }
+      }
+      E->flat.push_back({q.x0, q.z0, qx1, qz1, floorY, skirt});
     }
     int X0 = 1 << 30, Z0 = 1 << 30, X1 = -(1 << 30), Z1 = -(1 << 30);
     for (auto& q : E->pcs) { X0 = std::min(X0, q.x0); Z0 = std::min(Z0, q.z0); X1 = std::max(X1, q.x0 + q.w - 1); Z1 = std::max(Z1, q.z0 + q.d - 1); }
@@ -393,23 +418,27 @@ void registerStructurePois() {
       int lo = 1 << 20, hi = -(1 << 20), wet = 0, n = 0;
       for (int zz = Z0; zz <= Z1; zz += 4) for (int xx = X0; xx <= X1; xx += 4) {
         const TerrainColumn cc = tq.terrainColumn(xx, zz); n++;
-        if (cc.water >= 0) wet++;
+        if (cc.water >= 0 || cc.river) wet++;
         lo = std::min(lo, cc.y); hi = std::max(hi, cc.y);
       }
       static const bool why = std::getenv("DQ_POI_WHY") != nullptr;
-      // level enough: a small place on nearly level land (a well on a hillside sat in a cut or a crater), a big one where the
-      // land varies by no more than about a tenth of its size
-      const int allowed = std::max(4, (X1 - X0 + Z1 - Z0) / 10);
-      if (hi - lo > allowed || wet * 5 > n) { if (why) DQ_LOG("poi why %s: uneven %d (allowed %d) wet %d/%d", d->key.c_str(), hi - lo, allowed, wet, n); return false; }
+      // no surface place over water, nor on a cliff: a tenth of its size used to let towers sit on a fall
+      if (hi - lo > 6 || wet > 0) { if (why) DQ_LOG("poi why %s: uneven %d wet %d/%d", d->key.c_str(), hi - lo, wet, n); return false; }
       // its own ground matches the land's all over its footprint (sand in the desert and on the beach, snow in the snow, grass
       // in the green lands), not a courtyard of sand in a meadow half over the desert's edge
-      int gOk = 0, gN = 0;
-      if (d->ground) for (int zz = Z0; zz <= Z1; zz += 6) for (int xx = X0; xx <= X1; xx += 6) {
-        const TerrainColumn cc = tq.terrainColumn(xx, zz);
+      auto groundMatch = [&](const TerrainColumn& cc) {
         const std::vector<std::string> L = landsAt(tq, cc);
         auto has = [&](const char* l) { return std::find(L.begin(), L.end(), l) != L.end(); };
         const bool sandy = cc.biome == BIOME_DESERT || cc.biome == BIOME_BEACH || has("badlands"), snowy = has("snowy");
-        gN++; if (!(d->ground == 's' ? !sandy : d->ground == 'n' ? !snowy : (sandy || snowy))) gOk++;
+        const bool grassy = has("plains") || has("forest") || has("jungle") || has("savanna") || has("taiga");
+        if (d->ground == 's') return sandy;
+        if (d->ground == 'n') return snowy;
+        return grassy && !sandy && !snowy;   // (grass-family: not the peaks, the swamp, the sand or the snow)
+      };
+      if (d->ground && !groundMatch(c)) { if (why) DQ_LOG("poi why %s: ground %c at the start", d->key.c_str(), d->ground); return false; }
+      int gOk = 0, gN = 0;
+      if (d->ground) for (int zz = Z0; zz <= Z1; zz += 6) for (int xx = X0; xx <= X1; xx += 6) {
+        gN++; if (groundMatch(tq.terrainColumn(xx, zz))) gOk++;
       }
       if (gN && gOk * 5 < gN * 4) { if (why) DQ_LOG("poi why %s: ground %c %d/%d", d->key.c_str(), d->ground, gOk, gN); return false; }   // (four in five of it on its own ground)
     }
@@ -441,6 +470,7 @@ void registerStructurePois() {
   };
   t.build = buildPoi;
   t.flatten = [](const StructurePlan& S, int x, int z, double& weight, int& targetY) -> bool {
+    // only rects that do not raise a column more than two, and never toward water (plan() dropped those)
     auto E = std::static_pointer_cast<const PoiExt>(S.ext);
     if (!E || E->flat.empty()) return false;
     double best = 0, sw = 0, swy = 0; int inside = INT32_MAX, by = 0;

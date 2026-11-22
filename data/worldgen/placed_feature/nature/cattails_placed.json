@@ -10,7 +10,11 @@
     },
     {
       "type": "main:heightmap",
-      "heightmap": "MOTION_BLOCKING"
+      "heightmap": "OCEAN_FLOOR_WG"
+    },
+    {
+      "type": "main:surface_water_depth_filter",
+      "max_water_depth": 1
     },
     {
       "type": "main:biome"

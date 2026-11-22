@@ -174,7 +174,7 @@ static int villageStyle10(const TerrainColumn& c, u32 h, int wet, bool v19 = fal
 static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int rz, StructurePlan& S) {
   const i32 seed = t.seed();
   Mulberry32 rnd(hash32(seed, rx, rz, 4242));
-  if (rnd() > 0.66) return false;
+  if (rnd() > 0.50) return false;
   const double q = rnd();
   const int tier = q < 0.12 ? TIER_CITY : q < 0.46 ? TIER_TOWN : TIER_VILLAGE;
   const json& TT = SD()["TOWN_TIERS"][TIER_NAMES[tier]];
@@ -1045,7 +1045,7 @@ bool townPieceBoxes(const StructurePlan& S, const std::array<int, 4>& near, std:
 int townStyleOf(const StructurePlan& S) { return S.ext ? extOf<TownExt>(S).v.style : VS_PLAINS; }
 
 void registerStructureVillages() {
-  StructureType t; t.key = "village"; t.name = "a village"; t.region = VREG; t.clearance = 24; t.dims = 1u << DIM_OVERWORLD;
+  StructureType t; t.key = "village"; t.name = "a village"; t.region = VREG; t.clearance = 24; t.separation = 400; t.dims = 1u << DIM_OVERWORLD;
   t.place = townPlace; t.build = townBuild; t.flatten = townFlatten; t.flattenPad = VF_R + 2;
   t.treeOff = [](const StructurePlan& s, int x, int z) { if (s.ext) if (const auto& jg = extOf<TownExt>(s).jig) return jigsawTownTreeOff(*jg, x, z); return true; }; t.treePad = 4;   // villages.js: no trees within 4 of a village
   registerStructure(std::move(t));

@@ -662,6 +662,7 @@ static void coveBuild(ChunkWriter& w, const StructurePlan& S) {
 static void regDeep(const char* key, const char* name, int region, double chance, int margin, int jsIndex, decltype(StructureType::plan) plan,
                     decltype(StructureType::build) build, u32 flags = 0) {
   StructureType t; t.key = key; t.name = name; t.region = region; t.chance = chance; t.margin = margin; t.jsIndex = jsIndex; t.flags = flags;
+  t.separation = 224;
   if (t.key != "pirate_cove") t.flags |= SF_DEEP;
   t.dims = 1u << DIM_OVERWORLD; t.plan = std::move(plan); t.build = std::move(build);
   registerStructure(std::move(t));

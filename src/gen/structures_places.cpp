@@ -36,6 +36,13 @@ int ruinFloorY(int gh, int meanY) {
   (void)meanY;
   return gh;
 }
+int desertFloorY(int gh, int centreY) {
+  (void)gh;
+  return centreY;
+}
+int desertFoundationTop(int groundY, int floorY) {
+  return std::min(groundY, floorY);
+}
 int ruinStyle(int biome, double temp, std::string_view landName) {
   auto has = [&](const char* k) { return landName.find(k) != std::string_view::npos; };
   const bool namedGreen = has("flower") || has("meadow") || has("plains") || has("forest") || has("wood");
@@ -212,7 +219,18 @@ static void towerBuild(ChunkWriter& w, const StructurePlan& S) {
     if (!P.in(x, z)) continue;
     const double d = std::hypot(x - cx, z - cz); const int gh = P.ground(x, z);
     if (d > R + 1.6) continue;
-    if (d > R + 0.5) { if (gh < y) P.fill(x, gh + 1, z, x, y - 1, z, "cobblestone"); P.put(x, y, z, "grass"); for (int yy = y + 1; yy <= std::max(gh, y) + 2; yy++) P.put(x, yy, z, "air"); continue; }
+    if (d > R + 0.5) {
+      if (gh < y) P.fill(x, gh + 1, z, x, y - 1, z, "cobblestone");
+      const BlockId gTop = gh >= 0 ? P.get(x, gh, z) : NOBLOCK;
+      const BlockDef& td = reg().block(gTop);
+      const bool soil = td.tool == "shovel" || td.sound == "dirt" || td.sound == "grass" || td.sound == "mud" || td.sound == "snow";
+      const bool sand = td.sound == "sand" || td.sound == "gravel";
+      const bool stone = td.sound == "stone" && td.shapeKind == 0 && td.solid;
+      const bool yard = gTop != AIR && gTop != NOBLOCK && !tLiquid(gTop) && (soil || sand || stone);
+      P.putId(x, y, z, yard ? gTop : bid("dirt"));
+      for (int yy = y + 1; yy <= std::max(gh, y) + 2; yy++) P.put(x, yy, z, "air");
+      continue;
+    }
     for (int yy = std::min(gh, y) - 3; yy < y; yy++) P.put(x, yy, z, "cobblestone");
     for (int yy = y; yy <= top; yy++) {
       const int lv = (yy - y) % TOWER_LV, level = (yy - y) / TOWER_LV;
@@ -273,9 +291,20 @@ static bool desertPlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Str
   TerrainColumn c = t.terrainColumn(x, z); if (c.biome != BIOME_DESERT || c.jsY <= JS_SEA + 1) return false;
   Land L = sLand(t, x - 10, z - 10, x + 10, z + 10);
   if (L.jhi - L.jlo > 8) return false;
-  S.x0 = x - 10; S.z0 = z - 10; S.x1 = x + 10; S.z1 = z + 10; S.cx = x; S.cz = z; S.y = L.mean; S.hashDy = L.jmean - L.mean; S.surface = true;
+  S.x0 = x - 10; S.z0 = z - 10; S.x1 = x + 10; S.z1 = z + 10; S.cx = x; S.cz = z; S.y = L.hi; S.hashDy = L.jhi - L.hi; S.surface = true;
   S.name = "Desert Temple";
   return true;
+}
+
+static bool desertFlatten(const StructurePlan& S, int x, int z, double& weight, int& targetY) {
+  const int r = 10, pad = 4, dx = std::max({S.x0 - x, 0, x - S.x1}), dz = std::max({S.z0 - z, 0, z - S.z1});
+  if (dx > r + pad || dz > r + pad) return false;
+  if (x >= S.x0 && x <= S.x1 && z >= S.z0 && z <= S.z1) { weight = 1; targetY = S.y; return true; }
+  const double d = std::hypot((double)dx, (double)dz);
+  if (d >= r + pad) return false;
+  weight = 1.0 - d / (r + 4);
+  targetY = S.y;
+  return weight > 0;
 }
 
 static void desertBuild(ChunkWriter& w, const StructurePlan& S) {
@@ -286,35 +315,43 @@ static void desertBuild(ChunkWriter& w, const StructurePlan& S) {
   for (int z = S.z0; z <= S.z1; z++) for (int x = S.x0; x <= S.x1; x++) {
     if (!P.in(x, z)) continue;
     const int lx = x - cx, lz = z - cz, ax = std::abs(lx), az = std::abs(lz), gh = P.ground(x, z);
-    for (int yy = std::min(gh, y) - 3; yy < y; yy++) P.put(x, yy, z, ss);
-    for (int yy = y + 1; yy <= std::max(gh, y) + 2; yy++) P.put(x, yy, z, "air");
+    const int fy = desertFloorY(gh, y);
+    // flatten may report gh == fy while the dune still drops away: pour through air to real solid
+    int found = desertFoundationTop(gh, fy);
+    for (int yy = fy - 1; yy >= fy - 16 && yy >= 1; yy--) {
+      const BlockId b = P.get(x, yy, z);
+      if (b != AIR && b != NOBLOCK && !tLiquid(b)) { found = yy + 1; break; }
+      found = yy;
+    }
+    for (int yy = found; yy < fy; yy++) P.put(x, yy, z, ss);
+    const bool tower = lz <= -6 && ax >= 6, edge = ax == 10 || az == 10;
+    if (!tower && !edge) for (int yy = fy + 1; yy <= fy + 9; yy++) P.put(x, yy, z, "air");
     // the floor: a star of orange round a blue heart
     const bool star = (ax == az || ax == 0 || az == 0) && ax <= 3 && az <= 3;
-    P.put(x, y, z, ax <= 3 && az <= 3 ? (ax == 0 && az == 0 ? std::string_view(BT) : star ? std::string_view(OT) : cut) : sm);
-    const bool tower = lz <= -6 && ax >= 6, edge = ax == 10 || az == 10;
+    P.put(x, fy, z, ax <= 3 && az <= 3 ? (ax == 0 && az == 0 ? std::string_view(BT) : star ? std::string_view(OT) : cut) : sm);
     if (tower) {
       // two hollow towers at the front, a doorway from the hall, a ladder up to a lookout at the top
       const bool tEdge = ax == 10 || ax == 6 || lz == -10 || lz == -6;
       for (int yy = 1; yy <= 14; yy++) {
-        if (!tEdge) { P.put(x, y + yy, z, yy == 14 ? cut : "air"); continue; }
+        if (!tEdge) { P.put(x, fy + yy, z, yy == 14 ? cut : "air"); continue; }
         const bool doorway = lz == -6 && ax == 8 && yy <= 2, window = (yy == 11 || yy == 12) && (ax == 8 || lz == -8);
-        P.put(x, y + yy, z, doorway || window ? std::string_view("air") : yy == 14 ? cut : (yy == 5 || yy == 10) ? std::string_view(OT) : yy == 13 ? chis : ss);
+        P.put(x, fy + yy, z, doorway || window ? std::string_view("air") : yy == 14 ? cut : (yy == 5 || yy == 10) ? std::string_view(OT) : yy == 13 ? chis : ss);
       }
-      if (ax == 8 && lz == -9) for (int yy = 1; yy <= 13; yy++) P.put(x, y + yy, z, "ladder", 0);
-      if (ax == 8 && lz == -8) P.put(x, y + 14, z, "air");
+      if (ax == 8 && lz == -9) for (int yy = 1; yy <= 13; yy++) P.put(x, fy + yy, z, "ladder", 0);
+      if (ax == 8 && lz == -8) P.put(x, fy + 14, z, "air");
     } else if (edge) {
       // the walls, banded, with the doorway at the front
       const bool door = lz == -10 && ax <= 1;
       for (int yy = 1; yy <= 9; yy++) {
         if (door && yy <= 4) continue;
-        P.put(x, y + yy, z, yy == 9 ? cut : yy == 6 ? std::string_view(OT) : (yy == 3 || yy == 7) && (ax % 3 == 0 || az % 3 == 0) ? chis : ss);
+        P.put(x, fy + yy, z, yy == 9 ? cut : yy == 6 ? std::string_view(OT) : (yy == 3 || yy == 7) && (ax % 3 == 0 || az % 3 == 0) ? chis : ss);
       }
     } else {
       // pillars round the hall, a roof over it, open to the sky over the star
       const bool pillar = ax == 5 && az == 5;
-      if (pillar) for (int yy = 1; yy <= 8; yy++) P.put(x, y + yy, z, yy == 4 ? std::string_view(OT) : cut);
-      if (!(ax <= 3 && az <= 3)) P.put(x, y + 9, z, cut);
-      else if (ax == 3 || az == 3) P.put(x, y + 9, z, "sandstone_slab");
+      if (pillar) for (int yy = 1; yy <= 8; yy++) P.put(x, fy + yy, z, yy == 4 ? std::string_view(OT) : cut);
+      if (!(ax <= 3 && az <= 3)) P.put(x, fy + 9, z, cut);
+      else if (ax == 3 || az == 3) P.put(x, fy + 9, z, "sandstone_slab");
     }
   }
   // under the blue stone: a shaft down to the treasure, and the trap
@@ -587,12 +624,13 @@ static void mineBuild(ChunkWriter& w, const StructurePlan& S) {
   if (const OverworldGen* ow = owOf(w.terrain); ow && ow->deepStructs() && gh <= SEA_LEVEL + 1) return;   // (a deep world's under the sea or a lake: no shaft up into the water)
   for (int yy = y; yy <= gh + 3; yy++) for (int dz = -1; dz <= 1; dz++) for (int dx = -1; dx <= 1; dx++) {
     const int x = M.x + dx, z = M.z + dz; if (!P.in(x, z)) continue;
+    const int ly = P.ground(x, z);
     const bool ring = dx != 0 || dz != 0;
-    if (yy > gh) { if (ring && std::abs(dx) + std::abs(dz) == 2 && yy <= gh + 2) P.put(x, yy, z, "oak_fence"); else if (yy == gh + 3 && ring) P.put(x, yy, z, "oak_slab"); else P.put(x, yy, z, "air"); continue; }
-    if (ring) { if (yy >= y + 3) P.put(x, yy, z, yy == gh ? "planks" : (std::abs(dx) + std::abs(dz) == 2 ? "log" : "planks")); }
+    if (yy > ly) { if (ring && std::abs(dx) + std::abs(dz) == 2 && yy <= ly + 2) P.put(x, yy, z, "oak_fence"); else if (yy == ly + 3 && ring) P.put(x, yy, z, "oak_slab"); else P.put(x, yy, z, "air"); continue; }
+    if (ring) { if (yy >= y + 3) P.put(x, yy, z, yy == ly ? "planks" : (std::abs(dx) + std::abs(dz) == 2 ? "log" : "planks")); }
     else P.put(x, yy, z, "air");
   }
-  if (P.in(M.x, M.z)) for (int yy = y; yy <= gh; yy++) P.put(M.x, yy, M.z, "ladder", 0);
+  if (P.in(M.x, M.z)) for (int yy = y; yy <= P.ground(M.x, M.z); yy++) P.put(M.x, yy, M.z, "ladder", 0);
   if (P.in(M.x, M.z - 1)) for (int yy = y; yy <= gh; yy++) P.put(M.x, yy, M.z - 1, "planks");
 }
 
@@ -1062,35 +1100,37 @@ void woodlandMansionBuild(ChunkWriter& w, const StructurePlan& S);
 
 // ---- registration (the original's STRUCTS 0..6, in its order) ----
 static void regPlace(const char* key, const char* name, int region, double chance, int margin, int jsIndex,
-                decltype(StructureType::plan) plan, decltype(StructureType::build) build) {
+                decltype(StructureType::plan) plan, decltype(StructureType::build) build, int separation) {
   StructureType t; t.key = key; t.name = name; t.region = region; t.chance = chance; t.margin = margin; t.jsIndex = jsIndex;
+  t.separation = separation;
   t.dims = 1u << DIM_OVERWORLD; t.plan = std::move(plan); t.build = std::move(build);
   if (t.key.rfind("mineshaft", 0) == 0) t.flags |= SF_DEEP;
+  if (t.key == "desert_temple") { t.flatten = desertFlatten; t.flattenPad = 14; }
   registerStructure(std::move(t));
 }
 void registerStructurePlaces() {
-  regPlace("ruin", "Ruins", 176, 0.5, 24, 0, ruinPlan, ruinBuild);
-  regPlace("tower", "Mage Tower", 560, 0.6, 48, 1, towerPlan, towerBuild);
-  regPlace("desert_temple", "Desert Temple", 420, 0.75, 40, 2, desertPlan, desertBuild);
-  regPlace("ocean_temple", "Sunken Temple", 520, 0.65, 40, 3, oceanPlan, oceanBuild);
-  regPlace("wreck", "Shipwreck", 300, 0.55, 32, 4, wreckPlan, wreckBuild);
+  regPlace("ruin", "Ruins", 176, 0.5, 24, 0, ruinPlan, ruinBuild, 384);
+  regPlace("tower", "Mage Tower", 560, 0.6, 48, 1, towerPlan, towerBuild, 480);
+  regPlace("desert_temple", "Desert Temple", 420, 0.75, 40, 2, desertPlan, desertBuild, 480);
+  regPlace("ocean_temple", "Sunken Temple", 520, 0.65, 40, 3, oceanPlan, oceanBuild, 480);
+  regPlace("wreck", "Shipwreck", 300, 0.55, 32, 4, wreckPlan, wreckBuild, 384);
   // a deep world (terrain 21) has many more (0.3% of chunks, about one per 290 blocks square): its own
   // kind on a 256-block grid; the old one stands aside there (other worlds keep theirs where they were)
   auto deepOn = [](const TerrainQuery& t) { const OverworldGen* ow = owOf(t); return ow && ow->deepStructs(); };
-  regPlace("mineshaft", "Mineshaft", 480, 0.55, 64, 5, [deepOn](const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) { return !deepOn(t) && minePlan(t, x, z, rnd, S); }, mineBuild);
-  regPlace("labyrinth", "The Labyrinth", 720, 0.6, 60, 6, mazePlan, mazeBuild);
-  // Minecraft jungle pyramid: 32-chunk spacing → 512 blocks (chance is high; biome plan() is the filter)
-  regPlace("jungle_temple", "Jungle Temple", 512, 0.70, 48, -1, jungleTemplePlan, jungleTempleBuild);
-  // Minecraft trail ruins: ~34-chunk spacing → 544 blocks; taiga-family, uncommon
-  regPlace("trail_ruins", "Trail Ruins", 544, 0.40, 40, -1, trailRuinsPlan, trailRuinsBuild);
-  // Minecraft woodland mansion: 80-chunk spacing → 1280 blocks; rarest overworld structure
-  regPlace("woodland_mansion", "Woodland Mansion", 1280, 0.80, 80, -1, woodlandMansionPlan, woodlandMansionBuild);
+  regPlace("mineshaft", "Mineshaft", 480, 0.55, 64, 5, [deepOn](const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) { return !deepOn(t) && minePlan(t, x, z, rnd, S); }, mineBuild, 384);
+  regPlace("labyrinth", "The Labyrinth", 720, 0.6, 60, 6, mazePlan, mazeBuild, 480);
+  // jungle temple: 512-block regions, uncommon in its own land
+  regPlace("jungle_temple", "Jungle Temple", 512, 0.70, 48, -1, jungleTemplePlan, jungleTempleBuild, 384);
+  // trail ruins: 544-block regions, taiga-family
+  regPlace("trail_ruins", "Trail Ruins", 544, 0.40, 40, -1, trailRuinsPlan, trailRuinsBuild, 384);
+  // woodland mansion: 1280-block regions, the rarest overworld place
+  regPlace("woodland_mansion", "Woodland Mansion", 1280, 0.80, 80, -1, woodlandMansionPlan, woodlandMansionBuild, 480);
 }
 
 // registered after every other kind, so their indices (their seeds) stay as they were
 void registerStructureDeepMines() {
   regPlace("mineshaft_deep", "Mineshaft", 256, 0.85, 40, 5, [](const TerrainQuery& t, int x, int z, Mulberry32& rnd, StructurePlan& S) {
-    const OverworldGen* ow = owOf(t); return ow && ow->deepStructs() && minePlan(t, x, z, rnd, S); }, mineBuild);
+    const OverworldGen* ow = owOf(t); return ow && ow->deepStructs() && minePlan(t, x, z, rnd, S); }, mineBuild, 0);
 }
 
 } // namespace dq

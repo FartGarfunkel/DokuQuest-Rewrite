@@ -164,7 +164,7 @@ bool inState(const Creature& m, State s) {
     case ST_SIT: return m.sitting || m.curled || m.perched || m.roosting || m.playDead;
     case ST_SLEEP: return m.sleeping;
     case ST_FLY: return !m.onGround && !m.inWater && m.T && (m.T->fly > 0 || m.T->ai == "flyer");
-    case ST_SWIM: return m.inWater;
+    case ST_SWIM: return m.inWater && ((m.T && m.T->aquatic) || !m.onGround);   // aquatics swim on the bed; amphibians walk there
     case ST_RUN: return m.walkAmt > 0.5f && m.T && m.speedNow > m.T->speed * 1.4f;
     case ST_ATTACK: return m.attack.on || m.swingT > 0 || m.lungeT > 0 || m.angryT > 0 || m.striking > 0;
     case ST_GRAZE: return m.grazeT > 0 || m.peckT > 0 || m.drinkT > 0;
@@ -363,8 +363,11 @@ void beastAnim(Creature& m, const RigModel& M, RigAnimOut& o) {
 void registerBeastAnim() {
   registerRigAnim("beast", [](Creature& m, const RigModel& M, RigAnimOut& o) {
     beastAnim(m, M, o);
-    // a swimmer is drawn along the way it swims, nose up as it climbs and down as it dives (sim/creature_beasts.cpp aquaticSteer)
-    if (m.T && m.inWater && (m.T->aquatic || m.T->amphibious) && !m.onGround) o.pitch += m.swimPitch;
+    // a swimmer is drawn along the way it swims, nose up as it climbs and down as it dives (sim/creature_beasts.cpp aquaticSteer).
+    // off the bottom only: standing in 1-block water is a walk, not a pitched glide.
+    if (m.T && m.inWater && m.T->aquatic) o.pitch += m.swimPitch;
+    else if (m.T && m.inWater && m.T->amphibious && !m.onGround) o.pitch += m.swimPitch;
+    else if (m.T && m.inWater && m.T->amphibious) m.swimPitch = 0;
   });
 }
 

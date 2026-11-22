@@ -18,6 +18,10 @@ static const int* DZL = DIRZ;
 
 // ==== Dungeons =======================================================================================================
 constexpr int DREG = 288, HSPAN = 8;
+int dungeonEntryY(int surfY, int floors) {
+  (void)floors;   // extra floors stack down from the entry; they do not deepen the well
+  return std::max(8, surfY - 12);
+}
 struct DTheme { std::string key, name, pillar, stairs, slab, light; std::vector<std::string> wall, floor, mobs, bosses; bool webs = false; };
 static const DTheme& dtheme(int k) {
   static const std::array<DTheme, 3> T = [] {
@@ -93,10 +97,8 @@ static bool dungeonPlace(const StructureIndex& idx, const TerrainQuery& t, int r
   const int entX = ox + s0 * cell + cell / 2, entZ = oz + s1 * cell + cell / 2;
   const TerrainColumn sc = t.terrainColumn(entX + 2, entZ + 2);
   if (sc.jsY <= JS_SEA) return false;
-  const int yo = std::max(8, std::min(sc.jsY - 18 - floors * HSPAN, (deep ? 14 : 24) + jsFloor(rnd() * 10)));
-  if (sc.jsY - yo < 10 + floors * 4) return false;
-  int y = owUnder(yo);
-  if (const OverworldGen* ow = owOf(t); ow && ow->deepStructs()) y = std::min(sc.y - 14 - floors * HSPAN, -49 + (int)(hash32(seed, rx, rz, 5153) % 101u));
+  const int y = dungeonEntryY(sc.y, floors);
+  if (y - (floors - 1) * HSPAN < 8) return false;   // lowest room would sit on bedrock: skip this hill
   auto e = std::make_shared<DungeonExt>();
   e->theme = theme; e->entX = entX; e->entZ = entZ; e->surf = sc.y;
   e->grid = grid; e->cell = cell; e->floors = floors;
@@ -158,7 +160,7 @@ static bool dungeonPlace(const StructureIndex& idx, const TerrainQuery& t, int r
       default: rxr = std::min(4, cell / 2 - 1); rzr = 3; H = 4; break;
     }
     if (kind != "boss" && kind != "nave" && kind != "entry") R = std::min(rxr, rzr);
-    const int ry = y + c.fl * HSPAN;
+    const int ry = y - c.fl * HSPAN;
     DRoom room{kind, ox + c.gx * cell + cell / 2, oz + c.gz * cell + cell / 2, ry, R, H,
                hash32(seed, c.gx, c.gz, c.fl * 17 + rx * 7 + rz),
                std::to_string(c.gx) + "," + std::to_string(c.gz) + "," + std::to_string(c.fl)};
@@ -200,7 +202,7 @@ static bool dungeonPlace(const StructureIndex& idx, const TerrainQuery& t, int r
     patrols--;
   }
   S.id = "d" + std::to_string(rx) + "_" + std::to_string(rz); S.seed = hash32(seed, rx, rz, 5152);
-  S.x0 = ox - 3; S.z0 = oz - 3; S.x1 = ox + SZ + 3; S.z1 = oz + SZ + 3; S.cx = ox + SZ / 2; S.cz = oz + SZ / 2; S.y = y; S.hashDy = yo - y;
+  S.x0 = ox - 3; S.z0 = oz - 3; S.x1 = ox + SZ + 3; S.z1 = oz + SZ + 3; S.cx = ox + SZ / 2; S.cz = oz + SZ / 2; S.y = y; S.hashDy = sc.jsY - sc.y;
   S.name = th.name;
   S.data = {{"theme", th.key}, {"ent", json::array({entX, entZ})}, {"surf", sc.y}, {"floors", floors}, {"grid", grid},
             {"boss", {{"at", jat(boss->x, boss->y, boss->z)}, {"type", bossType},
@@ -334,7 +336,8 @@ static void dungeonBuild(ChunkWriter& w, const StructurePlan& S) {
     applyProcLayout(pr, ProcLayout{r.yaw, r.pattern, d.pal, d.clutter});
     pr.light = th.light; pr.hangLight = hang;   // theme lamps, palette furniture
     pr.webs = th.webs || pr.webs;
-    furnishProcRoom(P, pr, chest);
+    if (r.kind == "boss") chest(r.x, r.y, r.z, "boss", false);   // the keeper's hall stays empty for the fight
+    else furnishProcRoom(P, pr, chest);
   }
 }
 

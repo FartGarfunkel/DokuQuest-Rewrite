@@ -17,6 +17,7 @@
 #include "world/dims.h"
 #include "gen/generator.h"
 #include "gen/overworld.h"
+#include "gen/structures.h"
 #include "gen/nether_painted.h"
 #include "sim/dyntree.h"
 #include "sim/blockinfo.h"
@@ -34,8 +35,11 @@
 using namespace dq;
 namespace dq {
 int ruinFloorY(int gh, int meanY);
+int desertFloorY(int gh, int centreY);
+int desertFoundationTop(int groundY, int floorY);
 int ruinStyle(int biome, double temp, std::string_view landName);
 int ruinRubbleY(int wallH, int rubbleGh, int wallGh, int meanY);
+int dungeonEntryY(int surfY, int floors);
 }
 static int fails = 0, passes = 0;
 static void check(bool ok, const std::string& what) { printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str()); (ok ? passes : fails)++; }
@@ -563,6 +567,67 @@ int main(int argc, char** argv) {
     check(ruinRubbleY(0, 40, 40, 46) < 0, "no rubble without a wall stump");
     check(ruinRubbleY(2, 30, 40, 46) < 0, "no rubble over a 3-block drop");
     check(ruinRubbleY(2, 38, 40, 46) == 39, "rubble allowed on a 2-block step");
+  }
+  printf("[desert temple sits]\n");
+  {
+    check(desertFloorY(40, 44) == 44, "desert temple is one floor at the plan height");
+    check(desertFloorY(47, 44) == 44, "a hill does not step the temple walls");
+    check(desertFoundationTop(42, 44) == 42, "high ground under a column stops at that ground");
+    check(desertFoundationTop(38, 44) == 38, "buried columns pour foundation down, not up");
+    check(desertFoundationTop(50, 44) == 44, "foundation never pours above the floor");
+  }
+  printf("[dungeon well]\n");
+  {
+    check(dungeonEntryY(70, 2) == 58, "two-floor crypt starts 12 below the land");
+    check(dungeonEntryY(70, 4) == 58, "extra floors do not deepen the well");
+    check(dungeonEntryY(70, 4) <= 70 - 8, "the entry is under the land");
+    check(dungeonEntryY(12, 2) == 8, "a low hill still keeps the entry above bedrock");
+  }
+  printf("[water leaves]\n");
+  {
+    const BlockId az = reg().blockId("azolla"), al = reg().blockId("algae"), lf = reg().blockId("leaves");
+    check(az && reg().block(az).has("isLeaves"), "azolla is walk-through like leaves");
+    check(!al || reg().block(al).has("isLeaves"), "algae is walk-through like leaves");
+    check(lf && reg().block(lf).has("isLeaves"), "oak leaves stay walk-through");
+    const BlockId cat = reg().blockId("cattail");
+    check(cat && reg().tWlog[cat], "cattails can hold water");
+  }
+  printf("[structure spacing]\n");
+  {
+    WorldGenOptions o; o.seed = 4242; o.genVersion = 26; WorldGen g(o);
+    auto* og = dynamic_cast<OverworldGen*>(g.forDim(DIM_OVERWORLD));
+    check(og != nullptr, "world generator exposes the structure index");
+    if (og) {
+      StructureIndex& si = og->structures;
+      std::vector<const StructurePlan*> found;
+      for (int k : si.typeList()) {
+        const StructureType& T = structureTypes()[k];
+        if (T.global || (T.flags & SF_DEEP) || T.key == "dragon_lair" || T.key == "wayvault" || T.key == "road") continue;
+        if (!T.plan && !T.place) continue;
+        for (int rz = -3; rz <= 2; rz++) for (int rx = -3; rx <= 2; rx++)
+          if (const StructurePlan* S = si.nearest(k, rx * T.region + T.region / 2, rz * T.region + T.region / 2, 2)) found.push_back(S);
+      }
+      std::sort(found.begin(), found.end(), [](const StructurePlan* a, const StructurePlan* b) {
+        return a->id < b->id;
+      });
+      found.erase(std::unique(found.begin(), found.end()), found.end());
+      const double minGap = 384;
+      double nearest = 1e9;
+      int close = 0, counted = 0;
+      for (size_t i = 0; i < found.size(); i++) for (size_t j = i + 1; j < found.size(); j++) {
+        const double d = std::hypot((found[i]->cx + found[i]->cz) - (found[j]->cx + found[j]->cz),
+                                    (found[i]->cx - found[i]->cz) - (found[j]->cx - found[j]->cz));
+        nearest = std::min(nearest, d / std::sqrt(2.0));
+        if (d < minGap * std::sqrt(2.0)) {
+          if (close < 12) printf("     (%s/%s %.0f blocks)\n", structureTypes()[found[i]->type].key.c_str(),
+                                 structureTypes()[found[j]->type].key.c_str(), d / std::sqrt(2.0));
+          close++;
+        }
+        counted++;
+      }
+      printf("     (%zu structures, %d pair distances, closest %.0f blocks, %d under %.0f)\n", found.size(), counted, nearest, close, minGap);
+      check(close == 0, "ordinary structures keep at least " + std::to_string((int)minGap) + " blocks apart (" + std::to_string(close) + " too close)");
+    }
   }
   printf("\n%d passed, %d failed\n", passes, fails);
   rg.lv->close();

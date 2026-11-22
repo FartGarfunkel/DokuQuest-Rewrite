@@ -147,6 +147,7 @@ bool LandSurface::test(int ci, Column& c) const {
     case C_NOT: return !test(k.child, c);
     case C_STONE: {
       const int d = k.ceiling ? c.stoneBelow : c.stoneAbove;
+      if (k.ceiling && c.stoneBelow <= 1 && c.stoneAbove <= 1) return false;
       const int add = k.add ? c.surfaceDepth : 0;
       const int sec = k.range == 0 ? 0 : (int)((c.secondary + 1.0) / 2.0 * k.range);   // (Mth.map(secondary, -1, 1, 0, range))
       return d <= 1 + k.offset + add + sec;

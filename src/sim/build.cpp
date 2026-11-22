@@ -77,6 +77,15 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
   int x = t.x, y = t.y, z = t.z;
   BlockId cur = w.getBlock(x, y, z);
   bool wet = R.tLiquid[cur] == 1 && (w.getMeta(x, y, z) & 15) == 0;
+  if (bid == B.cattail && !wet) {   // plant into the water, not on top of it
+    auto fullWater = [&](int ax, int ay, int az) {
+      return inWorldY(ay) && R.tLiquid[w.getBlock(ax, ay, az)] == 1 && (w.getMeta(ax, ay, az) & 15) == 0;
+    };
+    if (fullWater(x, y - 1, z)) { y -= 1; cur = w.getBlock(x, y, z); wet = true; }
+    else if (fullWater(hit.block.x, hit.block.y, hit.block.z)) {
+      x = hit.block.x; y = hit.block.y; z = hit.block.z; cur = hit.id; wet = true;
+    }
+  }
   int nx = hit.normal.x, ny = hit.normal.y, nz = hit.normal.z;
   auto set = [&](int xx, int yy, int zz, u8 m, bool merge = false) { out.x = xx; out.y = yy; out.z = zz; out.meta = m; out.merge = merge; return true; };
   // ---- placeSpecial (blocks2.js) ----
@@ -153,6 +162,7 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
   } else if (bhas(bid, BF::Double)) {
     BlockId up = w.getBlock(x, y + 1, z);
     if (!inWorldY(y + 1) || (up && !R.tReplaceable[up])) return false;
+    if (bid == B.cattail && up) return false;   // 1-deep only: the upper half is air
     out.also.push_back({x, y + 1, z, bid, 1});
   } else if (bhas(bid, BF::AxisBlock)) {
     meta = (u8)(nx ? 1 : nz ? 2 : 0);
@@ -412,7 +422,10 @@ bool PlayerController::supportOK(BlockId bid, int x, int y, int z, u8 meta) {
     return in(below, {B.crimson_nylium, B.warped_nylium, B.netherrack, B.soul_soil, B.soul_sand}) || inSoil(below);
   if (bid == B.brown_mushroom || bid == B.red_mushroom || bid == B.amethyst_cluster || bid == B.small_amethyst_bud || bid == B.medium_amethyst_bud ||
       bid == B.large_amethyst_bud || bid == B.loose_stones || bid == B.sea_pickle || bid == B.pointed_dripstone) return R.tSolid[below];
-  if (bid == B.cattail) return in(below, {B.sand, B.clay, B.gravel}) || inSoil(below);
+  if (bid == B.cattail) {
+    auto okGround = [&](BlockId v) { return in(v, {B.sand, B.clay, B.gravel}) || inSoil(v); };
+    return okGround(below);
+  }
   { static const BlockId palmSap = reg().blockId("palm_sapling"); if (palmSap && bid == palmSap) return in(below, {B.sand, B.red_sand, B.desert_sand}) || inSoil(below); }   // palms take to sand
   if (R.tSink[bid]) return R.tSolid[below];   // things set down on a surface (jars...), not plants
   return inSoil(below);
