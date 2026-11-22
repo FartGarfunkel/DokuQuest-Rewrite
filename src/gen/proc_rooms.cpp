@@ -302,8 +302,8 @@ void extraBarrels(SP& P, const ProcRoom& r, Mulberry32& rnd) {
 
 void palAccent(SP& P, const ProcRoom& r, int pat) {
   chiseledBase(P, r, r.x, r.z);
-  const bool runner = pat == PL_LONG || pat == PL_CROSS || pat == PL_SPLIT;
-  const bool cross = pat == PL_CROSS || pat == PL_RING;
+  const bool runner = pat == PL_LONG || pat == PL_CROSS || pat == PL_SPLIT || pat == PL_DAIS_N || pat == PL_DAIS_S;
+  const bool cross = pat == PL_CROSS || pat == PL_RING || pat == PL_PACK;
   if (runner) {
     const int span = std::min(r.rx, 3);
     for (int t = -span; t <= span; t++) {
@@ -319,6 +319,11 @@ void palAccent(SP& P, const ProcRoom& r, int pat) {
       const std::string& k = !r.chisel.empty() ? r.chisel : r.slab;
       if (P.in(x, z) && solidAt(P, x, r.y - 1, z) && !k.empty()) P.put(x, r.y - 1, z, k);
     }
+  }
+  // corner floor caps in the palette's chisel, so a sandstone room is not a crypt with jungle chairs
+  for (auto [sx, sz] : {std::pair{-1, -1}, {1, -1}, {-1, 1}, {1, 1}}) {
+    const int x = r.x + sx * r.rx, z = r.z + sz * r.rz;
+    chiseledBase(P, r, x, z);
   }
 }
 
@@ -497,6 +502,7 @@ void furnishDining(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
   }
   int x, z; wallAt(r, 3, 0, x, z); putBarrel(P, x, r.y, z, rotDir(1, r.yaw));
   wallAt(r, 1, 0, x, z); putBarrel(P, x, r.y, z, rotDir(3, r.yaw));
+  if (pat == PL_LONG || pat == PL_SPLIT) tableAgainst(P, r, rotDir(0, r.yaw));
 }
 
 void furnishKitchen(SP& P, const ProcRoom& r, Mulberry32& rnd, int pat) {
