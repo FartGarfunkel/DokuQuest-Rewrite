@@ -234,11 +234,11 @@ static json dungeonTable(const std::string& kind, int tier = 0) {
   if (kind == "common") {
     add("bread", 1, 2, 0.40); add("bone", 1, 4, 0.55); add("arrow", 2, 6, 0.30);
     add("coal", 1, 4, 0.30); add("string", 1, 3, 0.22); add("rotten_flesh", 1, 3, 0.28);
-    add("torch", 2, 4, 0.22); add("iron_ingot", 1, 1, 0.10);
+    add("torch", 2, 4, 0.22); add("copper_ingot", 1, 1, 0.10);
     if (tier >= 3) { add("iron_ingot", 1, 2, 0.18); add("gold_ingot", 1, 1, 0.08); add("iron_sword", 1, 1, 0.08); }
     if (tier >= 6) { add("emerald", 1, 1, 0.08); add("steel_ingot", 1, 1, 0.08); }
   } else if (kind == "rare") {
-    add("iron_ingot", 1, 2, 0.30); add("bread", 1, 2, 0.25); add("bone", 2, 4, 0.30);
+    add("copper_ingot", 1, 2, 0.30); add("bread", 1, 2, 0.25); add("bone", 2, 4, 0.30);
     add("potion_heal", 1, 1, 0.08); add("copper_sword", 1, 1, 0.08); add("bronze_helmet", 1, 1, 0.05);
     if (tier >= 3) { add("iron_sword", 1, 1, 0.10); add("iron_helmet", 1, 1, 0.07); add("gold_ingot", 1, 2, 0.16); add("steel_sword", 1, 1, 0.10); add("emerald", 1, 1, 0.08); add("enchanted_book", 1, 1, 0.10); }
     if (tier >= 6) { add("diamond", 1, 1, 0.10); add("ruby", 1, 1, 0.10); add("sapphire", 1, 1, 0.10); add("steel_chestplate", 1, 1, 0.08); }
