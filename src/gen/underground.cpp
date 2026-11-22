@@ -132,7 +132,7 @@ void OverworldGen::placeLakes(GenBuf& b, const OwColumn* cols, int cx, int cz) c
 void OverworldGen::placeSprings(GenBuf& b, const OwColumn* cols, int cx, int cz) const {
   JRandom rnd(chunkSeed(seed_, cx, cz, 0x5B1));
   auto spring = [&](BlockId liquid, int x, int y, int z) {
-    if (x < 1 || x > 14 || z < 1 || z > 14 || y < 2 || y >= cols[z * 16 + x].H - 3) return;
+    if (x < 1 || x > 14 || z < 1 || z > 14 || y < 2 || y >= cols[z * 16 + x].H - 12) return;   // stay well under the land so a spring does not flood the surface
     if (b.blocks[colIdx(x, y + 1, z)] != B.stone || b.blocks[colIdx(x, y - 1, z)] != B.stone) return;
     const BlockId here = b.blocks[colIdx(x, y, z)];
     if (here != AIR && here != B.stone) return;

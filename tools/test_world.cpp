@@ -17,7 +17,10 @@
 #include "world/dims.h"
 #include "gen/generator.h"
 #include "gen/overworld.h"
+#include "gen/land_biomes.h"
 #include "gen/structures.h"
+#include "gen/structures_api.h"
+#include "gen/biome_features.h"
 #include "gen/nether_painted.h"
 #include "sim/dyntree.h"
 #include "sim/blockinfo.h"
@@ -43,6 +46,11 @@ int dungeonEntryY(int surfY, int minGround, int maxRoomH);
 bool dungeonWellOk(int surfY, int entryY);
 int mineCorridorH();
 int minePal(double temp, int yo);
+int mineSupportEvery();
+bool mineBrokenRail(double h);
+bool mineSeepOk(int waterY, int groundY);
+int mineShaftCollar();
+int minePuddleDepth();
 }
 static int fails = 0, passes = 0;
 static void check(bool ok, const std::string& what) { printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str()); (ok ? passes : fails)++; }
@@ -556,6 +564,25 @@ int main(int argc, char** argv) {
     check(s26 > 0, "terrain 26: red shrubs");
     check(p25 == 0 && l25 == 0 && g25 == 0 && s25 == 0, "terrain 25 (an old world) has none of it: its land is unchanged");
   }
+  printf("[biome blend]\n");
+  {
+    LandBiomes lb;   // strong_ defaults on; zoom seed 0 is enough to mix corners
+    int mixed = 0;
+    for (int i = 0; i < 16; i++) {
+      double a0, b0, c0, a2, b2, c2;
+      lb.quartFiddle(i, 3, 20 + i, a0, b0, c0);
+      lb.quartFiddle(i, 3, 22 + i, a2, b2, c2);   // z+2: hashFloat's third axis would barely change
+      if (std::fabs(a0 - a2) > 0.04) mixed++;
+    }
+    check(mixed >= 12, "the x-fiddle is not striped along z (" + std::to_string(mixed) + "/16 corners mix)");
+    int qxFlip = 0, last = INT32_MIN;
+    for (int z = 0; z < 256; z += 4) {
+      int qx, qy, qz; lb.fuzzyQuart(48, 72, z, qx, qy, qz);
+      if (last != INT32_MIN && qx != last) qxFlip++;
+      last = qx;
+    }
+    check(qxFlip >= 2, "nearby quarts are not forced onto a line (" + std::to_string(qxFlip) + " x-flips along z)");
+  }
   printf("[ruins sit and pal]\n");
   {
     check(ruinFloorY(40, 46) == 40, "ruin floor follows local ground, not the mean");
@@ -628,6 +655,30 @@ int main(int argc, char** argv) {
   {
     check(!stoneHoodoosOn(), "eroded badlands and sugi/strat biomes grow no stone spires");
   }
+  printf("[surface rock cubes]\n");
+  {
+    check(isClutterRockKey("travertine"), "travertine 2x2 cubes are clutter");
+    check(isClutterRockKey("light_gray_terracotta"), "travertine's stand-in is clutter");
+    check(isClutterRockKey("stone") && isClutterRockKey("cobblestone") && isClutterRockKey("andesite") && isClutterRockKey("granite"),
+          "stone 2x2 cubes are clutter");
+    check(!isClutterRockKey("pumpkin") && !isClutterRockKey("carved_pumpkin") && !isClutterRockKey("melon"),
+          "pumpkins and melons still make a 2x2");
+  }
+  printf("[hillside water]\n");
+  {
+    check(waterFormsInfiniteSourceAt(SEA_LEVEL), "the sea still fills from two sources");
+    check(!waterFormsInfiniteSourceAt(SEA_LEVEL + 8), "a hillside does not grow infinite water");
+  }
+  printf("[locate mineshaft]\n");
+  {
+    const int k = structureKind("mineshaft");
+    check(k >= 0, "/locate mineshaft is a known place");
+    check(structureKind("mineshafts") == k, "/locate mineshafts finds mineshafts");
+    check(structureKind("mine") == k, "/locate mine finds mineshafts");
+    bool listed = false;
+    for (const auto& t : structureTypes()) if (t.key == "mineshaft") listed = true;
+    check(listed, "mineshafts are in the structure list");
+  }
   printf("[structure spacing]\n");
   {
     WorldGenOptions o; o.seed = 4242; o.genVersion = 26; WorldGen g(o);
@@ -664,6 +715,23 @@ int main(int argc, char** argv) {
       printf("     (%zu structures, %d pair distances, closest %.0f blocks, %d under %.0f)\n", found.size(), counted, nearest, close, minGap);
       check(close == 0, "ordinary structures keep at least " + std::to_string((int)minGap) + " blocks apart (" + std::to_string(close) + " too close)");
     }
+  }
+  printf("[mineshaft polish]\n");
+  {
+    check(mineSupportEvery() == 4, "timber frames every 4 blocks");
+    check(mineSupportEvery() > 0 && mineSupportEvery() <= mineCorridorH(), "supports fit in a 4-high corridor");
+    check(!mineBrokenRail(0.50), "most of the hash range keeps the rail");
+    check(!mineBrokenRail(0.10), "a hash on the gap chance keeps the rail");
+    check(mineBrokenRail(0.09), "a low hash is a gap in the rails");
+    check(mineBrokenRail(0.00), "the lowest hash is a broken rail");
+    check(mineShaftCollar() == 1, "the way in is a 1-block collar around the ladder");
+    check(mineShaftCollar() * 2 + 1 == 3, "the collar is 3x3 with a 1x1 ladder");
+    check(minePuddleDepth() == 1, "still water sits in a 1-deep hole");
+    check(mineSeepOk(20, 40), "a puddle well under the land is allowed");
+    check(mineSeepOk(32, 40), "eight blocks of cover holds a puddle");
+    check(!mineSeepOk(33, 40), "seven blocks of cover is too little");
+    check(!mineSeepOk(40, 40), "a seep at the surface is refused");
+    check(!mineSeepOk(20, -1), "no puddle without a roof of land");
   }
   printf("\n%d passed, %d failed\n", passes, fails);
   rg.lv->close();

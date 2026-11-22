@@ -26,7 +26,7 @@ public:
   // dir: data/worldgen. False when the data isn't there.
   // withDappled (terrain version 26): the humid part of each region's forests is the Dappled Forest instead (tall poplars, red leaf litter)
   // withExtras (terrain version 17): the extra region too (its Glimmering Weald; and the regions' weights with it)
-  bool load(const fs::path& dir, i64 worldSeed, bool withExtras = true, bool strongHash = true, bool withDappled = false);   // strongHash (18): unstriped snow lines
+  bool load(const fs::path& dir, i64 worldSeed, bool withExtras = true, bool strongHash = true, bool withDappled = false);   // strongHash (18): unstriped snow lines, biome zoom, region mix
   bool ok() const { return !regions_.empty(); }
   int count() const { return (int)info_.size(); }
   const Info& info(int b) const { return info_[b]; }
@@ -38,6 +38,8 @@ public:
   int lookup(int region, const i64 p[6]) const;
   // the biome zoom: the quart a block's biome is read from
   void fuzzyQuart(int x, int y, int z, int& qx, int& qy, int& qz) const;
+  // one quart corner's jitter (the 8-corner mix). strong_: posHashF, no third-axis stripes.
+  void quartFiddle(int cx, int cy, int cz, double& a, double& b, double& c) const;
 
   // (the snow line: cold enough to snow at a block, y in the imported data's coordinates)
   bool coldEnoughToSnow(int b, int x, int y, int z) const;

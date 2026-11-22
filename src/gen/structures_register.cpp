@@ -36,7 +36,12 @@ static std::string normKey(std::string s) {
 }
 // a kind by its key, or by its name ("Mage Tower", "the Deep Halls", "a Nether Fortress")
 static int findKind(const std::string& kind) {
-  const std::string k = normKey(kind);
+  std::string k = normKey(kind);
+  if (k == "mine" || k == "mines" || k == "mineshafts" || k == "abandoned_mineshaft") k = "mineshaft";
+  if (k == "villages" || k == "town" || k == "towns") k = "village";
+  if (k == "temple" || k == "desert_pyramid") k = "desert_temple";
+  if (k == "strongholds") k = "stronghold";
+  if (k == "nether" || k == "fortress") k = "nether_fortress";
   const auto& all = structureTypes();
   for (int i = 0; i < (int)all.size(); i++) if (all[i].key == k) return i;
   for (int i = 0; i < (int)all.size(); i++) {
@@ -46,6 +51,7 @@ static int findKind(const std::string& kind) {
   }
   return -1;
 }
+int structureKind(const std::string& kind) { return findKind(kind); }
 
 const StructurePlan* locateStructure(const WorldGen& wg, int dim, const std::string& kind, int x, int z, int maxRegions) {
   const int k = findKind(kind);
@@ -108,7 +114,7 @@ static void registerLocate() {
     const int k = findKind(want);
     if (k < 0 || std::find(idx->typeList().begin(), idx->typeList().end(), k) == idx->typeList().end())
       return "No such place here. Kinds in " + std::string(dimName(dim)) + ": " + kinds;
-    const StructurePlan* S = idx->nearest(k, (int)std::floor(p.x), (int)std::floor(p.z), 24);
+    const StructurePlan* S = idx->nearest(k, (int)std::floor(p.x), (int)std::floor(p.z), 48);
     if (!S) return "No " + structureTypes()[k].name + " anywhere near.";
     const int cx = (S->x0 + S->x1) / 2, cz = (S->z0 + S->z1) / 2;
     const int dist = (int)std::lround(std::hypot(cx - p.x, cz - p.z));

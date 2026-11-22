@@ -22,6 +22,8 @@
 
 namespace dq {
 
+bool waterFormsInfiniteSourceAt(int y) { return y <= SEA_LEVEL; }
+
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
 
 struct PosKey { int x, y, z; bool operator==(const PosKey& o) const { return x == o.x && y == o.y && z == o.z; } };
@@ -193,7 +195,7 @@ public:
           best = std::min(best, lvl + 1);
         }
         expected = best;
-        if (kind == 1 && sources >= 2) {
+        if (kind == 1 && sources >= 2 && waterFormsInfiniteSourceAt(y)) {
           BlockId below = w.getBlockPhys(x, y - 1, z);
           if (R.tSolid[below] || (same(x, y - 1, z) && (w.getMeta(x, y - 1, z) & 15) == 0)) expected = 0;
         }

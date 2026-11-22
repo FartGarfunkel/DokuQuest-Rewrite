@@ -16,6 +16,14 @@
 namespace dq {
 using namespace vmap;
 
+bool isClutterRockKey(std::string_view key) {
+  auto has = [&](const char* p) { return key.find(p) != std::string_view::npos; };
+  if (has("pumpkin") || has("melon") || has("hay")) return false;
+  return has("stone") || has("cobble") || has("granite") || has("andesite") || has("diorite") || has("tuff")
+      || has("travertine") || has("terracotta") || has("calcite") || has("limestone") || has("slate")
+      || has("basalt") || has("deepslate");
+}
+
 namespace {
 enum : u8 { I_CONST, I_UNIFORM, I_BIASED, I_CLAMPED, I_NORMAL, I_WEIGHTED };
 enum : u8 { P_SIMPLE, P_WEIGHTED, P_NOISE, P_THRESHOLD, P_RULES };
@@ -422,7 +430,11 @@ int BiomeFeatures::parseConf(const json& j) {
   else if (tt == "iceberg") { C.t = F_ICEBERG; C.st = state(g["state"]); }
   else if (tt == "blue_ice") C.t = F_BLUEICE;
   else if (tt == "freeze_top_layer") C.t = F_FREEZE;
-  else if (t == "nature:large_pumpkin_feature") { C.t = F_BIGBLOCK; C.prov = parseProv(g["state_provider"]); }
+  else if (t == "nature:large_pumpkin_feature") {
+    C.t = F_BIGBLOCK; C.prov = parseProv(g["state_provider"]);
+    if (C.prov >= 0 && C.prov < (int)provs_.size() && !provs_[C.prov].states.empty()
+        && isClutterRockKey(reg().block(provs_[C.prov].states[0].id).key)) C.t = F_NONE;   // no 2x2 stone/travertine cubes on the grass
+  }
   else if (t == "nature:water_delta_feature") { C.t = F_POND; C.st = state(g["contents"]); C.st2 = state(g["rim"]); C.ia = parseInt(g["size"]); C.ib = parseInt(g["rim_size"]); }
   else if (t == "nature:turnip_root_feature" && g.contains("feature")) { C.t = F_SIMPLESELECT; C.kids.push_back(parsePlaced(g["feature"])); }   // (its turnip, without the roots)
   else if (t == "dappled:fallen_log") C.t = F_FALLEN;
@@ -835,10 +847,14 @@ bool BiomeFeatures::placeConf(int fi, Ctx& c, Rng& r, int x, int y, int z) const
       }
       return true;
     }
-    case F_BIGBLOCK: {   // (the large pumpkins and stone lumps: a 2x2x2 block on the ground)
+    case F_BIGBLOCK: {   // (the large pumpkins: 2x2x2 on the ground. stone/travertine lumps are skipped at parse)
       int py = y; while (py > 2 && c.get(x, py - 1, z) == AIR) py--;
       const BlockId g = c.get(x, py - 1, z);
       if (g == OUT || !(g < dirt_.size() && (dirt_[g] || sand_[g])) || c.builtOn(x, z)) return false;
+      {
+        const State peek = provide(C.prov, r, x, py, z, c);
+        if (peek.id != OUT && isClutterRockKey(R.block(peek.id).key)) return false;
+      }
       for (int ax = 0; ax < 2; ax++) for (int az = 0; az < 2; az++) for (int ay = 0; ay < 2; ay++) {
         const State s = provide(C.prov, r, x + ax, py + ay, z + az, c);
         const BlockId cur = c.get(x + ax, py + ay, z + az);

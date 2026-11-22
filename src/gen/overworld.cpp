@@ -408,7 +408,7 @@ SurfaceMat OverworldGen::surface(const OwColumn& c, int wx, int wz) const {
     return {got[0], got[1], got[2], 2};
   }
   const int h = c.h;
-  double fr = hashFloat(wx, wz, seed_, 2);
+  double fr = hf(wx, wz, seed_, 2);
   BlockId top = B.grass, filler = B.dirt, under = B.stone; int fillDepth = 3 + jsFloor(fr * 2);
   switch (c.biome) {
     case BIOME_DESERT: top = B.sand; filler = B.sand; fillDepth = 4; under = B.sandstone; break;
@@ -422,16 +422,16 @@ SurfaceMat OverworldGen::surface(const OwColumn& c, int wx, int wz) const {
       if (v14) {   // the imported land's way: bare stone where it's steep, snow on the heights, grass on the high meadows
         const int H0 = c.H, dx = std::abs(v14Surface(wx + 2, wz) - v14Surface(wx - 2, wz)), dz = std::abs(v14Surface(wx, wz + 2) - v14Surface(wx, wz - 2));
         const bool steep = std::max(dx, dz) >= 6;
-        top = H0 > SEA_LEVEL + 120 ? B.snow_block : steep ? B.stone : H0 > SEA_LEVEL + 95 && hashFloat(wx, wz, seed_, 17) < 0.5 ? B.snowy_grass : B.grass;
+        top = H0 > SEA_LEVEL + 120 ? B.snow_block : steep ? B.stone : H0 > SEA_LEVEL + 95 && hf(wx, wz, seed_, 17) < 0.5 ? B.snowy_grass : B.grass;
         filler = steep || H0 > SEA_LEVEL + 120 ? B.stone : B.dirt;
         break;
       }
       top = h > 96 ? B.snow_block : h > 82 ? B.stone : B.grass; filler = h > 82 ? B.stone : B.dirt; break;
   }
   if ((c.biome == BIOME_PLAINS || c.biome == BIOME_FOREST) && h <= JS_SEA + 1 && c.humid > 0.38 && c.temp > -0.1) { top = B.mud; filler = B.mud; fillDepth = 2; }
-  if (c.biome == BIOME_TAIGA && hashFloat(wx, wz, seed_, 13) < 0.18) top = B.podzol;
-  if (c.biome == BIOME_PLAINS && c.temp > 0.3 && c.humid < -0.1 && hashFloat(wx, wz, seed_, 14) < 0.3) top = B.coarse_dirt;
-  double fq = hashFloat(wx, wz, seed_, 15);
+  if (c.biome == BIOME_TAIGA && hf(wx, wz, seed_, 13) < 0.18) top = B.podzol;
+  if (c.biome == BIOME_PLAINS && c.temp > 0.3 && c.humid < -0.1 && hf(wx, wz, seed_, 14) < 0.3) top = B.coarse_dirt;
+  double fq = hf(wx, wz, seed_, 15);
   if (top == B.grass && c.biome == BIOME_PLAINS && c.temp > 0.28 && c.humid < 0.02 && fq < 0.65) top = B.dirt_with_dry_grass;
   if (top == B.snowy_grass && c.temp > -0.42 && fq < 0.22) top = B.dirt_with_coniferous_litter;
   if (top == B.grass && c.temp > 0.25 && c.humid > 0.3 && fq < 0.3) top = B.dirt_with_rainforest_litter;
@@ -724,7 +724,7 @@ void OverworldGen::generate(Chunk& ch) {
   else for (int z = 0; z < CS; z++) for (int x = 0; x < CS; x++) {
     const OwColumn& c = cols[z * 16 + x];
     const int H = c.H, wx = bx + x, wz = bz + z;
-    double fr = hashFloat(wx, wz, seed_, 2);
+    double fr = hf(wx, wz, seed_, 2);
     SurfaceMat m = surface(c, wx, wz);
     const int fd = m.fillDepth, slateTop = 10 + jsFloor(fr * 4);
     for (int y = 0; y <= H; y++) {

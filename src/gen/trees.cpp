@@ -344,7 +344,8 @@ void OverworldGen::treesForChunk(int cx, int cz, std::vector<TreeSpec>& list) co
   bool bare = landVariant(mid) != BV_DAPPLED && (mid.biome == BIOME_FOREST || mid.biome == BIOME_PLAINS) && hashFloat(cx, cz, seed_, 67) < 0.025;
   int n = jsFloor(density) + (rnd() < std::fmod(density, 1.0) ? 1 : 0) + (bare ? 3 : 0);
   for (int i = 0; i < n; i++) {
-    int x = cx * 16 + jsFloor(rnd() * 16), z = cz * 16 + jsFloor(rnd() * 16);
+    int x = cx * 16 + jsFloor(posHashF((i32)seed_, cx, cz, i * 2 + 11) * 16);
+    int z = cz * 16 + jsFloor(posHashF((i32)seed_, cz, cx, i * 2 + 29) * 16);
     OwColumn c = column(x, z);
     double r = rnd(), r2 = rnd();
     TreeSpec t; t.x = x; t.z = z; t.y = c.H + 1; t.ySeed = c.h + 1; t.h = r2;
