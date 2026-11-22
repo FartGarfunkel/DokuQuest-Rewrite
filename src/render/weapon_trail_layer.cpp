@@ -40,7 +40,7 @@ public:
         vec3 h, tp; bladeAt(p.atkMove, u, h, tp);
         if (p.atkOff) { h.x = -h.x; tp.x = -tp.x; }   // (the off hand's: the other side)
         const vec3 inner = h + (tp - h) * (fist ? 0.f : 0.35f), outer = fist ? tp + (tp - h) * 0.6f : tp;
-        const vec3 wi = attackFrameToWorld(inner, p.pos, p.atkYaw, p.pitch), wo = attackFrameToWorld(outer, p.pos, p.atkYaw, p.pitch);
+        const vec3 wi = attackFrameToWorld(inner, p.pos, p.atkYaw, p.atkPitch), wo = attackFrameToWorld(outer, p.pos, p.atkYaw, p.atkPitch);
         const vec3 ri = f.cam.rel(glm::dvec3(wi)), ro = f.cam.rel(glm::dvec3(wo));
         const float age = (t - u) / TRAIL_LEN, al = std::clamp(1 - age, 0.f, 1.f) * tail * (fist ? 0.35f : 0.55f);
         if (i > 0) quad(pi0, po0, ro, ri, al0, al);

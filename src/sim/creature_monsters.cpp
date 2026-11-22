@@ -11,10 +11,12 @@
 #include "sim/physics.h"
 #include "sim/player.h"
 #include "sim/shield_shape.h"
+#include "sim/attack_moves.h"
 #include "sim/effects.h"
 #include "sim/balance.h"
 #include "sim/magic_fx.h"
 #include "core/registry.h"
+#include <algorithm>
 
 namespace dq {
 
@@ -101,42 +103,79 @@ void Creature::voiceTick(Level& lv, float dt, float dist, float lo, float span) 
   if (soundT < 0) { soundT = lo + frand() * span; if (dist < 18 && !T->voice.empty()) lv.fx->voice(T->voice, "say", pos + vec3(0, h * 0.8f, 0)); }
 }
 void Creature::meleeAt(Level& lv, Entity& p, float dist, float dyp) {
-  if (dist < 1.35f + w && std::fabs(dyp) < 1.6f && attackCd <= 0) {
-    attackCd = 1.1f; swingT = 0.3f;
+  (void)lv;
+  if (!(dist < 1.35f + w && std::fabs(dyp) < 1.6f && attackCd <= 0)) return;
+  if (atkMove) return;
+  const ItemDef* d = heldItem.empty() ? nullptr : reg().item(heldItem);
+  const Moveset ms = movesetOf(d);
+  const u8 id = attackMoveFor(ms, atkCombo, false, false);
+  if (id == MV_NONE || id >= MV_COUNT) return;
+  attackCd = 1.1f;
+  atkMove = id;
+  atkT = 0.0001f;
+  atkTarget = p.id;
+  atkHit.clear();
+  atkCombo = (u8)((atkCombo + 1) % std::max(1, comboLength(ms)));
+  yaw = std::atan2(-(p.pos.x - pos.x), -(p.pos.z - pos.z));
+  atkYaw = yaw;
+  const vec3 from = pos + vec3(0, std::min(h * 0.72f, 1.35f), 0);
+  const vec3 to = p.pos + vec3(0, p.isPlayer() ? 1.1f : p.h * 0.55f, 0);
+  const vec3 aim = to - from;
+  const float horiz = std::hypot(aim.x, aim.z);
+  atkPitch = std::clamp(std::atan2(aim.y, std::max(0.2f, horiz)), -1.2f, 1.2f);
+  swingT = attackMove(id).len;
+}
+void Creature::tickMeleeBlow(Level& lv, float dt) {
+  if (!atkMove || atkMove >= MV_COUNT) { atkMove = 0; return; }
+  const AttackMove& m = attackMove(atkMove);
+  const float t0 = atkT;
+  atkT += dt;
+  if (t0 < m.hitFrom && atkT >= m.hitFrom && lv.fx) lv.fx->sound("swing_light", pos + vec3(0, h * 0.8f, 0), 10.f);
+  Entity* tgt = atkTarget ? ent(lv, atkTarget) : nullptr;
+  if (tgt && !tgt->removed && tgt->hp > 0 && (int)atkHit.size() < (int)m.strikes
+      && std::find(atkHit.begin(), atkHit.end(), tgt->id) == atkHit.end()
+      && t0 < m.hitTo && atkT > m.hitFrom) {
     float dmg = T->damage * (type == "slime" || type == "magma_slime" ? std::max(1, size - 1) : 1) + weaponBonus();
     DamageSrc s; s.tool = "mob";
     if (type == "charred_ghoul") s.element = "fire";
-    auto* pl = dynamic_cast<Player*>(&p);
-    if (!pl) { damageEntity(lv, p, dmg, this, "mob", s); return; }
-    const vec3 from = pos + vec3(0, h * 0.62f, 0);
-    const vec3 to = pl->pos + vec3(0, 1.1f, 0);
-    const vec3 claw = to - from;
-    ShieldBox guard;
-    if (pl->blockT > 0 && playerGuardBox(*pl, guard) && shieldRayHit(guard, from, claw, 1.f)) {
-      s.metGuard = true;
-      damageEntity(lv, *pl, dmg, this, "mob", s);
-      return;
-    }
-    PlayerLimbBox limbs[6];
-    const int nL = playerLimbBoxes(*pl, limbs);
-    int slot = -1;
-    auto onBox = [&](const vec3& lo, const vec3& hi) {
-      for (int k = 0; k <= 12; k++) {
-        const vec3 q = from + claw * (k / 12.f);
-        if (q.x >= lo.x && q.x <= hi.x && q.y >= lo.y && q.y <= hi.y && q.z >= lo.z && q.z <= hi.z) return true;
+    const bool left = m.leftHand;
+    const float reach = m.reach;
+    bool landed = false;
+    if (auto* pl = dynamic_cast<Player*>(tgt)) {
+      ShieldBox guard;
+      if (pl->blockT > 0 && playerGuardBox(*pl, guard) &&
+          bladeSweepHitsShield(atkMove, t0, atkT, pos, atkYaw, atkPitch, guard, reach, left)) {
+        s.metGuard = true;
+        damageEntity(lv, *pl, dmg, this, "mob", s);
+        landed = true;
+      } else {
+        PlayerLimbBox limbs[6];
+        const int nL = playerLimbBoxes(*pl, limbs);
+        int slot = -1;
+        for (int i = 0; i < nL; i++)
+          if (bladeSweepHits(atkMove, t0, atkT, pos, atkYaw, atkPitch, limbs[i].lo, limbs[i].hi, reach, nullptr, left)) {
+            slot = limbs[i].armorSlot; break;
+          }
+        if (slot < 0) {
+          const vec3 lo = pl->pos - vec3(pl->w, 0.05f, pl->w), hi = pl->pos + vec3(pl->w, pl->h, pl->w);
+          if (bladeSweepHits(atkMove, t0, atkT, pos, atkYaw, atkPitch, lo, hi, reach, nullptr, left)) slot = 1;
+        }
+        if (slot >= 0) {
+          s.armorSlot = slot;
+          damageEntity(lv, *pl, dmg, this, "mob", s);
+          landed = true;
+        }
       }
-      return false;
-    };
-    for (int i = 0; i < nL; i++) if (onBox(limbs[i].lo, limbs[i].hi)) { slot = limbs[i].armorSlot; break; }
-    if (slot < 0) {
-      const vec3 lo = pl->pos - vec3(pl->w, 0.05f, pl->w), hi = pl->pos + vec3(pl->w, pl->h, pl->w);
-      if (onBox(lo, hi)) slot = 1;
+    } else {
+      const vec3 lo = tgt->pos - vec3(tgt->w, 0.05f, tgt->w), hi = tgt->pos + vec3(tgt->w, tgt->h, tgt->w);
+      if (bladeSweepHits(atkMove, t0, atkT, pos, atkYaw, atkPitch, lo, hi, reach, nullptr, left)) {
+        damageEntity(lv, *tgt, dmg, this, "mob", s);
+        landed = true;
+      }
     }
-    if (slot >= 0) {
-      s.armorSlot = slot;
-      damageEntity(lv, *pl, dmg, this, "mob", s);
-    }
+    if (landed) atkHit.push_back(tgt->id);
   }
+  if (atkT >= m.len) { atkMove = 0; atkT = 0; atkHit.clear(); atkTarget = 0; }
 }
 static void shootAt(Level& lv, Creature& m, Entity& p) {
   float sp = 22;

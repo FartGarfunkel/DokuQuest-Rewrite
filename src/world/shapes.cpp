@@ -125,6 +125,7 @@ void initBlockTraits() {
     t.clothTex = tileOf(b.str("clothTex"));
     std::string shape = b.str("shape");
     t.campfire = shape == "campfire" ? 1 : shape == "soul_campfire" ? 2 : 0;
+    t.brazier = b.key == "brazier";
     t.lantern = shape == "lantern" || shape == "soul_lantern" || shape == "firefly_lantern";
     t.bamboo = b.key == "bamboo";
     if (!shape.empty()) {
@@ -156,7 +157,7 @@ void initBlockTraits() {
     if (b.props.contains("stageTiles")) for (auto& s : b.props["stageTiles"]) if (s.is_number()) t.stageTiles.push_back(s.get<u16>());
     if (b.props.contains("tex") && b.props["tex"].is_object() && b.props["tex"].contains("top")) t.bedTop = tileOf(b.props["tex"]["top"].get<std::string>());
     if (t.bedTop < 0) t.bedTop = tileOf("red_bed_top");
-    t.emitsParticles = t.fire || t.campfire || b.render == Render::Torch || R.tPortal[b.id] || t.candle || b.key.find("portal") != std::string::npos;
+    t.emitsParticles = t.fire || t.campfire || t.brazier || b.render == Render::Torch || R.tPortal[b.id] || t.candle || b.key.find("portal") != std::string::npos;
   }
   g_traits = std::move(T);
   g_tracedBlocks = R.blocks.size();

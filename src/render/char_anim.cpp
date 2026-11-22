@@ -751,6 +751,18 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     R.part[oUp] = child(bodyM, armOff, arm);
     R.part[oDn] = child(R.part[oUp], M.pivot[oDn] - pu, fore);
   }
+  // the cut follows the look: rotate the arms about the shoulders on the body's right axis, the same turn
+  // attackFrameToWorld uses (sim/attack_moves.cpp). +pitch looks up and lifts a point ahead.
+  if (pose.atkMove && std::fabs(pose.headPitch) > 1e-4f) {
+    const float p = std::clamp(pose.headPitch, -1.2f, 1.2f) * attackWeight(pose);
+    const vec3 sh = 0.5f * (vec3(R.part[CP_ARMR_U][3]) + vec3(R.part[CP_ARML_U][3]));
+    const vec3 right = glm::normalize(vec3(R.body[0]));
+    mat4 T(1);
+    T = glm::translate(T, sh);
+    T = glm::rotate(T, p, right);
+    T = glm::translate(T, -sh);
+    for (int i : {CP_ARMR_U, CP_ARMR_D, CP_ARML_U, CP_ARML_D}) R.part[i] = T * R.part[i];
+  }
   // ---- gear3d.js gearDraws: frames for the look's shapes ----
   R.gear.clear();
   const mat4& B = R.body;

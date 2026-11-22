@@ -511,7 +511,7 @@ int main(int argc, char** argv) {
             }
         }
         check(dia == 0, "a first dungeon has no diamonds (" + std::to_string(dia) + ")");
-        check(em < N / 4, "emeralds in a first dungeon are scarce (" + std::to_string(em / N) + " a chest-set)");
+        check(em == 0, "a first dungeon has no emeralds (" + std::to_string(em) + ")");
         auto matsOf = [](const json& s) {
           json mats = json::array();
           if (s.contains("pt") && s["pt"].is_object()) mats = s["pt"].value("m", json::array());
@@ -574,6 +574,32 @@ int main(int argc, char** argv) {
         check(pirateIron == 0, "a pirate wreck at spawn has no iron_sword (" + std::to_string(pirateIron) + ")");
         check(rDia == 0 && rEm == 0, "a ruin has no gems (" + std::to_string(rEm) + " em, " + std::to_string(rDia) + " gems)");
         check(mDia == 0, "a mineshaft has no diamonds (" + std::to_string(mDia) + ")");
+        auto dumpLate = [](const std::string& id) {
+          return id == "diamond" || id == "emerald" || id.find("mithril") != std::string::npos
+              || id.rfind("diamond_", 0) == 0;
+        };
+        auto hasIronMat = [&](const json& s) {
+          const std::string id = s.value("id", "");
+          if (id == "iron_ingot" || id == "iron_nugget") return true;
+          return isIronGear(s);
+        };
+        long bossIron = 0, walkIron = 0, spawnDump = 0;
+        static const char* SPAWN_KINDS[] = {
+          "ruin", "tower", "archmage", "temple", "ocean", "wreck_supply", "wreck_treasure",
+          "mineshaft", "maze", "stronghold", "stronghold_library", "pirate", "nether_fortress",
+          "bone_pit", "sky_shrine", "moa_nest"
+        };
+        for (int i = 0; i < N; i++) {
+          Mulberry32 r((u32)(43000 + i));
+          for (const auto& s : dungeonLoot("boss", r)) if (s.is_object() && hasIronMat(s)) bossIron += s.value("n", 1);
+          for (const json& items : {dungeonLoot("common", r), dungeonLoot("rare", r)})
+            for (const auto& s : items) if (s.is_object() && hasIronMat(s)) walkIron += s.value("n", 1);
+          for (const char* k : SPAWN_KINDS)
+            for (const auto& s : structLoot(k, r)) if (s.is_object() && dumpLate(s.value("id", ""))) spawnDump += s.value("n", 1);
+        }
+        check(bossIron > 0, "the first dungeon's boss chest still has iron (" + std::to_string(bossIron) + ")");
+        check(walkIron == 0, "a first common or rare chest has no iron (" + std::to_string(walkIron) + ")");
+        check(spawnDump == 0, "spawn-tier chests have no diamond, emerald or mithril (" + std::to_string(spawnDump) + ")");
         {
           bool cages = true;
           for (int i = 0; i < 80; i++) {

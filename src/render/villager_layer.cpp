@@ -12,6 +12,7 @@
 #include "ui/theme.h"
 #include "ui/villager_screens.h"
 #include "sim/villagers.h"
+#include "sim/attack_moves.h"
 #include "core/registry.h"
 #include <cstdlib>
 #include <unordered_map>
@@ -147,6 +148,10 @@ public:
       ps.headPitch = sleep ? 0 : L.pitch; ps.headYaw = sleep ? 0 : L.hy;
       ps.walk = c->walk * 1.4f; ps.walkAmt = std::min(1.f, c->walkAmt);
       ps.swing = c->swingT > 0 ? 1 - c->swingT / 0.3f : 0;
+      if (c->atkMove && c->atkMove < MV_COUNT && c->atkT < attackMove(c->atkMove).len) {
+        ps.atkMove = c->atkMove; ps.atkT = c->atkT; ps.swing = 0;
+        ps.headPitch = c->atkPitch; ps.hasBodyYaw = true; ps.bodyYaw = c->atkYaw;
+      }
       ps.sit = sit; ps.sleep = sleep; ps.time = (float)time + (float)(seed % 50);
       ps.deathT = c->deathTime > 0 ? std::min(1.f, c->deathTime * 2) : 0;
       ps.wave = P & NP_WAVE ? 1.f : 0.f; ps.talk = P & NP_TALK; ps.fold = P & NP_FOLD; ps.read = P & NP_READ;
@@ -163,7 +168,7 @@ public:
       std::string held = c->heldItem;
       if (sleep || ((P & NP_READ) && job != "librarian")) held.clear();
       else if (sit && N && N->contains("sh") && reg().item(N->value("sh", std::string()))) held = N->value("sh", std::string());
-      ps.held = !held.empty(); ps.bowArm = held == "bow";
+      ps.held = !held.empty(); ps.bowArm = held == "bow"; ps.armed = ps.held;
       mat4 base = glm::translate(mat4(1), rel);
       if (c->baby) base = glm::scale(base, vec3(0.62f));   // (a child of the village: sim/villager_family.cpp)
       if (sit) base = glm::translate(base, vec3(0, -0.45f, 0));
@@ -249,7 +254,7 @@ public:
         std::string id = held == "fishing_rod" ? "fishing_rod_tp" : held;
         const VoxelModel& im = itemModel(id);
         if (im.ready()) {
-          mat4 hm = glm::translate(R.part[CP_ARMR_D], vec3(0, -6, -1));
+          mat4 hm = glm::translate(gripTurn(R.part[CP_ARMR_D], R.toolR), vec3(0, -6, -1));
           if (im.torch3d) hm = torchGrip(hm);   // (the smith's hammer, a torch: as the players' bodies hold them, render/char_layer.cpp)
           else if (im.kind == VoxelModel::Block) { hm = glm::translate(hm, vec3(0, 0, -1.5f)); hm = glm::scale(hm, vec3(1 / CHAR_PX)); hm = glm::rotate(hm, -0.3f, vec3(1, 0, 0)); hm = glm::scale(hm, vec3(0.375f)); }
           else hm = glm::scale(hm, vec3(1 / CHAR_PX)) * heldMat(id);

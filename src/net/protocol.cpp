@@ -161,6 +161,7 @@ void netAttack(dq::Player& p, const json& m) {
   if (same) { if (p.atkMove == id && t > p.atkT + 0.12f) p.atkT = t; return; }
   p.atkMove = (u8)id; p.atkT = t;
   p.atkYaw = m.value("ay", p.atkYaw);
+  p.atkPitch = m.value("ap", p.atkPitch);
   p.atkOff = m.value("ao", 0) != 0;
 }
 

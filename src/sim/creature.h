@@ -117,6 +117,10 @@ public:
 
   // ---- motion / animation (rigs read these) ----
   float walk = 0, walkAmt = 0, speedNow = 0, lastWant = 0, landT = 0, fallV = 0, swingT = 0;
+  u8 atkMove = 0, atkCombo = 0;          // a player-like cut (sim/attack_moves.h): zombies with swords swing these
+  float atkT = 0, atkYaw = 0, atkPitch = 0;
+  u32 atkTarget = 0;
+  std::vector<u32> atkHit;
   bool hitWall = false, hitCeiling = false, wantJump = false, lockMove = false;
   float flyVy = 0, swimVy = 0, swimPitch = 0; bool hasFlyVy = false;
   float breathT = 0, hoverT = 0;       // dragons (sim/dragons.cpp): breathing / hovering, for the wing beat
@@ -208,6 +212,7 @@ public:
   Move chase(Level& lv, Entity& p, float dist, float toPlayer, float dt, float k = 1);
   void voiceTick(Level& lv, float dt, float dist, float lo = 5, float span = 7);
   void meleeAt(Level& lv, Entity& p, float dist, float dyp);
+  void tickMeleeBlow(Level& lv, float dt);   // the cut's clock: damage in hitFrom..hitTo so a raised guard can parry
   bool bite(Level& lv, Entity* target, float dmg);
   void provoke(Level& lv, Entity* who);
   float goToward(Level& lv, vec3 t, float dt);

@@ -6,6 +6,7 @@
 #include "sim/creature_rig.h"
 #include "sim/hallow.h"
 #include "sim/creature_entities.h"
+#include "sim/attack_moves.h"
 #include "core/registry.h"
 
 namespace dq {
@@ -117,7 +118,12 @@ static void animBiped(Creature& m, const RigModel& d, Pose& P) {
     const float u = 1 - m.landT / 0.18f, k = std::sin(std::min(1.f, u * 1.5f) * PI) * (1 - u * 0.3f) * m.life.landK; P.lift -= 0.09f * k;   // (a squash, with a little rebound, as hard as the drop)
     P.at("legL").x += 0.5f * k; P.at("legR").x += 0.5f * k; P.at("shinL").x -= 1.0f * k; P.at("shinR").x -= 1.0f * k; P.at("body").x -= 0.25f * k;
   }
-  float sw = m.swingT > 0 ? std::sin(m.swingT / 0.3f * PI) : 0;
+  float sw = 0;
+  if (m.atkMove && m.atkMove < MV_COUNT) {
+    const AttackMove& mv = attackMove(m.atkMove);
+    const float hit = std::max(mv.hitTo, 0.05f);
+    sw = std::sin(std::clamp(m.atkT / hit, 0.f, 1.f) * PI);
+  } else if (m.swingT > 0) sw = std::sin(std::min(1.f, m.swingT / 0.3f) * PI);
   // the arms come up only while it hunts you (eased in at 1.6/s, down at 2/s), and point where it looks
   {
     const bool hunting = d.armsReach && m.T->hostile && !m.calm && (m.sees || m.huntT > 0 || m.alertT > 0 || m.swingT > 0);
@@ -137,6 +143,16 @@ static void animBiped(Creature& m, const RigModel& d, Pose& P) {
     P.set("armL", {1.52f, 0.1f, 0}); P.set("foreL", {0.04f, 0, 0}); P.set("armR", {1.45f, -0.45f - 0.25f * dk, 0}); P.set("foreR", {0.1f + 0.15f * dk, 0, -1.1f * dk});
   } else if (sw) {
     vec3 ar = P.at("armR"); P.set("armR", {ar.x + sw * 1.9f, -sw * 0.25f, 0}); P.set("foreR", {0.25f + sw * 0.5f, 0, 0}); P.at("body").y -= sw * 0.25f;
+  }
+  if (m.atkMove && m.atkMove < MV_COUNT) {
+    const AttackMove& mv = attackMove(m.atkMove);
+    const float wind = mv.hitFrom > 1e-4f ? std::clamp(m.atkT / mv.hitFrom, 0.f, 1.f) : 1.f;
+    const float chop = m.atkT <= mv.hitFrom ? 0.f : std::clamp((m.atkT - mv.hitFrom) / std::max(mv.len - mv.hitFrom, 0.05f), 0.f, 1.f);
+    const float back = (1.f - chop) * wind, through = chop;
+    P.set("armR", {0.35f + back * 1.55f - through * 1.05f, back * 0.4f - through * 0.5f, back * 0.6f - through * 1.15f});
+    P.set("foreR", {0.12f + through * 0.85f, 0, -through * 0.45f});
+    P.at("body").y -= through * 0.28f;
+    P.at("body").x -= m.atkPitch * 0.45f;
   }
   if (m.attack.on && m.state == "tele") {
     float k = m.attack.progress;

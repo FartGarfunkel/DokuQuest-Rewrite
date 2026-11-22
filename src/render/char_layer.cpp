@@ -1089,6 +1089,7 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   if (&p == s.player && devAttackPose(devMove, devT)) { ps.atkMove = devMove; ps.atkT = devT; ps.swing = 0; ps.swingKind = 0; if (!fp) { ps.bodyYaw = p.yaw; ps.hasBodyYaw = true; } }
   else if (p.atkMove && p.atkT < attackMove(p.atkMove).len) {   // an attack move (sim/attack_moves.h, the rules' own clock): drawn from its keys, the body turned to the blow
     ps.atkMove = p.atkMove; ps.atkT = p.atkT; ps.atkOff = p.atkOff; ps.swing = 0; ps.swingKind = 0;
+    ps.headPitch = p.atkPitch;   // the drawn cut uses the frozen look, same as the blade's hit (sim/combat.cpp)
     if (!fp) { ps.bodyYaw = p.atkYaw; ps.hasBodyYaw = true; }
   } else if (st.swingU > 0 && ps.armed && !isShieldItem(wear.held) && !p.swinging) { ps.swingKind = (u8)(1 + st.swingN); ps.swing = st.swingU; }
   {   // a spell held up in a free hand after a cast (render/spell_hands.h)

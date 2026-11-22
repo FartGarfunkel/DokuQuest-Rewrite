@@ -278,11 +278,11 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
   src.hasRay = true;
   if (p.atkMove && p.atkMove < MV_COUNT) {
     vec3 h, tp; bladeAt(p.atkMove, std::max(p.atkT, attackMove(p.atkMove).hitFrom), h, tp);
-    src.rayO = attackFrameToWorld(h, p.pos, p.atkYaw, p.pitch);
-    const vec3 tw = attackFrameToWorld(tp, p.pos, p.atkYaw, p.pitch);
+    src.rayO = attackFrameToWorld(h, p.pos, p.atkYaw, p.atkPitch);
+    const vec3 tw = attackFrameToWorld(tp, p.pos, p.atkYaw, p.atkPitch);
     const vec3 dd = tw - src.rayO;
     const float L = glm::length(dd);
-    src.rayD = L > 1e-4f ? dd / L : lookVector(p.yaw, p.pitch);
+    src.rayD = L > 1e-4f ? dd / L : lookVector(p.atkYaw, p.atkPitch);
   } else {
     src.rayO = p.pos + vec3(0, p.eye, 0); src.rayD = lookVector(p.yaw, p.pitch);
   }
@@ -373,6 +373,7 @@ static void beginSwingRaw(Player& p, bool sprint, bool air, int moveN, int nextC
     p.atkT = std::max(p.atkT, attackMove(id).hitFrom);
   }
   p.atkYaw = p.yaw;
+  p.atkPitch = p.pitch;
   p.atkCombo = (u8)(nextCombo & 255);
   p.atkHit.clear();
   p.atkGap = 0;
@@ -436,7 +437,7 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
     p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = COMBO_WINDOW; p.data.erase("atkQueue"); p.data.erase("sneakHeavy");
     return;
   }
-  if (p.atkT < m.turnLock) p.atkYaw = p.yaw;
+  if (p.atkT < m.turnLock) { p.atkYaw = p.yaw; p.atkPitch = p.pitch; }
   const float t0 = p.atkT;
   const bool sore = p.data.value("hurtLimbT", 0.f) > 0 && ((p.atkOff && p.data.value("hurtArm", 0) < 0) || (!p.atkOff && p.data.value("hurtArm", 0) > 0));
   p.atkT += sore ? dt * 0.55f : dt;   // a hurt arm is slow, and it does not reach the cut
@@ -472,7 +473,7 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
       if (auto* hitP = dynamic_cast<Player*>(e.get())) {
         ShieldBox guard;
         if (hitP->blockT > 0 && playerGuardBox(*hitP, guard) &&
-            bladeSweepHitsShield(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, guard, reach, left)) {
+            bladeSweepHitsShield(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.atkPitch, guard, reach, left)) {
           const bool swapIn = left && !p.offhand.empty();
           if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
           p.data["metGuard"] = true;
@@ -486,7 +487,7 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
         const int nL = playerLimbBoxes(*hitP, limbs);
         bool hitLimb = false; int slot = -1;
         for (int i = 0; i < nL; i++) {
-          if (bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, limbs[i].lo, limbs[i].hi, reach, nullptr, left)) {
+          if (bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.atkPitch, limbs[i].lo, limbs[i].hi, reach, nullptr, left)) {
             hitLimb = true; slot = limbs[i].armorSlot; break;
           }
         }
@@ -501,11 +502,11 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
         continue;
       }
       vec3 at(0), dir(0);
-      const int part = bladeSweepHitsEntity(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, *e, reach, &at, left, &dir);
+      const int part = bladeSweepHitsEntity(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.atkPitch, *e, reach, &at, left, &dir);
       if (part == -1) continue;
       if (part == -2) {
         const vec3 lo = ep - vec3(e->w, 0.05f, e->w), hi = ep + vec3(e->w, e->h, e->w);
-        if (!bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, lo, hi, reach, nullptr, left)) continue;
+        if (!bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.atkPitch, lo, hi, reach, nullptr, left)) continue;
       } else {
         p.data["hitRayO"] = json::array({at.x, at.y, at.z});
         p.data["hitRayD"] = json::array({dir.x, dir.y, dir.z});

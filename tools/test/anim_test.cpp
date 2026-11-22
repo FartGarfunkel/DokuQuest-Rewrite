@@ -59,8 +59,8 @@ static float bladeLen(u8 id) {
   return 0.95f;
 }
 static constexpr float SWORD_BLADE = 0.95f;   // sword dump length; greatsword and spear samples use this and let reach scale
-static void drawnBlade(u8 id, float t, vec3& hilt, vec3& tip, float lenOverride = -1.f) {
-  CharPose p; p.atkMove = id; p.atkT = std::max(t, 0.0001f); p.held = true;
+static void drawnBlade(u8 id, float t, vec3& hilt, vec3& tip, float lenOverride = -1.f, float headPitch = 0.f) {
+  CharPose p; p.atkMove = id; p.atkT = std::max(t, 0.0001f); p.held = true; p.headPitch = headPitch;
   p.twoHand = id == MV_GS1 || id == MV_GS2 || id == MV_SPEAR1 || id == MV_SPEAR2;
   CharRig R; charRig(bladeModel(), p, mat4(1), R, false, false);
   const bool left = attackMove(id).leftHand;
@@ -395,6 +395,18 @@ int main(int argc, char** argv) {
     const auto chick = box(feet + vec3(0, 0.2f, -1.2f), vec3(0.2f, 0.2f, 0.2f));
     CHECK(!bladeSweepHits(MV_SWORD2, 0, 1, feet, 0, 0, chick.first, chick.second) && bladeSweepHits(MV_SWORD2, 0, 1, feet, 0, -0.8f, chick.first, chick.second),
           "a level cut passes over a chicken; looking down at it, it lands");
+    const auto bat = box(feet + vec3(0, 2.15f, -1.15f), vec3(0.22f, 0.22f, 0.22f));
+    CHECK(!bladeSweepHits(MV_SWORD2, 0, 1, feet, 0, 0, bat.first, bat.second) && bladeSweepHits(MV_SWORD2, 0, 1, feet, 0, 0.9f, bat.first, bat.second),
+          "a level cut misses a bat above; looking up, it lands");
+    {
+      const float ht = 0.5f * (attackMove(MV_SWORD1).hitFrom + attackMove(MV_SWORD1).hitTo);
+      vec3 hl, tl, hd, td, hu, tu;
+      drawnBlade(MV_SWORD1, ht, hl, tl);
+      drawnBlade(MV_SWORD1, ht, hd, td, -1.f, -0.9f);
+      drawnBlade(MV_SWORD1, ht, hu, tu, -1.f, 0.9f);
+      CHECK(td.y < tl.y - 0.35f, "looking down lowers the drawn blade (level %.2f, down %.2f)", tl.y, td.y);
+      CHECK(tu.y > tl.y + 0.35f, "looking up raises the drawn blade (level %.2f, up %.2f)", tl.y, tu.y);
+    }
     CHECK(attackMoveFor(Moveset::Sword, 0, false, false) == MV_SWORD1 && attackMoveFor(Moveset::Sword, 4, false, false) == MV_SWORD2 &&
           attackMoveFor(Moveset::Sword, 1, true, false) == MV_SWORD_DASH && attackMoveFor(Moveset::Sword, 1, true, true) == MV_SWORD_AIR,
           "the chain wraps; sprinting thrusts, from the air a chop");

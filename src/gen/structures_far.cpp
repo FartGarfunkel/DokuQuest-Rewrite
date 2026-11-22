@@ -56,7 +56,7 @@ static void skyTempleBuild(ChunkWriter& w, const StructurePlan& S) {
   P.fill(cx - 1, y + 1, cz + 6, cx + 1, y + 1, cz + 7, GB);
   P.chest(cx - 3, y + 1, cz + 8, 2, "sky_temple"); P.chest(cx + 3, y + 1, cz + 8, 2, "sky_temple");
   P.lectern(cx, y + 1, cz - 6, 0, "skylands_temple");
-  furnishPlaced(P, cx, y + 1, cz, 6, 6, 6, "nave", hash32(cx, y, cz, (i32)S.seed), PAL_QUARTZ, 1);
+  // the hall is the Valkyrie Queen's arena: altar, chests and lectern only
   // the door, facing north, with steps out onto the island
   P.fill(cx - 1, y + 1, cz - R, cx + 1, y + 4, cz - R, "air");
   for (int k = 1; k <= 3; k++) P.fill(cx - 1, y, cz - R - k, cx + 1, y, cz - R - k, Q);
@@ -171,7 +171,7 @@ static void bastionBuild(ChunkWriter& w, const StructurePlan& S) {
   P.fill(cx - 1, y + 1, cz - 6, cx + 1, y + 4, cz - 6, "air");
   P.chest(cx - 4, y + 1, cz + 5, 2, "ember_bastion"); P.chest(cx + 4, y + 1, cz + 5, 2, "ember_bastion"); P.chest(cx + R - 2, y + 1, cz - R + 2, 3, "ember_bastion");
   P.lectern(cx, y + 1, cz + 4, 2, "ember_lord");
-  furnishPlaced(P, cx, y + 1, cz, 5, 5, 6, "nave", hash32(cx, y, cz, (i32)S.seed), PAL_NETHER, 2);
+  // the inner hall is the Ember Lord's arena: magma, chests and lectern only
   for (auto [dx, dz] : {std::pair{-9, 9}, {9, -9}}) P.spawner(cx + dx, y + 1, cz + dz, "charred_ghoul");
   for (auto [a, b] : {std::pair{-3, -3}, {3, -3}, {-3, 3}, {3, 3}}) P.put(cx + a, y + 8, cz + b, "soul_lantern");
   // gates on every side, and bridges out into the caverns

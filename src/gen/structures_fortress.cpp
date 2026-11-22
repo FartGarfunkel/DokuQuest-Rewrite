@@ -97,6 +97,14 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
   };
   auto railing = [&](int x, int yy, int z) { P.putId(x, yy + 1, z, NB); P.putId(x, yy + 2, z, FENCE); for (int h = 3; h <= 5; h++) P.put(x, yy + h, z, "air"); };
   auto center = [&](const FNode& n, int& cx, int& cz) { cx = S.cx + n.gx * G; cz = S.cz + n.gz * G; };
+  static const u8 TORCH_WALL[4] = {3, 2, 4, 1};   // soul_torch meta toward the supporting block (N E S W)
+  auto wallBannerAt = [&](int x, int yy, int z, int toward) {
+    const u8 f = (u8)(((toward + 2) & 3) | 8);   // bit 8: hung on the wall (without it the cloth is a black sheet)
+    const double c = P.h(x, yy, z, 19);
+    const char* ban = c < 0.50 ? "black_banner" : c < 0.82 ? "red_banner" : "gray_banner";
+    P.put(x, yy, z, ban, f);
+    P.put(x, yy - 1, z, ban, (u8)(f | 4));
+  };
 
   // ---- bridges and corridors between nodes ----
   for (const FEdge& e : E.edges) {
@@ -133,6 +141,28 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
           } else for (int hh = 1; hh <= 4; hh++) P.put(x, y + hh, z, "air");
           P.putId(x, y + 5, z, NB);
         }
+      }
+      if (!e.corridor) continue;
+      // roofed walkway: dress inner cells (k ±1) against the walls; keep the centre (k==0) air so it stays a 3-wide hall
+      const int along = d - s0;
+      const bool window = d % 3 == 1, mid = d > s0 + 1 && d < s1 - 1;
+      const int side = P.h(ax + dx * d, y, az + dz * d, 7) < 0.5 ? 1 : -1;
+      for (int k : {-1, 1}) {
+        const int x = ax + dx * d + px * k, z = az + dz * d + pz * k;
+        if (!P.in(x, z)) continue;
+        const int toward = k > 0 ? (e.dir + 1) & 3 : (e.dir + 3) & 3;
+        const int face = (toward + 2) & 3;   // chest front toward the walkway
+        const double roll = P.h(x, y, z, 11);
+        if (along % 5 == 2) {
+          if (window || roll < 0.42) P.put(x, y + 4, z, "soul_lantern", 1);
+          else P.put(x, y + 3, z, "soul_torch", TORCH_WALL[toward]);
+          continue;
+        }
+        if (!mid) continue;
+        if (!window && roll < 0.10) wallBannerAt(x, y + 3, z, toward);
+        else if (roll < 0.22) P.putId(x, y + 1, z, FENCE);
+        else if (!window && k == side && roll < 0.27) P.chest(x, y + 1, z, face, "nether_fortress");
+        else if (k == side && roll < 0.34) P.put(x, y + 1, z, P.h(x, y, z, 43) < 0.28 ? "magma_block" : "brazier");
       }
     }
   }
@@ -216,9 +246,30 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
         break;
       }
       case F_CROSS:
-        if (n.castle)
+        if (n.castle) {
           furnishPlaced(P, cx, y + 1, cz, 3, 3, 4, "hall",
                         hash32(cx, y, cz, (i32)S.seed), PAL_NETHER, 1);
+          // hall hangs lanterns at y+4, but the roof is at y+6; hang them under the real roof, banners on closed walls
+          for (int sx : {-1, 1}) for (int sz : {-1, 1}) {
+            const int x = cx + sx * (H - 1), z = cz + sz * (H - 1);
+            if (P.in(x, z)) P.put(x, y + 5, z, "soul_lantern", 1);
+          }
+          int chestDir = -1;
+          for (int d = 0; d < 4; d++) {
+            const int ox = -DIRZ[d], oz = DIRX[d];
+            const bool door = (n.links & (1 << d)) != 0;
+            const int off = door ? 2 : 0;
+            const int x = cx + DIRX[d] * (H - 1) + ox * off, z = cz + DIRZ[d] * (H - 1) + oz * off;
+            if (!P.in(x, z)) continue;
+            wallBannerAt(x, y + 3, z, d);
+            if (!door && chestDir < 0) chestDir = d;
+          }
+          if (chestDir >= 0 && P.h(cx, 1, cz, 4) < 0.55) {
+            const int x = cx + DIRX[chestDir] * (H - 1) + (-DIRZ[chestDir]);
+            const int z = cz + DIRZ[chestDir] * (H - 1) + DIRX[chestDir];
+            if (P.in(x, z)) P.chest(x, y + 1, z, (chestDir + 2) & 3, "nether_fortress");
+          }
+        }
         break;
       default: break;
     }

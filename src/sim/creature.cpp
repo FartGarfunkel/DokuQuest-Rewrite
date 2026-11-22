@@ -22,6 +22,7 @@
 #include "sim/physics.h"
 #include "sim/player.h"
 #include "sim/combat.h"
+#include "sim/attack_moves.h"
 #include "sim/blockinfo.h"
 #include "sim/skills.h"
 #include "sim/balance.h"
@@ -722,6 +723,12 @@ static void rigLook(Creature& m, Entity* target, float dt) {
 }
 
 // ------------------------------------------------------------------ update
+void creatureGhostSwing(Entity& e, float dt) {
+  auto* c = dynamic_cast<Creature*>(&e);
+  if (!c || !c->atkMove) return;
+  c->atkT += dt;
+  if (c->atkMove >= MV_COUNT || c->atkT >= attackMove(c->atkMove).len) { c->atkMove = 0; c->atkT = 0; }
+}
 void Creature::ghostStep(Level& lv, float dt) {
   if (!hasTarget) return;
   float k = std::min(1.f, dt * 10);
@@ -733,6 +740,10 @@ void Creature::ghostStep(Level& lv, float dt) {
   walkAmt += (std::min(1.f, hs / 2) - walkAmt) * std::min(1.f, dt * 6);
   walk += hs * dt * 3.2f;
   speedNow = hs;
+  if (atkMove) {
+    atkT += dt;
+    if (atkMove >= MV_COUNT || atkT >= attackMove(atkMove).len) { atkMove = 0; atkT = 0; }
+  }
 }
 
 // A whirlwind (tools/port/skylands_more.py): it wanders, whirls cloud about itself, and whatever it touches — you, a
@@ -1097,6 +1108,7 @@ void Creature::update(Level& lv, float dt) {
   walkAmt += (std::min(1.f, hs / 2) - walkAmt) * std::min(1.f, dt * 6);
   walk += hs * dt * (type == "deer" ? 2.2f : 3.2f);
   if (swingT > 0) swingT -= dt;
+  tickMeleeBlow(lv, dt);
   (void)R;
 }
 
@@ -1157,6 +1169,7 @@ json Creature::snap() const {
             {"d", deathTime > 0 ? 1 : 0}, {"b", burn > 0 ? 1 : 0}, {"g", stag ? 1 : 0}, {"sh", sheared ? 1 : 0}, {"c", color}, {"bb", baby ? 1 : 0},
             {"v", variant}, {"fl", mobFlags(*this)}, {"hi", heldItem}, {"oi", offItem}, {"cr", crawling ? 1 : 0}, {"fu", r2(fuse)}, {"sz", size},
             {"sw", r2(swingT)}, {"st", r2(shootT)}, {"gz", r2(grazeT)}, {"pk", r2(peckT)}, {"og", onGround ? 1 : 0}};
+  if (atkMove) { o["am"] = atkMove; o["at"] = r2(atkT); o["ay"] = r2(atkYaw); o["ap"] = r2(atkPitch); }
   if (attack.on) o["a"] = {attack.kind, r2(attack.progress), r2(attack.yaw)};
   if (data.contains("hat")) o["hd"] = data["hat"];
   if (data.contains("hw")) o["hw"] = data["hw"];
@@ -1210,6 +1223,7 @@ void Creature::applySnap(const json& o) {
   heldItem = o.value("hi", std::string()); offItem = o.value("oi", std::string()); crawling = o.value("cr", 0);
   fuse = o.value("fu", 0.f); if (int s = o.value("sz", 0)) if (s != size) setSize(s);
   swingT = o.value("sw", 0.f); shootT = o.value("st", 0.f); grazeT = o.value("gz", 0.f); peckT = o.value("pk", 0.f); onGround = o.value("og", 1);
+  atkMove = (u8)o.value("am", 0); atkT = o.value("at", 0.f); atkYaw = o.value("ay", atkYaw); atkPitch = o.value("ap", atkPitch);
   if (o.contains("hd")) data["hat"] = o["hd"];
   if (o.contains("hw")) data["hw"] = o["hw"];
   if (o.contains("ar")) data["armor"] = o["ar"]; else if (data.is_object()) data.erase("armor");

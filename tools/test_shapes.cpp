@@ -198,6 +198,37 @@ int main(int argc, char** argv) {
   initBlockTraits();
   loadStations();
   const Registry& R = reg();
+  int brazierFails = 0;
+  {
+    // braziers burn like a campfire (animated campfire_fire planes), not boxed "fire" cubes
+    const int fire = R.tile("fire");
+    const auto* boxes = modelShape(modelShapeIndex("brazier"));
+    if (!boxes) {
+      printf("FAIL brazier: modelShape(modelShapeIndex(\"brazier\")) is null\n");
+      brazierFails++;
+    } else {
+      int nFire = 0;
+      for (const auto& b : *boxes) if (fire >= 0 && (b.side == fire || b.end == fire)) nFire++;
+      if (nFire) {
+        printf("FAIL brazier: %d model box(es) still use tile \"fire\"; flame should be campfire_fire planes\n", nFire);
+        brazierFails++;
+      }
+    }
+    const BlockTraits& BT = traits(R.blockId("brazier"));
+    if (!BT.brazier) {
+      printf("FAIL brazier: traits(brazier).brazier is false; emitModel needs it for campfire_fire planes\n");
+      brazierFails++;
+    }
+    if (BT.campfire) {
+      printf("FAIL brazier: traits(brazier).campfire is set; braziers have no unlit/out model\n");
+      brazierFails++;
+    }
+    if (!BT.emitsParticles) {
+      printf("FAIL brazier: traits(brazier).emitsParticles is false\n");
+      brazierFails++;
+    }
+    if (!brazierFails) printf("ok   brazier uses campfire_fire planes, not fire boxes\n");
+  }
   const BlockId stone = R.blockId("stone");
   int blocks = 0, mismatched = 0, fixedNone = 0, allowN = 0, real = 0;
   struct Hit { std::string block, what, problem, detail, why; };
@@ -267,5 +298,5 @@ int main(int argc, char** argv) {
   }
   (void)fixedNone;
   printf("\n%d shaped blocks audited, %d with differences: %zu differences, %d allowlisted, %d mismatches\n", blocks, mismatched, hits.size(), allowN, real);
-  return real;
+  return real + brazierFails;
 }

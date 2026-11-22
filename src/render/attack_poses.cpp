@@ -90,36 +90,25 @@ static void applyClip(CharAngles& A, const CharPose& pose, const AtkClip& C, flo
   }
 }
 
-// a heavy cut plays a measured arc, retimed so the part that is already in front fills this move's own live window.
-// The wind-up (the cock over the shoulder) stays before the window. c0..c1 are clip times, not move times.
-static float heavyClipTime(float t, float hitFrom, float hitTo, float c0, float c1) {
-  if (hitFrom <= 1e-4f || t <= hitFrom) return c0 * (hitFrom > 1e-4f ? std::clamp(t / hitFrom, 0.f, 1.f) : 1.f);
-  if (t >= hitTo) return c1;
-  return c0 + (c1 - c0) * ((t - hitFrom) / (hitTo - hitFrom));
-}
 static void attackPoseRaw(CharAngles& A, const CharPose& pose) {
   const u8 id = pose.atkMove;
   if (id == MV_NONE || id >= MV_COUNT) return;
   const float k = attackWeight(pose);
-  float kt;
-  const AtkClip* C;
+  const AtkClip& C = CLIPS[clipOf(id)];
+  // the keys' own time starts after the blend in; the move's live window is blend + the clip's contact (sim/attack_moves.cpp)
+  float kt = pose.atkT - C.blend;
   if (id == MV_GS1 || id == MV_GS2 || id == MV_SPEAR1 || id == MV_SPEAR2) {
+    // the part of the borrowed clip where the blade is in front. The wind-up plays before the hit,
+    // the cut plays through the hit, and we do not run on into the pose where the blade just lies out flat.
     const AttackMove& M = attackMove(id);
-    const bool spear = id == MV_SPEAR1 || id == MV_SPEAR2;
-    // spear: the thrust, both cuts. greatsword: the diagonal, then the return. Times are where that arc is in front.
-    C = spear ? &CLIPS[MV_SWORD_DASH - 1] : &CLIPS[(id == MV_GS2 ? MV_SWORD2 : MV_SWORD1) - 1];
-    const float c0 = spear ? 0.105f : id == MV_GS2 ? 0.105f : 0.055f;
-    const float c1 = spear ? 0.250f : id == MV_GS2 ? 0.200f : 0.105f;
-    kt = heavyClipTime(pose.atkT, M.hitFrom, M.hitTo, c0, c1);
-  } else {
-    C = &CLIPS[clipOf(id)];
-    // the keys' own time starts after the blend in; the move's live window is blend + the clip's contact (sim/attack_moves.cpp)
-    kt = pose.atkT - C->blend;
+    const float c0 = id == MV_GS1 ? 0.04f : id == MV_SPEAR1 ? 0.08f : 0.10f;
+    const float c1 = id == MV_GS1 ? 0.105f : id == MV_SPEAR1 ? 0.22f : 0.16f;
+    if (M.hitFrom <= 1e-4f || pose.atkT <= M.hitFrom) kt = c0 * (M.hitFrom > 1e-4f ? std::clamp(pose.atkT / M.hitFrom, 0.f, 1.f) : 1.f);
+    else if (pose.atkT >= M.hitTo) kt = c1;
+    else kt = c0 + (c1 - c0) * ((pose.atkT - M.hitFrom) / (M.hitTo - M.hitFrom));
   }
-  applyClip(A, pose, *C, kt, k);
-  // the blow follows the look up and down: the chest pitches with it (pitch squared over 30 degrees, at most 30)
-  const float pitch = std::clamp(pose.headPitch, -1.2f, 1.2f), cp = std::copysign(std::min(pitch * pitch / 0.52f, 0.52f), pitch);
-  A.body.x += cp * 0.6f * k;
+  applyClip(A, pose, C, kt, k);
+  // look pitch is applied as a shoulder rotation in charRig (same axis as attackFrameToWorld), not as extra arm angles
 }
 
 } // namespace dq

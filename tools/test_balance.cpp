@@ -23,6 +23,9 @@
 using namespace dq;
 
 static int fails = 0, passes = 0;
+static void landMob(Level& lv, Creature& m) {
+  for (int i = 0; i < 80 && m.atkMove; i++) m.tickMeleeBlow(lv, 0.02f);
+}
 static void check(bool ok, const std::string& what) {
   printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str());
   (ok ? passes : fails)++;
@@ -84,6 +87,7 @@ static Fight fight(Level& lv, Player& p, int tier, int S, int lvl, bool elite, i
     while (taken < p.maxHp && hits < 2000) {
       p.hp = p.maxHp; p.invuln = 0; n->attackCd = 0; magicState(lv, p).ward = 0;
       n->meleeAt(lv, p, 1.f, 0.f);
+      landMob(lv, *n);
       taken += p.maxHp - p.hp; hits++;
     }
     f.ttk += tk / trials; f.ttd += hits * 1.1 / trials;
@@ -130,7 +134,7 @@ int main(int argc, char** argv) {
     check(st1 > st0 && hp1 > hp0 && rd > 0 && rd <= bal::CON_REDUCE_CAP, "Constitution: stamina " + std::to_string((int)st0) + " -> " + std::to_string((int)st1) + ", health " + std::to_string((int)hp0) + " -> " + std::to_string((int)hp1) + ", " + std::to_string((int)std::lround(rd * 100)) + "% less harm");
     {   // ...and a real blow lands softer
       Creature* m = foe(*lv, q, 1, false);
-      auto blow = [&](int con) { q.statCon = con; q.recalcMax(); double sum = 0; for (int i = 0; i < 40; i++) { q.hp = q.maxHp; q.invuln = 0; m->attackCd = 0; m->meleeAt(*lv, q, 1.f, 0.f); sum += q.maxHp - q.hp; } return sum; };
+      auto blow = [&](int con) { q.statCon = con; q.recalcMax(); double sum = 0; for (int i = 0; i < 40; i++) { q.hp = q.maxHp; q.invuln = 0; m->attackCd = 0; m->atkMove = 0; m->atkHit.clear(); m->meleeAt(*lv, q, 1.f, 0.f); landMob(*lv, *m); sum += q.maxHp - q.hp; } return sum; };
       const double b0 = blow(0), b1 = blow(C);
       q.statCon = 0; q.recalcMax(); m->removed = true;
       check(b1 < b0, "...a ghoul's blows: " + std::to_string(b0 / 40).substr(0, 4) + " -> " + std::to_string(b1 / 40).substr(0, 4) + " a hit");
@@ -321,7 +325,7 @@ int main(int argc, char** argv) {
       give(json{{"xp_gain", {0.f, 0.5f}}}); p.level = 30; p.xp = 0; grantXP(*lv, p, 10); const int x1 = p.xp; none();
       check(x0 == 10 && x1 == 15, "xp_gain +50%: 10 experience -> " + std::to_string(x1));
       Creature* m = foe(*lv, p, 1, false);
-      auto blow = [&]() { double sum = 0; for (int i = 0; i < 40; i++) { p.hp = p.maxHp; p.invuln = 0; m->attackCd = 0; magicState(*lv, p).ward = 0; m->meleeAt(*lv, p, 1.f, 0.f); sum += p.maxHp - p.hp; } return sum; };
+      auto blow = [&]() { double sum = 0; for (int i = 0; i < 40; i++) { p.hp = p.maxHp; p.invuln = 0; m->attackCd = 0; m->atkMove = 0; m->atkHit.clear(); magicState(*lv, p).ward = 0; m->meleeAt(*lv, p, 1.f, 0.f); landMob(*lv, *m); sum += p.maxHp - p.hp; } return sum; };
       const double b0 = blow(); give(json{{"damage_reduction", {0.f, 0.2f}}}); const double b1 = blow(); none(); m->removed = true;
       check(b1 < b0 * 0.9, "damage_reduction 20%: a ghoul's blows " + std::to_string(b0 / 40).substr(0, 4) + " -> " + std::to_string(b1 / 40).substr(0, 4));
     }

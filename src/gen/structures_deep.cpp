@@ -102,6 +102,7 @@ static void strongholdBuild(ChunkWriter& w, const StructurePlan& S) {
   holdFurnish(cx, cy + 9, cz - 29, 4, 4, 5, "library", (u32)S.seed + 3);
   holdFurnish((cx + 5 + cx + 12) / 2, cy + 1, (cz - 30 + cz - 28) / 2, 3, 1, 3, "hall", (u32)S.seed + 4);
   holdFurnish((cx - 12 + cx - 5) / 2, cy + 1, (cz - 30 + cz - 28) / 2, 3, 1, 3, "hall", (u32)S.seed + 5);
+  holdFurnish((cx + 13 + cx + 17) / 2, cy + 1, (cz - 34 + cz - 24) / 2, 2, 4, 4, "store", (u32)S.seed + 6);
   P.ladder(cx, cy + 6, cy + 9, cz - 29, 0);
   // ---- a stair up: a narrow shaft with a ladder, from the crossing towards the surface (it stops short; the
   // original's 32 rows above the stronghold, in band rows) ----
@@ -410,8 +411,8 @@ static void dhBuild(ChunkWriter& w, const StructurePlan& S) {
     if (role == "secret") { P.chest(x, F.y + 1, z, 0, "deep_secret"); P.chest(x + 4, F.y + 1, z, 0, "deep_secret"); }
     if (role == "vault") { P.chest(x, F.y + 1, z, 0, "deep_vault"); P.chest(x + 2, F.y + 1, z, 0, "deep_vault"); P.chest(x + 4, F.y + 1, z, 0, "deep_vault"); }
     const int mx = X0 + q[0] * C + (C >> 1), mz = Z0 + q[1] * C + (C >> 1);
-    if (role == "trap" || role == "puzzle" || role == "stair") continue;
-    const char* k = role == "boss" ? "boss" : role == "vault" ? "vault" : role == "secret" ? "armoury"
+    if (role == "trap" || role == "puzzle" || role == "stair" || role == "boss") continue;   // the Lich King's hall stays empty
+    const char* k = role == "vault" ? "vault" : role == "secret" ? "armoury"
                    : role == "keyroom" ? "office" : role == "cage" ? "cells"
                    : role == "captain" ? "barracks" : role == "entry" ? "entry" : "hall";
     furnishPlaced(P, mx, F.y + 1, mz, 4, 4, 6, k, hash32(mx, F.y, mz, (i32)S.seed), PAL_BLACK, 1);

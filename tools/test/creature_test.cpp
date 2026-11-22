@@ -29,6 +29,9 @@ static void run(Level& lv, Player& p, float secs, bool keepAlive = true) {
   for (int i = 0; i < (int)(secs / TICK_DT); i++) { lv.tick(TICK_DT); p.invuln = std::max(0.f, p.invuln - (float)TICK_DT); if (keepAlive) { p.hp = p.maxHp; p.dead = false; } }
 }
 static void clearCreatures(Level& lv) { for (auto& e : lv.entities()) if (!e->isPlayer()) e->removed = true; lv.tick(TICK_DT); }
+static void driveMelee(Level& lv, Creature& m) {
+  for (int i = 0; i < 80 && m.atkMove; i++) m.tickMeleeBlow(lv, 0.02f);
+}
 
 int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = "/tmp/dq-creature-test";
@@ -247,12 +250,14 @@ int main(int argc, char** argv) {
       CHECK(playerGuardBox(p, behind) && !shieldRayHit(behind, from, claw, 1.f),
             "turning your back, that claw misses the shield");
       p.invuln = 0; p.hp = 20; p.blockT = 1.0f; p.stamina = 100; p.yaw = 0;
-      g2->attackCd = 0;
+      g2->attackCd = 0; g2->atkMove = 0; g2->atkHit.clear();
       g2->meleeAt(*lv, p, 1.f, 0.f);
+      driveMelee(*lv, *g2);
       const float front = 20.f - p.hp;
       p.invuln = 0; p.hp = 20; p.blockT = 1.0f; p.stamina = 100; p.yaw = 3.14159f;
-      g2->attackCd = 0;
+      g2->attackCd = 0; g2->atkMove = 0; g2->atkHit.clear();
       g2->meleeAt(*lv, p, 1.f, 0.f);
+      driveMelee(*lv, *g2);
       const float back = 20.f - p.hp;
       CHECK(front > 0 && back > front * 1.4f, "a claw in the back is not kept (front %.1f, back %.1f)", front, back);
       g2->removed = true;
@@ -282,6 +287,38 @@ int main(int argc, char** argv) {
       g3->removed = true;
       p.mode = "survival"; p.inv[0] = ItemStack(); p.atkMove = 0;
     } else CHECK(false, "a mixed iron sword swing lands on a ghoul in front");
+    // a ghoul with a sword: the cut is visible, then it lands, and a raised guard can parry it
+    Creature* g4 = spawnCreature(*lv, 0, "ghoul", p.pos + vec3(0, 0, -1.2f));
+    if (g4) {
+      g4->calm = true; g4->vel = vec3(0); g4->heldItem = "copper_sword"; g4->yaw = 0;
+      p.yaw = 0; p.pitch = 0; p.mode = "survival"; p.invuln = 0; p.hp = 20; p.blockT = 0; p.stamina = 100; p.shield[0].clear();
+      g4->attackCd = 0; g4->atkMove = 0; g4->atkHit.clear();
+      g4->meleeAt(*lv, p, 1.f, 0.f);
+      CHECK(g4->atkMove != 0 && p.hp == 20.f, "a sword swing does not land on the press (move %d, hp %.1f)", (int)g4->atkMove, p.hp);
+      driveMelee(*lv, *g4);
+      CHECK(p.hp < 20.f, "the cut lands in its live window (hp %.1f)", p.hp);
+      p.invuln = 0; p.hp = 20; p.blockT = 0.05f; p.stamina = 100; p.shield[0] = ItemStack("shield", 1); p.parryFlash = 0;
+      g4->attackCd = 0; g4->atkMove = 0; g4->atkT = 0; g4->atkHit.clear();
+      g4->meleeAt(*lv, p, 1.f, 0.f);
+      driveMelee(*lv, *g4);
+      CHECK(p.parryFlash > 0.f && p.hp >= 19.9f, "you can parry the cut you saw coming (flash %.2f, hp %.1f)", p.parryFlash, p.hp);
+      g4->removed = true;
+      p.blockT = 0; p.shield[0].clear();
+    } else CHECK(false, "a sword swing does not land on the press");
+    {
+      p.mode = "creative"; p.yaw = 0; p.pitch = -0.9f; p.atkMove = 0; p.atkT = 0; p.atkGap = 9; p.atkCombo = 0;
+      p.inv[0] = ItemStack("iron_sword", 1); p.selected = 0;
+      PlayerInput look; look.attackPressed = true;
+      tickMelee(*lv, p, 0.01f, look, true, false);
+      while (p.atkMove && p.atkT < attackMove(p.atkMove).turnLock + 0.02f)
+        tickMelee(*lv, p, 0.01f, PlayerInput{}, true, false);
+      const float frozen = p.atkPitch;
+      p.pitch = 0.9f;
+      for (int k = 0; k < 12 && p.atkMove; k++) tickMelee(*lv, p, 0.02f, PlayerInput{}, true, false);
+      CHECK(p.atkMove != 0 && std::fabs(frozen + 0.9f) < 0.05f && std::fabs(p.atkPitch - frozen) < 0.001f,
+            "the cut keeps the look pitch it started with (%.2f)", p.atkPitch);
+      p.atkMove = 0; p.mode = "survival"; p.inv[0] = ItemStack(); p.pitch = 0;
+    }
   }
 
   printf("arrows\n");

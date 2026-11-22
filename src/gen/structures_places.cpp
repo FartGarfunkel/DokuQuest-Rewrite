@@ -243,7 +243,7 @@ static void towerBuild(ChunkWriter& w, const StructurePlan& S) {
   furnishPlaced(P, cx, L(0), cz, tr, tr, 4, "workshop", hash32(cx, L(0), cz, (i32)S.seed), PAL_SLATE, 1);
   furnishPlaced(P, cx, L(1), cz, std::max(2, R - 3), std::max(2, R - 3), 4, "library", hash32(cx, L(1), cz, (i32)S.seed), PAL_SLATE, 1);
   furnishPlaced(P, cx, L(2), cz, tr, tr, 4, "office", hash32(cx, L(2), cz, (i32)S.seed), PAL_SLATE, 2);
-  furnishPlaced(P, cx, L(3), cz, tr, tr, 4, "nave", hash32(cx, L(3), cz, (i32)S.seed), PAL_SLATE, 1);
+  // the top is the archmage's arena: crystal and chest only
 }
 
 // ==== Desert temples =================================================================================================
@@ -1032,6 +1032,7 @@ static void mazeBuild(ChunkWriter& w, const StructurePlan& S) {
   }
   for (const auto& r : M.rooms) {
     if (r.kind == "library") continue;
+    if (r.rx >= 6) continue;   // trophy hall stays empty for the fight
     furnishPlaced(P, r.x, r.y, r.z, r.rx, r.rz, r.H, r.kind,
                   hash32(r.x, r.y, r.z, (i32)S.seed),
                   M.cold ? PAL_ICE : M.wallA == "sandstone" ? PAL_SAND : PAL_MOSSY, 1);

@@ -548,6 +548,10 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
     int ft = R.tile(T.campfire == 1 ? "campfire_fire" : "soul_campfire_fire");
     if (ft >= 0) emitPlanes(c, d, ft, o.x, y + lift / 16, o.z, 0.08f, 1, 15, 15, false);
   }
+  if (T.brazier) {
+    int ft = R.tile("campfire_fire");
+    if (ft >= 0) emitPlanes(c, d, ft, o.x, y + (lift + 9) / 16.f, o.z, 0.08f, 1, 15, 15, false);
+  }
   if (T.cauldron && (meta & 3) && (meta & 4)) {   // lava in a cauldron (sim/cave_drips.h): glowing, opaque, the lava's own picture
     ShapeBox lb(2, 4, 2, 14, 4 + (meta & 3) * 3.6f, 14); lb.side = lb.end = R.tile("lava");
     addShapeBox(c, c.out.cutout, lb, o, 1 / 16.f, sk, 15, 0, 0, (u8)(Mat::NoRelief));
