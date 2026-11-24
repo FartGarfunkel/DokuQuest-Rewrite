@@ -52,6 +52,18 @@ static std::vector<GateCells> gatesOf(const Town& v) {
   return out;
 }
 
+// on the wall post just past the opening (hw+2), one block into town — not in the leaves' swing (that is hw+1)
+static void townGateLeverAt(const GateCells& G, int& lx, int& ly, int& lz) {
+  const bool along = G.d == 0 || G.d == 2;
+  const int s = G.hw + 2;
+  lx = G.cx + (along ? s : 0) + G.inX;
+  ly = G.h0 + 1;
+  lz = G.cz + (along ? 0 : s) + G.inZ;
+}
+static u8 townGateLeverMeta(const GateCells& G) {
+  return G.inZ > 0 ? 2 : G.inX < 0 ? 3 : G.inZ < 0 ? 4 : 5;   // wall N/E/S/W: fixed to the post (outward)
+}
+
 // ---- the plan (towns.js planVillage, townlife.js townLifePlan, villageflat.js vFlatten) ----
 // the plan, and what the villagers need from it (the original's plan fields; y band-local): S.data from the town
 static void townPlanData(StructurePlan& S, const std::shared_ptr<TownExt>& e, int X0, int Z0, int X1, int Z1, int y0js, bool hasWay, std::array<int, 2> waySpot) {
@@ -109,10 +121,10 @@ static void townPlanData(StructurePlan& S, const std::shared_ptr<TownExt>& e, in
       const double px = G.cx + (along ? sd * (G.hw + 1.5) : 0) + G.inX * 2.5, pz = G.cz + (along ? 0 : sd * (G.hw + 1.5)) + G.inZ * 2.5;
       posts.push_back({px + 0.5, std::max(y0, SEA_LEVEL) + 1, pz + 0.5});
     }
-    const int s = G.hw + 1;
+    int lx, ly, lz; townGateLeverAt(G, lx, ly, lz);
     gates.push_back({{"key", v.id + ":" + std::to_string(G.d)}, {"d", G.d}, {"stone", v.wall.kind == "stone"}, {"name", G.name}, {"cells", cells},
                      {"center", {G.cx + 0.5, G.h0 + 1, G.cz + 0.5}}, {"h0", G.h0}, {"inX", G.inX}, {"inZ", G.inZ}, {"hw", G.hw}, {"span", 2 * (G.hw + 1) + 1},
-                     {"cx", G.cx}, {"cz", G.cz}, {"posts", posts}, {"lever", jat(G.cx + (along ? s : 0) + G.inX, G.h0 + 1, G.cz + (along ? 0 : s) + G.inZ)}});
+                     {"cx", G.cx}, {"cz", G.cz}, {"posts", posts}, {"lever", jat(lx, ly, lz)}});
   }
   S.data = {{"kind", "village"}, {"id", v.id}, {"name", name}, {"style", st.key}, {"base", vstyle(st.baseStyle).key}, {"tier", TIER_NAMES[tier]}, {"x", cx}, {"z", cz}, {"y", y0}, {"P", P}, {"hw", hw},
             {"r", std::max({X1 - cx, cx - X0, Z1 - cz, cz - Z0})}, {"board", jat(v.board[0], v.board[1], v.board[2])}, {"bell", jat(v.bell[0], v.bell[1], v.bell[2])},
@@ -174,7 +186,7 @@ static int villageStyle10(const TerrainColumn& c, u32 h, int wet, bool v19 = fal
 static bool townPlace(const StructureIndex&, const TerrainQuery& t, int rx, int rz, StructurePlan& S) {
   const i32 seed = t.seed();
   Mulberry32 rnd(hash32(seed, rx, rz, 4242));
-  if (rnd() > 0.66) return false;
+  if (rnd() > 0.50) return false;
   const double q = rnd();
   const int tier = q < 0.12 ? TIER_CITY : q < 0.46 ? TIER_TOWN : TIER_VILLAGE;
   const json& TT = SD()["TOWN_TIERS"][TIER_NAMES[tier]];
@@ -693,10 +705,20 @@ static void townWall(SP& P, const Town& v, const VStyle& st) {
     return false;
   };
   const int H = W.h;
+  const std::vector<GateCells> gates = gatesOf(v);
+  auto gateFloor = [&](int x, int z, int& h0) {
+    for (const GateCells& G : gates) for (const auto& c : G.cells) if (c[0] == x && c[2] == z) { h0 = G.h0; return true; }
+    return false;
+  };
   auto wallAt = [&](int x, int z, int ix, int iz) {
     if (!P.in(x, z)) return;
-    const int h = ground(x, z);
-    for (int y = h; y > h - 4 && softBlock(P.get(x, y, z)); y--) P.put(x, y, z, stone ? sb : std::string("dirt"));
+    const int gh = ground(x, z);
+    int h0 = 0;
+    const bool opening = gateFloor(x, z, h0);
+    // the arch is one height (the street's). A slope used to step each post, and the beam left them.
+    const int h = opening ? h0 : gh;
+    if (opening && gh < h) for (int y = std::max(1, gh); y <= h; y++) P.put(x, y, z, stone ? sb : std::string("dirt"));
+    else for (int y = h; y > h - 4 && softBlock(P.get(x, y, z)); y--) P.put(x, y, z, stone ? sb : std::string("dirt"));
     if (gate(x, z)) {
       // the gateway: an arch over the road
       if (stone) { for (int y = h + 6; y <= h + H + 1; y++) P.put(x, y, z, wb(x, y, z)); if ((x + z) % 2 == 0) P.put(x, h + H + 2, z, sb); }
@@ -718,7 +740,12 @@ static void townWall(SP& P, const Town& v, const VStyle& st) {
   for (int z = W.z0 + 1; z < W.z1; z++) { wallAt(W.x0, z, 1, 0); wallAt(W.x1, z, -1, 0); }
   // towers at the corners, and either side of every gate
   for (const auto& [tx, tz] : wallTowers(v)) {
-    const int h = ground(tx, tz), R = stone ? 2 : 1, TH = H + 4;
+    int h = ground(tx, tz);
+    for (const GateCells& G : gates) {
+      const int dx = std::abs(tx - G.cx), dz = std::abs(tz - G.cz);
+      if ((tx == G.cx || tz == G.cz) && std::max(dx, dz) <= G.hw + 6) { h = G.h0; break; }   // a gate tower shares the arch's floor
+    }
+    const int R = stone ? 2 : 1, TH = H + 4;
     for (int dz = -R; dz <= R; dz++) for (int dx = -R; dx <= R; dx++) {
       const int x = tx + dx, z = tz + dz; if (!P.in(x, z)) continue;
       const bool edge = std::abs(dx) == R || std::abs(dz) == R;
@@ -793,6 +820,31 @@ static int glueTo(const std::set<std::array<int, 3>>& piece, int x, int y, int z
 static int faceOf(int dx, int dy, int dz) { return dx > 0 ? 0 : dx < 0 ? 1 : dy > 0 ? 2 : dy < 0 ? 3 : dz > 0 ? 4 : 5; }
 static u8 sixWayOf(int dx, int dy, int dz) { return dy < 0 ? 0 : dy > 0 ? 1 : dz < 0 ? 2 : dz > 0 ? 3 : dx < 0 ? 4 : 5; }   // (0 down 1 up 2 north 3 south 4 west 5 east)
 
+// air through the gateway (h0+1..h0+5 across the span) and 3 blocks outside and in, so a hillside does not block the
+// leaves, the portcullis or the drawbridge; path/gravel under the opening if the floor was air
+static void townGateClearWay(SP& P, const GateCells& G, const VStyle& st) {
+  const bool along = G.d == 0 || G.d == 2;
+  const int g = G.hw + 1, h0 = G.h0;
+  const std::string floor = !st.path.empty() ? st.path[0] : std::string("gravel");
+  for (int s = -g; s <= g; s++) {
+    const int x = along ? G.cx + s : G.cx, z = along ? G.cz : G.cz + s;
+    if (!P.in(x, z)) continue;
+    const BlockId below = P.get(x, h0, z);
+    if (below == AIR || !tSolid(below)) P.put(x, h0, z, floor);
+    for (int y = h0 + 1; y <= h0 + 5; y++) P.put(x, y, z, "air");
+    for (int k = 1; k <= 3; k++) {
+      const int ox = x - G.inX * k, oz = z - G.inZ * k;
+      if (P.in(ox, oz)) {
+        for (int y = h0 + 1; y <= h0 + 5; y++) P.put(ox, y, oz, "air");
+        const BlockId fl = P.get(ox, h0, oz);
+        if (fl == AIR) P.put(ox, h0, oz, floor);
+      }
+      const int ix = x + G.inX * k, iz = z + G.inZ * k;
+      if (P.in(ix, iz)) for (int y = h0 + 1; y <= h0 + 5; y++) P.put(ix, y, iz, "air");
+    }
+  }
+}
+
 // moving structures stage 6 (docs/superpowers/specs/2026-11-16-moving-structures-design.md §5): a new town's gate. A stone
 // wall's: an iron-bar portcullis hung from a Slider in the arch, raised 3 into a slot above the way (the town lowers it at
 // night, sim/villager_life.cpp); where water lies before it, a plank drawbridge on a Hinge at the threshold, lowered.
@@ -853,6 +905,18 @@ static void townMovingGate(SP& P, const Town& v, const VStyle& st, const GateCel
       if (P.in(outer[0], outer[1])) { const int i = P.put(outer[0], h0, outer[1], "hinge", 1); P.setEntity(i, json{{"type", "machine_state"}, {"glue", 1 << 2}, {"quarters", 1}}); }
     }
   }
+  // after the leaves/bars: air in front (and, for a palisade, inside) so the swing is not buried in the hill
+  for (int s = -g; s <= g; s++) {
+    const auto c = col(s);
+    for (int k = 1; k <= 3; k++) {
+      const int x = c[0] - G.inX * k, z = c[1] - G.inZ * k;
+      if (P.in(x, z)) for (int y = h0 + 1; y <= h0 + 5; y++) P.put(x, y, z, "air");
+    }
+    if (!stone) for (int k = 1; k <= 3; k++) {
+      const int x = c[0] + G.inX * k, z = c[1] + G.inZ * k;
+      if (P.in(x, z)) for (int y = h0 + 1; y <= h0 + 5; y++) P.put(x, y, z, "air");
+    }
+  }
 }
 
 // towns3.js townGatesBuild: the openings shut with gate barriers as they're made, the levers, the boards and signs
@@ -867,19 +931,22 @@ static void townGates(SP& P, const Town& v, const VStyle& st) {
   const BlockId BAR = bid("gate_barrier");
   const bool moving = bid("slider") != NOBLOCK && bid("hinge") != NOBLOCK;   // (moving gates: townMovingGate)
   for (const GateCells& G : gatesOf(v)) {
-    for (const auto& [x, y, z] : G.cells) if (P.in(x, z)) {
+    townGateClearWay(P, G, st);
+    for (const auto& [x, y, z] : G.cells) if (P.in(x, z) && !moving) {
       const BlockId id = P.get(x, y, z);
-      if (!moving && (id == AIR || !tSolid(id) || reg().tShape[id] == ShapeKind::Gate)) P.putId(x, y, z, BAR);
-      if (y == G.h0 + 1) { const BlockId below = P.get(x, y - 1, z); if (below == AIR || !tSolid(below)) P.put(x, y - 1, z, !st.path.empty() ? st.path[0] : std::string("gravel")); }
+      if (id == AIR || !tSolid(id) || reg().tShape[id] == ShapeKind::Gate) P.putId(x, y, z, BAR);
     }
     if (moving) townMovingGate(P, v, st, G);
     const int cx = G.cx, cz = G.cz, h = G.h0; const bool along = G.d == 0 || G.d == 2;
     {
-      const int s = G.hw + 1, lx = cx + (along ? s : 0) + G.inX, ly = h + 1, lz = cz + (along ? 0 : s) + G.inZ;
+      int lx, ly, lz; townGateLeverAt(G, lx, ly, lz);
       if (P.in(lx, lz)) {
-        const BlockId below = P.get(lx, ly - 1, lz);
-        if (below == AIR || !tSolid(below)) P.put(lx, ly - 1, lz, !st.base3.empty() ? st.base3 : st.stone);
-        P.put(lx, ly, lz, "lever", along ? 16 : 0); P.put(lx, ly + 1, lz, "air");
+        const int px = lx - G.inX, pz = lz - G.inZ;
+        if (P.in(px, pz)) {
+          const BlockId wall = P.get(px, ly, pz);
+          if (wall == AIR || !tSolid(wall)) P.put(px, ly, pz, !st.stone.empty() ? st.stone : (!st.base3.empty() ? st.base3 : std::string("stone")));
+        }
+        P.put(lx, ly, lz, "lever", townGateLeverMeta(G)); P.put(lx, ly + 1, lz, "air");
       }
     }
     // the board over the arch, outside and in
@@ -1045,7 +1112,7 @@ bool townPieceBoxes(const StructurePlan& S, const std::array<int, 4>& near, std:
 int townStyleOf(const StructurePlan& S) { return S.ext ? extOf<TownExt>(S).v.style : VS_PLAINS; }
 
 void registerStructureVillages() {
-  StructureType t; t.key = "village"; t.name = "a village"; t.region = VREG; t.clearance = 24; t.dims = 1u << DIM_OVERWORLD;
+  StructureType t; t.key = "village"; t.name = "a village"; t.region = VREG; t.clearance = 24; t.separation = 400; t.dims = 1u << DIM_OVERWORLD;
   t.place = townPlace; t.build = townBuild; t.flatten = townFlatten; t.flattenPad = VF_R + 2;
   t.treeOff = [](const StructurePlan& s, int x, int z) { if (s.ext) if (const auto& jg = extOf<TownExt>(s).jig) return jigsawTownTreeOff(*jg, x, z); return true; }; t.treePad = 4;   // villages.js: no trees within 4 of a village
   registerStructure(std::move(t));

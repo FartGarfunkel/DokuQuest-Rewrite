@@ -16,6 +16,14 @@
 namespace dq {
 using namespace vmap;
 
+bool isClutterRockKey(std::string_view key) {
+  auto has = [&](const char* p) { return key.find(p) != std::string_view::npos; };
+  if (has("pumpkin") || has("melon") || has("hay")) return false;
+  return has("stone") || has("cobble") || has("granite") || has("andesite") || has("diorite") || has("tuff")
+      || has("travertine") || has("terracotta") || has("calcite") || has("limestone") || has("slate")
+      || has("basalt") || has("deepslate");
+}
+
 namespace {
 enum : u8 { I_CONST, I_UNIFORM, I_BIASED, I_CLAMPED, I_NORMAL, I_WEIGHTED };
 enum : u8 { P_SIMPLE, P_WEIGHTED, P_NOISE, P_THRESHOLD, P_RULES };
@@ -145,8 +153,11 @@ BiomeFeatures::State BiomeFeatures::state(const json& j) {
   { std::lock_guard<std::mutex> lk(mx); if (auto it = memo.find(k); it != memo.end()) { s.id = it->second; } else { s.id = blockFromState(j); memo[k] = s.id; } }
   if (s.id != OUT) {
     // a plant's own stages and props we don't keep; the pickles' count is ours
-    const std::string pk = j.contains("Properties") && j["Properties"].contains("pickles") ? j["Properties"]["pickles"].get<std::string>() : "";
+    const json& pr = j.contains("Properties") && j["Properties"].is_object() ? j["Properties"] : json::object();
+    const std::string pk = pr.contains("pickles") && pr["pickles"].is_string() ? pr["pickles"].get<std::string>() : "";
     if (!pk.empty()) s.meta = (u8)std::clamp(std::atoi(pk.c_str()) - 1, 0, 3);
+    if (pr.contains("waterlogged") && pr["waterlogged"].is_string() && pr["waterlogged"].get<std::string>() == "true")
+      s.meta |= WLOG;   // waterlogged
   }
   return s;
 }
@@ -277,6 +288,12 @@ bool BiomeFeatures::survives(BlockId id, Ctx& c, int x, int y, int z) const {
   auto in = [&](const std::vector<u8>& m, BlockId b) { return b < m.size() && m[b]; };
   if (d.has("onWater")) return below == water_ && (here == AIR || R.tReplaceable[here]);
   if (id == seagrass_ || id == kelp_ || id == pickle_) return here == water_ && (below == id || (R.tSolid[below] && !R.tLiquid[below] && below != ice_));
+  if (d.key == "cattail") {
+    if (here != AIR && here != water_ && !R.tReplaceable[here]) return false;
+    if (here == water_ && !R.tWlog[id]) return false;
+    const BlockId clay = R.blockId("clay"), gravel = R.blockId("gravel");
+    return in(dirt_, below) || in(sand_, below) || (clay && below == clay) || (gravel && below == gravel);
+  }
   if (id == vine_) { for (int k = 0; k < 4; k++) { const BlockId w = c.get(x + DIRX[k], y, z + DIRZ[k]); if (w != OUT && R.tSolid[w] && R.tOpaque[w]) return true; } return false; }
   if (id == cactus_) {
     for (int k = 0; k < 4; k++) { const BlockId w = c.get(x + DIRX[k], y, z + DIRZ[k]); if (w == OUT || (w != AIR && R.tSolid[w])) return false; }
@@ -413,7 +430,11 @@ int BiomeFeatures::parseConf(const json& j) {
   else if (tt == "iceberg") { C.t = F_ICEBERG; C.st = state(g["state"]); }
   else if (tt == "blue_ice") C.t = F_BLUEICE;
   else if (tt == "freeze_top_layer") C.t = F_FREEZE;
-  else if (t == "nature:large_pumpkin_feature") { C.t = F_BIGBLOCK; C.prov = parseProv(g["state_provider"]); }
+  else if (t == "nature:large_pumpkin_feature") {
+    C.t = F_BIGBLOCK; C.prov = parseProv(g["state_provider"]);
+    if (C.prov >= 0 && C.prov < (int)provs_.size() && !provs_[C.prov].states.empty()
+        && isClutterRockKey(reg().block(provs_[C.prov].states[0].id).key)) C.t = F_NONE;   // no 2x2 stone/travertine cubes on the grass
+  }
   else if (t == "nature:water_delta_feature") { C.t = F_POND; C.st = state(g["contents"]); C.st2 = state(g["rim"]); C.ia = parseInt(g["size"]); C.ib = parseInt(g["rim_size"]); }
   else if (t == "nature:turnip_root_feature" && g.contains("feature")) { C.t = F_SIMPLESELECT; C.kids.push_back(parsePlaced(g["feature"])); }   // (its turnip, without the roots)
   else if (t == "dappled:fallen_log") C.t = F_FALLEN;
@@ -531,11 +552,12 @@ bool BiomeFeatures::setState(Ctx& c, int x, int y, int z, State s) const {
   if (s.id == OUT) return false;
   const Registry& R = reg();
   u8 meta = s.meta;
-  if (R.tWlog[s.id] && c.get(x, y, z) == water_) meta |= 0x80;
+  if (R.tWlog[s.id] && c.get(x, y, z) == water_) meta |= WLOG;
+  else meta &= (u8)~WLOG;
   if (s.id != AIR && R.block(s.id).has("double")) {
     if (c.get(x, y + 1, z) != AIR) return false;
     c.set(x, y + 1, z, s.id, 1);
-    meta = 0;
+    meta &= WLOG;   // lower half; keep waterlogged
   }
   return c.set(x, y, z, s.id, meta);
 }
@@ -825,10 +847,14 @@ bool BiomeFeatures::placeConf(int fi, Ctx& c, Rng& r, int x, int y, int z) const
       }
       return true;
     }
-    case F_BIGBLOCK: {   // (the large pumpkins and stone lumps: a 2x2x2 block on the ground)
+    case F_BIGBLOCK: {   // (the large pumpkins: 2x2x2 on the ground. stone/travertine lumps are skipped at parse)
       int py = y; while (py > 2 && c.get(x, py - 1, z) == AIR) py--;
       const BlockId g = c.get(x, py - 1, z);
       if (g == OUT || !(g < dirt_.size() && (dirt_[g] || sand_[g])) || c.builtOn(x, z)) return false;
+      {
+        const State peek = provide(C.prov, r, x, py, z, c);
+        if (peek.id != OUT && isClutterRockKey(R.block(peek.id).key)) return false;
+      }
       for (int ax = 0; ax < 2; ax++) for (int az = 0; az < 2; az++) for (int ay = 0; ay < 2; ay++) {
         const State s = provide(C.prov, r, x + ax, py + ay, z + az, c);
         const BlockId cur = c.get(x + ax, py + ay, z + az);

@@ -254,6 +254,22 @@ int main(int argc, char** argv) {
     CHECK(dust == 0 && shrubs == 0, "no dust when it's calm (%d)", dust);
   }
 
+  printf("[liquid rain]\n");
+  {
+    int dxs = bx + 512;
+    for (int t = 0; t < 60; t++) { if (W->precipAt(w, dxs + 8.f, FY + 2.f, 8.f) == 0) break; dxs += 256; }
+    W->kind = "thunder"; W->rain = 1; W->thunderK = 1; W->sand = 1; W->bliz = 1;
+    CHECK(W->precipAt(w, bx + 8.f, FY + 2.f, 8.f) == 1, "a temperate storm rains");
+    CHECK(W->rainAt(w, bx + 8.f, FY + 2.f, 8.f), "liquid rain counts as rain");
+    CHECK(W->precipAt(w, dxs + 8.f, FY + 2.f, 8.f) == 0, "a desert storm is dry");
+    CHECK(!W->rainAt(w, dxs + 8.f, FY + 2.f, 8.f), "a sandstorm is not rain");
+    const float snowY = (float)dimBase(DIM_OVERWORLD) + 200;
+    CHECK(W->precipAt(w, bx + 8.f, snowY, 8.f) == 2, "high land snows");
+    CHECK(!W->rainAt(w, bx + 8.f, snowY, 8.f), "snow is not rain");
+    W->rain = 0; W->kind = "clear"; W->sand = 0; W->bliz = 0;
+    CHECK(!W->rainAt(w, bx + 8.f, FY + 2.f, 8.f), "a clear sky is not rain");
+  }
+
   printf("[block crumbs]\n");
   {   // breaking grass or leaves: the crumbs take the climate's green, as the block does (its picture is grey, marked to be tinted)
     ParticleSystem ps;

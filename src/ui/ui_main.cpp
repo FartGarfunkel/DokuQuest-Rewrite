@@ -12,6 +12,7 @@
 #include "client/session.h"
 #include "ui/magic_screens.h"
 #include "ui/content_screens.h"
+#include "core/tool_parts.h"
 #include <imgui.h>
 #include <cmath>
 #include <cstdlib>
@@ -180,7 +181,7 @@ static void startupScreen(App& a) {
     static const std::pair<const char*, int> sample[] = {{"oak_log", 12}, {"planks", 40}, {"cobblestone", 64}, {"torch", 16}, {"iron_pickaxe", 1}, {"apple", 5},
       {"coal", 9}, {"iron_ore", 6}, {"stick", 7}, {"iron_helmet", 1}, {"bread", 3}, {"red_dye", 2}, {"wool", 4}};
     int i = 0;
-    for (auto& [k, c] : sample) if (reg().item(k)) { ItemStack s(k, c); if (k == std::string("iron_pickaxe")) s.d = 90; p.inv[i < 9 ? i : i + 3] = s; i++; }
+    for (auto& [k, c] : sample) if (reg().item(k)) { ItemStack s = proceduralOf(k, c); if (s.id.rfind("mixed_", 0) == 0 && k == std::string("iron_pickaxe")) s.d = 90; p.inv[i < 9 ? i : i + 3] = s; i++; }
     if (n == "furnace" || n == "chest") {
       // put the block in front of the player and open it
       ivec3 bp = ivec3(glm::floor(p.pos)) + ivec3(0, 0, -2);

@@ -1,7 +1,7 @@
 // sim/panning.h — gold panning and the sluice: a fired clay pan used on gravel or sand with water
 // beside it — two seconds of swirling — now and then gives an ore sample (copper, tin, gold, silver, zinc, bismuth, iron) or,
-// rarely, a gem; one try in four uses up the block. A sluice set in the water beside gravel or sand does it on its own, a
-// find a minute, until it's worn out (64 finds).
+// rarely, a gem if the player has come far; a sluice (no player) finds coal, flint or a gold nugget in that slot. One try
+// in four uses up the block. A sluice set in the water beside gravel or sand does it on its own, a find a minute, until it's worn out (64 finds).
 #pragma once
 #include "sim/level.h"
 #include "sim/physics.h"
@@ -12,7 +12,7 @@ namespace dq {
 class Player;
 constexpr float PAN_HOLD = 2.0f, SLUICE_EVERY = 60;
 constexpr int SLUICE_LIFE = 64;
-ItemStack panFind(float r, float r2);                      // the table: r < 0.30 a sample, < 0.33 a gem, else nothing
+ItemStack panFind(float r, float r2, int tier = -1);       // r < 0.30 a sample; < 0.33 a gem if tier >= 3 (diamond if >= 6), else coal/flint/nugget; tier < 0 = no player
 void setPanRoll(float r);                                  // tests: the next rolls are r (< 0: chance again)
 bool panUse(Level& lv, Player& p, const RayHit& hit, bool repeat, float step = 0.22f);
 ItemStack sluiceTake(World& w, int x, int y, int z);

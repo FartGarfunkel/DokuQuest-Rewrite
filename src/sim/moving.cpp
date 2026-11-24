@@ -214,7 +214,7 @@ public:
       if (!freeAt(place)) { place = from; meta = k.meta; e = k.entity; carve = k.carve; }   // (filled since it set off: back where it was)
       if (!freeAt(place)) {   // nowhere: never lost, it drops (a container's contents too)
         const std::string drop = reg().block(k.id).drop.empty() ? reg().block(k.id).key : reg().block(k.id).drop;
-        const bool secondHalf = (bhas(k.id, BF::Door) && (k.meta & 16)) || (bhas(k.id, BF::Bed) && (k.meta & 4));   // (a door or bed is one item: its other half drops nothing)
+        const bool secondHalf = (bhas(k.id, BF::Door) && (k.meta & 16)) || ((bhas(k.id, BF::Bed) || reg().tShape[k.id] == ShapeKind::Bed) && (k.meta & 4));   // (a door or bed is one item: its other half drops nothing)
         if (!secondHalf) dropItem(lv, b.realm, ItemStack(drop, 1), vec3(to) + vec3(0.5f), true);
         if (e.is_object() && e.contains("items") && e["items"].is_array()) for (auto& it : e["items"]) if (!it.is_null()) dropItem(lv, b.realm, ItemStack::fromJson(it), vec3(to) + vec3(0.5f), true);
         continue;

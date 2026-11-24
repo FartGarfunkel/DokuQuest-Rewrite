@@ -126,14 +126,17 @@ struct Talk {
   bool greetLine = false;
   int voiceLines = 0;                  // bumps each time a line is said (the text types out again)
   std::string spoken; float spokenVol = 0.5f; int spokenN = 0;   // what the villager says aloud, and how loud: the screen babbles it (spokenN bumps each time)
+  bool sayWait = false;                // a typed line is with the tiny model; talkHold fills the answer in
 };
 bool talkOpen(Level& lv, Player& p, Creature& npc, Talk& t, bool confront = false, const std::string& victim = "");
 void talkChoose(Level& lv, Player& p, Talk& t, int option);
+void talkSayOwn(Level& lv, Player& p, Talk& t, const std::string& line);   // a line the player typed themselves
 void talkShopTrade(Level& lv, Player& p, Talk& t, int line);   // in shop mode
 void talkShopBack(Level& lv, Player& p, Talk& t);
 void talkHold(Level& lv, Player& p, Talk& t);                   // each frame: they keep standing and facing you
 bool talkStillOk(Level& lv, Player& p, const Talk& t);           // false = they're gone / too far: close it
 void talkClosed(Level& lv, Player& p, Talk& t);
+void npcHearChat(Level& lv, Player& p, const std::string& line);   // a villager nearby answers a line said in town
 
 // ---- paths.js: Knight, Ranger, Mage chosen at a village guard, fletcher, librarian or elder; the Rogue at an innkeeper ----
 int combatLevel(const Player& p);

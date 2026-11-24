@@ -71,7 +71,7 @@ public:
   int xp = 0, level = 0, heartCrystals = 0;
   float stamina = 100, maxStamina = 100, dodgeT = 0, dodgeYaw = 0, blockT = 0, parryFlash = 0, guardFlash = 0, secondChanceCd = 0;
   u8 atkMove = 0, atkCombo = 0;
-  float atkT = 0, atkYaw = 0, atkGap = 10;
+  float atkT = 0, atkYaw = 0, atkPitch = 0, atkGap = 10;
   std::vector<u32> atkHit;
   int statCon = 0, statStr = 0, statAgi = 0, statInt = 0, statLck = 0, statFoc = 0, statPoints = 0;
   float fuel = 0;
@@ -132,6 +132,8 @@ public:
   // animation (for renderers: view bob, arm swing, equip)
   float bob = 0, bobAmt = 0, swing = 0, equip = 1, stepAcc = 0, swimPh = 0, dustAcc = 0;
   bool swinging = false, wasWater = false;
+  // an overhand throw just begun (render/char_layer.cpp copies it onto that swing): 1 the main hand, 2 the off hand
+  u8 throwArm = 0; float throwArmFor = 0;
 
   ItemStack& held() { return inv[selected]; }
   bool creative() const { return mode == "creative"; }

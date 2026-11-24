@@ -81,7 +81,7 @@ static StationResult baseResult(const std::string& kind, const ItemStack& a, con
       ItemStack out;
       if (!(tool ? makePartTool(P.value("t", std::string("pickaxe")), mats, P.value("h", std::string("stick")), out) : makePartArmor(P.value("p", std::string("helmet")), mats, out))) return r;
       out.d = a.d;
-      if (a.tag.is_object()) for (const char* k : {"gx", "en"}) if (a.tag.contains(k)) out.tag[k] = a.tag[k];
+      if (a.tag.is_object()) for (const char* k : {"gx", "en", "qual"}) if (a.tag.contains(k)) out.tag[k] = a.tag[k];
       r.out = out; r.useA = 1; r.useB = 1; r.note = "Upgraded, wear and all"; r.ok = true;
       return r;
     }
@@ -106,7 +106,7 @@ static StationResult baseResult(const std::string& kind, const ItemStack& a, con
     r.out = proceduralOf(to);   // (metal gear procedural)
     if (a.d && maxA) r.out.d = (int)std::lround(a.d / (double)maxA * maxT);
     if (!r.out.tag.is_object()) r.out.tag = json::object();   // (its procedural makeup kept; its marks and enchantments carried over)
-    if (a.tag.is_object()) for (const char* k : {"gx", "en"}) if (a.tag.contains(k)) r.out.tag[k] = a.tag[k];
+    if (a.tag.is_object()) for (const char* k : {"gx", "en", "qual"}) if (a.tag.contains(k)) r.out.tag[k] = a.tag[k];
     r.useA = 1; r.useB = 1; r.note = "Upgraded, wear and all"; r.ok = true;
     return r;
   }

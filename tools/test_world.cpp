@@ -17,7 +17,12 @@
 #include "world/dims.h"
 #include "gen/generator.h"
 #include "gen/overworld.h"
+#include "gen/land_biomes.h"
+#include "gen/structures.h"
+#include "gen/structures_api.h"
+#include "gen/biome_features.h"
 #include "gen/nether_painted.h"
+#include "gen/village_pieces.h"
 #include "sim/dyntree.h"
 #include "sim/blockinfo.h"
 #include "sim/physics.h"
@@ -32,6 +37,22 @@
 #include <cmath>
 
 using namespace dq;
+namespace dq {
+int ruinFloorY(int gh, int meanY);
+int desertFloorY(int gh, int centreY);
+int desertFoundationTop(int groundY, int floorY);
+int ruinStyle(int biome, double temp, std::string_view landName);
+int ruinRubbleY(int wallH, int rubbleGh, int wallGh, int meanY);
+int dungeonEntryY(int surfY, int minGround, int maxRoomH);
+bool dungeonWellOk(int surfY, int entryY);
+int mineCorridorH();
+int minePal(double temp, int yo);
+int mineSupportEvery();
+bool mineBrokenRail(double h);
+bool mineSeepOk(int waterY, int groundY);
+int mineShaftCollar();
+int minePuddleDepth();
+}
 static int fails = 0, passes = 0;
 static void check(bool ok, const std::string& what) { printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str()); (ok ? passes : fails)++; }
 
@@ -543,6 +564,203 @@ int main(int argc, char** argv) {
     check(g26 > 0, "terrain 26: fallen hollow poplar logs");
     check(s26 > 0, "terrain 26: red shrubs");
     check(p25 == 0 && l25 == 0 && g25 == 0 && s25 == 0, "terrain 25 (an old world) has none of it: its land is unchanged");
+  }
+  printf("[biome blend]\n");
+  {
+    LandBiomes lb;   // strong_ defaults on; zoom seed 0 is enough to mix corners
+    int mixed = 0;
+    for (int i = 0; i < 16; i++) {
+      double a0, b0, c0, a2, b2, c2;
+      lb.quartFiddle(i, 3, 20 + i, a0, b0, c0);
+      lb.quartFiddle(i, 3, 22 + i, a2, b2, c2);   // z+2: hashFloat's third axis would barely change
+      if (std::fabs(a0 - a2) > 0.04) mixed++;
+    }
+    check(mixed >= 12, "the x-fiddle is not striped along z (" + std::to_string(mixed) + "/16 corners mix)");
+    int qxFlip = 0, last = INT32_MIN;
+    for (int z = 0; z < 256; z += 4) {
+      int qx, qy, qz; lb.fuzzyQuart(48, 72, z, qx, qy, qz);
+      if (last != INT32_MIN && qx != last) qxFlip++;
+      last = qx;
+    }
+    check(qxFlip >= 2, "nearby quarts are not forced onto a line (" + std::to_string(qxFlip) + " x-flips along z)");
+  }
+  printf("[ruins sit and pal]\n");
+  {
+    check(ruinFloorY(40, 46) == 40, "ruin floor follows local ground, not the mean");
+    check(ruinFloorY(52, 46) == 52, "ruin floor steps up with the hill");
+    check(ruinStyle(BIOME_DESERT, 0.4, "main:desert") == 1, "sandstone pal in a named desert");
+    check(ruinStyle(BIOME_DESERT, 0.4, "") == 1, "sandstone pal when the land is desert and unnamed");
+    check(ruinStyle(BIOME_DESERT, 0.4, "nature:flower_meadow") != 1, "no sandstone pal in a flower meadow");
+    check(ruinStyle(BIOME_PLAINS, 0.2, "main:plains") != 1, "no sandstone pal on plains");
+    check(ruinStyle(BIOME_FOREST, 0.1, "main:flower_forest") != 1, "no sandstone pal in a forest");
+    check(ruinStyle(BIOME_PLAINS, -0.3, "") == 2, "cold pal in the frost");
+    check(ruinRubbleY(3, 40, 40, 46) == 41, "rubble sits on local ground");
+    check(ruinRubbleY(0, 40, 40, 46) < 0, "no rubble without a wall stump");
+    check(ruinRubbleY(2, 30, 40, 46) < 0, "no rubble over a 3-block drop");
+    check(ruinRubbleY(2, 38, 40, 46) == 39, "rubble allowed on a 2-block step");
+  }
+  printf("[desert temple sits]\n");
+  {
+    check(desertFloorY(40, 44) == 44, "desert temple is one floor at the plan height");
+    check(desertFloorY(47, 44) == 44, "a hill does not step the temple walls");
+    check(desertFoundationTop(42, 44) == 42, "high ground under a column stops at that ground");
+    check(desertFoundationTop(38, 44) == 38, "buried columns pour foundation down, not up");
+    check(desertFoundationTop(50, 44) == 44, "foundation never pours above the floor");
+  }
+  printf("[mineshaft pal]\n");
+  {
+    check(mineCorridorH() == 4, "mineshaft corridors are 4 high");
+    check(minePal(0.4, 10) == 2, "a deep mine uses the stone-brick pal");
+    check(minePal(-0.3, 24) == 2, "a cold mine uses the stone-brick pal");
+    check(minePal(0.4, 24) != 2, "a warm shallow mine stays timber");
+  }
+  printf("[dungeon well]\n");
+  {
+    check(dungeonEntryY(70, 70, 6) == 58, "flat land: the well is 12 down");
+    check(dungeonEntryY(70, 62, 6) == 52, "a slope: buried under the low side, not hanging out");
+    check(dungeonEntryY(70, 62, 6) + 6 + 4 <= 62, "the tallest room stays under the lowest ground");
+    check(dungeonWellOk(70, 58), "a 12-block well is allowed");
+    check(dungeonWellOk(70, 50), "a 20-block well is the longest climb");
+    check(!dungeonWellOk(70, 49), "longer than 20 is refused");
+    check(dungeonEntryY(12, 12, 6) == 8, "a low hill still keeps the entry above bedrock");
+  }
+  printf("[water leaves]\n");
+  {
+    const BlockId az = reg().blockId("azolla"), al = reg().blockId("algae"), lf = reg().blockId("leaves");
+    check(az && reg().block(az).has("isLeaves"), "azolla is walk-through like leaves");
+    check(!al || reg().block(al).has("isLeaves"), "algae is walk-through like leaves");
+    check(lf && reg().block(lf).has("isLeaves"), "oak leaves stay walk-through");
+    const BlockId cat = reg().blockId("cattail");
+    check(cat && reg().tWlog[cat], "cattails can hold water");
+    check(lf && reg().tWlog[lf], "oak leaves can hold water");
+    const BlockId mg = reg().blockId("mangrove_leaves");
+    check(mg && reg().tWlog[mg], "mangrove leaves can hold water");
+    {
+      GenBlocks B; B.resolve();
+      GenBuf& b = GenBuf::local();
+      const int y = 40;
+      b.blocks[colIdx(8, y, 8)] = B.water;
+      TreeSpec t; t.x = 8; t.y = y; t.z = 8; t.kind = TREE_OAK;
+      std::vector<TreePart> parts{{8.0, (double)y, 8.0, lf, true, -1}};
+      writeTreeParts(B, b, 0, 0, t, parts);
+      const int i = colIdx(8, y, 8);
+      check(b.blocks[i] == lf, "leaves spawn in water instead of skipping it");
+      check((b.meta[i] & WLOG) != 0, "leaves in water are waterlogged");
+    }
+  }
+  printf("[banana slug]\n");
+  {
+    check(!reg().mobs.contains("banana_slug"), "the banana slug is not in the game");
+  }
+  printf("[stone hoodoos]\n");
+  {
+    check(!stoneHoodoosOn(), "eroded badlands and sugi/strat biomes grow no stone spires");
+  }
+  printf("[coast cliffs]\n");
+  {
+    check(coastCliffCap(120, 2) <= SEA_LEVEL + 8, "a cliff 2 blocks from the sea is a slope, not a wall");
+    check(coastCliffCap(120, 1) <= SEA_LEVEL + 6, "the waterline is a shore, not a 40-block drop");
+    check(coastCliffCap(120, 40) == 120, "inland peaks keep their height");
+    check(coastCliffCap(SEA_LEVEL + 2, 2) == SEA_LEVEL + 2, "low shores stay low");
+  }
+  printf("[surface rock cubes]\n");
+  {
+    check(isClutterRockKey("travertine"), "travertine 2x2 cubes are clutter");
+    check(isClutterRockKey("light_gray_terracotta"), "travertine's stand-in is clutter");
+    check(isClutterRockKey("stone") && isClutterRockKey("cobblestone") && isClutterRockKey("andesite") && isClutterRockKey("granite"),
+          "stone 2x2 cubes are clutter");
+    check(!isClutterRockKey("pumpkin") && !isClutterRockKey("carved_pumpkin") && !isClutterRockKey("melon"),
+          "pumpkins and melons still make a 2x2");
+  }
+  printf("[rigid structures]\n");
+  {
+    VPPiece lamp; lamp.terrain = true; lamp.kind = "terminators";
+    lamp.blocks.push_back({0, 0, 0, 0}); lamp.blocks.push_back({0, 5, 0, 0}); lamp.blocks.push_back({2, 5, 0, 0});
+    check(!pieceFollowsLand(lamp), "a lamp post stands as one piece");
+    VPPiece well; well.terrain = true; well.kind = "terminators";
+    well.blocks.push_back({0, 0, 0, 0}); well.blocks.push_back({1, 3, 1, 0});
+    check(!pieceFollowsLand(well), "a well stands as one piece");
+    VPPiece road; road.terrain = true; road.kind = "streets";
+    road.blocks.push_back({0, 0, 0, 0}); road.blocks.push_back({0, 2, 0, 0});
+    check(pieceFollowsLand(road), "a street follows the land");
+    VPPiece cap; cap.terrain = true; cap.kind = "terminators";
+    cap.blocks.push_back({0, 0, 0, 0}); cap.blocks.push_back({1, 1, 0, 0});
+    check(pieceFollowsLand(cap), "a flat road end follows the land");
+    const int floor = rigidFloorY(0, 0, 2, 0, [](int x, int) { return 40 + x; });
+    check(floor == 42, "a lamp takes the high ground under it, not a different height per post");
+  }
+  printf("[hillside water]\n");
+  {
+    check(waterFormsInfiniteSourceAt(SEA_LEVEL), "the sea still fills from two sources");
+    check(!waterFormsInfiniteSourceAt(SEA_LEVEL + 8), "a hillside does not grow infinite water");
+    const int owSea = dimBase(DIM_OVERWORLD) + SEA_LEVEL;
+    check(owSea > SEA_LEVEL, "the overworld sea is above band-local 64 in the stacked world");
+    check(waterFormsInfiniteSourceAt(owSea), "the overworld sea, in stacked coordinates, still fills from two sources");
+    check(!waterFormsInfiniteSourceAt(owSea + 8), "a hillside above the overworld sea does not grow infinite water");
+  }
+  printf("[locate mineshaft]\n");
+  {
+    const int k = structureKind("mineshaft");
+    check(k >= 0, "/locate mineshaft is a known place");
+    check(structureKind("mineshafts") == k, "/locate mineshafts finds mineshafts");
+    check(structureKind("mine") == k, "/locate mine finds mineshafts");
+    bool listed = false;
+    for (const auto& t : structureTypes()) if (t.key == "mineshaft") listed = true;
+    check(listed, "mineshafts are in the structure list");
+  }
+  printf("[structure spacing]\n");
+  {
+    WorldGenOptions o; o.seed = 4242; o.genVersion = 26; WorldGen g(o);
+    auto* og = dynamic_cast<OverworldGen*>(g.forDim(DIM_OVERWORLD));
+    check(og != nullptr, "world generator exposes the structure index");
+    if (og) {
+      StructureIndex& si = og->structures;
+      std::vector<const StructurePlan*> found;
+      for (int k : si.typeList()) {
+        const StructureType& T = structureTypes()[k];
+        if (T.global || (T.flags & SF_DEEP) || T.key == "dragon_lair" || T.key == "wayvault" || T.key == "road") continue;
+        if (!T.plan && !T.place) continue;
+        for (int rz = -3; rz <= 2; rz++) for (int rx = -3; rx <= 2; rx++)
+          if (const StructurePlan* S = si.nearest(k, rx * T.region + T.region / 2, rz * T.region + T.region / 2, 2)) found.push_back(S);
+      }
+      std::sort(found.begin(), found.end(), [](const StructurePlan* a, const StructurePlan* b) {
+        return a->id < b->id;
+      });
+      found.erase(std::unique(found.begin(), found.end()), found.end());
+      const double minGap = 384;
+      double nearest = 1e9;
+      int close = 0, counted = 0;
+      for (size_t i = 0; i < found.size(); i++) for (size_t j = i + 1; j < found.size(); j++) {
+        const double d = std::hypot((found[i]->cx + found[i]->cz) - (found[j]->cx + found[j]->cz),
+                                    (found[i]->cx - found[i]->cz) - (found[j]->cx - found[j]->cz));
+        nearest = std::min(nearest, d / std::sqrt(2.0));
+        if (d < minGap * std::sqrt(2.0)) {
+          if (close < 12) printf("     (%s/%s %.0f blocks)\n", structureTypes()[found[i]->type].key.c_str(),
+                                 structureTypes()[found[j]->type].key.c_str(), d / std::sqrt(2.0));
+          close++;
+        }
+        counted++;
+      }
+      printf("     (%zu structures, %d pair distances, closest %.0f blocks, %d under %.0f)\n", found.size(), counted, nearest, close, minGap);
+      check(close == 0, "ordinary structures keep at least " + std::to_string((int)minGap) + " blocks apart (" + std::to_string(close) + " too close)");
+    }
+  }
+  printf("[mineshaft polish]\n");
+  {
+    check(mineSupportEvery() == 4, "timber frames every 4 blocks");
+    check(mineSupportEvery() > 0 && mineSupportEvery() <= mineCorridorH(), "supports fit in a 4-high corridor");
+    check(!mineBrokenRail(0.50), "most of the hash range keeps the rail");
+    check(!mineBrokenRail(0.10), "a hash on the gap chance keeps the rail");
+    check(mineBrokenRail(0.09), "a low hash is a gap in the rails");
+    check(mineBrokenRail(0.00), "the lowest hash is a broken rail");
+    check(mineShaftCollar() == 1, "the way in is a 1-block collar around the ladder");
+    check(mineShaftCollar() * 2 + 1 == 3, "the collar is 3x3 with a 1x1 ladder");
+    check(minePuddleDepth() == 1, "still water sits in a 1-deep hole");
+    check(mineSeepOk(20, 40), "a puddle well under the land is allowed");
+    check(mineSeepOk(32, 40), "eight blocks of cover holds a puddle");
+    check(!mineSeepOk(33, 40), "seven blocks of cover is too little");
+    check(!mineSeepOk(40, 40), "a seep at the surface is refused");
+    check(!mineSeepOk(20, -1), "no puddle without a roof of land");
   }
   printf("\n%d passed, %d failed\n", passes, fails);
   rg.lv->close();

@@ -136,7 +136,14 @@ void emitBox(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, u8 meta, int x
           sample.s[i] = (u8)clampv((int)std::lround(ss[i]), 0, 255);
           sample.b[i] = (u8)clampv((int)std::lround(sb[i]), 0, 255);
         }
-      } else { sk = own.sky; bl = own.bl; sample = rgbAt(c, x, y, z); }
+      } else {
+        // internal faces of a carved octant (and any box not on the cell boundary): adjacent air,
+        // never the opaque cell's leftover noon
+        const LightRgb air = aroundAirRgb(c, x, y, z);
+        sk = (float)(max3u(air.s[0], air.s[1], air.s[2]) >> 4);
+        bl = (float)(max3u(air.b[0], air.b[1], air.b[2]) >> 4);
+        sample = air;
+      }
       { u8 em[3]; blockLightRgb(id, (u8)clampv((int)std::lround(own.l0), 0, 15), em); for (int i = 0; i < 3; i++) if (em[i] > sample.b[i]) sample.b[i] = em[i]; }
       float shade = FACES[f].shade * ao;
       v[k] = {vec3(x + X * P, y + (Y + sink) * P, z + Z * P), vec2(clampv(st.x, 0.f, 16.f) / 16, clampv(st.y, 0.f, 16.f) / 16), sk, bl, shade, 0, markRgbLit(packRgbLight(sample))};
@@ -209,6 +216,22 @@ void emitRail(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y,
   const BlockDef& def = c.R.block(id);
   const BlockTraits& T = traits(id);
   int sh = railShape(id, meta); bool on = T.rail != 1 && (meta & 8);
+  // join whatever rails actually sit beside this one, so a mineshaft crossing is one track, not two straights that miss
+  auto railNear = [&](int dx, int dz) {
+    for (int dy : {0, 1, -1}) {
+      const BlockId n = c.at(x + dx, y + dy, z + dz);
+      if (n && traits(n).rail) return true;
+    }
+    return false;
+  };
+  const bool rn = railNear(0, -1), rs = railNear(0, 1), re = railNear(1, 0), rw = railNear(-1, 0);
+  const bool ns = rn || rs, ew = re || rw;
+  int drawN = 1, drawSh[2] = {sh, 1};
+  if (ns && ew) { drawN = 2; drawSh[0] = 0; drawSh[1] = 1; }
+  else if (ns) { drawSh[0] = 0; }
+  else if (ew) { drawSh[0] = 1; }
+  for (int di = 0; di < drawN; di++) {
+  sh = drawSh[di];
   bool curve = sh >= 6;
   int tile = c.R.tile(curve ? "rail_corner" : (def.key + (on ? "_on" : "")));
   if (tile < 0) tile = def.faces[0];
@@ -246,11 +269,12 @@ void emitRail(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y,
     if (!P->top.empty()) {
       emit(P->top);
       if (sh >= 2 && sh <= 5) emit(P->under);
-      return;
+      continue;
     }
   }
   flatPiece(c, d, x, y, z, 0, 0, 1, 1, map, tile, sk, bl, hgt, mat);
   if (sh >= 2 && sh <= 5) flatPiece(c, d, x, y, z, 0, 0, 1, 1, map, tile, sk, bl, [&](float a, float b, float yy) { return hgt(a, b, yy) - 0.02f; }, mat);
+  }
 }
 
 // lever handles: a stick tilted one way when off, the other way when on
@@ -316,6 +340,7 @@ void addShapeBox(MeshCtx& c, std::vector<ChunkVertex>& d, const ShapeBox& box, v
   }
   int xt = box.xt >= 0 ? box.xt : side, xf = (rot & 1) ? 4 : 0, zf = (rot & 1) ? 0 : 4;
   for (int f = 0; f < 6; f++) {
+    if (!(box.only & (1u << f))) continue;   // a bed half hides the face the cut made between the two cells
     const FaceDef& F = FACES[f];
     const bool onX = f == xf || f == xf + 1, onZ = box.zt >= 0 && (f == zf || f == zf + 1);
     int tile = f == 2 || f == 3 ? end : onX ? xt : onZ ? box.zt : side;
@@ -346,8 +371,10 @@ void addShapeBox(MeshCtx& c, std::vector<ChunkVertex>& d, const ShapeBox& box, v
 }
 } // namespace
 
-void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross) {
-  float h = scale, a0 = inset, a1 = 1 - inset;
+void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross, float span) {
+  float h = scale;
+  float lo = 0.5f - span * 0.5f, hi = 0.5f + span * 0.5f;
+  float a0 = lo + inset, a1 = hi - inset;
   u8 mat = Mat::Cutout | Mat::NoRelief;
   auto pl = [&](float ax, float az, float bx, float bz) {
     MV v[4] = {{vec3(x + ax, y, z + az), {0, 1}, sk, bl, 1, 0}, {vec3(x + bx, y, z + bz), {1, 1}, sk, bl, 1, 0},
@@ -355,7 +382,7 @@ void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, floa
     c.quad2(d, v, tile, NORMAL_NONE, mat);
   };
   if (cross) { pl(a0, a0, a1, a1); pl(a0, a1, a1, a0); }
-  else { pl(0, a0, 1, a0); pl(0, a1, 1, a1); pl(a0, 0, a0, 1); pl(a1, 0, a1, 1); }
+  else { pl(lo, a0, hi, a0); pl(lo, a1, hi, a1); pl(a0, lo, a0, hi); pl(a1, lo, a1, hi); }
 }
 
 // an ore's specks over the rock it is drawn as (render/ore_overlay.h): the block's faces a hair out, culled as a cube's
@@ -388,6 +415,11 @@ void emitShapeBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, 
   int side = self.faces[0], top = self.faces[2], bot = self.faces[3];
   if (T.door && (meta & 16) && T.upperTile >= 0) side = top = bot = T.upperTile;
   if (T.door) top = bot = side;
+  if (kind == ShapeKind::Cocoa) {   // the pod's own picture for its age (0 small, 2 ripe)
+    static const char* ST[] = {"cocoa_stage0", "cocoa_stage1", "cocoa_stage2"};
+    const int st = std::min(2, meta & 3);
+    if (const int t = c.R.tile(ST[st]); t >= 0) side = top = bot = t;
+  }
   SeatShift sh = seatShiftOf(id, meta, c.carveAt(x, y, z), nb);
   float sink = sh.micro ? sh.y : (float)sinkOffset(id, nb);
   float sox = sh.micro ? sh.x : 0, soz = sh.micro ? sh.z : 0;
@@ -421,7 +453,10 @@ void emitCarvedBlock(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x,
   thread_local std::vector<ShapeBox> boxes;
   if (!carveBoxes(boxes, carveMask, nb)) return;   // caller gate already checked the carve flag
   int side = self.faces[0], top = self.faces[2], bot = self.faces[3];
-  Own own{(float)c.skyAt(x, y, z), std::max<float>((float)c.blAt(x, y, z), (float)R.tLight[id]), (float)R.metaLight(id, c.metaAt(x, y, z))};
+  const LightRgb air = aroundAirRgb(c, x, y, z);
+  const float sk = (float)(max3u(air.s[0], air.s[1], air.s[2]) >> 4);
+  const float bl = (float)std::max((int)(max3u(air.b[0], air.b[1], air.b[2]) >> 4), (int)R.tLight[id]);
+  Own own{sk, bl, (float)R.metaLight(id, c.metaAt(x, y, z))};
   u8 mat = Mat::Cutout | (R.tTrans[id] ? Mat::Translucent : 0);
   // grass and leaves keep their climate colour when carved (the grey picture is tinted, as the plain cube's)
   const BlockTraits& T = traits(id);
@@ -530,10 +565,17 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
       for (auto& s : more) addShapeBox(c, d, s, o, 1 / 16.f, sk, bl, lift, rf, mat, nullptr);
     }
   }
-  for (auto& b0 : *boxes) {
+  thread_local std::vector<ShapeBox> bedHalf;
+  const std::vector<ShapeBox>* drawn = boxes;
+  if (R.tShape[id] == ShapeKind::Bed) {   // one model, two cells: the same halves collision uses
+    bedHalfBoxes(*boxes, meta & 4, R.block(id).key == "sleeping_bag", bedHalf);
+    if (R.block(id).key == "oak_coffin" && (meta & 0x20)) hingeCoffinLid(bedHalf);
+    drawn = &bedHalf;
+  }
+  for (auto& b0 : *drawn) {
     if (!b0.only || b0.spin) continue;   // a box that collides and picks but a render layer draws (or turns: the stonecutter's blade) (a placed mob head: its stone box
                               // fought the head's own faces, the flicker round placed skulls)
-    ShapeBox b = b0; if (rf) rotBox(b, rf);
+    ShapeBox b = b0; if (rf) { rotBox(b, rf); b.only = rotOnly(b0.only, rf); }
     bool topLink = chainTile >= 0 && b.side == chainTile && b.b[4] >= 15.5f;
     if (stretchTop && topLink && !extra) b.b[4] += 8.f;   // the top link reaches an upper underside
     addShapeBox(c, d, b, o, 1 / 16.f, sk, bl, lift, rf, mat, hang ? &hangFn : nullptr);
@@ -547,6 +589,11 @@ void emitModel(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, int y
   if (T.campfire && !out) {
     int ft = R.tile(T.campfire == 1 ? "campfire_fire" : "soul_campfire_fire");
     if (ft >= 0) emitPlanes(c, d, ft, o.x, y + lift / 16, o.z, 0.08f, 1, 15, 15, false);
+  }
+  if (T.brazier) {
+    int ft = R.tile("campfire_fire");
+    // bowl inner 3..13/16, magma plate at y 8.5..9.5; keep the flame inside the dish
+    if (ft >= 0) emitPlanes(c, d, ft, o.x, y + (lift + 9) / 16.f, o.z, 0.06f, 0.38f, 15, 15, false, 10 / 16.f);
   }
   if (T.cauldron && (meta & 3) && (meta & 4)) {   // lava in a cauldron (sim/cave_drips.h): glowing, opaque, the lava's own picture
     ShapeBox lb(2, 4, 2, 14, 4 + (meta & 3) * 3.6f, 14); lb.side = lb.end = R.tile("lava");

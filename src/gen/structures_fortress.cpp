@@ -4,6 +4,7 @@
 // chests. The layout is a small grid graph decided once per plan (deterministic) and written chunk by chunk.
 // Placement and registration stay in structures_far.cpp (the original's index 20, same region and seeds).
 #include "gen/structures_common.h"
+#include "gen/proc_rooms.h"
 #include <bit>
 
 namespace dq {
@@ -36,13 +37,13 @@ bool fortressPlanMC(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struct
   std::vector<std::pair<int, int>> queue{{0, 0}};   // node, depth
   for (size_t q = 0; q < queue.size(); q++) {
     const auto [ni, depth] = queue[q];
-    const double p = depth == 0 ? 0.9 : depth == 1 ? 0.62 : depth == 2 ? 0.38 : 0.0;
+    const double p = depth == 0 ? 0.9 : depth == 1 ? 0.7 : depth == 2 ? 0.5 : depth == 3 ? 0.28 : 0.0;
     const int d0 = jsFloor(rnd() * 4);
     for (int k = 0; k < 4; k++) {
       const int d = (d0 + k) & 3;
       if (rnd() >= p) continue;
       const int gx = N[ni].gx + DIRX[d], gz = N[ni].gz + DIRZ[d];
-      if (std::abs(gx) > 3 || std::abs(gz) > 3 || find(gx, gz) >= 0) continue;
+      if (std::abs(gx) > 5 || std::abs(gz) > 5 || find(gx, gz) >= 0) continue;
       const bool castle = castleAt(gx, gz) && castleAt(N[ni].gx, N[ni].gz) ? true : castleAt(gx, gz);
       N.push_back({gx, gz, F_CROSS, 0, castle});
       const int nj = (int)N.size() - 1;
@@ -63,6 +64,7 @@ bool fortressPlanMC(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struct
   }
   if (!wart) for (size_t i = N.size() - 1; i > 0 && !wart; i--) if (N[i].kind == F_CROSS) { N[i].kind = F_WART; wart = true; }
   if (!blaze) for (size_t i = N.size() - 1; i > 0 && !blaze; i--) if (N[i].kind == F_CROSS) { N[i].kind = F_BLAZE; blaze = true; }
+  for (size_t i = 1; i < N.size(); i++) if (N[i].castle && N[i].kind == F_CROSS && rnd() < 0.45) N[i].kind = F_ROOM;
   int x0 = x, x1 = x, z0 = z, z1 = z;
   json spawners = json::array();
   for (const FNode& n : N) {
@@ -95,6 +97,14 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
   };
   auto railing = [&](int x, int yy, int z) { P.putId(x, yy + 1, z, NB); P.putId(x, yy + 2, z, FENCE); for (int h = 3; h <= 5; h++) P.put(x, yy + h, z, "air"); };
   auto center = [&](const FNode& n, int& cx, int& cz) { cx = S.cx + n.gx * G; cz = S.cz + n.gz * G; };
+  static const u8 TORCH_WALL[4] = {3, 2, 4, 1};   // soul_torch meta toward the supporting block (N E S W)
+  auto wallBannerAt = [&](int x, int yy, int z, int toward) {
+    const u8 f = (u8)(((toward + 2) & 3) | 8);   // bit 8: hung on the wall (without it the cloth is a black sheet)
+    const double c = P.h(x, yy, z, 19);
+    const char* ban = c < 0.50 ? "black_banner" : c < 0.82 ? "red_banner" : "gray_banner";
+    P.put(x, yy, z, ban, f);
+    P.put(x, yy - 1, z, ban, (u8)(f | 4));
+  };
 
   // ---- bridges and corridors between nodes ----
   for (const FEdge& e : E.edges) {
@@ -131,6 +141,28 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
           } else for (int hh = 1; hh <= 4; hh++) P.put(x, y + hh, z, "air");
           P.putId(x, y + 5, z, NB);
         }
+      }
+      if (!e.corridor) continue;
+      // roofed walkway: dress inner cells (k ±1) against the walls; keep the centre (k==0) air so it stays a 3-wide hall
+      const int along = d - s0;
+      const bool window = d % 3 == 1, mid = d > s0 + 1 && d < s1 - 1;
+      const int side = P.h(ax + dx * d, y, az + dz * d, 7) < 0.5 ? 1 : -1;
+      for (int k : {-1, 1}) {
+        const int x = ax + dx * d + px * k, z = az + dz * d + pz * k;
+        if (!P.in(x, z)) continue;
+        const int toward = k > 0 ? (e.dir + 1) & 3 : (e.dir + 3) & 3;
+        const int face = (toward + 2) & 3;   // chest front toward the walkway
+        const double roll = P.h(x, y, z, 11);
+        if (along % 5 == 2) {
+          if (window || roll < 0.42) P.put(x, y + 4, z, "soul_lantern", 1);
+          else P.put(x, y + 3, z, "soul_torch", TORCH_WALL[toward]);
+          continue;
+        }
+        if (!mid) continue;
+        if (!window && roll < 0.10) wallBannerAt(x, y + 3, z, toward);
+        else if (roll < 0.22) P.putId(x, y + 1, z, FENCE);
+        else if (!window && k == side && roll < 0.27) P.chest(x, y + 1, z, face, "nether_fortress");
+        else if (k == side && roll < 0.34) P.put(x, y + 1, z, P.h(x, y, z, 43) < 0.28 ? "magma_block" : "brazier");
       }
     }
   }
@@ -189,6 +221,9 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
         int back = 0; for (int d = 0; d < 4; d++) if (n.links & (1 << d)) back = (d + 2) & 3;
         const int chx = cx + DIRX[back] * (H - 1), chz = cz + DIRZ[back] * (H - 1);
         if (P.in(chx, chz)) P.chest(chx, y + 1, chz, (back + 2) & 3, "nether_fortress");
+        P.barrel(cx - DIRZ[back] * 2, y + 1, cz + DIRX[back] * 2, (back + 2) & 3, "nether_fortress");
+        P.wallTorch(cx + DIRX[(back + 1) & 3] * (H - 1), y + 3, cz + DIRZ[(back + 1) & 3] * (H - 1), (back + 1) & 3, "soul_torch");
+        P.wallTorch(cx + DIRX[(back + 3) & 3] * (H - 1), y + 3, cz + DIRZ[(back + 3) & 3] * (H - 1), (back + 3) & 3, "soul_torch");
         break;
       }
       case F_ROOM: {
@@ -196,15 +231,71 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
         const int bxx = cx + DIRX[back] * (H - 1), bzz = cz + DIRZ[back] * (H - 1);
         const int sx = -DIRZ[back], sz = DIRX[back];
         if (P.in(bxx + sx, bzz + sz)) P.chest(bxx + sx, y + 1, bzz + sz, (back + 2) & 3, "nether_fortress");
-        if (P.in(bxx - sx, bzz - sz)) P.chest(bxx - sx, y + 1, bzz - sz, (back + 2) & 3, "nether_fortress");
+        P.barrel(bxx - sx, y + 1, bzz - sz, (back + 2) & 3, "nether_fortress");
         if (((cx ^ cz) & 1) && P.in(cx, cz)) P.spawner(cx, y + 1, cz, "wither_skeleton");
+        ProcRoom pr;
+        static const char* FK[] = {"barracks", "armoury", "refectory", "forge", "shrine", "store",
+                                   "kitchen", "cells", "office", "chapel", "workshop", "sleeping",
+                                   "brewery", "pantry", "archive", "gallery", "dining", "prison"};
+        pr.kind = FK[(unsigned)(cx * 7 + cz + y) % 18];
+        pr.x = cx; pr.y = y + 1; pr.z = cz; pr.rx = std::max(2, H - 1); pr.rz = std::max(2, H - 1); pr.H = 5;
+        pr.seed = hash32(cx, y, cz, (i32)S.seed); pr.wood = "crimson"; pr.light = "soul_torch"; pr.hangLight = "soul_lantern";
+        pr.pillar = "nether_bricks"; pr.slab = "nether_brick_slab"; pr.density = 0.7f;
+        const int pal = (pr.seed >> 8) & 1 ? PAL_BLACK : PAL_NETHER;
+        applyProcLayout(pr, ProcLayout{(int)(pr.seed % 4), (int)((pr.seed >> 3) % PROC_PATTERN_N), pal, (int)((pr.seed >> 6) % 4)});
+        pr.light = "soul_torch"; pr.hangLight = "soul_lantern";
+        furnishProcRoom(P, pr);
+        P.put(cx, y, cz, "chiseled_nether_bricks");
+        for (int d = 0; d < 4; d++) if (n.links & (1 << d)) for (int a = -1; a <= 1; a++) {
+          const int x = cx + DIRX[d] * H + (-DIRZ[d]) * a, z = cz + DIRZ[d] * H + DIRX[d] * a;
+          if (!P.in(x, z)) continue;
+          for (int h = 1; h <= 4; h++) P.put(x, y + h, z, "air");
+        }
         break;
       }
       case F_END: {
-        // a lookout where the bridge stops: a chest now and then
+        // a lookout where the bridge stops: a chest now and then, a little clutter
         if (P.h(cx, 1, cz, 4) < 0.5 && P.in(cx, cz)) P.chest(cx, y + 1, cz, 0, "nether_fortress");
+        P.barrel(cx + 1, y + 1, cz, 3, "nether_fortress");
+        furnishPlaced(P, cx, y + 1, cz, 1, 1, 3, "alcove", hash32(cx, y, cz, (i32)S.seed), PAL_NETHER, 0);
         break;
       }
+      case F_CROSS:
+        if (n.castle) {
+          static const char* XK[] = {"hall", "gallery", "chapel", "armoury", "barracks", "dining", "shrine", "office"};
+          const u32 xs = hash32(cx, y, cz, (i32)S.seed);
+          furnishPlaced(P, cx, y + 1, cz, 3, 3, 5, XK[xs % 8], xs, (xs >> 4) & 1 ? PAL_BLACK : PAL_NETHER, (int)((xs >> 6) % 3));
+          for (int d = 0; d < 4; d++) if (n.links & (1 << d)) for (int a = -1; a <= 1; a++) {
+            const int x = cx + DIRX[d] * H + (-DIRZ[d]) * a, z = cz + DIRZ[d] * H + DIRX[d] * a;
+            if (!P.in(x, z)) continue;
+            for (int h = 1; h <= 4; h++) P.put(x, y + h, z, "air");
+          }
+          // hang under the real roof (y+6), banners on closed walls
+          for (int sx : {-1, 1}) for (int sz : {-1, 1}) {
+            const int x = cx + sx * (H - 1), z = cz + sz * (H - 1);
+            P.hang(x, y + 5, z, "soul_lantern");
+          }
+          int chestDir = -1;
+          for (int d = 0; d < 4; d++) {
+            const int ox = -DIRZ[d], oz = DIRX[d];
+            const bool door = (n.links & (1 << d)) != 0;
+            const int off = door ? 2 : 0;
+            const int x = cx + DIRX[d] * (H - 1) + ox * off, z = cz + DIRZ[d] * (H - 1) + oz * off;
+            if (!P.in(x, z)) continue;
+            wallBannerAt(x, y + 3, z, d);
+            if (!door && chestDir < 0) chestDir = d;
+          }
+          if (chestDir >= 0 && P.h(cx, 1, cz, 4) < 0.55) {
+            const int x = cx + DIRX[chestDir] * (H - 1) + (-DIRZ[chestDir]);
+            const int z = cz + DIRZ[chestDir] * (H - 1) + DIRX[chestDir];
+            if (P.in(x, z)) P.chest(x, y + 1, z, (chestDir + 2) & 3, "nether_fortress");
+          }
+          P.barrel(cx + 1, y + 1, cz - 1, 2, "nether_fortress");
+        } else {
+          P.put(cx, y, cz, "chiseled_nether_bricks");
+          P.put(cx, y + 1, cz, "brazier");
+        }
+        break;
       default: break;
     }
   }

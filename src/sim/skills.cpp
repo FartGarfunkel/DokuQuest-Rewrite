@@ -42,6 +42,7 @@ void skillGain(Level& lv, Player& p, const std::string& k, double xp) {
     // the total of your skills buys stat points (sim/balance.h): say so when one comes
     const int totalAfter = totalBefore + (after - before);
     if (totalAfter / bal::STAT_EVERY > totalBefore / bal::STAT_EVERY) lv.fx->message(p.id, "Skill total " + std::to_string(totalAfter) + ": a stat point to spend (Your Path)", "good");
+    if (totalAfter / 3 > totalBefore / 3) lv.fx->message(p.id, "Skill total " + std::to_string(totalAfter) + ": a talent point to spend (Your Path)", "good");
     lv.fx->soundUi(p.id, "levelup");
     if (!p.stats.value("skillHint", false)) { p.stats["skillHint"] = true; lv.fx->message(p.id, "Press K to see your skills", ""); }
   }

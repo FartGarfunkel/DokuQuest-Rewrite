@@ -10,6 +10,11 @@
 
 namespace dq {
 
+// eroded badlands / sugi / stratified-desert stone hoodoos. Off: they always look broken.
+bool stoneHoodoosOn();
+// a cliff next to the sea steps down (2 up per 1 out). Inland peaks keep their height.
+int coastCliffCap(int inlandH, int distToOcean);
+
 struct OwColumn {
   int h = 0;            // the original's height (JS column().h with rivers and levelling), 128-world units
   int H = 0;            // band-local height of the top block
@@ -122,8 +127,8 @@ private:
   std::shared_ptr<class LandSurface> ls_;
   std::shared_ptr<class BiomeFeatures> bf_;   // (the land biomes' features: their plants, disks, rocks, icebergs, snow)
   int vTemp = -1, vVeg = -1, vDepth = -1, vRidges = -1, vInit = -1;
-  // the land's extras before its surface: the eroded badlands spires and frozen-ocean icebergs, and the
-  // sugi and stratified-desert pillars: their noises and biomes
+  // the land's extras before its surface: frozen-ocean icebergs, and (when stoneHoodoosOn) the
+  // eroded-badlands / sugi / stratified-desert stone pillars
   int nX_[12] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
   int bEroded_ = -1, bFrozen_ = -1, bDeepFrozen_ = -1, bSugi_ = -1, bSugi2_ = -1, bStrat_ = -1, bLively_ = -1, bBlooming_ = -1;
   void surfaceExtras(GenBuf& b, int x, int z, int wx, int wz, int top, int prelim) const;

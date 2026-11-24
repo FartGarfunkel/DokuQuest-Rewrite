@@ -447,7 +447,8 @@ RayHit raycastBlocks(const World& w, glm::dvec3 o, vec3 dirf, float maxDist, boo
         if (lowTop) {
           BlockId up = w.getBlock(x, y + 1, z);
           u8 uc = up ? w.getCarve(x, y + 1, z) : 0;
-          bool poke = up && (R.tSink[up] || (!fullSolid(up) && seatMark(uc)) || R.block(up).str("shape") == "chain");
+          WorldShapeNb unb(w, x, y + 1, z);
+          bool poke = up && (R.tSink[up] || sinkOffset(up, unb) != 0 || (!fullSolid(up) && seatMark(uc)) || R.block(up).str("shape") == "chain");
           if (poke && worldBoxes(w, x, y + 1, z, up, SHAPE_SELECT, ub)) for (auto& b : ub) {
             double mn[3] = {x + b.x0 / 16.0, y + 1 + b.y0 / 16.0, z + b.z0 / 16.0}, mx[3] = {x + b.x1 / 16.0, y + 1 + b.y1 / 16.0, z + b.z1 / 16.0};
             ivec3 nn; double tt = rayBoxN(o, d, mn, mx, nn);

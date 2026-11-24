@@ -366,6 +366,7 @@ void registerRedstone() {
   registerEntityFactory("boat", [](const std::string&) -> std::unique_ptr<Entity> { return std::make_unique<Boat>(); });
   registerEntityFactory("piston_anim", [](const std::string&) -> std::unique_ptr<Entity> { auto a = std::make_unique<PistonAnim>(); a->removed = true; return a; });
   registerEntityFactory("primed_tnt", [](const std::string&) -> std::unique_ptr<Entity> { return std::make_unique<PrimedTnt>(); });
+  registerMineShaftCarts();
 }
 
 } // namespace dq

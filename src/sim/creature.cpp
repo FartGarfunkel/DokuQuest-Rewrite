@@ -21,6 +21,8 @@
 #include "sim/mob_combat.h"
 #include "sim/physics.h"
 #include "sim/player.h"
+#include "sim/combat.h"
+#include "sim/attack_moves.h"
 #include "sim/blockinfo.h"
 #include "sim/skills.h"
 #include "sim/balance.h"
@@ -347,11 +349,11 @@ Creature::Creature(const std::string& type) {
   // tougher mobs: the undead walkers come armed more often (a quarter of them), and a skeleton now and then
   // carries a sword instead of its bow (it comes at you then: creature_monsters.cpp)
   if ((type == "ghoul" || type == "charred_ghoul" || type == "husk" || type == "drowned") && heldItem.empty() && frand() < 0.25f) {
-    const char* W[] = {"iron_sword", "iron_shovel", "stone_axe", "gold_sword", "copper_sword", "stone_sword", "iron_axe", "wooden_sword"};
+    const char* W[] = {"copper_sword", "copper_shovel", "stone_axe", "gold_sword", "copper_sword", "stone_sword", "copper_axe", "wooden_sword"};
     heldItem = W[(int)(frand() * 8) & 7];
   }
   if ((type == "skeleton" || type == "stray" || type == "scorched_skeleton" || type == "jungle_skeleton") && frand() < 0.15f) {
-    const char* W[] = {"stone_sword", "iron_sword", "stone_axe", "copper_sword", "iron_axe"};
+    const char* W[] = {"stone_sword", "copper_sword", "stone_axe", "copper_sword", "copper_axe"};
     heldItem = W[(int)(frand() * 5) % 5];
   }
   rollArmour();
@@ -371,7 +373,7 @@ void Creature::rollArmour() {
   static const bool all = std::getenv("DQ_ARMOUR") != nullptr;   // tests: every one dressed
   if (!wears || frand() >= (all ? 2.f : 0.11f)) return;
   float r = frand();
-  const char* mat = r < 0.28f ? "leather" : r < 0.50f ? "chainmail" : r < 0.66f ? "copper" : r < 0.80f ? "gold" : r < 0.97f ? "iron" : "diamond";   // (chainmail is only found on them)
+  const char* mat = r < 0.32f ? "leather" : r < 0.54f ? "chainmail" : r < 0.78f ? "copper" : r < 0.92f ? "gold" : "bronze";
   static const char* PIECE[] = {"helmet", "chestplate", "leggings", "boots"};
   json a = json::array({"", "", "", ""});
   for (int i = 0; i < 4; i++) {
@@ -576,6 +578,11 @@ float Creature::hurtBase(Level& lv, float amount, const DamageSrc& srcIn) {
   float dealt = dmg;
   // dismember.js
   if (dealt > 0) tryDismember(lv, src, dealt);
+  if (dealt > 0 && a && a->isPlayer() && data.value("affix", std::string()) == "barbed"
+      && src.type != "magic" && src.type != "thorns" && src.type != "void") {
+    DamageSource ds; ds.type = "thorns"; ds.knock = 0; ds.attacker = id;
+    damagePlayer(lv, static_cast<Player&>(*a), 1.f, ds);
+  }
   // bestiary.js: neutral animals fight back, the rest run
   if (dealt > 0 && !T->ai.empty() && a && a != this) {
     Entity* who = a;
@@ -716,6 +723,12 @@ static void rigLook(Creature& m, Entity* target, float dt) {
 }
 
 // ------------------------------------------------------------------ update
+void creatureGhostSwing(Entity& e, float dt) {
+  auto* c = dynamic_cast<Creature*>(&e);
+  if (!c || !c->atkMove) return;
+  c->atkT += dt;
+  if (c->atkMove >= MV_COUNT || c->atkT >= attackMove(c->atkMove).len) { c->atkMove = 0; c->atkT = 0; }
+}
 void Creature::ghostStep(Level& lv, float dt) {
   if (!hasTarget) return;
   float k = std::min(1.f, dt * 10);
@@ -727,6 +740,10 @@ void Creature::ghostStep(Level& lv, float dt) {
   walkAmt += (std::min(1.f, hs / 2) - walkAmt) * std::min(1.f, dt * 6);
   walk += hs * dt * 3.2f;
   speedNow = hs;
+  if (atkMove) {
+    atkT += dt;
+    if (atkMove >= MV_COUNT || atkT >= attackMove(atkMove).len) { atkMove = 0; atkT = 0; }
+  }
 }
 
 // A whirlwind (tools/port/skylands_more.py): it wanders, whirls cloud about itself, and whatever it touches — you, a
@@ -899,7 +916,9 @@ void Creature::update(Level& lv, float dt) {
   int dim = dimAt(*this);
   float day = envDay(lv, dim);
   if ((type == "ghoul" || T->undead) && dim == DIM_OVERWORLD && day > 0.65f && !c.water && !calm) {
-    if (light(lv, h - 0.1f).x >= 14 && armourPiece(0).empty()) burn = std::max(burn, 2.f);   // a helmet shades it
+    const int hx = ifloor(pos.x), hy = ifloor(pos.y + h - 0.1f), hz = ifloor(pos.z);
+    if (light(lv, h - 0.1f).x >= 14 && lv.world(realm).openToSky(hx, hy, hz) && armourPiece(0).empty())
+      burn = std::max(burn, 2.f);   // a helmet shades it; a roofed dungeon does not count as noon
   }
 
   // AI -> desired horizontal direction & speed
@@ -944,11 +963,7 @@ void Creature::update(Level& lv, float dt) {
     if (canSee) {
       std::optional<float> nd; if (dist > 2.2f) nd = navDir(lv, p->pos, dt);
       dir = nd ? *nd : toPlayer; want = T->speed;
-      if (dist < 1.35f + w && std::fabs(dyp) < 1.6f && attackCd <= 0) {
-        attackCd = 1.1f; swingT = 0.3f;
-        DamageSrc s; if (type == "charred_ghoul") s.element = "fire";
-        damageEntity(lv, *p, T->damage + weaponBonus(), this, "mob", s);
-      }
+      if (dist < 1.35f + w && std::fabs(dyp) < 1.6f && attackCd <= 0) meleeAt(lv, *p, dist, dyp);
       if (dist < 0.9f) want = 0;
       soundT -= dt;
       if (soundT < 0) { soundT = 4 + frand() * 6; if (dist < 16) say(lv, "say"); }
@@ -1095,6 +1110,7 @@ void Creature::update(Level& lv, float dt) {
   walkAmt += (std::min(1.f, hs / 2) - walkAmt) * std::min(1.f, dt * 6);
   walk += hs * dt * (type == "deer" ? 2.2f : 3.2f);
   if (swingT > 0) swingT -= dt;
+  tickMeleeBlow(lv, dt);
   (void)R;
 }
 
@@ -1155,6 +1171,7 @@ json Creature::snap() const {
             {"d", deathTime > 0 ? 1 : 0}, {"b", burn > 0 ? 1 : 0}, {"g", stag ? 1 : 0}, {"sh", sheared ? 1 : 0}, {"c", color}, {"bb", baby ? 1 : 0},
             {"v", variant}, {"fl", mobFlags(*this)}, {"hi", heldItem}, {"oi", offItem}, {"cr", crawling ? 1 : 0}, {"fu", r2(fuse)}, {"sz", size},
             {"sw", r2(swingT)}, {"st", r2(shootT)}, {"gz", r2(grazeT)}, {"pk", r2(peckT)}, {"og", onGround ? 1 : 0}};
+  if (atkMove) { o["am"] = atkMove; o["at"] = r2(atkT); o["ay"] = r2(atkYaw); o["ap"] = r2(atkPitch); }
   if (attack.on) o["a"] = {attack.kind, r2(attack.progress), r2(attack.yaw)};
   if (data.contains("hat")) o["hd"] = data["hat"];
   if (data.contains("hw")) o["hw"] = data["hw"];
@@ -1208,6 +1225,7 @@ void Creature::applySnap(const json& o) {
   heldItem = o.value("hi", std::string()); offItem = o.value("oi", std::string()); crawling = o.value("cr", 0);
   fuse = o.value("fu", 0.f); if (int s = o.value("sz", 0)) if (s != size) setSize(s);
   swingT = o.value("sw", 0.f); shootT = o.value("st", 0.f); grazeT = o.value("gz", 0.f); peckT = o.value("pk", 0.f); onGround = o.value("og", 1);
+  atkMove = (u8)o.value("am", 0); atkT = o.value("at", 0.f); atkYaw = o.value("ay", atkYaw); atkPitch = o.value("ap", atkPitch);
   if (o.contains("hd")) data["hat"] = o["hd"];
   if (o.contains("hw")) data["hw"] = o["hw"];
   if (o.contains("ar")) data["armor"] = o["ar"]; else if (data.is_object()) data.erase("armor");

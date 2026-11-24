@@ -10,6 +10,7 @@
 #include "render/ragdoll_layer.h"
 #include "render/char_anim.h"
 #include "render/char_layer.h"
+#include "sim/attack_moves.h"
 #include "assets/char_model.h"
 #include "assets/char_creator.h"
 #include "assets/item_models.h"
@@ -242,8 +243,13 @@ void drawSkinMobBody(const Creature& m, float yaw, const mat4& base, VoxelLight 
   ps.headPitch = m.headPitch;
   ps.swing = m.swingT > 0 ? std::sin(std::min(1.f, m.swingT / 0.3f) * PI) : 0;   // the same strike curve rigPose gives voxel mobs
   ps.hasBodyYaw = true; ps.bodyYaw = yaw;
+  if (m.atkMove && m.atkMove < MV_COUNT && m.atkT < attackMove(m.atkMove).len) {
+    ps.atkMove = m.atkMove; ps.atkT = m.atkT; ps.swing = 0;
+    ps.headPitch = m.atkPitch; ps.bodyYaw = m.atkYaw;
+  }
   if (m.deathTime > 0) ps.deathT = std::min(1.f, m.deathTime * 2);   // villagers clamp the topple the same way
   ps.held = !m.heldItem.empty(); ps.off = !m.offItem.empty();       // the pose flags must follow the wear, like char_layer
+  ps.armed = ps.held || ps.off;
   CharWear wear;
   wear.held = m.heldItem; wear.off = m.offItem;
   auto glowPart = [&](int i) {   // mobs.json "skinGlow": whole parts of the skin drawn unlit (a pumpkin-headed skin's face)
@@ -269,6 +275,21 @@ void drawSkinMobBody(const Creature& m, float yaw, const mat4& base, VoxelLight 
       drawCharFace(M, ps, pm, glowPart(i) ? VoxelLight{1, 1} : L, tint);   // the blink and the talking mouth (endstory dialogue)
     }
   }
+  auto drawSkinHeld = [&](const std::string& id, int part, const vec2& tool) {
+    if (id.empty() || !reg().item(id)) return;
+    const VoxelModel& im = itemModel(id);
+    if (!im.ready()) return;
+    mat4 hm = glm::translate(gripTurn(R.part[part], tool), vec3(0, -6, -1));
+    if (im.kind == VoxelModel::Block) {
+      hm = glm::translate(hm, vec3(0, 0, -1.5f));
+      hm = glm::scale(hm, vec3(1.f / CHAR_PX));
+      hm = glm::rotate(hm, -0.3f, vec3(1, 0, 0));
+      hm = glm::scale(hm, vec3(0.375f));
+    } else hm = glm::scale(hm, vec3(1.f / CHAR_PX)) * heldMat(id);
+    VR.draw(im.gl, hm * im.matrix(), L, tint);
+  };
+  drawSkinHeld(wear.held, CP_ARMR_D, R.toolR);
+  drawSkinHeld(wear.off, CP_ARML_D, R.toolL);
 }
 
 static void drawSkinMob(const Creature& m, const Interp& ip, World& w, const FrameCtx& f, bool& begun, vec3 jitter = vec3(0), float headTurn = 0) {

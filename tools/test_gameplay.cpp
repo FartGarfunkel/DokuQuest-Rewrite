@@ -16,6 +16,7 @@
 #include "sim/portals.h"
 #include "sim/creature_entities.h"
 #include "sim/chest_work.h"
+#include "core/tool_parts.h"
 #include <set>
 #include <cstdio>
 
@@ -106,6 +107,54 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 40 && r.p->atkMove; i++) r.step(0.05);
     r.p->atkMove = 0; r.p->atkT = 0;
     r.p->hp = r.p->maxHp; r.p->invuln = 0;   // (the ghoul may have landed a blow before it went)
+  }
+  printf("[throwing weapons]\n");
+  {
+    r.put(0.5f, (float)Y, 0.5f, 0, 0);
+    r.p->mode = "survival"; r.p->pitch = 0; r.p->yaw = 0;
+    for (auto& e : r.lv->entities()) if (e && e->type == "arrow") e->removed = true;
+    ItemStack tk;
+    CHECK(makePartTool("throwing_knife", {"iron"}, "stick", tk), "an iron throwing knife");
+    const float toolDmg = toolOf(tk).damage;
+    tk.n = 3;
+    r.p->selected = 0; r.p->inv[0] = tk;
+    int snow0 = 0;
+    for (auto& e : r.lv->entities()) if (e && !e->removed && e->type == "projectile" && e->data.value("kind", "") == "snow") snow0++;
+    PlayerInput use; use.use = true; use.usePressed = true;
+    r.step(0.05, use);
+    Entity* shot = nullptr;
+    for (auto& e : r.lv->entities()) if (e && !e->removed && e->type == "arrow") shot = e.get();
+    int snow1 = 0;
+    for (auto& e : r.lv->entities()) if (e && !e->removed && e->type == "projectile" && e->data.value("kind", "") == "snow") snow1++;
+    const std::string shotItem = shot ? shot->data.value("item", "") : "";
+    const u32 shotOwner = shot ? (u32)shot->data.value("owner", 0) : 0u;
+    CHECK(shot && shotItem == "mixed_throwing_knife" && shot->data.value("pickup", false)
+          && shotOwner == r.p->id && shot->vel.z < -8.f,
+          "a knife leaves as an arrow you can pick back up (item %s vel.z %.1f)", shotItem.c_str(), shot ? shot->vel.z : 0.f);
+    CHECK(shot && std::fabs(shot->data.value("damage", 0.f) - toolDmg) < 0.05f, "its damage is the tool's (%.2f, tool %.2f)", shot ? shot->data.value("damage", 0.f) : 0.f, toolDmg);
+    CHECK(r.p->inv[0].n == 2 && r.p->throwArm == 1 && snow1 == snow0, "one left the stack, the arm throws, and it is not a snowball");
+    if (shot) {
+      const u32 sid = shot->id;
+      shot->data["stuck"] = true; shot->data["bx"] = 0; shot->data["by"] = Y - 1; shot->data["bz"] = 0;
+      shot->pos = r.p->pos + vec3(0.3f, 1.f, 0.2f); shot->vel = vec3(0);
+      int have = 0; for (auto& s : r.p->inv) if (s.id == "mixed_throwing_knife") have += s.n;
+      r.lv->tick(TICK_DT);
+      bool gone = true;
+      for (auto& e : r.lv->entities()) if (e && e->id == sid) gone = false;
+      int after = 0; for (auto& s : r.p->inv) if (s.id == "mixed_throwing_knife") after += s.n;
+      CHECK(gone && after == have + 1, "a stuck throw is picked up as the knife (%d -> %d)", have, after);
+    }
+    r.p->mode = "creative"; r.p->inv[0].n = 2; r.p->throwArm = 0; r.p->throwArmFor = 0;
+    for (auto& e : r.lv->entities()) if (e && e->type == "arrow") e->removed = true;
+    r.step(0.3);
+    PlayerInput use2; use2.use = true; use2.usePressed = true;
+    r.step(0.05, use2);
+    Entity* kept = nullptr;
+    for (auto& e : r.lv->entities()) if (e && !e->removed && e->type == "arrow") kept = e.get();
+    CHECK(r.p->inv[0].n == 2 && kept && !kept->data.value("pickup", true), "creative does not consume, and that throw is not picked up again");
+    if (kept) kept->removed = true;
+    r.p->mode = "survival"; r.p->inv[0].clear(); r.p->throwArm = 0; r.p->throwArmFor = 0;
+    for (int i = 1; i < 9; i++) if (r.p->inv[i].id == "mixed_throwing_knife") r.p->inv[i].clear();
   }
   std::vector<std::string> events;
   bus.on("blockBreak", [&](const json& a) { events.push_back("break " + a[4].get<std::string>()); return true; });
@@ -566,6 +615,20 @@ int main(int argc, char** argv) {
     r.set(0, Y + 10, -2, stone);
     r.lookAt(vec3(0.5f, Y + 10.5f, -1.0f)); r.c->updateTarget();
     CHECK(r.c->breakTime(stone, &r.c->target) <= 0.05f + 1e-4f, "creative breaks blocks at once");
+    {
+      const int by = (int)std::floor(r.p->pos.y);
+      r.set(0, by, -2, stone);
+      r.lookAt(vec3(0.5f, by + 0.5f, -1.0f)); r.c->updateTarget();
+      r.p->inv[0] = ItemStack("iron_sword", 1); r.p->selected = 0;
+      r.p->atkMove = 0; r.p->atkT = 0;
+      PlayerInput atk; atk.attack = true; atk.attackPressed = true;
+      r.step(0.05, atk);
+      CHECK(r.p->atkMove != 0, "creative sword looking at a block still swings");
+      CHECK(r.get(0, by, -2) == stone, "creative sword does not break the block");
+      r.set(0, by, -2, AIR);
+      r.p->atkMove = 0; r.p->atkT = 0;
+    }
+    r.lookAt(vec3(0.5f, Y + 10.5f, -1.0f)); r.c->updateTarget();
     r.p->selected = 4; r.p->inv[4].clear();
     for (int i = 0; i < 9; i++) r.p->inv[i].clear();
     r.c->pickBlock(r.c->target);

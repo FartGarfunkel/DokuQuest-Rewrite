@@ -23,6 +23,9 @@
 using namespace dq;
 
 static int fails = 0, passes = 0;
+static void landMob(Level& lv, Creature& m) {
+  for (int i = 0; i < 80 && m.atkMove; i++) m.tickMeleeBlow(lv, 0.02f);
+}
 static void check(bool ok, const std::string& what) {
   printf("%s %s\n", ok ? "ok  " : "FAIL", what.c_str());
   (ok ? passes : fails)++;
@@ -84,6 +87,7 @@ static Fight fight(Level& lv, Player& p, int tier, int S, int lvl, bool elite, i
     while (taken < p.maxHp && hits < 2000) {
       p.hp = p.maxHp; p.invuln = 0; n->attackCd = 0; magicState(lv, p).ward = 0;
       n->meleeAt(lv, p, 1.f, 0.f);
+      landMob(lv, *n);
       taken += p.maxHp - p.hp; hits++;
     }
     f.ttk += tk / trials; f.ttd += hits * 1.1 / trials;
@@ -130,7 +134,7 @@ int main(int argc, char** argv) {
     check(st1 > st0 && hp1 > hp0 && rd > 0 && rd <= bal::CON_REDUCE_CAP, "Constitution: stamina " + std::to_string((int)st0) + " -> " + std::to_string((int)st1) + ", health " + std::to_string((int)hp0) + " -> " + std::to_string((int)hp1) + ", " + std::to_string((int)std::lround(rd * 100)) + "% less harm");
     {   // ...and a real blow lands softer
       Creature* m = foe(*lv, q, 1, false);
-      auto blow = [&](int con) { q.statCon = con; q.recalcMax(); double sum = 0; for (int i = 0; i < 40; i++) { q.hp = q.maxHp; q.invuln = 0; m->attackCd = 0; m->meleeAt(*lv, q, 1.f, 0.f); sum += q.maxHp - q.hp; } return sum; };
+      auto blow = [&](int con) { q.statCon = con; q.recalcMax(); double sum = 0; for (int i = 0; i < 40; i++) { q.hp = q.maxHp; q.invuln = 0; m->attackCd = 0; m->atkMove = 0; m->atkHit.clear(); m->meleeAt(*lv, q, 1.f, 0.f); landMob(*lv, *m); sum += q.maxHp - q.hp; } return sum; };
       const double b0 = blow(0), b1 = blow(C);
       q.statCon = 0; q.recalcMax(); m->removed = true;
       check(b1 < b0, "...a ghoul's blows: " + std::to_string(b0 / 40).substr(0, 4) + " -> " + std::to_string(b1 / 40).substr(0, 4) + " a hit");
@@ -164,7 +168,7 @@ int main(int argc, char** argv) {
     for (auto& r : bal::TALENTS) known.insert(r.attr);
     std::set<std::string> unread; int nodes = 0, bonuses = 0;
     for (const SkillTree& t : skillTrees()) for (const TreeNode& n : t.nodes) { nodes++; for (auto& b : n.bonus) { bonuses++; if (!known.count(b.attr) && b.attr.rfind("spell_power.", 0) != 0 && !(b.attr.rfind("grant_spell.", 0) == 0 && magicData().spell(b.attr.substr(12)))) unread.insert(b.attr); } }
-    if (skillTrees().empty()) printf("     (no skill-tree data here: data/local_models/skilltree.json is local only; checking the rules alone)\n");
+    if (skillTrees().empty()) printf("     (no skill-tree data here: data/skilltree.json is missing; checking the rules alone)\n");
     std::string list; for (auto& u : unread) list += " " + u;
     // every node does something and says what: a bonus, and words for it (no "(stealth)"-style stand-ins left by the import)
     {
@@ -321,7 +325,7 @@ int main(int argc, char** argv) {
       give(json{{"xp_gain", {0.f, 0.5f}}}); p.level = 30; p.xp = 0; grantXP(*lv, p, 10); const int x1 = p.xp; none();
       check(x0 == 10 && x1 == 15, "xp_gain +50%: 10 experience -> " + std::to_string(x1));
       Creature* m = foe(*lv, p, 1, false);
-      auto blow = [&]() { double sum = 0; for (int i = 0; i < 40; i++) { p.hp = p.maxHp; p.invuln = 0; m->attackCd = 0; magicState(*lv, p).ward = 0; m->meleeAt(*lv, p, 1.f, 0.f); sum += p.maxHp - p.hp; } return sum; };
+      auto blow = [&]() { double sum = 0; for (int i = 0; i < 40; i++) { p.hp = p.maxHp; p.invuln = 0; m->attackCd = 0; m->atkMove = 0; m->atkHit.clear(); magicState(*lv, p).ward = 0; m->meleeAt(*lv, p, 1.f, 0.f); landMob(*lv, *m); sum += p.maxHp - p.hp; } return sum; };
       const double b0 = blow(); give(json{{"damage_reduction", {0.f, 0.2f}}}); const double b1 = blow(); none(); m->removed = true;
       check(b1 < b0 * 0.9, "damage_reduction 20%: a ghoul's blows " + std::to_string(b0 / 40).substr(0, 4) + " -> " + std::to_string(b1 / 40).substr(0, 4));
     }
@@ -335,7 +339,7 @@ int main(int argc, char** argv) {
       none();
       bool viaNode = true;
       if (!skillTrees().empty()) {
-        p.stats["tree"] = json{{"nodes", json::array({"mage-ks_utility-ice"})}};
+        p.stats["tree"] = json{{"nodes", json::array({"m_frost6"})}};
         const auto kn = knownSpells(p);
         viaNode = std::find(kn.begin(), kn.end(), "icenova") != kn.end();
         treeReset(p);
@@ -436,8 +440,33 @@ int main(int argc, char** argv) {
     json sk = json::object(); for (auto& d : magicData().skills) sk[d.key] = 0; p.stats["skills"] = sk;
     skillGain(*lv, p, "mining", skillXpFor(5));
     check(fx.heard("Mining skill level 5!"), "a skill's level: \"Mining skill level 5!\"");
+    check(fx.heard("a talent point to spend"), "crossing a multiple of 3 total skill levels names a talent point");
     skillGain(*lv, p, "melee", skillXpFor(5));
     check(fx.heard("a stat point to spend"), "...and the stat point it brings is named");
+  }
+
+  printf("[ore ladder: copper < bronze < iron < steel < mithril < adamantite]\n");
+  {
+    auto dmg = [](const char* id) {
+      const ItemDef* it = reg().item(id);
+      return it && it->hasTool ? it->tool.damage : 0.f;
+    };
+    const float cu = dmg("copper_sword"), br = dmg("bronze_sword"), ir = dmg("iron_sword");
+    const float st = dmg("steel_sword"), ag = dmg("silver_sword"), mi = dmg("mithril_sword"), ad = dmg("adamantite_sword");
+    check(cu < br && br < ir && ir < st && st < mi && mi < ad,
+          "swords: copper " + std::to_string((int)cu) + " < bronze " + std::to_string((int)br) + " < iron " + std::to_string((int)ir)
+          + " < steel " + std::to_string((int)st) + " < mithril " + std::to_string((int)mi) + " < adamantite " + std::to_string((int)ad));
+    check(std::fabs(ag - ir) < 0.01f, "silver sword matches iron (" + std::to_string((int)ag) + ")");
+    const int nTiers = (int)(sizeof bal::GEAR_TIERS / sizeof bal::GEAR_TIERS[0]);
+    bool silverRung = false;
+    for (int i = 0; i < nTiers; i++) if (std::string(bal::GEAR_TIERS[i]) == "silver") silverRung = true;
+    check(nTiers == 6 && !silverRung && std::string(bal::GEAR_TIERS[0]) == "copper" && std::string(bal::GEAR_TIERS[5]) == "adamantite",
+          "six ore rungs, silver a holy sidegrade not a step above steel");
+    const ItemDef* sb = reg().item("silver_boots");
+    const ItemDef* ib = reg().item("iron_boots");
+    const float sp = sb && sb->props.contains("armor") ? sb->props["armor"].value("points", 0.f) : -1.f;
+    const float ip = ib && ib->props.contains("armor") ? ib->props["armor"].value("points", 0.f) : -1.f;
+    check(std::fabs(sp - ip) < 0.01f, "silver boots match iron (" + std::to_string(sp) + ")");
   }
 
   printf("[the fight table: gear tier x skill level vs a ghoul of level x elite]\n");
@@ -461,6 +490,17 @@ int main(int argc, char** argv) {
     }
   }
   check(bandsOk, "every geared fight inside its band" + why);
+  {
+    dress(p, 1, 25);
+    const int land = playerCombatLevel(p);
+    p.stats.erase("attrBonus");
+    Fight empty = fight(*lv, p, 1, 25, land, false, 6);
+    p.stats["attrBonus"] = json{{"damage", {2.5f, 0.15f}}, {"health", {5.f, 0.f}}};
+    Fight spent = fight(*lv, p, 1, 25, land, false, 6);
+    p.stats.erase("attrBonus");
+    check(spent.ttk < empty.ttk * 0.85, "a spent tree kills a same-level ghoul faster (" + std::to_string(empty.ttk) + " -> " + std::to_string(spent.ttk) + ")");
+    check(spent.ttd > empty.ttd, "...and lasts longer (" + std::to_string(empty.ttd) + " -> " + std::to_string(spent.ttd) + ")");
+  }
   {   // never immune, either way: the best gear and every stat against a level-1 ghoul still hurts; an ungeared novice vs a high level falls fast
     dress(p, 4, 99);
     Fight f = fight(*lv, p, 4, 99, 1, false, 3);

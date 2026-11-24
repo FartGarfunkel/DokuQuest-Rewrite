@@ -11,6 +11,7 @@
 #include "sim/weather.h"
 #include "gen/structures_api.h"
 #include "gen/generator.h"
+#include "core/tool_parts.h"
 #include <map>
 #include <random>
 #include <regex>
@@ -216,7 +217,7 @@ static void registerBuiltinCommands() {
     const std::string kind = toLower(a[0]);
     const int here = dimOfY(ifloor(c.p.pos.y));
     for (int dim : {here, (int)DIM_OVERWORLD, (int)DIM_NETHER, (int)DIM_END, (int)DIM_SKYLANDS}) {
-      if (const StructurePlan* s = locateStructure(*c.lv.gen, dim, kind, ifloor(c.p.pos.x), ifloor(c.p.pos.z), 16))
+      if (const StructurePlan* s = locateStructure(*c.lv.gen, dim, kind, ifloor(c.p.pos.x), ifloor(c.p.pos.z), 48))
         // y as /tp takes it (the stacked world's y, not the land's own); another land is named, not measured
         return strFormat("%s at %d, %d, %d (%s)", s->name.empty() ? kind.c_str() : s->name.c_str(), s->cx, dimBase(dim) + s->y, s->cz,
                          dim == here ? strFormat("%d blocks away", (int)std::lround(std::hypot(s->cx - c.p.pos.x, s->cz - c.p.pos.z))).c_str()
@@ -340,14 +341,17 @@ static void registerBuiltinCommands() {
     std::string k = resolveItem(a[0]);
     if (k.empty()) return "Unknown item: " + a[0];
     double nn = num(a, 1, 1); int n = clampv(std::isfinite(nn) ? (int)nn : 1, 1, 64 * 36);
+    ItemStack one = proceduralOf(k, 1);
+    const std::string giveId = one.id;
     int left = n;
     while (left > 0) {
-      int t = std::min(left, maxStackOf(k));
-      int r = giveItem(c.lv, c.p, ItemStack(k, t));
-      if (r > 0) dropItem(c.lv, c.p.realm, ItemStack(k, r), c.p.pos + vec3(0, 1, 0), false);
+      int t = std::min(left, maxStackOf(giveId));
+      ItemStack st = proceduralOf(k, t);
+      int r = giveItem(c.lv, c.p, st);
+      if (r > 0) { st.n = r; dropItem(c.lv, c.p.realm, st, c.p.pos + vec3(0, 1, 0), false); }
       left -= t;
     }
-    return "Gave " + std::to_string(n) + " " + reg().item(k)->name;
+    return "Gave " + std::to_string(n) + " " + (reg().item(giveId) ? reg().item(giveId)->name : giveId);
   });
   C("clear", "", "Empty your inventory", true, [](CommandCtx& c, std::vector<std::string>&) -> std::string {
     for (auto* v : {&c.p.inv, &c.p.armor, &c.p.offhand, &c.p.hook, &c.p.charm}) for (auto& s : *v) s.clear();

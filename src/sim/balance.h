@@ -126,7 +126,7 @@ constexpr int ELITE_ROLLS = 2;                                          // an el
 constexpr float ELITE_GEAR = 0.35f, ELITE_GEAR_PER_LEVEL = 0.005f, ELITE_GEAR_MAX = 0.6f;
 constexpr int GEAR_FROM = 12; constexpr float GEAR_CHANCE_PER_LEVEL = 0.004f, GEAR_CHANCE_MAX = 0.12f;
 constexpr int GEAR_LEVELS_PER_TIER = 6;                                  // copper 1-6, bronze 7-12, iron 13-18... (+1 tier for an elite)
-inline constexpr const char* GEAR_TIERS[] = {"copper", "bronze", "iron", "steel", "diamond", "mithril", "adamantite"};
+inline constexpr const char* GEAR_TIERS[] = {"copper", "bronze", "iron", "steel", "mithril", "adamantite"};
 inline constexpr const char* GEAR_PIECES[] = {"sword", "axe", "helmet", "chestplate", "leggings", "boots"};
 constexpr float GEAR_WORN_MIN = 0.2f, GEAR_WORN_MAX = 0.6f;              // dropped gear comes this worn
 
@@ -216,7 +216,7 @@ int progressTier(const Player& p);               // 0..TIER_MAX from chapters, b
 float progressLootRolls(int tier);               // extra passes over a structure chest's table
 float progressLootChance(int tier);              // multiplier on each entry's chance in those passes
 int progressMobLevels(int tier);                 // levels added to a creature's band
-struct MobLoot { int rolls = 1; float chanceMul = 1, extra = 0, gearChance = 0, twice = 0; int gearTier = 0; };   // twice: the chance of one more roll (loot_double)
+struct MobLoot { int rolls = 1; float chanceMul = 1, extra = 0, gearChance = 0, twice = 0; int gearTier = 0, gearCap = 0; };   // twice: the chance of one more roll (loot_double)
 MobLoot mobLoot(int level, bool elite, const Player* killer);
 ItemStack mobGearRoll(const MobLoot& l, double r1, double r2, double r3);   // r* in [0,1): which piece, its tier, its wear
 } // namespace dq

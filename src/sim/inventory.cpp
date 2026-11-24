@@ -1,5 +1,6 @@
 #include "core/tool_parts.h"
 #include "sim/inventory.h"
+#include "sim/weapon_quality.h"
 #include "sim/item_uses.h"
 #include "sim/player.h"
 #include "sim/quiver.h"
@@ -116,7 +117,7 @@ int playerRemoveTag(Player& p, const std::string& key, int n) {
 }
 int armorPoints(const Player& p) {
   float pts = 0;
-  for (auto& s : p.armor) if (!s.empty()) pts += armorPointsOf(s);   // (a mixed piece's own, core/tool_parts.h), summed before rounding
+  for (auto& s : p.armor) if (!s.empty()) pts += armorPointsOf(s) * gearQualityFactor(s);   // the ore mix, then the same quality a weapon uses
   return (int)std::lround(pts);
 }
 float charmBonus(const Player& p, const std::string& kind) {
@@ -128,7 +129,7 @@ float charmBonus(const Player& p, const std::string& kind) {
 }
 float fireResist(const Player& p) {
   float r = charmBonus(p, "fire") + gearFireResist(p);   // (the ember cape: sim/item_uses.h)
-  for (auto& s : p.armor) if (!s.empty()) r += armorFireResistOf(s);   // (a mixed piece's own too)
+  for (auto& s : p.armor) if (!s.empty()) r += armorFireResistOf(s) * gearQualityFactor(s);   // (a mixed piece's own too, on the same quality)
   return std::min(0.9f, r);
 }
 int itemLight(const std::string& id) {

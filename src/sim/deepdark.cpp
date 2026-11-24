@@ -279,16 +279,30 @@ static void dhOpen(Level& lv, const json& d) {
   }
   lv.fx->sound("piston_out", vec3((x0 + x1) * 0.5f, y0 + 1, (z0 + z1) * 0.5f), 40);
 }
-static bool onPlate(Level& lv, vec3 p) {
-  int x = ifloor(p.x), z = ifloor(p.z);
+bool onPlate(Level& lv, vec3 p) {
+  const int px = ifloor(p.x), pz = ifloor(p.z);
+  const float lo = p.y - 0.1f, hi = p.y + 1.2f;
   for (auto& u : lv.entities()) {
     Entity& e = *u;
-    if (e.removed || e.realm != REALM_MAIN || ifloor(e.pos.x) != x || ifloor(e.pos.z) != z || std::fabs(e.pos.y - p.y) >= 0.6f) continue;
+    if (e.removed || e.realm != REALM_MAIN || ifloor(e.pos.x) != px || ifloor(e.pos.z) != pz) continue;
+    if (e.pos.y < lo || e.pos.y > hi) continue;
     if (auto* pl = dynamic_cast<Player*>(&e)) { if (!pl->dead) return true; continue; }
     if (e.type == "item") return true;
     if (auto* c = dynamic_cast<Creature*>(&e)) if (c->alive()) return true;
   }
   return false;
+}
+Player* dartTargetOnPlate(Level& lv, const json& plates, const std::vector<Player*>& players) {
+  const int base = dimBase(DIM_OVERWORLD);
+  for (Player* q : players) {
+    for (auto& pl : plates) {
+      vec3 world(jvec(pl)); world.y += base;
+      if (q->dead || q->realm != REALM_MAIN) continue;
+      if (ifloor(q->pos.x) == ifloor(world.x) && ifloor(q->pos.z) == ifloor(world.z) &&
+          q->pos.y >= world.y - 0.1f && q->pos.y <= world.y + 1.2f) return q;
+    }
+  }
+  return nullptr;
 }
 static bool inBox(const Entity& q, const json& b, int base, float pad = 1) {
   if (!b.is_array() || b.size() < 6) return false;
@@ -305,7 +319,9 @@ static void hallsTick(Level& lv, EndStory& S) {
   double now = S.now;
   for (Player* p : ps) {
     if (!inOverworld(*p)) continue;
-    for (const char* kind : {"deep_halls", "twin_vault"}) for (const Plan& P : plansNear(lv, DIM_OVERWORLD, kind, ifloor(p->pos.x), ifloor(p->pos.z), 8)) {
+    for (const char* kind : {"deep_halls", "twin_vault"}) {
+      const int pad = std::strcmp(kind, "twin_vault") == 0 ? 40 : 8;
+      for (const Plan& P : plansNear(lv, DIM_OVERWORLD, kind, ifloor(p->pos.x), ifloor(p->pos.z), pad)) {
       if (!seen.insert(P.id).second) continue;
       json& rec = structRec(lv, P.id);
       const json& D = P.data;
@@ -316,8 +332,7 @@ static void hallsTick(Level& lv, EndStory& S) {
         for (size_t i = 0; i < traps.size(); i++) {
           const json& t = traps[i]; std::string k = std::to_string(i);
           if (num(trapT, k.c_str()) > now) continue;
-          Player* who = nullptr;
-          for (Player* q : ps) for (auto& pl : t["plates"]) { vec3 a = at(pl); if (ifloor(q->pos.x) == (int)a.x && ifloor(q->pos.z) == (int)a.z && std::fabs(q->pos.y - a.y) < 0.6f) who = q; }
+          Player* who = dartTargetOnPlate(lv, t["plates"], ps);
           if (!who) continue;
           trapT[k] = now + 2.2;
           const json& room = t["room"];
@@ -392,6 +407,7 @@ static void hallsTick(Level& lv, EndStory& S) {
           }
           if (truthy(rec, "up") && !live && !inside && fell.empty()) rec["up"] = 0;   // everyone left: back at their posts
         }
+      }
       }
     }
   }

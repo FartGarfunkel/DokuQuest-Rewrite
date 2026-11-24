@@ -7,9 +7,11 @@
 #include "sim/dyntree.h"
 #include "sim/weather.h"
 #include "sim/controller.h"
+#include "world/dirs.h"
 #include "sim/balance.h"
 #include "sim/talent_fx.h"
 #include "sim/skills.h"
+#include "sim/weapon_quality.h"
 #include "sim/station_work.h"
 #include "sim/hands.h"
 #include "sim/ench_work.h"
@@ -18,6 +20,7 @@
 #include "sim/magic.h"
 #include "sim/chest_work.h"
 #include "sim/combat_rpg.h"
+#include "sim/attack_moves.h"
 #include "sim/creature_rig.h"
 #include "sim/vehicles.h"
 #include "sim/effects.h"
@@ -114,6 +117,7 @@ void runGuestUse(Level& lv, Player& p, const json& a) {
 }
 
 void PlayerController::swingArm() { if (p.swing == 0 || p.swing > 0.6f) p.swing = 0.0001f; }
+void PlayerController::swingThrow(bool off) { p.swing = 0.0001f; p.throwArm = off ? 2 : 1; p.throwArmFor = 0.55f; }
 void PlayerController::heldBecomes(ItemStack s) { p.inv[p.selected] = std::move(s); }
 void PlayerController::consumeHeld(int n) {
   if (p.creative()) return;
@@ -124,6 +128,7 @@ void PlayerController::consumeHeld(int n) {
 bool itemHasUse(const ItemDef& d) {   // (also sim/combat_rpg.cpp: a shield waits for a main hand that has a use)
   for (const char* k : {"cape", "block", "heartCrystal", "cart", "boat", "food", "backpack", "bucket", "igniter", "pocketKey", "summon", "armor", "bow", "spyglass", "bonemeal", "plants", "disc", "bottle", "drink", "summonWand", "paintbrush", "pottery", "warHorn"})
     if (d.has(k)) return true;
+  if (d.str("moveset") == "throw" || d.key.find("throwing_knife") != std::string::npos || d.key.find("throwing_axe") != std::string::npos) return true;
   return false;
 }
 
@@ -172,6 +177,7 @@ void PlayerController::update(float dt, const PlayerInput& in) {
     if (p.invuln > 0) p.invuln -= dt;
     if (p.hurtFlash > 0) p.hurtFlash = std::max(0.f, p.hurtFlash - dt * 2.5f);
     if (p.swinging || p.swing > 0) { p.swing += dt * 3.6f; if (p.swing >= 1) p.swing = 0; }
+    if (p.throwArmFor > 0.f && (p.throwArmFor -= dt) <= 0.f) p.throwArm = 0;
     p.swinging = false; p.bobAmt *= 0.9f;
     if (p.eatAnim > 0) p.eatAnim -= dt;   // (a bite in the saddle ends like one on foot)
     p.eatT = p.eatAnim > 0 ? std::min(1.f, p.eatAnim / EAT_ANIM) : 0.f;
@@ -196,6 +202,7 @@ void PlayerController::update(float dt, const PlayerInput& in) {
   if (p.equip < 1) p.equip = std::min(1.f, p.equip + dt * 5);
   if (p.eatAnim > 0) p.eatAnim -= dt;
   if (p.swinging || p.swing > 0) { p.swing += dt * 3.6f; if (p.swing >= 1) p.swing = 0; }
+  if (p.throwArmFor > 0.f && (p.throwArmFor -= dt) <= 0.f) p.throwArm = 0;
   p.swinging = false;
   updateTarget();
   interact(dt, in);
@@ -511,17 +518,25 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   // a ghast's fireball can be punched back: it flies for you then, and finishes off a ghast it hits
   if (in.attackPressed && deflectFireball(lv, p, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch), 4.5f)) { swingArm(); mining.active = false; fightHold = true; return; }
   handCasting(dt, inM, te);
-  // a combat move starts on a creature or on thin air; a click on a block digs it, whatever is in your hand
-  const bool allowSwing = te || !target.hit;
-  // both hands armed: use swings the off hand (two hands), unless what you look at is for using (a door, a chest)
+  // a combat blade swings on a creature, in the air, or at a block (a pick still digs). Creative swords never break blocks.
+  const auto meleeBlade = [&] {
+    const ItemStack& h = p.held();
+    if (h.empty()) return false;
+    switch (movesetOf(h.def())) {
+      case Moveset::Sword: case Moveset::Greatsword: case Moveset::Spear:
+      case Moveset::Mace: case Moveset::Dagger: return true;
+      default: return false;
+    }
+  }();
+  const bool allowSwing = te || !target.hit || meleeBlade;
+  // the off hand swings from the attack button only when the main hand is empty. Two weapons share that button; use blocks.
   const bool offUse = in.usePressed && offHandSwings(p, false, true) && !(target.hit && interactable(target.id));
   tickMelee(lv, p, dt, in, allowSwing || offUse, offUse);
   if (p.atkMove) { mining.active = false; fightHold = true; if (in.attackPressed) return; }
   if (!in.attack) fightHold = false;
-  if (in.attackPressed && !target.hit) swingArm();
+  if (in.attackPressed && (!target.hit || meleeBlade)) swingArm();
   // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks
-  const ToolInfo* ti = heldTool(p);
-  bool noDig = fightHold || (p.creative() && ti && ti->type == "sword") || p.mode == "adventure";   // adventure: the world stays as it is
+  bool noDig = fightHold || (p.creative() && meleeBlade) || p.mode == "adventure";   // adventure: the world stays as it is
   // Hands-on Stations: an open barrel's tray (a strike takes one; sneaking, the stack)
   if (handsStations && target.hit && !te && handsBarrel(world(), target.block) && chestLidOpen(world(), target.block)
       && handsBarrelAim(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch)).what >= HandsChestAim::Tray) {   // (its tray or buttons: else it breaks as ever)
@@ -530,9 +545,10 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   }
   // Hands-on Stations: an open large chest or cabinet is reached into too (a strike takes one; sneaking, the stack)
   else if (handsStations && target.hit && !te && bhas(target.id, BF::Container) && !handsChest(world(), target.block) && chestLidOpen(world(), target.block)) {
-    const int slot = chestSlotAtRay(world(), target.block, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch));
+    const ivec3 store = coffinFoot(world(), target.block);
+    const int slot = chestSlotAtRay(world(), store, vec3(p.pos.x, p.pos.y + p.eye, p.pos.z), lookVector(p.yaw, p.pitch));
     if (slot >= 0) noDig = true;   // (reached into; anywhere else it breaks as ever)
-    if (in.attackPressed && !p.atkMove && slot >= 0 && chestTake(lv, p, world(), target.block, slot, !p.sneaking, true)) swingArm();
+    if (in.attackPressed && !p.atkMove && slot >= 0 && chestTake(lv, p, world(), store, slot, !p.sneaking, true)) swingArm();
   }
   // Hands-on Stations: an open chest's tray is reached into, not dug (a strike takes one; sneaking, the stack)
   if (handsStations && target.hit && !te && handsChest(world(), target.block) && chestLidOpen(world(), target.block)
@@ -821,6 +837,7 @@ bool interactable(BlockId id) {
 }
 
 void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
+  useFromOff = fromOff;
   // a held sneak key/button always counts when using: flying (creative) and gliding clear p.sneaking (there sneak
   // means "down"), so a block in hand would open the chest instead of going against it (furnish.js)
   struct SneakScope { bool& r; bool old; ~SneakScope() { r = old; } } sneakScope{p.sneaking, p.sneaking};
@@ -869,25 +886,26 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   // off, the doors out); open, use at a spot inside puts one of what's held there (held, the stack), strike takes; use off
   // the spots shuts it; sneak + use its screen
   if (!fromOff && hit && !te && handsStations && bhas(hit->id, BF::Container) && chestHasLid(w, hit->block) && !handsChest(w, hit->block) && !p.sneaking) {
-    const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z), c = vec3(hit->block) + vec3(0.5f);
+    const ivec3 store = coffinFoot(w, hit->block);   // a coffin's head opens the foot, where its things are
+    const vec3 eye(p.pos.x, p.pos.y + p.eye, p.pos.z), c = vec3(store) + vec3(0.5f);
     if (!repeat) handsHoldAt = t;
-    if (!chestLidOpen(w, hit->block)) {
-      if (!repeat) { containerEntity(w, hit->block.x, hit->block.y, hit->block.z); chestProgressLoot(w, p, hit->block); setChestLidOpen(w, hit->block, true); swingArm(); sfxAt(lv, isCabinet(w, hit->block) ? "door_open" : "chest", c); }
+    if (!chestLidOpen(w, store)) {
+      if (!repeat) { containerEntity(w, store.x, store.y, store.z); chestProgressLoot(w, p, store); setChestLidOpen(w, store, true); swingArm(); sfxAt(lv, isCabinet(w, store) ? "door_open" : "chest", c); }
       return;
     }
-    if (!repeat && handsCabinetButtonRay(w, hit->block, eye, lookVector(p.yaw, p.pitch)) >= 0) { handsCabinetSort(lv, p, w, hit->block); swingArm(); return; }   // (its sort button, on the door)
-    const int slot = chestSlotAtRay(w, hit->block, eye, lookVector(p.yaw, p.pitch));
+    if (!repeat && handsCabinetButtonRay(w, store, eye, lookVector(p.yaw, p.pitch)) >= 0) { handsCabinetSort(lv, p, w, store); swingArm(); return; }   // (its sort button, on the door)
+    const int slot = chestSlotAtRay(w, store, eye, lookVector(p.yaw, p.pitch));
     if (slot < 0) {
-      if (!repeat) { setChestLidOpen(w, hit->block, false); swingArm(); sfxAt(lv, isCabinet(w, hit->block) ? "door_close" : "chest", c); }
+      if (!repeat) { setChestLidOpen(w, store, false); swingArm(); sfxAt(lv, isCabinet(w, store) ? "door_close" : "chest", c); }
       return;
     }
-    if (held.empty()) { if (!repeat && chestTake(lv, p, w, hit->block, slot, false, true)) swingArm(); return; }   // (an empty hand takes what lies there)
+    if (held.empty()) { if (!repeat && chestTake(lv, p, w, store, slot, false, true)) swingArm(); return; }   // (an empty hand takes what lies there)
     if (!held.empty() && (!repeat || t - handsHoldAt > 0.5)) {
-      bool put = chestPut(lv, p, w, hit->block, slot, !repeat);
+      bool put = chestPut(lv, p, w, store, slot, !repeat);
       // (the spot holds something else, or is full: the same kind's spot, else the first free one)
       for (int pass = 0; pass < 2 && !put && !held.empty(); pass++) {
-        const std::vector<ItemStack> v = chestItems(lv, p, w, hit->block);
-        for (int k = 0; k < (int)v.size() && !put; k++) if (pass == 0 ? (!v[k].empty() && v[k].id == held.id && v[k].n < v[k].maxStack()) : v[k].empty()) put = chestPut(lv, p, w, hit->block, k, !repeat);
+        const std::vector<ItemStack> v = chestItems(lv, p, w, store);
+        for (int k = 0; k < (int)v.size() && !put; k++) if (pass == 0 ? (!v[k].empty() && v[k].id == held.id && v[k].n < v[k].maxStack()) : v[k].empty()) put = chestPut(lv, p, w, store, k, !repeat);
       }
       if (put && !repeat) swingArm();
     }
@@ -1102,16 +1120,20 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       if (uba) return;
       json pos = {hit->block.x, hit->block.y, hit->block.z};
       if (bhas(hit->id, BF::Container) && chestLids && chestHasLid(w, hit->block)) {   // lids left open (sim/chest_work.h): the lid first
-        if (!chestLidOpen(w, hit->block)) {
-          containerEntity(w, hit->block.x, hit->block.y, hit->block.z); chestProgressLoot(w, p, hit->block);
-          setChestLidOpen(w, hit->block, true); swingArm(); sfxAt(lv, "chest", vec3(hit->block) + vec3(0.5f));
+        const ivec3 store = coffinFoot(w, hit->block);
+        if (!chestLidOpen(w, store)) {
+          containerEntity(w, store.x, store.y, store.z); chestProgressLoot(w, p, store);
+          setChestLidOpen(w, store, true); swingArm(); sfxAt(lv, "chest", vec3(store) + vec3(0.5f));
           return;
         }
-        if (chestLidClicked(w, hit->block, hit->normal, hit->point)) { setChestLidOpen(w, hit->block, false); swingArm(); sfxAt(lv, "chest", vec3(hit->block) + vec3(0.5f)); return; }
+        if (chestLidClicked(w, store, hit->normal, hit->point)) { setChestLidOpen(w, store, false); swingArm(); sfxAt(lv, "chest", vec3(store) + vec3(0.5f)); return; }
       }
       if (bhas(hit->id, BF::Container)) {
-        swingArm(); sfxAt(lv, b.has("remains") ? "bone" : "chest", vec3(hit->block) + vec3(0.5f)); containerEntity(w, hit->block.x, hit->block.y, hit->block.z); chestProgressLoot(w, p, hit->block);
-        if (b.has("remains")) fallenOpened(lv, p, w, hit->block.x, hit->block.y, hit->block.z);   // (sim/fallen.h: now and then a trap)
+        const ivec3 boxAt = coffinFoot(w, hit->block);   // a coffin's head opens the foot
+        if (b.key == "oak_coffin") setChestLidOpen(w, boxAt, true);   // the lid lifts with the screen; fallen remains stay a screen only
+        pos = {boxAt.x, boxAt.y, boxAt.z};
+        swingArm(); sfxAt(lv, b.has("remains") ? "bone" : "chest", vec3(boxAt) + vec3(0.5f)); containerEntity(w, boxAt.x, boxAt.y, boxAt.z); chestProgressLoot(w, p, boxAt);
+        if (b.has("remains")) fallenOpened(lv, p, w, boxAt.x, boxAt.y, boxAt.z);   // (sim/fallen.h: now and then a trap)
         openScreen(lv, p, "container", {{"pos", pos}}); return;
       }
       if (b.has("table") && worktableUse(lv, p, w, *hit, held)) { swingArm(); return; }   // sim/worktable.h: the top worked in the world
@@ -1202,6 +1224,7 @@ bool PlayerController::eatFood(ItemStack& held, const ItemDef& def, bool repeat)
       p.eatId = held.id;
       if (--held.n <= 0) held.clear();
       p.eatAnim = EAT_ANIM; sfxUi(lv, p, held.id.find("bottle") != std::string::npos || held.id.find("stew") != std::string::npos || held.id.find("soup") != std::string::npos ? "drink" : "eat");
+      p.data.erase("hurtLimbT"); p.data.erase("hurtLeg"); p.data.erase("hurtArm");
       p.foodCd = FOOD_CD * foodWaitFactor(p);   // (Quick Bite)
       if (const float rg = feastRegenSecs(p); rg > 0) giveEffect(lv, p, "regen", rg);   // (Feast: sim/skills.h)
       if (lv.events) lv.events->emit("foodEffect", json::array({p.name, def.key, food.value("effect", json()), food.value("cure", json())}));
@@ -1218,6 +1241,7 @@ bool PlayerController::eatFood(ItemStack& held, const ItemDef& def, bool repeat)
   float heal = food.value("heal", 0.0f) * cookingHealFactor(p), now = heal > 1 ? heal / 2 : heal;   // (Cooking: food heals more)
   if (heal > 1) p.foodPool += heal - now;
   float healed = p.heal(now);
+  p.data.erase("hurtLimbT"); p.data.erase("hurtLeg"); p.data.erase("hurtArm");   // eating sets a hurt limb right
   std::string icon = def.icon;
   p.eatId = held.id;
   if (--held.n <= 0) held.clear();

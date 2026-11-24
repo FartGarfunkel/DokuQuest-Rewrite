@@ -21,6 +21,7 @@ Player::Player() {
 
 float Player::heal(float n) { float before = hp; hp = std::min(maxHp, hp + n); return hp - before; }
 void Player::recalcMax() {
+  treeSanitise(*this);
   float m = 20 + 2 * std::min(10, heartCrystals) + 2 * charmBonus(*this, "hearts") + pathMaxHealthBonus(*this);   // (+ a Knight's two hearts)
   m = std::round((m + conHealth(*this) + treeAttr(*this, "health")) * (1 + talent(*this, "health")));   // (Constitution; the skill tree, sim/skilltree.h)
   if (m != maxHp) { maxHp = m; if (hp > m) hp = m; }
@@ -141,6 +142,7 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
     if (!flying) speed *= 0.35f;
   }
   if (slow > 0) speed *= 0.55f;
+  if (!flying && data.is_object() && data.value("hurtLeg", 0) != 0 && data.value("hurtLimbT", 0.f) > 0) speed *= 0.78f;
   if (atkMove && atkT < attackMove(atkMove).recovery) speed *= 0.35f;
   speed *= pathSpeedFactor(*this);   // Fleet Foot (sim/villager_quests.cpp)
   if (!flying) speed *= moveFactor(*this);   // Agility, speed talents, load (sim/balance.h)
@@ -205,12 +207,25 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   }
   if (mode == "spectator") flying = true;   // a spectator always flies, through anything
   if (flying) { vel.y = (inp.jump ? 7.5f : 0.f) - (inp.sneak ? 7.5f : 0.f); hasFallStart = false; }
-  // auto-jump (touch): walking into a one-block step
-  if (opts.autoJump && onGround && !inWater && (std::fabs(tx) + std::fabs(tz)) > 0.5f && speed > 0) {
+  // auto-jump (touch): a full step in front of you. Snow, carpets and other low shapes are
+  // already walked up by the step (0.6). Jumping at every one of them hops across a field.
+  if (opts.autoJump && onGround && !flying && !inWater && (std::fabs(tx) + std::fabs(tz)) > 0.5f && speed > 0) {
     float ahead = 0.45f, nx = pos.x + (tx / speed) * ahead, nz = pos.z + (tz / speed) * ahead;
-    int fy = ifloor(pos.y + 0.05f);
-    if (R.tSolid[wd.getBlockPhys(ifloor(nx), fy, ifloor(nz))] && !R.tSolid[wd.getBlockPhys(ifloor(nx), fy + 1, ifloor(nz))] && !R.tSolid[wd.getBlockPhys(ifloor(nx), fy + 2, ifloor(nz))]
-        && !R.tSolid[wd.getBlockPhys(ifloor(pos.x), fy + 2, ifloor(pos.z))]) vel.y = JUMP_V;
+    int fy = ifloor(pos.y + 0.05f), bx = ifloor(nx), bz = ifloor(nz);
+    BlockId stepId = wd.getBlockPhys(bx, fy, bz);
+    if (R.tSolid[stepId] && !R.tSolid[wd.getBlockPhys(bx, fy + 1, bz)] && !R.tSolid[wd.getBlockPhys(bx, fy + 2, bz)]
+        && !R.tSolid[wd.getBlockPhys(ifloor(pos.x), fy + 2, ifloor(pos.z))]) {
+      bool tall = true;
+      if (wd.getBlock(bx, fy, bz) == stepId) {
+        std::vector<BoxF> boxes;
+        if (blockShapeBoxes(wd, bx, fy, bz, SHAPE_COLLIDE, boxes)) {
+          float top = (float)fy;
+          for (const BoxF& b : boxes) top = std::max(top, b.hi.y);
+          tall = top - pos.y > 0.6f + stepBonus(*this) + 0.05f;
+        }
+      }
+      if (tall) vel.y = JUMP_V;
+    }
   }
   if (spikeOverlap(wd, *this)) { if (sneaking) vel.y = 0; else vel = vec3(0); }
   float ox = pos.x, oz = pos.z, vyBefore = vel.y;

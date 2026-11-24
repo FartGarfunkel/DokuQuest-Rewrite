@@ -44,7 +44,7 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
     const int y = c.H + 1, wx = bx + x, wz = bz + z;
     if (y >= DIM_H - 2) continue;
     const BlockId below = b.blocks[colIdx(x, y - 1, z)], here = b.blocks[colIdx(x, y, z)];
-    const double r = hashFloat(wx, wz, seed_, 9), r2 = hashFloat(wx, wz, seed_, 19);
+    const double r = hf(wx, wz, seed_, 9), r2 = hf(wx, wz, seed_, 19);
     // under water: sea grass, kelp, and coral in warm seas
     if (here == B.water && c.biome == BIOME_OCEAN) {
       const int depth = JS_SEA - c.h, depthB = SEA_LEVEL - c.H;
@@ -106,7 +106,7 @@ void OverworldGen::decorate(GenBuf& b, const OwColumn* cols, int cx, int cz) con
     } else if ((below == B.sand || below == B.coarse_dirt) && c.biome != BIOME_BEACH && c.biome != BIOME_OCEAN && r < 0.012 && r >= 0.006) {
       set(x, y, z, B.dead_bush);
     } else if (below == B.sand && c.biome == BIOME_DESERT && r < 0.006) {
-      int hgt = 1 + jsFloor(hashFloat(wx, wz, seed_, 10) * 3);
+      int hgt = 1 + jsFloor(hf(wx, wz, seed_, 10) * 3);
       bool ok = true;
       for (int d = 0; d < 4; d++) { int nx = x + (d == 0) - (d == 1), nz = z + (d == 2) - (d == 3); if (nx >= 0 && nx < 16 && nz >= 0 && nz < 16 && b.blocks[colIdx(nx, y, nz)] != AIR) ok = false; }
       if (ok) for (int k = 0; k < hgt; k++) set(x, y + k, z, B.cactus);
@@ -135,9 +135,22 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
     const int y = c.H + 1, wx = bx + x, wz = bz + z;
     if (y >= DIM_H - 3) continue;
     const int below = at(x, y - 1, z), here = at(x, y, z);
-    const double r = hashFloat(wx, wz, seed_, 41), r2 = hashFloat(wx, wz, seed_, 42);
+    const double r = hf(wx, wz, seed_, 41), r2 = hf(wx, wz, seed_, 42);
     const bool jungle = c.temp > 0.25 && c.humid > 0.3;
     const double patch = nDetail.noise2(wx / 22.0 + 7, wz / 22.0 - 3);
+    const bool sr = bf_ && bf_->ok();   // (terrain version 15: the land biomes' own plants instead of ours, gen/biome_features.h)
+    auto cattailBed = [&](int id) {
+      return id == B.sand || id == B.mud || id == B.dirt || id == B.clay || id == B.grass || id == B.gravel
+          || (B.coarse_dirt && id == B.coarse_dirt) || (B.peat && id == B.peat)
+          || (B.podzol && id == B.podzol) || (B.snowy_grass && id == B.snowy_grass) || (B.moss_block && id == B.moss_block);
+    };
+    // cattails in 1-deep shallows (even when biome features already ran on the shore)
+    if (here == B.water && cattailBed(below) && (y == SEA_LEVEL || y == SEA_LEVEL - 1)
+        && at(x, y + 1, z) != B.water && r < (sr ? 0.08 : 0.25)) {
+      set(x, y, z, B.cattail, WLOG);
+      if (at(x, y + 1, z) == 0) set(x, y + 1, z, B.cattail, 1);
+      continue;
+    }
     // the warm sea: sea pickles and coral fans
     if (here == B.water && c.biome == BIOME_OCEAN && c.temp > 0.3) {
       const int depth = JS_SEA - c.h;
@@ -161,7 +174,6 @@ void OverworldGen::decorate2(GenBuf& b, const OwColumn* cols, int cx, int cz) co
       if (r < 0.05) { set(x, y, z, r2 < 0.5 ? B.red_mushroom : B.brown_mushroom); continue; }
       continue;   // (no grass, flowers or stones on the mycelium)
     }
-    const bool sr = bf_ && bf_->ok();   // (terrain version 15: the land biomes' own plants instead of ours, gen/biome_features.h)
     // shore plants: cattails at the shallows' edge, marram grass on dunes
     if (!sr && (below == B.grass || below == B.mud || below == B.sand) && c.h <= JS_SEA + 1 && waterBeside(x, y - 1, z) && r < 0.25 && at(x, y + 1, z) == 0) { set(x, y, z, B.cattail, 0); set(x, y + 1, z, B.cattail, 1); continue; }
     if (!sr && (below == B.sand || below == B.silver_sand) && c.biome == BIOME_BEACH && r < 0.08) { set(x, y, z, B.marram_grass); continue; }

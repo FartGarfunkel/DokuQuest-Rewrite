@@ -243,7 +243,7 @@ bool gatherMeshInput(const World& w, const SectionKey& k, MeshInput& in) {
         int d = dimOfY(gy);
         const Chunk* vc = c;
         if (d != k.dim) { if (!otherDone[d]) { other[d] = w.chunk(d, k.cx + dx, k.cz + dz); otherDone[d] = true; } vc = other[d]; }
-        if (!vc) { in.ids[i] = AIR; in.light[i] = 0xF0; in.rgb[i] = fullSunRgb(); continue; }
+        if (!vc) { in.ids[i] = AIR; in.light[i] = 0; in.rgb[i] = LightRgb{}; continue; }
         int ly = gy & 255;
         const Section* s = vc->section(ly >> 4);
         if (!s) { in.ids[i] = AIR; in.light[i] = vc->airLight[ly >> 4]; in.rgb[i] = vc->airRgb[ly >> 4]; continue; }
@@ -373,14 +373,15 @@ static void emitPackModel(MeshCtx& c, std::vector<ChunkVertex>& dst, const PackM
 bool emitStationModelIn(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) {
   const StationModel* SM = stationModel(id);
   if (!SM) return false;
-  static const int DX[6] = {0, 1, 0, -1, 0, 0}, DZ[6] = {1, 0, -1, 0, 0, 0}, DY[6] = {0, 0, 0, 0, 1, 0};
-  LightRgb L = rgbAt(c, x, y + 1, z);
-  for (int k = 0; k < 6; k++) { const LightRgb Ls = rgbAt(c, x + DX[k], y + DY[k], z + DZ[k]); for (int i = 0; i < 3; i++) { L.s[i] = std::max(L.s[i], Ls.s[i]); L.b[i] = std::max(L.b[i], Ls.b[i]); } }
+  LightRgb L = aroundAirRgb(c, x, y, z);
   { u8 em[3]; blockLightRgb(id, c.R.metaLight(id, meta), em); for (int i = 0; i < 3; i++) if (em[i] > L.b[i]) L.b[i] = em[i]; }
   const float sk = (float)(max3u(L.s[0], L.s[1], L.s[2]) >> 4), bl = (float)(max3u(L.b[0], L.b[1], L.b[2]) >> 4);
   const int fd = SM->idx(meta);
   const bool shut = SM->closed && SM->closed->boxes.size() && !(meta & 0x20);   // (sim/chest_work.h LID_OPEN)
-  emitPackModel(c, dst, shut ? *SM->closed : SM->of(fd), vec3((float)x, (float)y, (float)z), SM->turn[fd], sk, bl, markRgbLit(packRgbLight(L)), Mat::Cutout | Mat::NoRelief);
+  MeshShapeNb nb(c, x, y, z);
+  int ox = 0, oy = 0, oz = 0;
+  restShift(id, nb, ox, oy, oz);
+  emitPackModel(c, dst, shut ? *SM->closed : SM->of(fd), vec3((float)x + ox / 16.f, (float)y + oy / 16.f, (float)z + oz / 16.f), SM->turn[fd], sk, bl, markRgbLit(packRgbLight(L)), Mat::Cutout | Mat::NoRelief);
   return true;
 }
 void emitCube(MeshCtx& c, GreedyMasks* gm, int pass, std::vector<ChunkVertex>& dst, BlockId id, int x, int y, int z, u8 meta) {
@@ -908,7 +909,7 @@ void buildSectionMesh(const MeshInput& in, MeshOutput& out, const MesherOptions&
             int j = 0; while (j < k && cand[j] != nb) j++; if (j == k) { cand[k] = nb; cn[k++] = 0; } cn[j]++;
           }
           BlockId host = 0; int best = 0; for (int j = 0; j < k; j++) if (cn[j] > best) { best = cn[j]; host = cand[j]; }
-          if (host && host != ores->baseOf(id)) {
+          if (host) {
             emitCube(c, gm, 0, out.opaque, host, x, y, z, 0);
             emitOreSpecks(c, out.cutout, id, x, y, z, sp);
             break;

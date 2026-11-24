@@ -4,6 +4,7 @@
 #include "sim/player.h"
 #include "sim/creature.h"
 #include "core/registry.h"
+#include "core/tool_parts.h"
 #include "sim/creature_rig.h"
 #include "world/shapes.h"
 #include "world/dims.h"
@@ -18,18 +19,18 @@ namespace {
 struct Loot { const char* id; int lo, hi; float chance; };
 // what each kind of adventurer carried (the ids not in this build are skipped)
 const std::vector<Loot>& lootFor(const std::string& kind) {
-  static const std::vector<Loot> traveller = {{"bread", 1, 3, 0.7f}, {"apple", 1, 3, 0.5f}, {"torch", 2, 6, 0.6f}, {"string", 1, 4, 0.4f}, {"arrow", 3, 9, 0.4f},
-                                              {"gold_coin", 2, 7, 0.6f}, {"compass", 1, 1, 0.12f}, {"empty_map", 1, 1, 0.15f}, {"iron_ingot", 1, 3, 0.3f}, {"leather", 1, 3, 0.3f}};
-  static const std::vector<Loot> desert = {{"gold_ingot", 1, 3, 0.5f}, {"gold_coin", 3, 10, 0.7f}, {"bone", 2, 5, 0.6f}, {"string", 1, 3, 0.4f},
-                                           {"emerald", 1, 2, 0.25f}, {"melon_slice", 1, 3, 0.3f}, {"potion_heal", 1, 1, 0.12f}, {"gunpowder", 1, 3, 0.3f}};
-  static const std::vector<Loot> snowy = {{"cooked_beef", 1, 3, 0.6f}, {"leather", 1, 4, 0.5f}, {"torch", 2, 6, 0.6f}, {"snowball", 2, 8, 0.4f},
-                                          {"iron_ingot", 1, 3, 0.4f}, {"packed_ice", 1, 4, 0.3f}, {"compass", 1, 1, 0.15f}, {"gold_coin", 2, 6, 0.5f}};
-  static const std::vector<Loot> jungle = {{"cocoa_beans", 1, 4, 0.6f}, {"glow_berries", 1, 4, 0.4f}, {"emerald", 1, 3, 0.35f}, {"gold_ingot", 1, 2, 0.3f},
-                                           {"arrow", 3, 10, 0.5f}, {"bow", 1, 1, 0.15f}, {"diamond", 1, 1, 0.06f}, {"gold_coin", 2, 8, 0.5f}};
-  static const std::vector<Loot> swamp = {{"bone", 2, 6, 0.7f}, {"rotten_flesh", 1, 4, 0.5f}, {"string", 1, 3, 0.4f}, {"potion_heal", 1, 1, 0.15f},
-                                          {"gold_coin", 1, 5, 0.5f}, {"lapis_lazuli", 2, 6, 0.3f}, {"candle", 1, 2, 0.3f}};
-  static const std::vector<Loot> miner = {{"coal", 3, 10, 0.7f}, {"torch", 4, 12, 0.7f}, {"iron_ingot", 1, 4, 0.5f}, {"gold_ingot", 1, 2, 0.3f},
-                                          {"lapis_lazuli", 2, 8, 0.35f}, {"diamond", 1, 2, 0.1f}, {"amethyst_shard", 1, 4, 0.3f}, {"bread", 1, 2, 0.4f}};
+  static const std::vector<Loot> traveller = {{"bread", 1, 3, 0.7f}, {"apple", 1, 2, 0.45f}, {"torch", 2, 5, 0.55f}, {"string", 1, 3, 0.35f}, {"arrow", 2, 6, 0.35f},
+                                              {"gold_coin", 1, 3, 0.35f}, {"leather", 1, 2, 0.25f}, {"stick", 1, 4, 0.3f}};
+  static const std::vector<Loot> desert = {{"gold_nugget", 2, 6, 0.45f}, {"gold_coin", 1, 4, 0.4f}, {"bone", 2, 5, 0.6f}, {"string", 1, 3, 0.4f},
+                                           {"melon_slice", 1, 2, 0.3f}, {"gunpowder", 1, 2, 0.22f}, {"bread", 1, 2, 0.3f}};
+  static const std::vector<Loot> snowy = {{"cooked_beef", 1, 2, 0.5f}, {"leather", 1, 3, 0.45f}, {"torch", 2, 5, 0.55f}, {"snowball", 2, 6, 0.4f},
+                                          {"coal", 1, 3, 0.3f}, {"packed_ice", 1, 3, 0.25f}, {"gold_coin", 1, 3, 0.3f}};
+  static const std::vector<Loot> jungle = {{"cocoa_beans", 1, 3, 0.55f}, {"glow_berries", 1, 3, 0.4f},
+                                           {"arrow", 2, 6, 0.4f}, {"gold_coin", 1, 3, 0.3f}, {"vine", 1, 3, 0.25f}, {"bread", 1, 2, 0.3f}};
+  static const std::vector<Loot> swamp = {{"bone", 2, 5, 0.65f}, {"rotten_flesh", 1, 3, 0.45f}, {"string", 1, 3, 0.4f},
+                                          {"gold_coin", 1, 3, 0.3f}, {"candle", 1, 2, 0.25f}, {"lily_pad", 1, 2, 0.2f}};
+  static const std::vector<Loot> miner = {{"coal", 2, 6, 0.7f}, {"torch", 3, 8, 0.65f}, {"copper_ingot", 1, 2, 0.35f},
+                                          {"bread", 1, 2, 0.4f}, {"string", 1, 3, 0.25f}, {"cobblestone", 2, 6, 0.35f}};
   if (kind == "desert") return desert;
   if (kind == "snowy") return snowy;
   if (kind == "jungle") return jungle;
@@ -39,7 +40,7 @@ const std::vector<Loot>& lootFor(const std::string& kind) {
 }
 // their worn-out gear: a tool or weapon now and then, well used
 const char* gearFor(const std::string& kind) {
-  return kind == "miner" ? "iron_pickaxe" : kind == "desert" ? "iron_sword" : kind == "snowy" ? "iron_axe" : kind == "jungle" ? "bow" : kind == "swamp" ? "stone_pickaxe" : "iron_sword";
+  return kind == "miner" ? "copper_pickaxe" : kind == "desert" ? "copper_sword" : kind == "snowy" ? "copper_axe" : kind == "jungle" ? "bow" : kind == "swamp" ? "stone_pickaxe" : "copper_sword";
 }
 u32 mix(u32 h) { h ^= h >> 16; h *= 0x7feb352d; h ^= h >> 15; h *= 0x846ca68b; h ^= h >> 16; return h; }
 }  // namespace
@@ -55,8 +56,11 @@ void fallenFill(World& w, int x, int y, int z, json& be) {
     items.push_back(json{{"id", l.id}, {"n", std::min(n, l.hi)}});
   }
   if (rnd() < 0.3f && (int)items.size() < 9) if (const ItemDef* gd = reg().item(gearFor(kind))) {   // their gear, worn
-    json g{{"id", gd->key}, {"n", 1}};
-    if (gd->hasTool && gd->tool.durability > 0) g["d"] = (int)(gd->tool.durability * (0.55f + 0.35f * rnd()));
+    ItemStack gs = proceduralOf(gd->key, 1);
+    json g = gs.toJson();
+    const int maxd = toolMaxDurability(gs);
+    if (maxd > 0) g["d"] = (int)(maxd * (0.55f + 0.35f * rnd()));
+    else if (gd->hasTool && gd->tool.durability > 0) g["d"] = (int)(gd->tool.durability * (0.55f + 0.35f * rnd()));
     items.push_back(g);
   }
   while ((int)items.size() < 9) items.push_back(nullptr);

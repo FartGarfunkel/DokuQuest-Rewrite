@@ -88,6 +88,115 @@ const VoxelModel* localPlayerArm() {
   return skinArmModel(*resolveCharacter(a.session->player->skin));
 }
 
+// turn the segment ra->rb onto wa->wb (lengths already matched)
+static mat4 swingAlign(vec3 ra, vec3 rb, vec3 wa, vec3 wb) {
+  const vec3 d0 = rb - ra, d1 = wb - wa;
+  const float l0 = glm::length(d0), l1 = glm::length(d1);
+  if (l0 < 1e-5f || l1 < 1e-5f) return glm::translate(mat4(1), wa - ra);
+  const vec3 a = d0 / l0, b = d1 / l1;
+  const vec3 axis = glm::cross(a, b);
+  const float s = glm::length(axis), c = glm::dot(a, b);
+  mat4 R(1);
+  if (s > 1e-5f) R = glm::rotate(mat4(1), std::atan2(s, c), axis / s);
+  else if (c < 0) {
+    vec3 up = glm::cross(a, vec3(0, 1, 0));
+    if (glm::length(up) < 1e-4f) up = glm::cross(a, vec3(1, 0, 0));
+    R = glm::rotate(mat4(1), 3.14159265f, glm::normalize(up));
+  }
+  return glm::translate(mat4(1), wa) * R * glm::translate(mat4(1), -ra);
+}
+
+void maceChainStep(MaceChain& c, vec3 anchor, const float* seg, int n, glm::dvec3 origin, double tnow) {
+  if (n <= 0 || !seg) return;
+  auto hang = [&] {
+    c.p.resize((size_t)n); c.prev.resize((size_t)n);
+    vec3 at = anchor;
+    for (int i = 0; i < n; i++) { at += vec3(0, -seg[i], 0); c.p[i] = c.prev[i] = at; }
+    c.anchor = anchor; c.vSmooth = vec3(0); c.origin = origin; c.t = tnow; c.acc = 0;
+  };
+  if (c.t < 0 || (int)c.p.size() != n || !std::isfinite(anchor.x + anchor.y + anchor.z)) { hang(); return; }
+  // the camera's block origin moved: keep the same world points so a walk across a cell is not a yank
+  if (origin != c.origin) {
+    const vec3 sh = vec3(c.origin - origin);
+    for (int i = 0; i < n; i++) { c.p[i] += sh; c.prev[i] += sh; }
+    c.anchor += sh;
+    c.origin = origin;
+  }
+  const vec3 delta = anchor - c.anchor;
+  if (glm::length(delta) > 2.f || tnow + 1e-4 < c.t) { hang(); return; }
+  c.acc = std::min(c.acc + (float)std::max(0.0, tnow - c.t), 0.25f);
+  c.t = tnow;
+  constexpr float STEP = 1.f / 120.f;
+  const int steps = (int)(c.acc / STEP);
+  if (steps <= 0) return;
+  c.acc -= steps * STEP;
+  const vec3 a0 = c.anchor;
+  c.anchor = anchor;
+  constexpr float G = 32.f, CAP = 16.f * STEP, TAU = 0.12f, MATCH = 3.5f;
+  const float follow = 1.f - std::exp(-STEP / TAU);
+  for (int s = 1; s <= steps; s++) {
+    const vec3 aPrev = a0 + delta * ((float)(s - 1) / (float)steps);
+    const vec3 a = a0 + delta * ((float)s / (float)steps);
+    const vec3 stepD = a - aPrev;
+    const vec3 vInst = stepD / STEP;
+    const float mismatch = glm::length(vInst - c.vSmooth);
+    const float k = std::exp(-(mismatch * mismatch) / (MATCH * MATCH));
+    const vec3 carry = stepD * k;
+    c.vSmooth += (vInst - c.vSmooth) * follow;
+    for (int i = 0; i < n; i++) { c.p[i] += carry; c.prev[i] += carry; }
+    for (int i = 0; i < n; i++) {
+      const float damp = i + 1 == n ? 0.985f : 0.97f;
+      vec3 vel = (c.p[i] - c.prev[i]) * damp;
+      if (glm::length(vel) > CAP) vel = glm::normalize(vel) * CAP;
+      c.prev[i] = c.p[i];
+      c.p[i] += vel;
+      c.p[i].y -= G * STEP * STEP;
+    }
+    for (int it = 0; it < 8; it++) {
+      vec3 from = a;
+      for (int i = 0; i < n; i++) {
+        vec3 d = c.p[i] - from;
+        const float L = glm::length(d);
+        c.p[i] = L > 1e-5f ? from + d * (seg[i] / L) : from + vec3(0, -seg[i], 0);
+        from = c.p[i];
+      }
+    }
+  }
+}
+
+bool drawSwingingMace(const VoxelModel& im, const mat4& placed, VoxelLight light, vec4 tint, float glint) {
+  if (!im.haftGl.ready() || im.loose.empty()) return false;
+  const int n = (int)im.loose.size();
+  for (int i = 0; i < n; i++) if (!im.loose[i].gl || !im.loose[i].gl->ready()) return false;
+  voxelRenderer().draw(im.haftGl, placed * im.haftFrame.matrix(), light, tint, glint);
+  std::vector<float> seg(n);
+  for (int i = 0; i < n; i++) {
+    const vec3 ra = vec3(placed * vec4(im.loose[i].a, 1)), rb = vec3(placed * vec4(im.loose[i].b, 1));
+    seg[i] = std::max(0.02f, glm::length(rb - ra));
+  }
+  const vec3 anchor = vec3(placed * vec4(im.loose[0].a, 1));
+  struct Slot { const void* key; MaceChain c; };
+  static std::vector<Slot> C;
+  const double tnow = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+  glm::dvec3 origin{0};
+  if (App& A = app(); A.session) origin = A.session->frame.cam.origin;
+  Slot* me = nullptr;
+  for (auto& q : C) if (q.key == &im && tnow - q.c.t < 0.5) { me = &q; break; }
+  if (!me) {
+    C.erase(std::remove_if(C.begin(), C.end(), [&](const Slot& q) { return tnow - q.c.t > 1.0; }), C.end());
+    C.push_back({&im, MaceChain{}});
+    me = &C.back();
+  }
+  maceChainStep(me->c, anchor, seg.data(), n, origin, tnow);
+  vec3 from = anchor;
+  for (int i = 0; i < n; i++) {
+    const vec3 ra = vec3(placed * vec4(im.loose[i].a, 1)), rb = vec3(placed * vec4(im.loose[i].b, 1));
+    voxelRenderer().draw(*im.loose[i].gl, swingAlign(ra, rb, from, me->c.p[i]) * placed * im.haftFrame.matrix(), light, tint, glint);
+    from = me->c.p[i];
+  }
+  return true;
+}
+
 namespace {
 float clampf(float v, float a, float b) { return v < a ? a : v > b ? b : v; }
 float turnTo(float a, float b, float k) { return a + wrapAngle(b - a) * std::min(1.f, k); }
@@ -264,6 +373,10 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
     hm = glm::scale(hm, vec3((1 + T[2]) / CHAR_PX)) * heldMat(id);
   }
   (void)side;
+  if ((id.find("mace") != std::string::npos || modelKey.rfind("pt:mace", 0) == 0) && drawSwingingMace(im, hm, light, tint, glint ? 1.f : 0.f)) {
+    if (headOut) *headOut = vec3(hm * vec4(0, 0.15f, 0, 1));
+    return;
+  }
   if (headOut) *headOut = vec3(hm * vec4(0, 0.15f, 0, 1));   // (a torch's head, where its flame burns: render/held_light_fx.cpp)
   if (rodOwner && (id == "fishing_rod_tp" || id == "fishing_rod_cast")) setRodTip(rodOwner, camPos + glm::dvec3(hm * vec4(0.47f, 0.47f, 0, 1)), now);
   if (g_dials && isInstrument(id) && im.kind != VoxelModel::Block) g_dials->push_back({id, hm, vec2(light.sky, light.block)});
@@ -422,6 +535,8 @@ void CharacterLayer::update(GameSession& s, double dt) {
       v = vec3(v.x * c + v.z * sn, v.y, -v.x * sn + v.z * c);
       st.vel = v;
     }
+    // sitting a boat, a cart, or a mount: that speed is the vehicle's, not a stride
+    if (p->riding && (devPose.empty() || p != s.player)) { v.x = v.z = 0; st.vel.x = st.vel.z = 0; }
     float hs = std::hypot(v.x, v.z);
     bool ground = e->onGround || (!devPose.empty() && p == s.player && devPose != "fly");
     st.bobAmt += ((ground ? std::min(1.f, hs / 4.3f) : 0.f) - st.bobAmt) * std::min(1.f, fdt * 8);
@@ -478,6 +593,7 @@ void CharacterLayer::update(GameSession& s, double dt) {
     // weapon combos: a swing begun within 0.8 s of the last is the next of the chain (the combo window)
     if (p->swingT > 0 && (st.lastSwing <= 0 || p->swingT < st.lastSwing - 0.05f)) {
       st.swingN = time - st.swingAt < 0.8 ? (u8)((st.swingN + 1) % 3) : 0; st.swingAt = time; st.swingU = 0.0001f;
+      st.throwArm = p->throwArm; if (p->throwArm) p->throwArm = 0;   // the throw that started this swing (the arm that let it go)
     }
     st.lastSwing = p->swingT;
     {   // getting into bed and out again (bedFrame above): the bed found under them when they lie down
@@ -524,7 +640,7 @@ void CharacterLayer::update(GameSession& s, double dt) {
     }
     // a cut runs on its own clock (WEAPON_SWING_T): the blow lands as fast as the arm's swing, the follow-through is held
     // a moment and the pose given back after (the game's swing timer is shorter)
-    if (st.swingU > 0 && (st.swingU += fdt / 0.5f) >= 1) st.swingU = 0;
+    if (st.swingU > 0 && (st.swingU += fdt / (st.throwArm ? 0.40f : 0.50f)) >= 1) { st.swingU = 0; st.throwArm = 0; }   // a throw is a short overhand (~0.4 s)
     if (st.hurtT > 1) st.hurtT = 0;
     st.lastHurt = p->hurtTime;
     const bool inAir = !e->onGround && !e->inWater && !p->flying;
@@ -543,7 +659,11 @@ void CharacterLayer::update(GameSession& s, double dt) {
         { const float rate = 0.9f + 1.1f * hs, d = rate * fdt; st.climbY = st.climbY > 0 ? std::max(0.f, st.climbY - d) : std::min(0.f, st.climbY + d); }   // (a steady rise, as the view's)
         st.lastY = e->pos.y; st.haveY = true;
       }
-      if (e->onGround && hs < 6.f && !p->swimming && !p->riding && !p->sleeping && !p->dead) {
+      // on a deck the world under the feet is water, so the planter was dropping the legs through the hold
+      bool onDeck = false;
+      if (VehicleSystem* vs = vehicleSystem(*s.level)) onDeck = vs->ps(p->id).aboard != 0;
+      if (onDeck) wl = wr = 0;
+      else if (e->onGround && hs < 6.f && !p->swimming && !p->riding && !p->sleeping && !p->dead) {
         if ((st.footT -= fdt) <= 0) {
           st.footT = hs > 0.5f ? 0.04f : 0.12f;
           const float c = std::cos(st.bodyYaw), sn = std::sin(st.bodyYaw);
@@ -772,6 +892,10 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.bow = p.bowPull; ps.eat = p.eatT; ps.scope = p.scoping;
   ps.gui = (p.activity & (Player::ACT_SCREEN | Player::ACT_TYPING)) && !p.riding && !p.sleeping; ps.doze = (p.activity & Player::ACT_DOZE) && !ps.gui && !p.sleeping;   // render/activity_layer.cpp
   ps.hurt = st.hurtT; ps.airLeft = st.airLeft; ps.backward = st.backward && !p.sneaking;
+  if (p.data.is_object() && p.data.value("hurtLimbT", 0.f) > 0) {
+    ps.hurtLeg = (i8)p.data.value("hurtLeg", 0);
+    ps.hurtArm = (i8)p.data.value("hurtArm", 0);
+  }
   if (ps.eat > 0) {   // a potion, a bottle, a mug, milk: drunk, not eaten
     ps.drink = isDrinkItem(p.eatT > 0 && !p.eatId.empty() ? p.eatId : wear.held);
   }
@@ -785,8 +909,36 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.hasBodyYaw = true; ps.bodyYaw = st.bodyYaw + devTurn; ps.headTurn = wrapAngle(p.yaw - st.bodyYaw); ps.legTurn = st.legTurn;
   // the shield up, a dodge roll (sim/combat_rpg.h): the roll turns the body the way it goes (back to it on a step back)
   ps.block = st.block; ps.blockMain = isShieldItem(wear.held); ps.guardHit = st.guardHit;
+  if (const ItemDef* hd = reg().item(wear.held)) {
+    ps.twoHand = hd->num("hands") >= 2.f;
+    ps.pick = hd->hasTool && hd->tool.type == "pickaxe";
+    const std::string tk = hd->hasTool ? hd->tool.type : "", ms = hd->str("moveset");
+    ps.greatsword = ps.twoHand && (tk == "greatsword" || ms == "greatsword" || wear.held.find("greatsword") != std::string::npos);
+  }
+  {   // a blade in each hand, and neither is a two-handed weapon
+    auto blade = [](const std::string& id) {
+      if (id.empty() || isShieldItem(id)) return false;
+      const ItemDef* d = reg().item(id);
+      if (d && d->hasTool) {
+        const std::string t = d->tool.type;
+        if (t == "sword" || t == "axe" || t == "mace" || t == "dagger" || t == "spear" || t == "greatsword") return true;
+      }
+      return id.find("sword") != std::string::npos || id.find("mace") != std::string::npos || id.find("dagger") != std::string::npos;
+    };
+    ps.dual = !ps.twoHand && blade(wear.held) && blade(wear.off);
+  }
   ps.shieldArm = ps.blockMain ? -1 : isShieldItem(wear.off) ? 1 : 0;
   if (!wear.strap.empty()) { ps.blockMain = wear.strapRight; ps.shieldArm = wear.strapRight ? -1 : 1; }
+  ps.bladeGuard = ps.shieldArm == 0 && (ps.twoHand || ps.dual || [&] {
+    const std::string& id = wear.held;
+    if (id.empty() || isShieldItem(id)) return false;
+    const ItemDef* d = reg().item(id);
+    if (d && d->hasTool) {
+      const std::string t = d->tool.type;
+      if (t == "sword" || t == "axe" || t == "mace" || t == "dagger" || t == "spear" || t == "greatsword") return true;
+    }
+    return id.find("sword") != std::string::npos || id.find("mace") != std::string::npos || id.find("dagger") != std::string::npos;
+  }());
   if (st.rollU > 0 && !fp && !p.dead && !p.riding && !p.swimming) {
     ps.roll = st.rollU; ps.rollBack = st.rollBack;
     ps.bodyYaw = st.rollYaw + (st.rollBack ? PI : 0.f) + devTurn; ps.headTurn = 0; ps.legTurn = 0; ps.air = false;
@@ -944,8 +1096,10 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   if (&p == s.player && devAttackPose(devMove, devT)) { ps.atkMove = devMove; ps.atkT = devT; ps.swing = 0; ps.swingKind = 0; if (!fp) { ps.bodyYaw = p.yaw; ps.hasBodyYaw = true; } }
   else if (p.atkMove && p.atkT < attackMove(p.atkMove).len) {   // an attack move (sim/attack_moves.h, the rules' own clock): drawn from its keys, the body turned to the blow
     ps.atkMove = p.atkMove; ps.atkT = p.atkT; ps.atkOff = p.atkOff; ps.swing = 0; ps.swingKind = 0;
+    ps.headPitch = p.atkPitch;   // the drawn cut uses the frozen look, same as the blade's hit (sim/combat.cpp)
     if (!fp) { ps.bodyYaw = p.atkYaw; ps.hasBodyYaw = true; }
-  } else if (st.swingU > 0 && ps.armed && !isShieldItem(wear.held) && !p.swinging) { ps.swingKind = (u8)(1 + st.swingN); ps.swing = st.swingU; }
+  } else if (st.swingU > 0 && st.throwArm && !p.swinging) { ps.swingKind = st.throwArm == 2 ? (u8)5 : (u8)4; ps.swing = st.swingU; }
+  else if (st.swingU > 0 && ps.armed && !isShieldItem(wear.held) && !p.swinging) { ps.swingKind = (u8)(1 + st.swingN); ps.swing = st.swingU; }
   {   // a spell held up in a free hand after a cast (render/spell_hands.h)
     float rdy[2], thr[2]; spellHandPose(p.id, rdy, thr);
     auto freeHand = [&](const std::string& it) { const ItemDef* d = it.empty() ? nullptr : reg().item(it); return it.empty() || (d && d->props.contains("staff")); };
@@ -1226,10 +1380,12 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
       heldInHand(gripTurn(R.part[CP_ARMR_D], R.toolR), wear.held, 1.f, light, tint, wear.heldGlint, wear.rodOwner, o.time, o.camPos, wear.heldModel, fp ? &head : nullptr, fp && !ps.atkMove ? fpYawV : nullptr);
       if (fp) { HeldItemLayer::torchTip[0] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[0] = true; }   // (your own torch's flame, at its head)
     }
-    if (!wear.strap.empty() && (wear.strapRight ? mainOn : offOn) && !bowDraw)   // the shield slot's, strapped on the free forearm
+    // a two-handed block puts the off forearm on the haft: the strap stays off it, and an off-hand shield is not raised there
+    const bool twoHandBlock = ps.twoHand && ps.block > 0;
+    if (!wear.strap.empty() && (wear.strapRight ? mainOn : offOn) && !bowDraw && !twoHandBlock)
       shieldInHand(R, wear.strapRight ? CP_ARMR_D : CP_ARML_D, wear.strap, wear.strapRight ? 1.f : -1.f, ps.block, light, tint, false);
     if (!offOn || bowDraw) {}
-    else if (!wear.off.empty() && isShieldItem(wear.off)) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
+    else if (!wear.off.empty() && isShieldItem(wear.off) && !twoHandBlock) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
     else if (!wear.off.empty()) {
       vec3 head;
       heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, 0, glm::dvec3(0), wear.offModel, fp ? &head : nullptr, fp ? fpYawV : nullptr);

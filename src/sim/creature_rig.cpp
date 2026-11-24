@@ -6,6 +6,7 @@
 #include "sim/creature_rig.h"
 #include "sim/hallow.h"
 #include "sim/creature_entities.h"
+#include "sim/attack_moves.h"
 #include "core/registry.h"
 
 namespace dq {
@@ -117,7 +118,12 @@ static void animBiped(Creature& m, const RigModel& d, Pose& P) {
     const float u = 1 - m.landT / 0.18f, k = std::sin(std::min(1.f, u * 1.5f) * PI) * (1 - u * 0.3f) * m.life.landK; P.lift -= 0.09f * k;   // (a squash, with a little rebound, as hard as the drop)
     P.at("legL").x += 0.5f * k; P.at("legR").x += 0.5f * k; P.at("shinL").x -= 1.0f * k; P.at("shinR").x -= 1.0f * k; P.at("body").x -= 0.25f * k;
   }
-  float sw = m.swingT > 0 ? std::sin(m.swingT / 0.3f * PI) : 0;
+  float sw = 0;
+  if (m.atkMove && m.atkMove < MV_COUNT) {
+    const AttackMove& mv = attackMove(m.atkMove);
+    const float hit = std::max(mv.hitTo, 0.05f);
+    sw = std::sin(std::clamp(m.atkT / hit, 0.f, 1.f) * PI);
+  } else if (m.swingT > 0) sw = std::sin(std::min(1.f, m.swingT / 0.3f) * PI);
   // the arms come up only while it hunts you (eased in at 1.6/s, down at 2/s), and point where it looks
   {
     const bool hunting = d.armsReach && m.T->hostile && !m.calm && (m.sees || m.huntT > 0 || m.alertT > 0 || m.swingT > 0);
@@ -137,6 +143,16 @@ static void animBiped(Creature& m, const RigModel& d, Pose& P) {
     P.set("armL", {1.52f, 0.1f, 0}); P.set("foreL", {0.04f, 0, 0}); P.set("armR", {1.45f, -0.45f - 0.25f * dk, 0}); P.set("foreR", {0.1f + 0.15f * dk, 0, -1.1f * dk});
   } else if (sw) {
     vec3 ar = P.at("armR"); P.set("armR", {ar.x + sw * 1.9f, -sw * 0.25f, 0}); P.set("foreR", {0.25f + sw * 0.5f, 0, 0}); P.at("body").y -= sw * 0.25f;
+  }
+  if (m.atkMove && m.atkMove < MV_COUNT) {
+    const AttackMove& mv = attackMove(m.atkMove);
+    const float wind = mv.hitFrom > 1e-4f ? std::clamp(m.atkT / mv.hitFrom, 0.f, 1.f) : 1.f;
+    const float chop = m.atkT <= mv.hitFrom ? 0.f : std::clamp((m.atkT - mv.hitFrom) / std::max(mv.len - mv.hitFrom, 0.05f), 0.f, 1.f);
+    const float back = (1.f - chop) * wind, through = chop;
+    P.set("armR", {0.35f + back * 1.55f - through * 1.05f, back * 0.4f - through * 0.5f, back * 0.6f - through * 1.15f});
+    P.set("foreR", {0.12f + through * 0.85f, 0, -through * 0.45f});
+    P.at("body").y -= through * 0.28f;
+    P.at("body").x -= m.atkPitch * 0.45f;
   }
   if (m.attack.on && m.state == "tele") {
     float k = m.attack.progress;
@@ -811,6 +827,34 @@ int rigHitPart(const Creature& m, const RigModel& M, vec3 o, vec3 d, float* outT
   if (outT && best >= 0) *outT = bt;
   return best;
 }
+int rigSegHitPart(const Creature& m, const RigModel& M, vec3 a, vec3 b, float r) {
+  int best = -1; float bestU = 2.f;
+  const vec3 d = b - a;
+  const float len2 = glm::dot(d, d);
+  for (size_t i = 0; i < M.parts.size() && i < m.mats.size(); i++) {
+    if (!rigPartPosed(m, (int)i)) continue;
+    const mat4 inv = glm::inverse(m.mats[i]);
+    const vec3 lo = vec3(inv * vec4(a - m.pos, 1)), hi = vec3(inv * vec4(b - m.pos, 1));
+    const RigPart& p = M.parts[i];
+    const vec3 ext = p.max - p.min, pad = glm::max(vec3(0.02f), (vec3(0.16f) - ext) * 0.5f) + vec3(r);
+    vec3 boxLo = p.min - pad, boxHi = p.max + pad;
+    const vec3 sd = hi - lo;
+    float t0 = 0, t1 = 1;
+    bool miss = false;
+    for (int ax = 0; ax < 3; ax++) {
+      if (std::fabs(sd[ax]) < 1e-8f) { if (lo[ax] < boxLo[ax] || lo[ax] > boxHi[ax]) { miss = true; break; } continue; }
+      float ta = (boxLo[ax] - lo[ax]) / sd[ax], tb = (boxHi[ax] - lo[ax]) / sd[ax];
+      if (ta > tb) std::swap(ta, tb);
+      t0 = std::max(t0, ta); t1 = std::min(t1, tb);
+      if (t0 > t1) { miss = true; break; }
+    }
+    if (miss) continue;
+    const float u = clampv(t0, 0.f, 1.f);
+    if (u < bestU) { bestU = u; best = (int)i; }
+  }
+  (void)len2;
+  return best;
+}
 int rigLimbPart(const RigModel& M, int part) {
   int cur = part;
   for (int guard = 0; cur >= 0 && guard < 16; guard++) {
@@ -823,7 +867,9 @@ int rigLimbPart(const RigModel& M, int part) {
 
 // ------------------------------------------------------------------ dismember.js
 static float severChance(const std::string& k) {
-  if (k == "axe") return 0.3f; if (k == "sword") return 0.2f; if (k == "arrow") return 0.12f; if (k == "explosion") return 0.35f;
+  if (k == "axe") return 0.3f; if (k == "sword") return 0.2f; if (k == "greatsword") return 0.28f;
+  if (k == "mace") return 0.22f; if (k == "spear") return 0.14f; if (k == "dagger") return 0.16f;
+  if (k == "arrow") return 0.12f; if (k == "explosion") return 0.35f;
   if (k == "trident") return 0.16f; if (k == "hoe") return 0.08f; if (k == "pickaxe") return 0.06f; if (k == "shovel") return 0.04f;
   return 0;
 }
@@ -855,12 +901,15 @@ void Creature::tryDismember(Level& lv, const DamageSrc& src, float dealt) {
   if (!M || M->rig.empty()) return;
   rigPose(*this, *M, creatureBase(*this, false));   // the pose right now
   int pi = -1;
-  if (src.hasRay) pi = rigHitPart(*this, *M, src.rayO, src.rayD);
+  if (src.hitPart >= 0 && src.hitPart < (int)M->parts.size() && rigPartPosed(*this, src.hitPart))
+    pi = src.hitPart;
+  else if (src.hasRay) pi = rigHitPart(*this, *M, src.rayO, src.rayD);
   if (pi >= 0) {
     int limb = rigLimbPart(*M, pi);
     if (limb < 0) return;   // the torso: a body hit does not tear off some other limb
     pi = limb;
   } else {
+    if (src.hitPart >= 0) return;   // the blade named a part that is gone now: do not roll another limb
     std::vector<int> limbs; for (size_t i = 0; i < M->parts.size(); i++) if (!M->parts[i].limb.empty() && rigPartPosed(*this, (int)i)) limbs.push_back((int)i);
     if (limbs.empty()) return;
     pi = limbs[(size_t)(frand() * limbs.size()) % limbs.size()];
@@ -869,7 +918,13 @@ void Creature::tryDismember(Level& lv, const DamageSrc& src, float dealt) {
   ch *= clampv(dealt / 4, 0.5f, 1.6f) * T->j.value("sever", 1.f);
   if (part.limb == "head") { if (hp > maxHp * 0.4f) return; ch *= 0.5f; }
   if (lost.size() >= 4) return;
-  if (frand() > ch) return;
+  if (frand() > ch) {
+    if ((part.limb == "wingR" || part.limb == "wingL") && lost.find(part.limb) == lost.end()) {
+      data["wingHurt"] = part.limb;
+      data["wingHurtUntil"] = age + 12.0;
+    }
+    return;
+  }
   sever(lv, *this, *M, pi, src);
 }
 

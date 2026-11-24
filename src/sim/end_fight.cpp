@@ -19,6 +19,13 @@ static int fountainY(Level& lv) { const EndGen* g = endGen(lv); return dimBase(D
 static bool rulesOn(Level& lv, const char* k) { const json& R = lv.info.rules; return !(R.is_object() && R.contains(k) && R[k] == false); }
 
 // ------------------------------------------------------------------ endermen
+static void enderArrive(Level& lv, Creature& e, int x, int y, int z) {
+  lv.fx->particles("end_mote", e.pos + vec3(0, 1.4f, 0), 14, json{{"speed", 0.8f}, {"grav", 0}, {"spread", 0.6f}});
+  lv.fx->sound("ender_tp", e.pos + vec3(0, 1.5f, 0), 24);
+  e.pos = e.prevPos = vec3(x + 0.5f, y, z + 0.5f); e.vel = vec3(0);
+  lv.fx->particles("end_mote", e.pos + vec3(0, 1.4f, 0), 14, json{{"speed", 0.8f}, {"grav", 0}, {"spread", 0.6f}});
+  lv.fx->sound("ender_tp", e.pos + vec3(0, 1.5f, 0), 24);
+}
 // a blink: somewhere around (cx, cz), within r, on solid ground with room to stand
 static bool enderBlink(Level& lv, Creature& e, float cx, float cz, float r, bool near) {
   World& w = lv.world(e.realm);
@@ -29,26 +36,69 @@ static bool enderBlink(Level& lv, Creature& e, float cx, float cz, float r, bool
     for (int y = ifloor(e.pos.y) + 6; y >= ifloor(e.pos.y) - 8; y--) {
       if (solid(w.getBlock(x, y - 1, z)) && !solid(w.getBlock(x, y, z)) && !solid(w.getBlock(x, y + 1, z)) && !solid(w.getBlock(x, y + 2, z)) &&
           !liquid(w.getBlock(x, y, z)) && !liquid(w.getBlock(x, y - 1, z))) {
-        lv.fx->particles("end_mote", e.pos + vec3(0, 1.4f, 0), 14, json{{"speed", 0.8f}, {"grav", 0}, {"spread", 0.6f}});
-        lv.fx->sound("ender_tp", e.pos + vec3(0, 1.5f, 0), 24);
-        e.pos = e.prevPos = vec3(x + 0.5f, y, z + 0.5f); e.vel = vec3(0);
-        lv.fx->particles("end_mote", e.pos + vec3(0, 1.4f, 0), 14, json{{"speed", 0.8f}, {"grav", 0}, {"spread", 0.6f}});
-        lv.fx->sound("ender_tp", e.pos + vec3(0, 1.5f, 0), 24);
+        enderArrive(lv, e, x, y, z);
         return true;
       }
     }
   }
   return false;
 }
+// three blocks of air on solid ground, under a roof. Water is not cover: it burns them too.
+bool enderCoveredAt(World& w, int x, int feetY, int z) {
+  if (!inWorldY(feetY) || !inWorldY(feetY + 2)) return false;
+  if (!w.isLoaded(x, feetY, z)) return false;
+  if (!solid(w.getBlock(x, feetY - 1, z))) return false;
+  if (solid(w.getBlock(x, feetY, z)) || solid(w.getBlock(x, feetY + 1, z)) || solid(w.getBlock(x, feetY + 2, z))) return false;
+  if (liquid(w.getBlock(x, feetY, z)) || liquid(w.getBlock(x, feetY - 1, z))) return false;
+  return !w.openToSky(x, feetY, z);
+}
+bool enderNearestCover(World& w, int x0, int feetY, int z0, int radius, int& ox, int& oy, int& oz) {
+  bool found = false; int best = 1 << 30;
+  for (int r = 0; r <= radius; r++) for (int dz = -r; dz <= r; dz++) for (int dx = -r; dx <= r; dx++) {
+    if (std::max(std::abs(dx), std::abs(dz)) != r) continue;
+    const int x = x0 + dx, z = z0 + dz, dist = dx * dx + dz * dz;
+    if (dist == 0 || dist >= best) continue;
+    for (int y = feetY + 4; y >= feetY - 6; y--) {
+      if (!enderCoveredAt(w, x, y, z)) continue;
+      best = dist; ox = x; oy = y; oz = z; found = true;
+      break;
+    }
+  }
+  return found;
+}
 
 static OptMove endermanAI(Level& lv, Creature& m, Entity* p, float dist, float dyp, float toPlayer, float dt) {
   EndStory* S = endStory(lv); if (!S) return std::nullopt;
   Mem& M = S->mem(m);
   m.voiceTick(lv, dt, dist, 7, 10);
-  // water burns: off it goes
-  bool wet = m.inWater;
-  if (!wet && dimHere(m) == DIM_OVERWORLD) if (WeatherSystem* W = weatherOf(lv); W && W->rain > 0.3f && m.light(lv, 2.5f).x >= 12) wet = true;
-  if (wet && (M.wetCd -= dt) <= 0) { M.wetCd = 0.7f; DamageSrc s; s.type = "drown"; m.hurt(lv, 1, s); if (!m.alive()) return Move{0, m.yaw}; enderBlink(lv, m, m.pos.x, m.pos.z, 18, false); }
+  // water burns, and so does rain in the open. A roof is shade: blink to the nearest one, and walk there if the blink misses.
+  World& ww = lv.world(m.realm);
+  bool storm = false, openRain = false;
+  if (!m.inWater && dimHere(m) == DIM_OVERWORLD) if (WeatherSystem* W = weatherOf(lv); W && W->rain > 0.3f && W->precipAt(ww, m.pos.x, m.pos.y + 2.5f, m.pos.z) == 1) {
+    storm = true;
+    openRain = m.light(lv, 2.5f).x >= 12;
+  }
+  if (!storm) M.hasCover = false;
+  if (openRain) {
+    if ((M.coverT -= dt) <= 0) {
+      M.coverT = 0.45f;
+      int ox, oy, oz;
+      if (enderNearestCover(ww, ifloor(m.pos.x), ifloor(m.pos.y), ifloor(m.pos.z), 10, ox, oy, oz)) {
+        M.hasCover = true; M.coverX = ox; M.coverZ = oz;
+        enderArrive(lv, m, ox, oy, oz);
+        return Move{0, m.yaw};
+      }
+    }
+  }
+  bool wet = m.inWater || openRain;
+  if (wet && (M.wetCd -= dt) <= 0) {
+    M.wetCd = 0.7f; DamageSrc s; s.type = "drown"; m.hurt(lv, 1, s); if (!m.alive()) return Move{0, m.yaw};
+    if (!openRain || !M.hasCover) enderBlink(lv, m, m.pos.x, m.pos.z, 18, false);
+  }
+  if (openRain && M.hasCover) {
+    const float ang = std::atan2(m.pos.x - (M.coverX + 0.5f), m.pos.z - (M.coverZ + 0.5f));
+    return Move{m.T->speed * 1.4f, ang};
+  }
   // looked in the eye
   auto* P = dynamic_cast<Player*>(p);
   if (P && !(m.angryT > 0) && dist < 48) {
@@ -76,7 +126,7 @@ static OptMove endermanAI(Level& lv, Creature& m, Entity* p, float dist, float d
   // otherwise: an aimless amble, now and then a blink
   if ((m.wanderT -= dt) <= 0) {
     m.wanderT = 3 + rnd() * 6; m.wanderDir = rnd() * TAU; m.wanderOn = rnd() < 0.55f;
-    if (rnd() < 0.05f) enderBlink(lv, m, m.pos.x, m.pos.z, 14, false);
+    if (!storm && rnd() < 0.05f) enderBlink(lv, m, m.pos.x, m.pos.z, 14, false);
   }
   return Move{m.wanderOn ? m.T->speed * 0.3f : 0, m.wanderDir};
 }
@@ -162,12 +212,11 @@ static OptMove enderDragonAI(Level& lv, Creature& m, Entity*, float, float, floa
     else {
       float d3 = glm::distance(p->pos + vec3(0, 1, 0), m.pos);
       m.flyVy = clampf((p->pos.y + 0.8f - m.pos.y) * 2.5f, -12, 9);
-      if (d3 < 3.5f + m.w && m.attackCd <= 0) {
-        m.attackCd = 1.4f; m.swingT = 0.3f;
-        hurtPawn(lv, *p, T.damage, &m, "mob", 9);
-        p->vel.y = std::max(p->vel.y, 7.f);
-        lv.fx->sound("dragon_bite", m.pos + vec3(0, 1, 0), 60);
-        m.state = "climb"; M.stT = 1.8f;
+      if (d3 < 3.6f + m.w || m.data.value("biteT", -1.f) >= 0) {
+        if (dragonSnap(lv, m, *p, dt, T.damage, 9)) {
+          if (d3 < 3.6f + m.w) p->vel.y = std::max(p->vel.y, 7.f);
+          m.state = "climb"; M.stT = 1.8f;
+        }
       }
       if (M.stT <= 0) { m.state = "climb"; M.stT = 1.5f; }
       return Move{T.speed * 3.2f, toPlayer};
@@ -189,7 +238,8 @@ static OptMove enderDragonAI(Level& lv, Creature& m, Entity*, float, float, floa
     m.pos.x += (px - m.pos.x) * k; m.pos.z += (pz - m.pos.z) * k; m.flyVy = clampf((py - m.pos.y) * 3, -3, 3); m.hoverT = 0.5f;
     if (p) {
       dragonFace(m, p->pos.x, p->pos.z, dt, 2.5f);
-      if (dist < 5 + m.w && std::fabs(dyp) < 4 && m.attackCd <= 0) { m.attackCd = 1.5f; m.swingT = 0.3f; hurtPawn(lv, *p, T.damage * 0.8f, &m, "mob", 7); lv.fx->sound("dragon_bite", m.pos + vec3(0, 1, 0), 50); }
+      if ((dist < 5 + m.w && std::fabs(dyp) < 4) || m.data.value("biteT", -1.f) >= 0)
+        dragonSnap(lv, m, *p, dt, T.damage * 0.8f, 7);
       if (dist < 22 && !(m.breathT > 0) && (M.pbT -= dt) <= 0) { M.pbT = 4 + rnd() * 2; m.breathT = 2; lv.fx->sound("dragon_breath", m.pos + vec3(0, 2, 0), 60); }
       if (m.breathT > 0) { m.breathT -= dt; dragonBreath(lv, m, *p, dt); }
     }

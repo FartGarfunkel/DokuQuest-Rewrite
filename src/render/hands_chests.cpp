@@ -13,6 +13,7 @@
 #include "sim/hands.h"
 #include "sim/chest_work.h"
 #include "sim/physics.h"
+#include "world/shapes.h"
 #include "core/registry.h"
 #include "world/world.h"
 #include <imgui.h>
@@ -28,7 +29,8 @@ const float COL_X[5] = {2.4f, 5.2f, 8.0f, 10.8f, 13.6f}, ROW_Z[3] = {9.5f, 6.5f,
 
 struct Chest { ivec3 at; int facing; bool open; int page; std::vector<ItemStack> items; int press[3]; VoxelLight L; int hover = -1;
                ChestLayout lay;   // (a large chest: one chest over both halves, sim/hands.h)
-               bool barrel = false; float trayY = 9.5f, floorY = 2.f, lr = 10.f; };   // (a barrel: the chest's workings under its own top)
+               bool barrel = false; float trayY = 9.5f, floorY = 2.f, lr = 10.f;
+               int ox = 0, oy = 0, oz = 0; };   // sit on a bottom half / nestle into a vertical slab, pixels
 
 class HandsChests : public RenderLayer {
 public:
@@ -50,6 +52,7 @@ public:
   // the chest's lid frame (its own sixteenths, as shut, hinge at y 10, z 12) where it is now; a barrel's on its own top
   static TPose lidPose(const FrameCtx& f, const Chest& c, float lidDeg) {
     TPose p = handsBlockPose(f, c.at, c.facing);
+    p.t(c.ox / 16.f, c.oy / 16.f, c.oz / 16.f);
     if (c.barrel) p.t(0, c.lr / 16, 1).rx(lidDeg).t(0, -10.f / 16, -12.f / 16);
     else p.t(0.5f, 0.625f, 0.75f).rx(lidDeg).t(-0.5f, -0.625f, -0.75f);
     return p;
@@ -61,6 +64,7 @@ public:
   static void fill(GameSession& s, World& w, Chest& c, const json* e, vec3 eye, vec3 dir) {
     if (!c.barrel) c.lay = handsChestLayout(w, c.at); else c.lay.key = c.at;   // (a barrel: its own record, the chest's page size)
     c.L = handsLight(w, c.at);
+    { WorldShapeNb nb(w, c.at.x, c.at.y, c.at.z); restShift(w.getBlock(c.at.x, c.at.y, c.at.z), nb, c.ox, c.oy, c.oz); }
     if (!c.open && handsEase(c.at, 2, false, 0) <= 0.001f) return;
     ivec3 hs[2]; const int nh = c.barrel ? 1 : chestHalves(w, c.at, hs);
     if (nh == 2) for (int h = 0; h < 2; h++) { const auto it = chestHalfItems(*s.level, s.player, w, hs[h]); c.items.insert(c.items.end(), it.begin(), it.end()); }
@@ -119,7 +123,8 @@ public:
     for (const Chest& c : list) {
       const float lid = handsEase(c.at, 2, c.open, 0);
       if (lid <= 0.001f) continue;
-      const TPose base = handsBlockPose(f, c.at, c.facing);
+      TPose base = handsBlockPose(f, c.at, c.facing);
+      base.t(c.ox / 16.f, c.oy / 16.f, c.oz / 16.f);
       for (int i = 0; i < 15; i++) {   // (renderGrid: the page on the tray)
         const int k = c.page * c.lay.pg + c.lay.off + i;
         if (k >= c.lay.slots || k >= (int)c.items.size() || c.items[k].empty()) continue;
@@ -160,7 +165,9 @@ public:
         if (grow.x >= 0) p.t(grow.x / 16, grow.y / 16, grow.z / 16).s(1.8f, 1.8f, 1.8f).t(-grow.x / 16, -grow.y / 16, -grow.z / 16);   // (a barrel's buttons: bigger, to be found)
         handsPartDraw(s.app, cd, *m, p.m, light);
       };
-      if (!c.barrel) part(c.lay.sheet ? lidM : bareLid(lidM), 0);   // (a barrel's own top is render/chest_layer.cpp's; a large chest's right lid has no sheet)
+      // shut: the mesher already drew chest_full (lid included). Drawing it again here with ContentDraw
+      // lit the lid as noon while the body stayed the mesh's cave light.
+      if (!c.barrel && (c.open || lid > 0.1f)) part(c.lay.sheet ? lidM : bareLid(lidM), 0);   // (a barrel's own top is render/chest_layer.cpp's; a large chest's right lid has no sheet)
       if (lid > 0.1f && c.lay.sheet) {   // (the sheet inside the lid in our own paper: the maps' parchment, both faces, over hands-on's)
         TPose p = lidPose(f, c, lid);
         p.t(6.f / 16, 10.75f / 16, 7.f / 16).rx(90).s(6.f / 16, 8.f / 16, 1);

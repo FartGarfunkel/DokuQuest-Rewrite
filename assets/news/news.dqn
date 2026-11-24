@@ -1,6 +1,33 @@
 # DokuQuest patch notes for the C++ versions, newest first (shown in the launcher's news panel).
 # Format: "## Title | Date" starts an entry; "- " bullet; other lines are paragraphs; **bold** *italic* `code`.
 # Keep docs/CHANGELOG.md in step: the release workflow publishes its section as the GitHub release notes.
+## Alpha 1.0.0.38 | November 2026
+**A longboat you can sail and walk:**
+- **The sailboat is a long wooden boat:** a clinker hull, one mast, and a square sail. Climb on, walk the deck, and use the tiller at the stern. W and S set the sail, A and D steer, and the wind does the rest. Sneak stands you back on the deck.
+- **The two sheets stay on the sail** as it opens, closes, and swings in the wind. The river stays outside the hull.
+- Sitting the tiller, or standing on deck while the boat moves, no longer shakes you around.
+- The big sailing ship and the galleon are laid up until the longboat is right. Rowboats still row.
+**Towns and the land (new chunks):**
+- Villages, town gates, and desert temples sit on one floor. The ground no longer shears a gate, a lamp, or a wall in half.
+- Woodland mansions and jungle temples are laid out as whole buildings. Mineshafts are timbered, with rooms and minecarts. Crypts start under the ground, and a buried wayvault of three rooms opens on a lever.
+- Structures sit on the land instead of hanging off a cliff. Spare rock cubes are gone, stone spires stay off, and hills no longer flood from a spring.
+- Ore looks like the rock it sits in, with a few specks of metal. Leaves that generate in water stay waterlogged. The banana slug does not spawn.
+- A water source no longer climbs forever up the sky.
+**Gear you craft:**
+- Greatswords, spears, and maces are mixed from the ores, the same way as the other tools, and each piece rolls a quality. The blow and the tooltip say what you rolled. Heavier weapons ask for practice. Both hands stay on a greatsword, and a guard still works when you are not holding a shield.
+- The talent trees are four short paths. Old nodes from the previous trees drop off when you load.
+- A chisel takes any ingot, like the other tools. A crafting table cannot be chiseled.
+- A crafting table pulls from the chests beside it, including both halves of a double chest.
+- Throwing knives have a real overhand throw. Throwing axes craft four at a time, throw from the stack, and can be picked back up like arrows.
+- Coffins and sleeping bags are beds two blocks long. A coffin opens and shows what is inside. A fallen adventurer's coffin stays on its screen. A sleeping bag is three straw and three rotten cloth.
+- Creative hides the old fixed tools, weapons, armour, molds, and loose tool heads. Mixed gear is crafted, so its rolls stay random.
+**Fixes:**
+- Flying still plays an attack and the other motions of your arms and chest.
+- Cocoa trees keep green leaves, and the beans use their own pictures.
+- Town doors use the newer door art.
+- Endermen burn in the rain, and not in a sandstorm or the snow.
+- Chests in structures still keep up with how far you have come, as in the last update.
+- Removed Herobrine.
 ## Alpha 1.0.0.37 | November 2026
 **The Dappled Forest and fallen leaves:**
 - **A new wood, the Dappled Forest:** tall slim poplars in red, orange and yellow, the floor carpeted in fallen leaves, red shrubs, and hollow poplar logs lying on the ground, some grown over with shelf fungus. It's found among the temperate woods, as often as an ordinary forest. (New land only: the worlds you have keep their land as it is.)

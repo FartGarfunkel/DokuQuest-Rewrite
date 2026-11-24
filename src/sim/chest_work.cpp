@@ -6,6 +6,8 @@
 #include "core/registry.h"
 #include "sim/balance.h"
 #include "gen/structures_common.h"
+#include "world/dirs.h"
+#include <vector>
 
 namespace dq {
 namespace {
@@ -21,6 +23,7 @@ bool endsWith(const std::string& k, const char* e) { const size_t n = std::strle
 bool isBarrel(const BlockDef& b) { return endsWith(b.key, "barrel"); }
 Kind kindAt(World& w, ivec3 at) {
   const BlockDef& b = reg().block(w.getBlock(at.x, at.y, at.z));
+  if (b.key == "oak_coffin") return K_BLOCK;   // a coffin is a chest: its lid lifts and what's in it lies inside (a model, not a cube)
   if (b.str("furniture") == "cabinet" && b.has("container")) return K_BLOCK;   // (its doors open on shelves: cabinetShelf)
   if (b.render != Render::Cube) return K_NONE;
   if (b.has("enderChest")) return K_ENDER;
@@ -75,6 +78,14 @@ void slotSet(Level& lv, Player& p, World& w, ivec3 half, int i, const ItemStack&
 void sound(Level& lv, ivec3 half) { sfxMaterial(lv, "wood", "place", vec3(half) + vec3(0.5f, 0.7f, 0.5f)); }
 }  // namespace
 
+ivec3 coffinFoot(World& w, ivec3 at) {
+  const BlockId id = w.getBlock(at.x, at.y, at.z);
+  if (reg().block(id).key != "oak_coffin") return at;
+  const u8 m = w.getMeta(at.x, at.y, at.z);
+  if (!(m & 4)) return at;   // the foot already
+  const ivec3 foot(at.x - DIRX[m & 3], at.y, at.z - DIRZ[m & 3]);
+  return w.getBlock(foot.x, foot.y, foot.z) == id ? foot : at;
+}
 int chestHalves(World& w, ivec3 at, ivec3 out[2]) {
   const Kind k = kindAt(w, at);
   if (!k) return 0;
@@ -108,6 +119,13 @@ std::vector<ItemStack> chestHalfItems(Level& lv, const Player* viewer, World& w,
 }
 
 vec3 chestSlotCenter(World& w, ivec3 at, int slot) {
+  if (reg().block(w.getBlock(at.x, at.y, at.z)).key == "oak_coffin") {
+    const ivec3 foot = coffinFoot(w, at);
+    const int f = w.getMeta(foot.x, foot.y, foot.z) & 3;
+    const vec3 fwd((float)DIRX[f], 0, (float)DIRZ[f]), right(fwd.z, 0, -fwd.x);
+    const int col = slot % 3, row = slot / 3;   // three across, nine along the two blocks
+    return vec3(foot) + vec3(0.5f, 0.32f, 0.5f) + right * ((col - 1) * 0.22f) + fwd * ((row - 4) * 0.18f);
+  }
   ivec3 half; int i;
   if (!locate(w, at, slot, half, i)) return vec3(at) + vec3(0.5f);
   const vec3 d = storeFront(w, half), right(d.z, 0, -d.x);   // (the right of someone facing its front)
@@ -124,6 +142,21 @@ vec3 chestSlotCenter(World& w, ivec3 at, int slot) {
 bool isCabinet(World& w, ivec3 at) { return reg().block(w.getBlock(at.x, at.y, at.z)).str("furniture") == "cabinet"; }
 
 int chestSlotAtRay(World& w, ivec3 at, vec3 o, vec3 dir) {
+  if (reg().block(w.getBlock(at.x, at.y, at.z)).key == "oak_coffin") {
+    const ivec3 foot = coffinFoot(w, at);
+    const float y = foot.y + 0.32f;
+    if (std::fabs(dir.y) < 1e-5f) return -1;
+    const float t = (y - o.y) / dir.y;
+    if (t <= 0) return -1;
+    const vec3 p = o + dir * t;
+    int best = -1; float bd = 0.16f;
+    for (int i = 0; i < chestSlotsPerHalf(w, foot); i++) {
+      const vec3 c = chestSlotCenter(w, foot, i);
+      const float d = glm::distance(vec2(p.x, p.z), vec2(c.x, c.z));
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
   if (isCabinet(w, at)) {   // onto its open front: which shelf (by height) and which third across
     const vec3 d = storeFront(w, at), right(d.z, 0, -d.x);
     const vec3 c = vec3(at) + vec3(0.5f, 0, 0.5f) + d * 0.4f;
@@ -250,9 +283,16 @@ void chestSetItems(Level& lv, Player& p, World& w, ivec3 at, const std::vector<I
 bool chestLidOpen(World& w, ivec3 at) { return chestHasLid(w, at) && (w.getMeta(at.x, at.y, at.z) & LID_OPEN); }
 void setChestLidOpen(World& w, ivec3 at, bool open) {
   ivec3 hs[2]; const int n = chestHalves(w, at, hs);
-  for (int i = 0; i < n; i++) {
-    const u8 m = w.getMeta(hs[i].x, hs[i].y, hs[i].z), want = open ? (u8)(m | LID_OPEN) : (u8)(m & ~LID_OPEN);
-    if (want != m) w.setBlock(hs[i].x, hs[i].y, hs[i].z, w.getBlock(hs[i].x, hs[i].y, hs[i].z), want);
+  std::vector<ivec3> cells(hs, hs + n);
+  if (reg().block(w.getBlock(at.x, at.y, at.z)).key == "oak_coffin") {   // both halves lift together
+    const u8 m = w.getMeta(at.x, at.y, at.z);
+    const int f = m & 3, s = (m & 4) ? -1 : 1;
+    const ivec3 o(at.x + DIRX[f] * s, at.y, at.z + DIRZ[f] * s);
+    if (w.getBlock(o.x, o.y, o.z) == w.getBlock(at.x, at.y, at.z)) cells.push_back(o);
+  }
+  for (const ivec3& c : cells) {
+    const u8 m = w.getMeta(c.x, c.y, c.z), want = open ? (u8)(m | LID_OPEN) : (u8)(m & ~LID_OPEN);
+    if (want != m) w.setBlock(c.x, c.y, c.z, w.getBlock(c.x, c.y, c.z), want);
   }
 }
 bool chestLidClicked(World& w, ivec3 at, ivec3 normal, vec3 point) {

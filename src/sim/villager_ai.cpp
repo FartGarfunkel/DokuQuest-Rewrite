@@ -277,12 +277,13 @@ static Move npcFight(Level& lv, Creature& e, NpcMind& M, Entity& foe, float dt) 
   M.foeT -= dt;
   float reach = golem ? 2.2f : 1.6f;
   if (d < reach + foe.w && std::fabs(dy) < 2.2f && e.attackCd <= 0) {
-    e.attackCd = golem ? 1.4f : 0.9f; e.swingT = 0.3f;
-    float dmg = golem ? 7 + std::floor(rnd() * 8) : e.T->damage;
-    DamageSrc s; s.knock = golem ? 2 : 1;
-    damageEntity(lv, foe, dmg, &e, "mob", s);
-    if (golem && !foe.isPlayer()) foe.vel.y = 7;
-    if (golem) lv.fx->sound("anvil_land", e.pos + vec3(0, 1.5f, 0));
+    if (golem) {
+      e.attackCd = 1.4f; e.swingT = 0.3f;
+      DamageSrc s; s.knock = 2;
+      damageEntity(lv, foe, 7 + std::floor(rnd() * 8), &e, "mob", s);
+      if (!foe.isPlayer()) foe.vel.y = 7;
+      lv.fx->sound("anvil_land", e.pos + vec3(0, 1.5f, 0));
+    } else e.meleeAt(lv, foe, d, dy);
   }
   float toFoe = std::atan2(-dx, -dz);
   if (d < reach * 0.8f) return Move{0, toFoe};

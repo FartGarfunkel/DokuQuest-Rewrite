@@ -1,5 +1,6 @@
 // gen/land_biomes.cpp — see mc_biomes.h
 #include "gen/land_biomes.h"
+#include "common/noise.h"
 #include <algorithm>
 #include <cmath>
 
@@ -16,7 +17,16 @@ inline i64 floorMod(i64 a, i64 b) { const i64 m = a % b; return m < 0 ? m + b : 
 // the region layer's area context
 struct Ctx {
   i64 seed, rval = 0;
-  void init(i64 x, i64 y) { i64 i = seed; i = lcg(i, x); i = lcg(i, y); i = lcg(i, x); rval = lcg(i, y); }
+  bool strong = false;
+  void init(i64 x, i64 y) {
+    i64 sx = x, sy = y;
+    if (strong) {
+      // posHashF so sequential quarts don't share low bits (hashFloat stripes on its third axis)
+      sx = (i64)(posHashF((i32)x, (i32)y, 0xC11, (i32)seed) * 9007199254740992.0);
+      sy = (i64)(posHashF((i32)y, (i32)x, 0xC12, (i32)seed) * 9007199254740992.0);
+    }
+    i64 i = seed; i = lcg(i, sx); i = lcg(i, sy); i = lcg(i, sx); rval = lcg(i, sy);
+  }
   int next(int bound) { const int r = (int)floorMod(rval >> 24, bound); rval = lcg(rval, seed); return r; }
   int pick(int a, int b) { return next(2) == 0 ? a : b; }
   int pick(int a, int b, int c, int d) { const int i = next(4); return i == 0 ? a : i == 1 ? b : i == 2 ? c : d; }
@@ -111,6 +121,7 @@ int LandBiomes::layer(int L, int x, int z) const {
   E& e = cache[L][((u64)key * 0x9E3779B97F4A7C15ull) >> 52];
   if (e.k == key) return e.v;
   Ctx c{layerSeed_[L]};
+  c.strong = strong_;
   c.init(x, z);
   int v = 0;
   if (L == 0) {   // InitialLayer: a region by weight
@@ -206,35 +217,75 @@ int LandBiomes::lookup(int region, const i64 p[6]) const {
 }
 
 // ---- the biome zoom: which quart a block reads ----------
+void LandBiomes::quartFiddle(int cx, int cy, int cz, double& a, double& b, double& c) const {
+  if (strong_) {
+    // posHashF mixes all four args (hashFloat stripes on its third); scale 1.2: a bit more than Minecraft's 0.9
+    const double scale = 1.2;
+    const i32 s0 = (i32)zoomSeed_, s1 = (i32)((zoomSeed_ >> 32) ^ 0x9E3779B9ull);
+    a = (posHashF(cx, cy, cz, s0) - 0.5) * scale;
+    b = (posHashF(cy, cz, cx, s1) - 0.5) * scale;
+    c = (posHashF(cz, cx, cy, s0 ^ s1) - 0.5) * scale;
+  } else {
+    auto fiddle = [](i64 s) { return ((double)floorMod(s >> 24, 1024) / 1024.0 - 0.5) * 0.9; };
+    const i64 S = (i64)zoomSeed_;
+    i64 s = lcg(S, cx); s = lcg(s, cy); s = lcg(s, cz); s = lcg(s, cx); s = lcg(s, cy); s = lcg(s, cz);
+    a = fiddle(s); s = lcg(s, S);
+    b = fiddle(s); s = lcg(s, S);
+    c = fiddle(s);
+  }
+}
+
 void LandBiomes::fuzzyQuart(int x, int y, int z, int& qx, int& qy, int& qz) const {
+  if (strong_) {
+    // a short warp (the second zoom): neighbouring quarts mix, thin climate slabs don't stay as ruler bands
+    auto vn = [&](double fx, double fz, i32 salt) {
+      const int ix = (int)std::floor(fx), iz = (int)std::floor(fz); const double ux = fx - ix, uz = fz - iz;
+      const double sx = ux * ux * (3 - 2 * ux), sz = uz * uz * (3 - 2 * uz);
+      auto h = [&](int a, int c) { return posHashF(a, salt, c, (i32)zoomSeed_) * 2.0 - 1.0; };
+      return (h(ix, iz) * (1 - sx) + h(ix + 1, iz) * sx) * (1 - sz) + (h(ix, iz + 1) * (1 - sx) + h(ix + 1, iz + 1) * sx) * sz;
+    };
+    const int x0 = x, y0 = y, z0 = z;
+    x = x0 + (int)std::floor(vn(x0 / 24.0, z0 / 24.0, 0xA11) * 10.0);
+    y = y0 + (int)std::floor(vn(x0 / 24.0, z0 / 24.0, 0xA15) * 2.0);
+    z = z0 + (int)std::floor(vn(x0 / 24.0, z0 / 24.0, 0xA12) * 10.0);
+  }
   const int i = x - 2, j = y - 2, k = z - 2;
   const int l = i >> 2, m = j >> 2, n = k >> 2;
   const double d0 = (i & 3) / 4.0, d1 = (j & 3) / 4.0, d2 = (k & 3) / 4.0;
   // each corner's jitter (its own, whichever block asks): kept per thread
   struct F { i64 k = INT64_MIN; double a, b, c; };
   thread_local std::vector<F> cache(1 << 14); thread_local u64 owner = 0;
-  if (owner != zoomSeed_) { std::fill(cache.begin(), cache.end(), F{}); owner = zoomSeed_; }
+  const u64 own = zoomSeed_ ^ (strong_ ? 0xA5A5A5A5A5A5A5A5ull : 0);
+  if (owner != own) { std::fill(cache.begin(), cache.end(), F{}); owner = own; }
   auto fid = [&](int cx, int cy, int cz) -> const F& {
     const i64 key = ((i64)cx << 40) ^ ((i64)(cy & 0xFFFF) << 24) ^ (i64)(u32)(cz & 0xFFFFFF);
     F& f = cache[((u64)key * 0x9E3779B97F4A7C15ull) >> 50];
     if (f.k == key) return f;
-    auto fiddle = [](i64 s) { return ((double)floorMod(s >> 24, 1024) / 1024.0 - 0.5) * 0.9; };
-    const i64 S = (i64)zoomSeed_;
-    i64 s = lcg(S, cx); s = lcg(s, cy); s = lcg(s, cz); s = lcg(s, cx); s = lcg(s, cy); s = lcg(s, cz);
-    f.a = fiddle(s); s = lcg(s, S);
-    f.b = fiddle(s); s = lcg(s, S);
-    f.c = fiddle(s); f.k = key;
+    quartFiddle(cx, cy, cz, f.a, f.b, f.c); f.k = key;
     return f;
   };
-  int pick = 0; double best = 1e300;
-  for (int c = 0; c < 8; c++) {
-    const bool fx = !(c & 4), fy = !(c & 2), fz = !(c & 1);
-    const F& f = fid(fx ? l : l + 1, fy ? m : m + 1, fz ? n : n + 1);
-    const double ex = (fx ? d0 : d0 - 1) + f.a, ey = (fy ? d1 : d1 - 1) + f.b, ez = (fz ? d2 : d2 - 1) + f.c;
-    const double d = ez * ez + ey * ey + ex * ex;
-    if (best > d) { pick = c; best = d; }
+  auto pick8 = [&](int l0, int m0, int n0, double e0, double e1, double e2, int& ox, int& oy, int& oz) {
+    int pick = 0; double best = 1e300;
+    for (int c = 0; c < 8; c++) {
+      const bool fx = !(c & 4), fy = !(c & 2), fz = !(c & 1);
+      const F& f = fid(fx ? l0 : l0 + 1, fy ? m0 : m0 + 1, fz ? n0 : n0 + 1);
+      const double ex = (fx ? e0 : e0 - 1) + f.a, ey = (fy ? e1 : e1 - 1) + f.b, ez = (fz ? e2 : e2 - 1) + f.c;
+      const double d = ez * ez + ey * ey + ex * ex;
+      if (best > d) { pick = c; best = d; }
+    }
+    ox = (pick & 4) == 0 ? l0 : l0 + 1; oy = (pick & 2) == 0 ? m0 : m0 + 1; oz = (pick & 1) == 0 ? n0 : n0 + 1;
+  };
+  pick8(l, m, n, d0, d1, d2, qx, qy, qz);
+  if (strong_) {
+    // second zoom at 8-block: nudge the quart at most one toward the coarse cell (neighbouring quarts mix)
+    const int i8 = x - 4, j8 = y - 4, k8 = z - 4;
+    int cx, cy, cz;
+    pick8(i8 >> 3, j8 >> 3, k8 >> 3, (i8 & 7) / 8.0, (j8 & 7) / 8.0, (k8 & 7) / 8.0, cx, cy, cz);
+    const int nx = cx * 2 + (qx & 1), ny = cy * 2 + (qy & 1), nz = cz * 2 + (qz & 1);
+    if (qx < nx) qx++; else if (qx > nx) qx--;
+    if (qy < ny) qy++; else if (qy > ny) qy--;
+    if (qz < nz) qz++; else if (qz > nz) qz--;
   }
-  qx = (pick & 4) == 0 ? l : l + 1; qy = (pick & 2) == 0 ? m : m + 1; qz = (pick & 1) == 0 ? n : n + 1;
 }
 
 bool LandBiomes::coldEnoughToSnow(int b, int x, int y, int z) const {

@@ -11,6 +11,8 @@
 #include "world/world.h"
 #include "world/dims.h"
 #include "world/light.h"
+#include "gen/structures_vault.h"
+#include "gen/proc_rooms.h"
 #include <thread>
 #include <cstdio>
 #include <map>
@@ -37,6 +39,49 @@ int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = ud;
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
 
+  printf("[cave daylight]\n");
+  {
+    const BlockId ST = reg().blockId("stone");
+    auto skyAt = [](const Chunk& c, int x, int y, int z) { return c.getLight(x, y, z) >> 4; };
+    // a 16-high empty cave (one unallocated section) under a stone roof: must not read as noon
+    {
+      Chunk c(DIM_OVERWORLD, 0, 0);
+      for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+        for (int y = 0; y < 16; y++) c.set(x, y, z, ST);
+        for (int y = 32; y <= 80; y++) c.set(x, y, z, ST);
+      }
+      c.recomputeMaxY();
+      initialChunkLight(c);
+      c.compact();
+      const int sky = skyAt(c, 8, 20, 8);
+      check(sky < 4, strFormat("an unallocated cave section under stone is dark (sky %d)", sky));
+      check((c.airLight[1] >> 4) < 4, strFormat("that section's airLight is dark (%d)", c.airLight[1] >> 4));
+    }
+    // a sealed modular dungeon room: stone box, air interior, solid ceiling
+    {
+      Chunk c(DIM_OVERWORLD, 0, 0);
+      for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) for (int y = 0; y <= 80; y++) c.set(x, y, z, ST);
+      for (int z = 2; z <= 10; z++) for (int x = 2; x <= 10; x++) for (int y = 20; y <= 24; y++) c.set(x, y, z, AIR);
+      c.recomputeMaxY();
+      initialChunkLight(c);
+      c.compact();
+      const int sky = skyAt(c, 6, 22, 6);
+      check(sky < 4, strFormat("a sealed dungeon room has no sunlight (sky %d)", sky));
+    }
+    // a room with a 1x1 shaft to the sky: the far corner under a solid ceiling must not burn undead (sky < 14)
+    {
+      Chunk c(DIM_OVERWORLD, 0, 0);
+      for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) for (int y = 0; y <= 80; y++) c.set(x, y, z, ST);
+      for (int z = 2; z <= 10; z++) for (int x = 2; x <= 10; x++) for (int y = 20; y <= 24; y++) c.set(x, y, z, AIR);
+      for (int y = 20; y <= 81; y++) c.set(6, y, 6, AIR);
+      c.recomputeMaxY();
+      initialChunkLight(c);
+      c.compact();
+      const int far = skyAt(c, 2, 22, 10);
+      check(far < 14, strFormat("a dungeon room under a roof, away from a shaft, does not burn undead (sky %d)", far));
+    }
+  }
+
   printf("[the layouts]\n");
   {
     WorldLayout a = makeLayout(1), b = makeLayout(2, 4), c = makeLayout(2, 1);
@@ -52,6 +97,56 @@ int main(int argc, char** argv) {
     check(landFloorAt(dimBase(DIM_UNDER4)) && !landFloorAt(dimBase(DIM_OVERWORLD)) && !landFloorAt(dimBase(DIM_UNDER1)) && landRoofAt(dimBase(DIM_SKY2) + 255), "the seams between worlds: under the Underworld and over the open sky, not inside the Overworld's land");
     setWorldLayout(1);
     check(WORLD_H == 1024 && dimOfY(600) == DIM_OVERWORLD && dimBase(DIM_SKYLANDS) == 768 && displayY(512 + 64) == 64, "back to layout 1: exactly as before");
+  }
+
+  printf("[procedural rooms]\n");
+  {
+    check(PROC_ROOM_KIND_N >= 16, "at least sixteen furnished room kinds");
+    check(DUNGEON_GRID_MIN >= 6 && DUNGEON_FLOORS_MIN >= 2 && DUNGEON_ROOMS_MIN >= 12,
+          "crypts walk a large multi-floor grid");
+    int missing = 0;
+    for (int i = 0; i < PROC_FURNITURE_N; i++) {
+      const char* k = PROC_FURNITURE[i];
+      if (!reg().blockId(k) && !reg().item(k)) { missing++; printf("    missing %s\n", k); }
+    }
+    check(missing == 0, "every furniture id used in large structures exists");
+  }
+
+  printf("[a wayvault]\n");
+  {
+    auto inside = [](const Wayvault::Room& r, int x, int z) {
+      int dx = x - r.x; if (dx < 0) dx = -dx;
+      int dz = z - r.z; if (dz < 0) dz = -dz;
+      return dx <= r.rx && dz <= r.rz;
+    };
+    for (uint32_t seed = 1; seed <= 3; seed++) {
+      Wayvault v;
+      const std::string s = "seed " + std::to_string(seed);
+      if (!planWayvault(seed, v) || v.rooms.size() != 3) { check(false, s + " has three rooms"); continue; }
+      const Wayvault::Room *ante = nullptr, *hall = nullptr, *vault = nullptr;
+      for (const auto& r : v.rooms) {
+        if (r.role == "ante") ante = &r;
+        else if (r.role == "hall") hall = &r;
+        else if (r.role == "vault") vault = &r;
+      }
+      check(ante && hall && vault && ante->rx == 2 && ante->rz == 2 && hall->rx == 6 && hall->rz == 2 && vault->rx == 4 && vault->rz == 4,
+            s + ": ante 2,2, hall 6,2, vault 4,4, three different footprints");
+      if (!ante || !hall || !vault) continue;
+      const int lx = v.lever[0], ly = v.lever[1], lz = v.lever[2];
+      const int dx = v.door[0], dy = v.door[1], dz = v.door[2];
+      const int cx = v.chest[0], cy = v.chest[1], cz = v.chest[2];
+      const int sx = v.spawner[0], sz = v.spawner[2];
+      const int adx = lx > dx ? lx - dx : dx - lx, adz = lz > dz ? lz - dz : dz - lz;
+      check(inside(*ante, lx, lz) && inside(*hall, lx, lz) && ly == dy && ((adx == 1 && adz == 0) || (adx == 0 && adz == 1)),
+            s + ": lever inside the ante and the hall, sharing a side with the door");
+      const int pastX = dx + (dx - lx), pastZ = dz + (dz - lz);
+      check(!inside(*hall, dx, dz) && inside(*vault, pastX, pastZ), s + ": door on the shared face, vault just past it");
+      check(inside(*vault, cx, cz), s + ": chest inside the vault");
+      check(inside(*hall, sx, sz), s + ": spawner inside the hall");
+      check(!(dx == cx && dy == cy && dz == cz), s + ": door is not the chest cell");
+      check(inside(*ante, v.shaft[0], v.shaft[2]) && v.shaft[1] >= kWayvaultCeil + 4,
+            s + ": shaft on the ante, at least 4 above the ceiling");
+    }
   }
 
   ThreadPool pool{2}; EventBus bus;

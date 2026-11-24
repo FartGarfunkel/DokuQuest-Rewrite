@@ -16,6 +16,7 @@
 #include "render/char_blend.h"
 #include "render/cape_sim.h"
 #include <unordered_map>
+#include <vector>
 
 namespace dq { struct PaperMap; }
 
@@ -46,6 +47,7 @@ public:
     float runAmt = 0, sneakAmt = 0;                    // sprinting / sneaking eased in and out (both cycles keep running while they blend)
     vec2 hurtDir{0};                                   // where the last blow came from: x their right, y their front (-1..1)
     float lastSwing = 0, swingU = 0; double swingAt = -10; u8 swingN = 0;
+    u8 throwArm = 0;   // this swing is an overhand throw: 1 the right arm, 2 the left (Player::throwArm, copied as it starts)
     // getting into bed (render/char_layer.cpp bedFrame): 0 standing beside it .. 1 lying in it; the bed found under them,
     // where they stood, which side they sat on
     float bedU = 0; bool bedFound = false; vec3 bedHead{0}, bedDir{0}, bedSide{0}, standPos{0}; float standYaw = 0, bedTop = 0;   // weapon combos: the cut in the chain and how far through it (its own clock: render/char_anim.cpp)
@@ -114,5 +116,19 @@ struct FpGuard { mat4 shield{1}, upper{1}, fore{1}; vec3 shieldFist{0}, shieldEl
 // draw one of the local player's own skin limb parts (CP_*) at m (part * scale, view space), the voxel renderer begun
 void drawFpLimb(const Player& p, int part, const mat4& m, VoxelLight light);
 bool fpGuardFrames(const Player& p, bool shieldLeft, const std::string& weapon, FpGuard& out, float k = 1);   // k: how far on guard (0: carried at the side)
+// a mace drawn at `placed` (the same matrix as the whole item): the haft stays put and each link swings from the one
+// above. false when this model has no chain, so the caller draws the mesh as it stands.
+struct VoxelModel;
+bool drawSwingingMace(const VoxelModel& im, const mat4& placed, VoxelLight light, vec4 tint, float glint);
+// the flail's hanging chain (world, origin-relative). Slow hand motion (a walk, a look) is
+// carried so the ball stays under the haft; a fast swing is not, so the head lags.
+struct MaceChain {
+  glm::dvec3 origin{0};
+  vec3 anchor{0}, vSmooth{0};
+  double t = -1;
+  float acc = 0;
+  std::vector<vec3> p, prev;
+};
+void maceChainStep(MaceChain& c, vec3 anchor, const float* seg, int n, glm::dvec3 origin, double tnow);
 
 } // namespace dq

@@ -266,7 +266,7 @@ bool questFinish(Level& lv, Player& p, const std::string& qid) {
   }
   const json R = q.value("reward", json::object());
   if (R.value("em", 0) > 0) vGive(lv, p, ItemStack(COIN, R.value("em", 0)));
-  if (R.contains("item") && R["item"].is_array() && reg().item(R["item"][0].get<std::string>())) vGive(lv, p, ItemStack(R["item"][0].get<std::string>(), R["item"][1].get<int>()));
+  if (R.contains("item") && R["item"].is_array() && reg().item(R["item"][0].get<std::string>())) vGive(lv, p, proceduralOf(R["item"][0].get<std::string>(), R["item"][1].get<int>()));
   if (R.value("xp", 0) > 0) grantXp(lv, p, R.value("xp", 0), p.pos + vec3(0, 1, 0));
   if (R.contains("skill") && R["skill"].is_array()) skillGain(lv, p, R["skill"][0].get<std::string>(), R["skill"][1].get<double>());
   npcRep(lv, p, q.value("vid", std::string()), R.value("rep", 5));
@@ -549,6 +549,7 @@ static void home(Level& lv, Player& p, Talk& t, const std::string& text0 = "") {
   }
   // the Shrine of Renewal's work, at the elder's word
   if (t.job == "elder" && respecPoints(p) > 0) O.push_back({"Take back my talents and stats\xE2\x80\xA6", "\xE2\x86\xBA", "respec", nullptr});
+  O.push_back({"Say something of your own", "", "say", nullptr});
   O.push_back({"Goodbye", "", "close", nullptr});
 }
 
@@ -660,6 +661,103 @@ bool talkStillOk(Level& lv, Player& p, const Talk& t) {
 }
 void talkClosed(Level& lv, Player& p, Talk& t) { if (VillagerSystem* S = vsys(lv)) { NpcMind& M = S->mind(t.npc); if (M.holdBy == p.id) M.holdT = 0.5f; } }
 
+static std::string trimmedLine(const std::string& s) {
+  size_t b = s.find_first_not_of(" \t\r\n"), e = s.find_last_not_of(" \t\r\n");
+  return b == std::string::npos ? std::string() : s.substr(b, e - b + 1);
+}
+static bool mentions(const std::string& q, std::initializer_list<const char*> ws) {
+  for (const char* w : ws) if (q.find(w) != std::string::npos) return true;
+  return false;
+}
+static std::string jobChatter(const std::string& job) {
+  json list = json::array();
+  const json& TK = VD()["talk"];
+  if (TK.contains(job)) for (auto& x : TK[job]) list.push_back(x);
+  if (TK.contains("any") && TK["any"].is_array()) for (auto& x : TK["any"]) list.push_back(x);
+  std::string line = pickStr(list, rnd());
+  return line.empty() ? "That's the way of it, out here." : line;
+}
+// what they say back to a line you typed. Known subjects get a straight answer; anything else is answered in their own talk.
+static std::string villagerAnswer(Level& lv, const std::string& job, const std::string& name, const std::string& title, const std::string& vid, const std::string& raw) {
+  std::string line = trimmedLine(raw);
+  if (line.size() > 160) line.resize(160);
+  const std::string q = lower(line);
+  VillageRef v = villageById(lv, vid);
+  const std::string place = v ? v->name : "this village";
+  const std::string who = title.empty() ? jobTitle(job) + " of " + place : title;
+  if (mentions(q, {"idiot", "stupid", "shut up", "hate you", "drop dead"}))
+    return "Mind how you speak in " + place + ". I'll not have that.";
+  if (mentions(q, {"goodbye", "bye", "farewell", "see you later", "see you"}))
+    return "Go well. The road is long.";
+  if (mentions(q, {"hello", "good morning", "good day", "good evening", "how are you", "how's it", "hey", "hi "}))
+    return "Well met. I'm " + name + ", " + who + ".";
+  if (mentions(q, {"your name", "who are you", "what are you"}))
+    return "I'm " + name + ", " + who + ".";
+  if (mentions(q, {"boat", "ship", "sail", "harbour", "harbor", "dock"}))
+    return "A sailed boat takes the wind once the cloth is set. The tiller is at the stern. Sneak, and you stand back on the deck.";
+  if (mentions(q, {"buy", "sell", "wares", "shop", "price", "trade"}))
+    return hasShop(job) ? "Have a look, then. Ask to see my wares." : "I don't keep a stall. A trader will, and the board by the well has work.";
+  if (mentions(q, {"errand", "quest", "work for", "need help", "help me", "any work"}))
+    return "Ask me for work, or read the board by the well. There's always something for a pair of hands.";
+  if (mentions(q, {"family", "wife", "husband", "children", "my friend"}))
+    return "Ask me about my family and I'll tell it properly. Everyone knows everyone in " + place + ".";
+  if (mentions(q, {"rain", "storm", "weather", "snow", "the wind", "cold out", "hot out"}))
+    return "The weather does as it likes. We work through it. A wind is a gift, if you've a sail.";
+  if (mentions(q, {"raid", "monster", "zombie", "pillager", "danger", "attack"}))
+    return "Keep a weapon close. The nights have not been kind, and " + place + " looks after its own.";
+  if (mentions(q, {"rift", "fragment", "portal", "gateway"}))
+    return riftTier(lv) <= 0 ? "I've heard tell of a tear in the world. The elder knows more than I do."
+                              : "The rift is no fireside tale. The elder can tell you what it asks. Realm Fragments, they say.";
+  if (mentions(q, {"hungry", "bread", "stew", "food", "a drink"}))
+    return (job == "farmer" || job == "butcher" || job == "fisherman" || job == "fish") ? "There's food if you work for it. Ask what the trade needs."
+                                                                                        : "The farmers and the inn keep folk fed. I'm a " + lower(jobTitle(job)) + ".";
+  std::string bit = line;
+  if (bit.size() > 42) { bit.resize(42); while (!bit.empty() && ((unsigned char)bit.back() & 0xC0) == 0x80) bit.pop_back(); bit += "\xE2\x80\xA6"; }
+  return "\"" + bit + "\". " + jobChatter(job);
+}
+
+void talkSayOwn(Level& lv, Player& p, Talk& t, const std::string& raw) {
+  const std::string line = trimmedLine(raw);
+  if (line.empty()) { if (t.mode == "say") home(lv, p, t, "Alright."); return; }
+  if (t.mode == "confront" || t.mode == "shop") return;
+  t.mode = "home";
+  say(lv, p, t, villagerAnswer(lv, t.job, t.name, t.title, t.vid, line));
+  t.opts = {{"Say something else", "", "say", nullptr}, {"Never mind", "", "home", nullptr}, {"Goodbye", "", "close", nullptr}};
+}
+
+void npcHearChat(Level& lv, Player& p, const std::string& raw) {
+  const std::string line = trimmedLine(raw);
+  if (line.empty() || line[0] == '/') return;
+  VillagerSystem* S = vsys(lv);
+  if (!S) return;
+  static double last = -100;
+  if (S->now - last < 1.5) return;
+  Creature* best = nullptr;
+  float bd = 12.f;
+  for (auto& up : lv.entities()) {
+    auto* c = dynamic_cast<Creature*>(up.get());
+    const json* N = c ? npcOf(*c) : nullptr;
+    if (!N || c->removed || !c->alive() || c->realm != p.realm || c->type != "villager") continue;
+    const int i = N->value("i", 0);
+    if (i >= 200 && i < 300) continue;
+    if (N->value("p", 0) & NP_SLEEP) continue;
+    const float d = std::hypot(c->pos.x - p.pos.x, c->pos.z - p.pos.z);
+    if (d < bd && std::fabs(c->pos.y - p.pos.y) < 4.f) { bd = d; best = c; }
+  }
+  if (!best) return;
+  last = S->now;
+  const json* N = npcOf(*best);
+  const std::string job = N->value("j", std::string("none")), name = N->value("n", std::string("Villager")), vid = N->value("v", std::string());
+  VillageRef v = villageById(lv, vid);
+  const std::string title = jobTitle(job) + (v ? " of " + v->name : std::string());
+  const std::string reply = villagerAnswer(lv, job, name, title, vid, line);
+  const float dur = 1.6f + reply.size() * 0.045f;
+  static int serial = 500000;
+  best->data["npc"]["say"] = json{{"t", reply}, {"k", ++serial}, {"d", dur}};
+  npcSay(lv, *best, reply, 0.4f);
+  if (lv.fx) lv.fx->message(0, "<" + name + "> " + reply, "chat");
+}
+
 void talkChoose(Level& lv, Player& p, Talk& t, int i) {
   if (i < 0 || i >= (int)t.opts.size()) return;
   TalkOpt o = t.opts[i];
@@ -667,6 +765,7 @@ void talkChoose(Level& lv, Player& p, Talk& t, int i) {
   sfxUi(lv, p, "click");
   const std::string& a = o.act;
   if (a == "close") { t.closeNow = true; return; }
+  if (a == "say") { t.mode = "say"; say(lv, p, t, "Go on. I'm listening."); return; }
   if (a == "giveback") {
     if (theftGiveBack(lv, p, t.vid)) { say(lv, p, t, "Good. Let's not have this happen again."); t.opts = {{"Goodbye.", "", "close", nullptr}}; }
     else { say(lv, p, t, "Hm. There's nothing owed. Off you go."); t.opts = {{"Goodbye.", "", "close", nullptr}}; }

@@ -96,6 +96,7 @@ struct StructureType {
   int region = 512, margin = 40;   // one candidate per region, kept `margin` from the region's edges
   double chance = 0.5;             // chance a region has one
   int clearance = 6;               // later types keep this far (plus their own radius) from this one
+  int separation = 0;               // minimum centre-to-centre distance from other places (0 = no extra rule)
   u32 dims = 1u << DIM_OVERWORLD;  // bit per stacked band (DIM_*)
   u32 realms = 1u << REALM_MAIN;   // bit per realm (side worlds have their own generators)
   u32 flags = 0;                   // SF_*
@@ -109,8 +110,9 @@ struct StructureType {
   int flattenPad = 0;
   // --- placement variants (gen/structures_*.cpp) ---
   int jsIndex = -1;                // the original's STRUCTS index for seeds and ids (-1 = the registration index)
-  // custom per-region placement, replacing chance/margin/candidate and the clearance check (villages, dungeons,
-  // dragon lairs, End cities use their own seeds and rules): fill `out` (id, seed too) and return true
+  // custom per-region placement, replacing chance/margin/candidate (villages, dungeons, dragon lairs, End cities
+  // use their own seeds and rules): fill `out` (id, seed too) and return true. at() still applies clearance
+  // and centre-to-centre separation after place() returns.
   std::function<bool(const class StructureIndex& idx, const TerrainQuery& t, int rx, int rz, StructurePlan& out)> place;
   // plans fixed once for the whole world (strongholds): `region` is then ignored
   std::function<void(const TerrainQuery& t, std::vector<StructurePlan>& out)> global;

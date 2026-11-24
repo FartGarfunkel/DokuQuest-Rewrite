@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(DokuQuest VERSION 1.0.0 LANGUAGES C CXX)
 # DokuQuest C++ — game client, launcher (with dedicated server + Mod Studio) and headless server.
-set(DQ_VERSION "1.0.0-alpha.37" CACHE STRING "Full game version shown in game and launcher")
+set(DQ_VERSION "1.0.0-alpha.38" CACHE STRING "Full game version shown in game and launcher")
 # the launcher's own version: always the game's. The launcher holds the dedicated server (all the game's world and network
 # code), so every release changes it; an update installs the whole package and the new launcher takes over at its next
 # start (launcher/updater.cpp, launcher_main.cpp handOff). (It was set apart once and never raised: updates fetched only
@@ -34,6 +34,11 @@ target_include_directories(dqcore PUBLIC src)
 target_compile_definitions(dqcore PUBLIC DQ_VERSION="${DQ_VERSION}" DQ_LAUNCHER_VERSION="${DQ_LAUNCHER_VERSION}")
 target_compile_options(dqcore PRIVATE ${DQ_WARN})
 target_link_libraries(dqcore PUBLIC dq_headers miniz enet miniupnpc quickjs Threads::Threads ${CMAKE_DL_LIBS})
+find_library(DQ_CBLAS cblas)
+if(DQ_CBLAS)
+  target_link_libraries(dqcore PUBLIC ${DQ_CBLAS})
+  target_compile_definitions(dqcore PUBLIC DQ_HAS_CBLAS=1)
+endif()
 
 file(GLOB_RECURSE DQ_CLIENT_SRC CONFIGURE_DEPENDS
   src/render/*.cpp src/audio/*.cpp src/ui/*.cpp src/input/*.cpp src/assets/*.cpp src/client/*.cpp)
@@ -99,6 +104,10 @@ add_test(NAME creatures COMMAND dq-creature-test)
 add_executable(test_mobs tools/test_mobs.cpp)
 target_link_libraries(test_mobs PRIVATE dqcore)
 add_test(NAME mobs COMMAND test_mobs)
+# weapon families and quality (tools/test_weapons.cpp, headless). Run: build/test_weapons
+add_executable(test_weapons tools/test_weapons.cpp)
+target_link_libraries(test_weapons PRIVATE dqcore)
+add_test(NAME weapons COMMAND test_weapons)
 # weather particles, sprites, collision (tools/test/weather_test.cpp): pure parts of render/weather_*, no GL context
 add_executable(test_weather tools/test/weather_test.cpp)
 target_link_libraries(test_weather PRIVATE dqclient)
@@ -211,6 +220,10 @@ add_test(NAME life COMMAND test_life)
 add_executable(test_deep tools/test_deep.cpp)
 target_link_libraries(test_deep PRIVATE dqcore)
 add_test(NAME deep COMMAND test_deep)
+# Skylight in caves and modular rooms (headless). Run: build/test_light
+add_executable(test_light tools/test_light.cpp)
+target_link_libraries(test_light PRIVATE dqcore)
+add_test(NAME light COMMAND test_light)
 # Full legitimate playthroughs, classic and immersive, from an empty inventory (headless). Run: build/test_progression
 add_executable(test_progression tools/test_progression.cpp)
 target_link_libraries(test_progression PRIVATE dqcore)

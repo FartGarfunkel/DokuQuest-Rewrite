@@ -6,6 +6,9 @@
 #include "core/tool_parts.h"
 #include <algorithm>
 #include "sim/crafting.h"
+#include "sim/weapon_quality.h"
+#include "sim/attack_moves.h"
+#include <unordered_map>
 #include <unordered_set>
 
 namespace dq {
@@ -83,6 +86,101 @@ std::string recolorKey(const std::string& key, const std::string& c) {
 // ---- matching ---------------------------------------------------------------------------------------------
 static CraftMatch special(const std::string& out, int n, int w = 1, int h = 1) { CraftMatch m; m.ok = true; m.out = out; m.n = n; m.w = w; m.h = h; return m; }
 
+// A new weapon, tool, or armour piece. One that already has qual is left alone.
+// The seed is latched to the grid. The same arrangement keeps one qual across frames, so the
+// name in the preview is the name you take. A new arrangement may roll again. Not a counter:
+// matchGrid runs every frame and must not reshuffle.
+static const std::vector<ItemStack>* craftGridSlots = nullptr;
+static uint32_t arrangementKey(const std::vector<ItemStack>& slots) {
+  uint32_t h = 2166136261u;
+  auto mix = [&](uint32_t v) { h ^= v; h *= 16777619u; };
+  mix((uint32_t)slots.size());
+  for (size_t i = 0; i < slots.size(); ++i) {
+    const ItemStack& s = slots[i];
+    if (s.empty()) continue;
+    mix((uint32_t)i);
+    for (unsigned char c : s.id) mix(c);
+    mix((uint32_t)s.n);
+    mix((uint32_t)s.d);
+    if (s.tag.is_object()) for (unsigned char c : s.tag.dump()) mix(c);
+  }
+  return h;
+}
+static uint32_t latchedArrangementSeed(const std::vector<ItemStack>& slots) {
+  const uint32_t key = arrangementKey(slots);
+  static std::unordered_map<uint32_t, uint32_t> seeds;
+  auto it = seeds.find(key);
+  if (it != seeds.end()) return it->second;
+  uint32_t s = (uint32_t)(nowSeconds() * 1.0e6) ^ (key * 0x9E3779B9u);
+  if (!s) s = 1;
+  seeds.emplace(key, s);
+  return s;
+}
+static bool craftedGear(const ItemStack& s) {
+  if (s.empty()) return false;
+  if (isPartTool(s) || isPartArmor(s)) return true;
+  switch (movesetOf(s.def())) {
+    case Moveset::Sword: case Moveset::Dagger: case Moveset::Axe:
+    case Moveset::Greatsword: case Moveset::Spear: case Moveset::Mace: return true;
+    default: return false;
+  }
+}
+static uint32_t craftQualSeed(const std::string& key) {
+  const uint32_t base = craftGridSlots ? latchedArrangementSeed(*craftGridSlots) : 1u;
+  uint32_t h = base * 0x9E3779B9u;
+  for (unsigned char c : key) h = h * 16777619u ^ c;
+  return h;
+}
+static void giveCraftQuality(ItemStack& s) {
+  if (!craftedGear(s)) return;
+  if (s.tag.is_object() && s.tag.contains("qual") && s.tag["qual"].is_string()) return;
+  rollWeaponQuality(s, craftQualSeed(s.id));
+}
+static CraftMatch finishCraft(CraftMatch m) {
+  if (!m.ok) return m;
+  ItemStack s(m.out, m.n);
+  if (m.extra.is_object()) for (auto& [k, v] : m.extra.items()) {
+    if (k == "d") s.d = v.get<int>();
+    else { if (!s.tag.is_object()) s.tag = json::object(); s.tag[k] = v; }
+  }
+  const bool had = s.tag.is_object() && s.tag.contains("qual") && s.tag["qual"].is_string();
+  giveCraftQuality(s);
+  if (!had && s.tag.is_object() && s.tag.contains("qual") && s.tag["qual"].is_string()) {
+    if (!m.extra.is_object()) m.extra = json::object();
+    m.extra["qual"] = s.tag["qual"];
+  }
+  return m;
+}
+
+// one procedural piece and one ingot of a metal in it: the same piece, a new quality
+static CraftMatch matchQualityReroll(const std::vector<ItemStack>& slots) {
+  const ItemStack* gear = nullptr; const ItemStack* ing = nullptr; int n = 0;
+  for (const ItemStack& s : slots) if (!s.empty()) {
+    n++;
+    if (isPartTool(s) || isPartArmor(s)) gear = &s;
+    else ing = &s;
+  }
+  if (n != 2 || !gear || !ing || ing->n < 1) return {};
+  if (gear->d > 0) return {};   // worn: the one-material mend repairs it; a sound piece rerolls
+  const ToolMaterial* tm = toolMaterialOfStack(*ing);
+  if (!tm) return {};
+  const json& mats = isPartTool(*gear) ? gear->tag["pt"]["m"] : gear->tag["pa"]["m"];
+  bool own = false;
+  if (mats.is_array()) for (const json& m : mats) if (m.is_string() && m.get<std::string>() == tm->key) own = true;
+  if (!own) return {};
+  ItemStack out = *gear; out.n = 1;
+  const std::string had = out.tag.value("qual", "");
+  for (int i = 0; i < 8; i++) {
+    out.tag.erase("qual");
+    stampGearQuality(out);
+    if (out.tag.value("qual", "") != had) break;
+  }
+  CraftMatch c = special(out.id, 1);
+  c.extra = out.tag;
+  if (out.d) c.extra["d"] = out.d;
+  return c;
+}
+
 static CraftMatch matchBase(const std::vector<ItemStack>& slots, int W) {
   int x0 = W, y0 = W, x1 = -1, y1 = -1, count = 0;
   for (int i = 0; i < W * W && i < (int)slots.size(); i++) if (!slots[i].empty()) {
@@ -120,7 +218,7 @@ static CraftMatch matchBase(const std::vector<ItemStack>& slots, int W) {
           if (ch == ' ') { if (!s.empty()) ok = false; }
           else { auto k = r.key.find(ch); if (s.empty() || k == r.key.end() || !tagMatch(k->second, s.id)) ok = false; }
         }
-        if (ok) { CraftMatch m; m.ok = true; m.out = r.out; m.n = r.n; m.idx = (int)ri; m.recipe = &r; recipeDims(r, m.w, m.h); return m; }
+        if (ok) { CraftMatch m; m.ok = true; m.out = r.out; m.n = r.n; m.idx = (int)ri; m.recipe = &r; recipeDims(r, m.w, m.h); return finishCraft(m); }
       }
     } else if ((int)r.items.size() == count) {
       std::vector<std::string> left = r.items;
@@ -130,7 +228,7 @@ static CraftMatch matchBase(const std::vector<ItemStack>& slots, int W) {
         auto k = std::find_if(left.begin(), left.end(), [&](const std::string& want) { return tagMatch(want, s.id); });
         if (k == left.end()) ok = false; else left.erase(k);
       }
-      if (ok && left.empty()) { CraftMatch m; m.ok = true; m.out = r.out; m.n = r.n; m.idx = (int)ri; m.recipe = &r; recipeDims(r, m.w, m.h); return m; }
+      if (ok && left.empty()) { CraftMatch m; m.ok = true; m.out = r.out; m.n = r.n; m.idx = (int)ri; m.recipe = &r; recipeDims(r, m.w, m.h); return finishCraft(m); }
     }
   }
   return {};
@@ -184,6 +282,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
       ItemStack out;
       if (tm && metalDef(tm->key) && makePartTool(kind, std::vector<std::string>(partToolSections(kind), tm->key), hf->id, out)) {
         CraftMatch m = special(out.id, 1, bw, bh); m.extra = out.tag;
+        giveCraftQuality(out); m.extra = out.tag;
         return m;
       }
     }
@@ -195,12 +294,28 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
         if (h->tag.is_object() && h->tag.value("q", 0) > 0) out.tag["pt"]["dur"] = (int)std::lround(out.tag["pt"].value("dur", 0) * 1.05);   // quenched (sim/heat)
         if (h->tag.is_object() && h->tag.contains("ql")) out.tag["pt"]["dur"] = (int)std::lround(out.tag["pt"].value("dur", 0) * h->tag.value("ql", 1.0));   // the smith's work (sim/anvil)
         CraftMatch m = special(out.id, 1, bw, bh); m.extra = out.tag;
+        giveCraftQuality(out); m.extra = out.tag;
         return m;
       }
     }
   }
-  // an immersive world: tools come from heads (knapped, cast, smithed) and armour from the anvil, never the grid's patterns
-  if (recipeGate().immersive) return {};
+  // an immersive world: tools come from heads (knapped, cast, smithed) and armour from the anvil, never the grid's patterns.
+  // the chisel stays on the grid: a stick over any ingot, the same metals as the other tools
+  if (recipeGate().immersive) {
+    if (bw == 1 && bh == 2 && count == 2) {
+      const ItemStack& top = at(0, 0), &bot = at(0, 1);
+      const ToolMaterial* tm = toolMaterialOfStack(bot);
+      if (tm && top.id == "stick") {
+        ItemStack out;
+        if (makePartTool("chisel", {tm->key}, top.id, out)) {
+          giveCraftQuality(out);
+          CraftMatch m = special(out.id, 1, 1, 2); m.extra = out.tag;
+          return m;
+        }
+      }
+    }
+    return {};
+  }
   for (const ToolPattern& P : toolPatterns()) {
     if (P.w != bw || P.h != bh || (int)(P.head.size() + P.haft.size()) != count) continue;
     for (int mirror = 0; mirror < (P.w > 1 ? 2 : 1); mirror++) {
@@ -216,7 +331,9 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
       if (same && haft == "stick" && m0 && reg().item(m0->prefix + "_" + P.kind) && !metalDef(m0->key) && !(m0->key.size() && m0->key[0] == '@')) return {};
       ItemStack out;
       if (!makePartTool(P.kind, mats, haft, out)) continue;
-      CraftMatch m = special(out.id, 1, P.w, P.h); m.extra = out.tag;
+      giveCraftQuality(out);
+      const int made = P.kind == "throwing_axe" ? 4 : 1;   // a throwing axe is a handful, thrown one at a time
+      CraftMatch m = special(out.id, made, P.w, P.h); m.extra = out.tag;
       return m;
     }
   }
@@ -231,6 +348,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
     }
     ItemStack out;
     if (!makePartArmor(P.piece, mats, out)) continue;
+    giveCraftQuality(out);
     CraftMatch m = special(out.id, 1, P.w, P.h); m.extra = out.tag;
     return m;
   }
@@ -239,6 +357,7 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
 
 // game/dyeing.js: a dye and one block takes the colour; leather armour mixes any number of dyes
 static CraftMatch matchDye(const std::vector<ItemStack>& slots, int W) {
+  if (CraftMatch q = matchQualityReroll(slots); q.ok) return q;
   std::vector<const ItemStack*> dyes, rest;
   for (auto& s : slots) if (!s.empty()) { const ItemDef* d = s.def(); if (d && d->has("dye")) dyes.push_back(&s); else rest.push_back(&s); }
   if (!dyes.empty() && rest.size() == 1) {
@@ -301,6 +420,11 @@ void consumeCraft(std::vector<ItemStack>& grid, const CraftMatch& r, const std::
 }
 
 CraftMatch matchGrid(const std::vector<ItemStack>& slots, int W) {
+  struct SlotHold {
+    const std::vector<ItemStack>* prev;
+    explicit SlotHold(const std::vector<ItemStack>& s) : prev(craftGridSlots) { craftGridSlots = &s; }
+    ~SlotHold() { craftGridSlots = prev; }
+  } hold(slots);
   const ItemStack* fm = nullptr; int nf = 0, ne = 0, np = 0, other = 0, fi = -1;
   for (int i = 0; i < (int)slots.size(); i++) {
     const ItemStack& s = slots[i]; if (s.empty()) continue;

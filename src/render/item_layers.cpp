@@ -138,13 +138,26 @@ const vec3 FP_HAND(0.56f, -0.5f, -0.72f);   // where the first-person arms sit (
 inline float wrapA(float a) { return std::fmod(std::fmod(a + PI * 3, TAU) + TAU, TAU) - PI; }
 // the classic first-person swing, turned about the fist: the item chops forward and down and eases back
 // (an empty hand punches instead)
-mat4 armSwing(const mat4& am, float side, float sp, bool empty, bool mining = false) {
+mat4 armSwing(const mat4& am, float side, float sp, bool empty, bool mining = false, bool pick = false, float look = 0) {
   float r = std::sqrt(sp), f = std::sin(sp * sp * PI), f1 = std::sin(r * PI), D = PI / 180;
   float k = empty ? -0.3f : 0.35f;
   vec3 pv = vec3(am[1]) * k + vec3(am[3]);   // turn about the shoulder end
   mat4 S(1);
   if (empty) S = glm::translate(S, vec3(side * -0.3f * f1, 0.1f * std::sin(r * TAU) + 0.05f * f1, -0.38f * std::sin(sp * PI)));
-  else {
+  else if (mining && pick) {
+    // the elbow pumps. The shoulder tips with the look (up raises the pick, down lowers it).
+    const float aim = std::clamp(look, -1.1f, 1.1f) * 0.38f;
+    const vec3 along = vec3(am[1]), origin = vec3(am[3]);
+    const vec3 shoulder = origin + along * 0.36f, elbow0 = origin + along * 0.12f;
+    const vec3 elbow = shoulder + vec3(glm::rotate(mat4(1), aim, vec3(1, 0, 0)) * vec4(elbow0 - shoulder, 0));
+    const float pump = std::sin(sp * PI) * -62.f * D + f1 * -8.f * D;
+    S = glm::translate(mat4(1), elbow);
+    S = glm::rotate(S, pump, vec3(1, 0, 0));
+    S = glm::translate(S, -elbow);
+    S = glm::translate(S, shoulder);
+    S = glm::rotate(S, aim, vec3(1, 0, 0));
+    S = glm::translate(S, -shoulder);
+  } else {
     S = glm::translate(S, vec3(side * -0.4f * f1, 0.2f * std::sin(r * TAU), -0.2f * std::sin(sp * PI)));
     S = glm::translate(S, pv);
     const float sideK = mining ? 0.45f : 1.f;   // mining: a straighter chop down into the block
@@ -213,7 +226,7 @@ void HeldItemLayer::update(GameSession& s, double dt) {
   float fdt = (float)std::min(dt, 0.1);
   bool menu = s.app.topScreen() != nullptr;
   // the step bob (player.js): its amount follows how fast you walk on the ground
-  float hs = std::hypot(p->vel.x, p->vel.z);
+  float hs = p->riding ? 0.f : std::hypot(p->vel.x, p->vel.z);   // the vehicle's speed is not a walk: the hands were thrashing in a moving boat
   bobAmt += ((p->onGround && !p->flying ? std::min(1.f, hs / 4.3f) : 0.f) - bobAmt) * std::min(1.f, fdt * 8);
   bob += hs * fdt * 1.6f;
   // what's in hand: a new thing comes up from below
@@ -255,7 +268,7 @@ void HeldItemLayer::update(GameSession& s, double dt) {
   if (!menu) {
     Input& in = s.app.input;
     if (in.pressed(Act::Attack)) swingArm();   // every attack swings: the air, a creature in front of a wall, a block (mining keeps it going)
-    if (in.pressed(Act::Use) && s.target.hit) swingArm();
+    if (in.pressed(Act::Use) && s.target.hit && p->blockT <= 0) swingArm();   // a guard is not a chop
     else if (in.pressed(Act::Use) && p->held().id == "fishing_rod") swingArm();   // cast / reel in
     if (s.breaking) { swinging = true; if (swing == 0) swing = 0.0001f; }
     // holding Use places again and again: each placement restarts the player's swing, so the arm keeps looping
@@ -381,7 +394,9 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       // a shield (sim/combat_rpg.h) strapped on the forearm: carried with the forearm level, raised while you block (the
       // hand it's in, the main hand's first); a parry knocks it back
       const bool mainSh = p->held().id == "shield" || (p->held().def() && p->held().def()->has("shield"));
-      const bool up = p->blockT > 0 && (side > 0 || !mainSh);
+      const ItemDef* heldDef = p->held().def();
+      const bool twoHand = heldDef && heldDef->num("hands") >= 2.0;   // a two-handed block does not raise this shield
+      const bool up = p->blockT > 0 && !twoHand && (side > 0 || !mainSh);
       static float raise[2] = {0, 0}; static double rt[2] = {-1, -1};
       const int h = side > 0 ? 0 : 1;
       const float sdt = rt[h] < 0 ? 0.f : (float)std::clamp(f.time - rt[h], 0.0, 0.05); rt[h] = f.time;
@@ -409,7 +424,22 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       if (itemHook && im.ready()) over.push_back({stack, m});
       return;
     }
-    if (side > 0 && swing > 0) am = armSwing(am, 1, swing, false, s.breaking);
+    bool pickMine = false;
+    if (s.breaking) if (const ItemDef* pd = stack.def()) pickMine = pd->hasTool && pd->tool.type == "pickaxe";
+    const bool weaponUp = p->blockT > 0.02f && [&] {
+      const ItemDef* d = stack.def(); if (!d || stack.id == "shield" || d->has("shield")) return false;
+      const std::string t = d->hasTool ? d->tool.type : "";
+      const std::string ms = d->str("moveset");
+      return t == "sword" || t == "axe" || t == "mace" || ms == "greatsword" || ms == "spear" || ms == "mace" || stack.id.find("dagger") != std::string::npos;
+    }();
+    if (weaponUp) {
+      const bool pair = !p->offhand.empty() && !p->offhand[0].empty() && !p->held().empty();
+      // one blade lies across the view, lower, the way a greatsword does. Two tilt in and cross.
+      am = glm::translate(mat4(1), vec3(side * (pair ? 0.02f : 0.06f), -0.06f, -0.48f));
+      am = glm::rotate(am, side * (pair ? 0.85f : 0.35f), vec3(0, 0, 1));
+      am = glm::rotate(am, pair ? 0.7f : 0.85f, vec3(1, 0, 0));
+      am = glm::rotate(am, side * (pair ? -0.45f : -0.15f), vec3(0, 1, 0));
+    } else if (side > 0 && swing > 0) am = armSwing(am, 1, swing, false, s.breaking, pickMine, p->pitch);
     if (side > 0 && wind > 0) { am = glm::translate(am, vec3(0, 0.1f * wind, 0.05f * wind)); am = glm::rotate(am, -0.75f * std::sin(wind * PI / 2), vec3(1, 0, 0)); }   // the rod comes back over the shoulder before the cast
     drawArm(am);
     // the fist, turned back to face the way you look
@@ -471,7 +501,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       return;
     }
     VR.slosh = slosh;
-    if (im.ready()) VR.draw(im.gl, m * im.matrix(), L, vec4(0), glint ? 1.f : 0.f);
+    if (im.ready() && !drawSwingingMace(im, m, L, vec4(0), glint ? 1.f : 0.f)) VR.draw(im.gl, m * im.matrix(), L, vec4(0), glint ? 1.f : 0.f);
     VR.slosh = vec2(0);
     if (itemHook && im.ready()) over.push_back({stack, m});
     if (rod && im.ready() && side > 0) {   // the line leaves the tip of the rod: view space -> world

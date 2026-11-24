@@ -4,6 +4,7 @@
 #include "assets/voxel_paint.h"
 #include "assets/tileset.h"
 #include "core/registry.h"
+#include <memory>
 #include <regex>
 #include <unordered_map>
 
@@ -19,6 +20,10 @@ struct ItemBuild {
   float depth = 0.04f;
   bool stand = false;
   VoxelModel::Kind kind = VoxelModel::Flat;
+  // a mace's chain, painted apart from the haft so each link can swing (the haft grid is the model before the chain)
+  struct LooseBit { VoxelGrid g; vec3 a{0}, b{0}; };
+  std::vector<LooseBit> loose;
+  std::unique_ptr<VoxelGrid> haft;
   int tile(const std::string& name) const { auto it = ts.index.find(name == "white_wool" ? "wool" : name); return it == ts.index.end() ? 0 : it->second; }
 };
 

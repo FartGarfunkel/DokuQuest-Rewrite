@@ -15,12 +15,16 @@
 #include "core/registry.h"
 #include <functional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
 namespace dq {
 struct GenBuf;
 class LandBiomes;
+
+// 2x2 cubes of stone / travertine / cobble on the grass (nature:large_pumpkin_feature with a rock). Pumpkins stay.
+bool isClutterRockKey(std::string_view key);
 
 class BiomeFeatures {
 public:

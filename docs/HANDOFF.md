@@ -1,6 +1,6 @@
 # DokuQuest — session handoff (2026-11-02, night)
 
-**Newest: `docs/HANDOFF_2026-11-12.md`** (combat moves, animation, immersive first person; where it stands and what's left).
+**Newest: `docs/HANDOFF_2026-11-22.md`** (HEAD `c9d22225`). Follow-up uncommitted pass: `docs/HANDOFF_GROK_2026-11-22_STRUCTURE_AND_RPG.md` (surface cubes, desert temple sit, mineshaft mouth, 224-block structure spacing).
 
 Start here in a new session. Read this file, `CLAUDE.md` (the code map), and only the files a task needs.
 The full feature list is `docs/MASTER_PLAN.md` (the user's master doc, V2); the classic-features detail is `docs/WISHLIST.md`; the

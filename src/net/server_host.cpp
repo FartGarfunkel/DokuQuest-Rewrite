@@ -13,6 +13,7 @@
 #include "sim/vehicles.h"
 #include "net/net_internal.h"
 #include "sim/commands.h"
+#include "sim/villagers.h"
 #include "gen/generator.h"
 #include <enet/enet.h>
 #ifdef _WIN32
@@ -766,6 +767,7 @@ void ServerHost::hostChat(Peer& p, const std::string& text0) {
   }
   if (level.events && !level.events->emit("chat", json::array({p.name, text}))) return;
   level.fx->message(0, "<" + p.name + "> " + text, "chat");
+  if (p.pl) npcHearChat(level, *p.pl, text);
 }
 
 // What the server's own systems did to a remote player's body since their game last told us about it.

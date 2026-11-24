@@ -24,7 +24,7 @@ struct VPPiece {
   std::string name, kind, style;          // "plains_small_house_1", "houses", "plains"
   int sx = 0, sy = 0, sz = 0, top = 0;     // size; top = the highest layer with anything in it
   int weight = 1;
-  bool terrain = false;                    // streets and their ends follow the land; everything else stands rigid
+  bool terrain = false;                    // streets and flat road-ends follow the land; a lamp, well or fountain stands rigid
   std::vector<VPState> states;
   std::vector<VPBlock> blocks;             // no air (a village piece's air is never placed)
   std::vector<VPJoint> joints;
@@ -44,6 +44,26 @@ const VillagePieces* villagePieces();
 std::string piecesMissing();   // the block names no block of ours stands for (most first)
 bool makePiece(const std::string& style, const std::string& kind, const std::string& name, const std::vector<u8>& bytes, VPPiece& P, const json* rules = nullptr);   // rules: the builder's block swaps (tools/local/processors.py)   // nullptr: data/villages is missing (the classic villages are built)
 // a piece's block at a quarter turn r (clockwise seen from above): its offset in the turned box
+// A street, and a flat cap on the end of one, follows the slope. A lamp post, a well, a fountain
+// or anything else with a post does not: one floor for the whole piece, or the beam leaves the post.
+inline bool pieceFollowsLand(const VPPiece& p) {
+  if (!p.terrain) return false;
+  if (p.kind != "terminators") return true;
+  for (const VPBlock& b : p.blocks) if (b.y >= 2) return false;
+  return true;
+}
+// The floor of a rigid piece: the highest ground under it, so the low side can be filled up to the rest.
+template <class G>
+int rigidFloorY(int x0, int z0, int x1, int z1, G ground) {
+  int y = 1; bool any = false;
+  for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) {
+    const int g = ground(x, z);
+    if (!any || g > y) y = g;
+    any = true;
+  }
+  return any ? y : 1;
+}
+
 inline std::array<int, 2> vpTurn(const VPPiece& p, int r, int x, int z) {
   switch (r & 3) { case 1: return {p.sz - 1 - z, x}; case 2: return {p.sx - 1 - x, p.sz - 1 - z}; case 3: return {z, p.sx - 1 - x}; default: return {x, z}; }
 }

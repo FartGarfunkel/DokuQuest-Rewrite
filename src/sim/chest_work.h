@@ -43,7 +43,8 @@ int chestStoreAll(Level& lv, Player& p, World& w, ivec3 at);       // your bag (
 // inside; kept in the block's meta (saved and shared as ever). Both halves of a large chest go together
 constexpr u8 LID_OPEN = 0x20;
 void chestProgressLoot(World& w, const Player& p, ivec3 at);   // a structure chest first opened: the opener's progress tier adds to its own table (host-side; "lk" marks it)
-bool chestHasLid(World& w, ivec3 at);              // a chest or barrel (not a cabinet, an ender or a party chest)
+bool chestHasLid(World& w, ivec3 at);              // a chest, a barrel, or a coffin (not a cabinet, an ender or a party chest)
+ivec3 coffinFoot(World& w, ivec3 at);              // a coffin's head half keeps its things in the foot
 bool chestLidOpen(World& w, ivec3 at);
 void setChestLidOpen(World& w, ivec3 at, bool open);
 // the lid itself under a click on an open chest (its back face, or the back of its top where the lid stands up)

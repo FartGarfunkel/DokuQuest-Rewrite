@@ -2,6 +2,7 @@
 #include "world/rug.h"
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 
 namespace dq {
 
@@ -125,24 +126,44 @@ const StructurePlan* StructureIndex::at(int k, int rx, int rz) const {
   }
   const StructurePlan* p = raw(k, rx, rz);
   bool clear = p != nullptr;
-  if (p && !T.place) {
-    // keep clear of everything registered before it (structures.js structAt, in the original's float maths)
+  if (p) {
+    // keep clear of everything registered before it (structures.js structAt, in the original's float maths).
+    // T.place kinds (village, dungeon, lair) go through the same rule; place() already ran inside raw().
     const double cx = (p->x0 + p->x1) / 2.0, cz = (p->z0 + p->z1) / 2.0, rad = std::max(p->x1 - p->x0, p->z1 - p->z0) / 2.0;
+    auto regionReach = [](double apart, int region) {
+      return std::max(1, (int)std::ceil(apart / (double)std::max(1, region)));
+    };
     for (int j : types) {
       if (j >= k || !clear) break;
       const StructureType& J = structureTypes()[j];
       const double pad = rad + J.clearance;
-      auto hit = [&](const StructurePlan* o) { return o && cx >= o->x0 - pad && cx <= o->x1 + pad && cz >= o->z0 - pad && cz <= o->z1 + pad; };
+      const double apart = std::max(T.separation, J.separation);
+      auto hit = [&](const StructurePlan* o) {
+        if (!o) return false;
+        if (cx >= o->x0 - pad && cx <= o->x1 + pad && cz >= o->z0 - pad && cz <= o->z1 + pad) return true;
+        if (apart <= 0) return false;
+        const double ox = (o->x0 + o->x1) / 2.0, oz = (o->z0 + o->z1) / 2.0;
+        return (cx - ox) * (cx - ox) + (cz - oz) * (cz - oz) < apart * apart;
+      };
       if (J.global) { for (const auto& o : globals(j)) if (hit(&o)) { clear = false; break; } continue; }
       const int qx = jsFloor(cx / J.region), qz = jsFloor(cz / J.region);
-      for (int dz = -1; dz <= 1 && clear; dz++) for (int dx = -1; dx <= 1; dx++) if (hit(at(j, qx + dx, qz + dz))) { clear = false; break; }
+      const int reach = regionReach(apart, J.region);
+      for (int dz = -reach; dz <= reach && clear; dz++) for (int dx = -reach; dx <= reach; dx++) if (hit(at(j, qx + dx, qz + dz))) { clear = false; break; }
     }
     // and of a neighbour of its own kind that comes first (row by row): a plan wider than its region (the big places)
-    // was built over by the one next door
-    if (clear) for (int dz = -2; dz <= 2 && clear; dz++) for (int dx = -2; dx <= 2; dx++) {
-      if (dz > 0 || (dz == 0 && dx >= 0)) continue;
-      const StructurePlan* o = raw(k, rx + dx, rz + dz);
-      if (o && p->x0 - T.clearance <= o->x1 && p->x1 + T.clearance >= o->x0 && p->z0 - T.clearance <= o->z1 && p->z1 + T.clearance >= o->z0) { clear = false; break; }
+    // was built over by the one next door. raw() so a later region does not recurse into at() of the same kind.
+    if (clear) {
+      const int reach = T.separation > 0 ? std::max(2, regionReach(T.separation, T.region)) : 2;
+      for (int dz = -reach; dz <= reach && clear; dz++) for (int dx = -reach; dx <= reach; dx++) {
+        if (dz > 0 || (dz == 0 && dx >= 0)) continue;
+        const StructurePlan* o = raw(k, rx + dx, rz + dz);
+        if (!o) continue;
+        if (p->x0 - T.clearance <= o->x1 && p->x1 + T.clearance >= o->x0 && p->z0 - T.clearance <= o->z1 && p->z1 + T.clearance >= o->z0) { clear = false; break; }
+        if (T.separation > 0) {
+          const double ox = (o->x0 + o->x1) / 2.0, oz = (o->z0 + o->z1) / 2.0;
+          if ((cx - ox) * (cx - ox) + (cz - oz) * (cz - oz) < (double)T.separation * (double)T.separation) { clear = false; break; }
+        }
+      }
     }
   }
   std::unique_ptr<StructurePlan> S;

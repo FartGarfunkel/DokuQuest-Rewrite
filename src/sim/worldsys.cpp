@@ -22,6 +22,13 @@
 
 namespace dq {
 
+bool waterFormsInfiniteSourceAt(int y) {
+  // y here is a stacked world coordinate. The Overworld sea is band-local 64, which
+  // sits at y 576 in the usual layout, so a raw compare with 64 never filled the sea.
+  if (landOf(dimOfY(y)) == DIM_OVERWORLD) return y <= dimBase(DIM_OVERWORLD) + SEA_LEVEL;
+  return y <= SEA_LEVEL;
+}
+
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
 
 struct PosKey { int x, y, z; bool operator==(const PosKey& o) const { return x == o.x && y == o.y && z == o.z; } };
@@ -193,7 +200,7 @@ public:
           best = std::min(best, lvl + 1);
         }
         expected = best;
-        if (kind == 1 && sources >= 2) {
+        if (kind == 1 && sources >= 2 && waterFormsInfiniteSourceAt(y)) {
           BlockId below = w.getBlockPhys(x, y - 1, z);
           if (R.tSolid[below] || (same(x, y - 1, z) && (w.getMeta(x, y - 1, z) & 15) == 0)) expected = 0;
         }
@@ -312,13 +319,17 @@ bool growTree(Level& lv, World& w, int x, int y, int z, double r) {
     for (auto& p : parts) {
       if (p[1] == y && p[0] == x && p[2] == z) continue;
       BlockId b = w.getBlock(p[0], p[1], p[2]);
-      if (b && !bhas(b, BF::IsLeaves) && !R.tReplaceable[b] && R.block(b).key != "tall_grass") return false;
+      if (b && !bhas(b, BF::IsLeaves) && !R.tReplaceable[b] && R.block(b).key != "tall_grass"
+          && !(R.tLiquid[b] == 1 && R.tWlog[(BlockId)p[3]])) return false;
     }
     w.setBlock(x, y, z, AIR);
     for (auto& p : parts) {
       BlockId b = w.getBlock(p[0], p[1], p[2]);
-      if (p[4] && b && !R.tReplaceable[b]) continue;
-      w.setBlock(p[0], p[1], p[2], (BlockId)p[3], (u8)p[5]);
+      const bool wet = R.tLiquid[b] == 1 && R.tWlog[(BlockId)p[3]];
+      if (p[4] && b && !R.tReplaceable[b] && !wet) continue;
+      u8 meta = (u8)p[5];
+      if (wet) meta |= WLOG;
+      w.setBlock(p[0], p[1], p[2], (BlockId)p[3], meta);
     }
     return true;
   };

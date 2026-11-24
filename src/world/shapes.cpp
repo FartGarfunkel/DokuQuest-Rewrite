@@ -125,6 +125,7 @@ void initBlockTraits() {
     t.clothTex = tileOf(b.str("clothTex"));
     std::string shape = b.str("shape");
     t.campfire = shape == "campfire" ? 1 : shape == "soul_campfire" ? 2 : 0;
+    t.brazier = b.key == "brazier";
     t.lantern = shape == "lantern" || shape == "soul_lantern" || shape == "firefly_lantern";
     t.bamboo = b.key == "bamboo";
     if (!shape.empty()) {
@@ -156,7 +157,7 @@ void initBlockTraits() {
     if (b.props.contains("stageTiles")) for (auto& s : b.props["stageTiles"]) if (s.is_number()) t.stageTiles.push_back(s.get<u16>());
     if (b.props.contains("tex") && b.props["tex"].is_object() && b.props["tex"].contains("top")) t.bedTop = tileOf(b.props["tex"]["top"].get<std::string>());
     if (t.bedTop < 0) t.bedTop = tileOf("red_bed_top");
-    t.emitsParticles = t.fire || t.campfire || b.render == Render::Torch || R.tPortal[b.id] || t.candle || b.key.find("portal") != std::string::npos;
+    t.emitsParticles = t.fire || t.campfire || t.brazier || b.render == Render::Torch || R.tPortal[b.id] || t.candle || b.key.find("portal") != std::string::npos;
   }
   g_traits = std::move(T);
   g_tracedBlocks = R.blocks.size();
@@ -294,6 +295,49 @@ void rotBox(ShapeBox& b, int f) {
   else if (f == 2) { ax = 16 - x0; az = 16 - z0; bx = 16 - x1; bz = 16 - z1; }
   else { ax = z0; az = 16 - x0; bx = z1; bz = 16 - x1; }
   b.b[0] = std::min(ax, bx); b.b[2] = std::min(az, bz); b.b[3] = std::max(ax, bx); b.b[5] = std::max(az, bz);
+}
+u8 rotOnly(u8 only, int f) {
+  if (!f || only == 63) return only;
+  const int px = (only >> 0) & 1, nx = (only >> 1) & 1, pz = (only >> 4) & 1, nz = (only >> 5) & 1;
+  int npx, nnx, npz, nnz;
+  if (f == 1) { npx = nz; nnx = pz; npz = px; nnz = nx; }          // +X comes from -Z
+  else if (f == 2) { npx = nx; nnx = px; npz = nz; nnz = pz; }
+  else { npx = pz; nnx = nz; npz = nx; nnz = px; }
+  u8 o = (u8)(only & ((1 << 2) | (1 << 3)));
+  if (npx) o |= 1 << 0; if (nnx) o |= 1 << 1; if (npz) o |= 1 << 4; if (nnz) o |= 1 << 5;
+  return o;
+}
+void bedHalfBoxes(const std::vector<ShapeBox>& model, bool head, bool flipZ, std::vector<ShapeBox>& out) {
+  out.clear();
+  for (ShapeBox b : model) {
+    float z0 = b.b[2], z1 = b.b[5];
+    if (flipZ) { z0 = 16.f - b.b[5]; z1 = 16.f - b.b[2]; }
+    const float a0 = head ? z0 * 2.f : z0 * 2.f - 16.f;
+    const float a1 = head ? z1 * 2.f : z1 * 2.f - 16.f;
+    float lo = std::min(a0, a1), hi = std::max(a0, a1);
+    const bool cutLo = lo < -0.01f, cutHi = hi > 16.01f;
+    lo = std::max(0.f, lo); hi = std::min(16.f, hi);
+    if (hi - lo < 0.05f) continue;
+    b.b[2] = lo; b.b[5] = hi;
+    u8 hide = 0;
+    if (cutHi) hide |= 1 << 4;
+    if (cutLo) hide |= 1 << 5;
+    b.only = (u8)(b.only & ~hide);
+    out.push_back(b);
+  }
+}
+void hingeCoffinLid(std::vector<ShapeBox>& boxes) {
+  const float hx = 1.5f, hy = 7.5f;   // the left rim, where the lid meets the box
+  for (ShapeBox& b : boxes) {
+    if (b.b[1] < 7.f) continue;   // the coffin itself stays; the lid and its trim swing up
+    float nx0 = 1e9f, ny0 = 1e9f, nx1 = -1e9f, ny1 = -1e9f;
+    for (float x : {b.b[0], b.b[3]}) for (float y : {b.b[1], b.b[4]}) {
+      const float rx = x - hx, ry = y - hy;
+      const float ox = hx - ry, oy = hy + rx;   // a quarter turn up, off the left side
+      nx0 = std::min(nx0, ox); nx1 = std::max(nx1, ox); ny0 = std::min(ny0, oy); ny1 = std::max(ny1, oy);
+    }
+    b.b[0] = nx0; b.b[3] = nx1; b.b[1] = ny0; b.b[4] = ny1;
+  }
 }
 void flipBox(ShapeBox& b) { float y0 = b.b[1], y1 = b.b[4]; b.b[1] = 16 - y1; b.b[4] = 16 - y0; }
 
@@ -839,6 +883,16 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       return true;
     }
     case ShapeKind::Bed: {
+      if (T.model >= 0) {   // sleeping bag, oak coffin: one model stretched over the two cells, head at low Z
+        const std::vector<ShapeBox>* boxes = modelShape(T.model);
+        if (!boxes) return false;
+        const int f = m & 3;
+        thread_local std::vector<ShapeBox> half;
+        bedHalfBoxes(*boxes, m & 4, def.key == "sleeping_bag", half);
+        if (def.key == "oak_coffin" && (m & 0x20)) hingeCoffinLid(half);   // the lid is up (sim/chest_work.h LID_OPEN)
+        for (ShapeBox b : half) { b.only = rotOnly(b.only, f); pushRot(b, f); }
+        return true;
+      }
       int f = m & 3, head = m & 4;
       if (purpose != ShapePurpose::Draw) {   // the mattress on its feet, down to the floor (nothing rolls under it); the pillow picked too
         push(ShapeBox(0, 0, 0, 16, 9, 16));
@@ -1025,10 +1079,25 @@ bool carveBoxes(std::vector<ShapeBox>& out, u8 carve, const ShapeNb& nb) {   // 
 
 int sinkOffset(BlockId id, const ShapeNb& nb) {
   const Registry& R = reg();
-  if (!R.tSink[id]) return 0;
+  const int k = R.tShape[id];
+  // a slab or stair on another slab stays in its own cell (two bottom slabs combine by meta, not by sinking)
+  if (k == ShapeKind::Slab || k == ShapeKind::Stairs || k == ShapeKind::Carpet || k == ShapeKind::Layer || k == ShapeKind::Path)
+    return 0;
   BlockId b = nb.id(0, -1, 0);
   if (u8 cv = nb.carve(0, -1, 0)) return R.tOpaque[b] && carveFaceDepth(cv, 0, 1, 0) == 8 ? -8 : 0;   // a chiseled bottom half
   return R.tShape[b] == ShapeKind::Slab && (nb.meta(0, -1, 0) & 7) == 0 ? -8 : 0;
+}
+void restShift(BlockId id, const ShapeNb& nb, int& ox, int& oy, int& oz) {
+  ox = oz = 0;
+  oy = sinkOffset(id, nb);
+  const int k = reg().tShape[id];
+  if (k == ShapeKind::Slab || k == ShapeKind::Stairs || k == ShapeKind::Carpet || k == ShapeKind::Layer || k == ShapeKind::Path)
+    return;
+  for (int f = 0; f < 4; f++) {
+    if (!slabGap(nb.id(DIRX[f], 0, DIRZ[f]), nb.meta(DIRX[f], 0, DIRZ[f]), f, nb.carve(DIRX[f], 0, DIRZ[f]))) continue;
+    ox += DIRX[f] * 8;
+    oz += DIRZ[f] * 8;
+  }
 }
 float torchSetBack(u8 m, const ShapeNb& nb) {
   if (m < 1 || m > 4) return 0;
@@ -1046,8 +1115,10 @@ bool blockShapeBoxes(const World& w, int x, int y, int z, int purpose, std::vect
   static thread_local std::vector<ShapeBox> boxes;
   if (!shapeBoxes(id, meta, nb, purpose, boxes)) return false;
   SeatShift sh = seatShiftOf(id, meta, carve, nb);
-  float sink = sh.micro ? sh.y : (float)sinkOffset(id, nb);
-  vec3 off(sh.micro ? sh.x : 0, 0, sh.micro ? sh.z : 0);
+  int rx = 0, ry = 0, rz = 0;
+  if (!sh.micro) restShift(id, nb, rx, ry, rz);
+  float sink = sh.micro ? sh.y : (float)ry;
+  vec3 off(sh.micro ? sh.x : (float)rx, 0, sh.micro ? sh.z : (float)rz);
   if (!sh.micro && reg().tRender[id] == (u8)Render::Torch) {
     int m = meta & 7; float back = torchSetBack((u8)m, nb);
     if (back > 0) off = vec3(m == 1 ? -8 : m == 2 ? 8 : 0, 0, m == 3 ? -8 : m == 4 ? 8 : 0);

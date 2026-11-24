@@ -183,7 +183,9 @@ int main(int argc, char** argv) {
   check(folkNow.size() == 8, "the villagers come out when someone is near (3 folk + 4 hands + 1 guard): " + std::to_string(folkNow.size()));
   Creature* farmer = byJob(v->id, "farmer"); Creature* lib = byJob(v->id, "librarian"); Creature* elder = byJob(v->id, "elder"); Creature* guard = byJob(v->id, "guard");
   check(farmer && lib && elder && guard, "farmer, librarian, elder and a guard");
-  check(guard && guard->heldItem == "iron_sword" && guard->data["npcArmor"].size() == 4, "the guard carries a sword and wears iron");
+  check(guard && guard->heldItem == "copper_sword"
+        && guard->data["npcArmor"] == json::array({"copper_helmet", "copper_chestplate", "copper_leggings", "copper_boots"}),
+        "the guard carries a copper sword and wears copper");
   check(farmer && npcOf(*farmer)->value("n", "") == npcName(npcSeedOf(*v, 0)), "names from their look seed");
   tick(25);
   check(farmer && std::hypot(farmer->pos.x - 14.5f, farmer->pos.z + 5.5f) < 1.5f, "in the morning the farmer walks to work (" + std::to_string(farmer ? farmer->pos.x : 0) + ", " + std::to_string(farmer ? farmer->pos.z : 0) + ")");

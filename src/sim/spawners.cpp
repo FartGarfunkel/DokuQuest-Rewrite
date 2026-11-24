@@ -26,7 +26,7 @@ public:
     for (Player* p : ps) {
       World& w = lv.world(p->realm);
       ivec3 c = ivec3(glm::floor(p->pos));
-      for (int y = c.y - 6; y <= c.y + 6; y++) for (int z = c.z - 14; z <= c.z + 14; z++) for (int x = c.x - 14; x <= c.x + 14; x++) {
+      for (int y = c.y - 10; y <= c.y + 10; y++) for (int z = c.z - 14; z <= c.z + 14; z++) for (int x = c.x - 14; x <= c.x + 14; x++) {
         if (y < 1 || y >= WORLD_H - 2 || w.getBlock(x, y, z) != cage) continue;
         u64 k = ((u64)(u32)x << 40) ^ ((u64)(u32)y << 20) ^ (u64)(u32)z ^ ((u64)p->realm << 62);
         if (seen.count(k)) continue;

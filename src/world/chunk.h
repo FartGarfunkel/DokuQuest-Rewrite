@@ -59,7 +59,7 @@ struct ChunkKeyHash { size_t operator()(const ChunkKey& k) const { return ((size
 
 class Chunk {
 public:
-  Chunk(int dim, int cx, int cz) : dim(dim), cx(cx), cz(cz) { airLight.fill(0xF0); airRgb.fill(fullSunRgb()); }
+  Chunk(int dim, int cx, int cz) : dim(dim), cx(cx), cz(cz) { airLight.fill(0); airRgb.fill(LightRgb{}); }
   const int dim, cx, cz;
   ChunkKey key() const { return {dim, cx, cz}; }
   int baseY() const { return dimBase(dim); }

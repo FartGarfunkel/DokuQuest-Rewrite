@@ -14,6 +14,7 @@
 #include "sim/level.h"
 #include "core/registry.h"
 #include <cmath>
+#include <algorithm>
 #include <map>
 #include <cstdio>
 #include <cstdlib>
@@ -85,17 +86,33 @@ void summon(Level& lv, Creature& m, const std::string& type, int n, int cap) {
   if (room > 0) lv.fx->sound("spell_ward", m.pos, 32);   // (calling its servants)
 }
 
-// a free spot standing on ground, `r` from `about` (or none)
-bool spotNear(World& w, vec3 about, float r, vec3& out) {
-  for (int tries = 0; tries < 12; tries++) {
+bool inHomeBox(const Creature& m, vec3 p) {
+  if (!m.data.contains("homeBox") || !m.data["homeBox"].is_array() || m.data["homeBox"].size() < 6) return true;
+  const json& b = m.data["homeBox"];
+  return p.x >= b[0].get<float>() + 0.7f && p.x <= b[3].get<float>() - 0.7f
+      && p.z >= b[2].get<float>() + 0.7f && p.z <= b[5].get<float>() - 0.7f
+      && p.y >= b[1].get<float>() - 0.5f && p.y <= b[4].get<float>() + 0.5f;
+}
+// a free spot on the hall floor, around its home (never through the wall or the floor)
+bool spotNear(World& w, const Creature& m, float r, vec3& out) {
+  vec3 about = m.pos;
+  if (m.data.contains("home") && m.data["home"].is_array() && m.data["home"].size() >= 3) {
+    const json& h = m.data["home"];
+    about = vec3(h[0].get<float>(), h[1].get<float>(), h[2].get<float>());
+  }
+  r = std::min(r, 4.2f);
+  for (int tries = 0; tries < 16; tries++) {
     const float a = frand() * TAU;
-    const int x = ifloor(about.x + std::cos(a) * r), z = ifloor(about.z + std::sin(a) * r);
-    for (int dy = 3; dy >= -4; dy--) {
+    const float rr = 1.4f + frand() * std::max(0.4f, r - 1.4f);
+    const int x = ifloor(about.x + std::cos(a) * rr), z = ifloor(about.z + std::sin(a) * rr);
+    for (int dy = 1; dy >= -1; dy--) {
       const int y = ifloor(about.y) + dy;
-      if (!w.isLoaded(x, y, z)) break;
+      if (!w.isLoaded(x, y, z)) continue;
       const Registry& R = reg();
       if (R.tSolid[w.getBlock(x, y - 1, z)] && !R.tSolid[w.getBlock(x, y, z)] && !R.tSolid[w.getBlock(x, y + 1, z)] && !R.tSolid[w.getBlock(x, y + 2, z)] && !R.tLiquid[w.getBlock(x, y, z)]) {
-        out = vec3(x + 0.5f, (float)y, z + 0.5f); return true;
+        const vec3 cand(x + 0.5f, (float)y, z + 0.5f);
+        if (!inHomeBox(m, cand)) continue;
+        out = cand; return true;
       }
     }
   }
@@ -175,7 +192,7 @@ OptMove bossFight(Level& lv, Creature& m, Entity* p, float dist, float dyp, floa
       strike(lv, m, 3.6f, dmg, true, 11, K.shot == "frost" ? "frost" : "magic");
       lv.fx->particles("explode", m.pos + vec3(0, 1, 0), 18); lv.fx->sound("explode", m.pos, 32); shake(lv, m, 0.35f);
     }
-    if (t > 1.0f) { vec3 to; if (spotNear(w, p->pos, 8 + frand() * 3, to)) blink(lv, m, to); finish(1.2f); }
+    if (t > 1.0f) { vec3 to; if (spotNear(w, m, 3.5f + frand() * 1.5f, to)) blink(lv, m, to); finish(1.2f); }
     return Move{0, m.yaw};
   }
   if (state == "swing") {   // a heavy blow: wound up, then down
@@ -268,8 +285,14 @@ OptMove bossFight(Level& lv, Creature& m, Entity* p, float dist, float dyp, floa
   // ---- between moves
   m.lockMove = false;
   if (K.style == Style::Caster) {   // its distance: back off when close, come in when far, else circle
-    if (now >= num(m, "bfBlink") && dist < 5) { set(m, "bfBlink", now + 7); vec3 to; if (spotNear(w, p->pos, 9, to)) { blink(lv, m, to); return Move{0, toPlayer}; } }
-    if (dist > 12) { std::optional<float> nd = m.navDir(lv, p->pos, dt); return Move{m.T->speed, nd ? *nd : toPlayer}; }
+    if (now >= num(m, "bfBlink") && dist < 5) { set(m, "bfBlink", now + 7); vec3 to; if (spotNear(w, m, 3.8f, to)) { blink(lv, m, to); return Move{0, toPlayer}; } }
+    if (dist > 12) {
+      std::optional<float> nd = m.navDir(lv, p->pos, dt);
+      const float yaw = nd ? *nd : toPlayer;
+      const vec3 step = m.pos + vec3(-std::sin(yaw), 0, -std::cos(yaw)) * 0.9f;
+      if (!inHomeBox(m, step)) return Move{0, toPlayer};
+      return Move{m.T->speed, yaw};
+    }
     if (dist < 6) return Move{m.T->speed * 0.9f, toPlayer + PI};
     return Move{m.T->speed * 0.45f, toPlayer + (m.data.value("bfSide", 1.f) > 0 ? PI / 2 : -PI / 2)};
   }

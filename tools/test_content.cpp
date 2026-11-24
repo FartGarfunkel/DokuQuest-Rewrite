@@ -26,6 +26,8 @@
 #include "sim/rpg.h"
 #include "sim/worktable.h"
 #include "sim/combat.h"
+#include "sim/balance.h"
+#include "sim/attack_moves.h"
 #include "sim/shield_shape.h"
 #include "sim/spell_items.h"
 #include "core/metals.h"
@@ -236,6 +238,19 @@ int main(int argc, char** argv) {
       check(skillXp(*P, "fishing") > 0, "  ...and Fishing grows (" + std::to_string((int)skillXp(*P, "fishing")) + " xp)");
       check(P->held().d == 1, "the rod wears a little");
     }
+  }
+  // ------------------------------------------------------------ a sleeping bag and an oak coffin are beds (two cells, head bit 4)
+  {
+    check(reg().tShape[B("sleeping_bag")] == ShapeKind::Bed && reg().block(B("sleeping_bag")).shapeKind == ShapeKind::Bed
+          && reg().tShape[B("oak_coffin")] == ShapeKind::Bed && reg().block(B("oak_coffin")).shapeKind == ShapeKind::Bed,
+          "a sleeping bag and an oak coffin are beds (two cells, the head marked with bit 4)");
+    int bags = 0; bool bagOk = false;
+    for (const Recipe& r : reg().recipes) if (r.out == "sleeping_bag") {
+      bags++;
+      bagOk = r.n == 1 && r.shape.size() == 2 && r.shape[0] == "SSS" && r.shape[1] == "CCC"
+              && r.key.count('S') && r.key.at('S') == "straw" && r.key.count('C') && r.key.at('C') == "rotten_cloth";
+    }
+    check(bags == 1 && bagOk, "a sleeping bag is 3 straw over 3 rotten cloth");
   }
   // ------------------------------------------------------------ campfires
   {
@@ -633,17 +648,49 @@ int main(int argc, char** argv) {
     check(shieldSide(*P) == 1, "  ...the sword swapped to the off hand: the shield on the right forearm");
     P->inv[0] = ItemStack("iron_sword", 1);
     check(shieldSide(*P) == 0, "  ...a sword in each hand: the shield slung (nothing to raise)");
-    check(offHandSwings(*P, false, true) && !offHandSwings(*P, true, false), "  ...two swords: use swings the off hand, attack the main");
+    check(!offHandSwings(*P, false, true) && !offHandSwings(*P, true, false), "  ...two swords: use stays free to block, the attack button chains both");
     P->inv[0] = ItemStack();
     check(offHandSwings(*P, true, false), "  ...the main hand empty: attack swings the off hand's sword");
     // a swing of the off hand's: the move starts, marked the off hand's, and its blow wears the off hand's sword
     P->inv[0] = ItemStack("iron_sword", 1); P->offhand[0] = ItemStack("diamond_sword", 1);
-    P->atkMove = 0; P->atkT = 0; P->atkGap = 9;
-    PlayerInput none;
-    tickMelee(*L, *P, 0.01f, none, true, true);
-    check(P->atkMove != 0 && P->atkOff, "  ...use with two swords: an off-hand swing begins");
-    for (int k = 0; k < 200 && P->atkMove; k++) tickMelee(*L, *P, 0.01f, none, true, false);
+    P->atkMove = 0; P->atkT = 0; P->atkGap = 9; P->atkCombo = 0;
+    PlayerInput atk; atk.attackPressed = true;
+    tickMelee(*L, *P, 0.01f, atk, true, false);
+    const u8 firstCut = P->atkMove;
+    check(P->atkMove != 0 && !P->atkOff, "  ...the first click is the main hand");
+    for (int k = 0; k < 200 && P->atkMove; k++) tickMelee(*L, *P, 0.01f, PlayerInput{}, true, false);
+    P->atkGap = 0.1f;
+    PlayerInput atk2; atk2.attackPressed = true;
+    tickMelee(*L, *P, 0.01f, atk2, true, false);
+    check(P->atkMove == firstCut && P->atkOff, "  ...the next click is the off hand, the same cut mirrored");
+    for (int k = 0; k < 200 && P->atkMove; k++) tickMelee(*L, *P, 0.01f, PlayerInput{}, true, false);
+    P->atkGap = 0.1f;
+    PlayerInput atk3; atk3.attackPressed = true;
+    tickMelee(*L, *P, 0.01f, atk3, true, false);
+    check(P->atkMove != 0 && !P->atkOff, "  ...the click after that is the main hand again");
+    for (int k = 0; k < 200 && P->atkMove; k++) tickMelee(*L, *P, 0.01f, PlayerInput{}, true, false);
+    P->atkGap = 0.1f;
+    PlayerInput atk4; atk4.attackPressed = true;
+    tickMelee(*L, *P, 0.01f, atk4, true, false);
+    check(P->atkMove != 0 && P->atkOff, "  ...and the one after is the off hand again");
+    for (int k = 0; k < 200 && P->atkMove; k++) tickMelee(*L, *P, 0.01f, PlayerInput{}, true, false);
     check(!P->atkOff && P->inv[0].id == "iron_sword" && P->offhand[0].id == "diamond_sword", "  ...and ends with each sword still in its own hand");
+    P->atkMove = 0; P->atkT = 0; P->atkGap = 9; P->atkCombo = 0; P->atkOff = false;
+    PlayerInput use; use.use = true; use.usePressed = true;
+    tickMelee(*L, *P, 0.01f, use, true, false);
+    check(P->atkMove == 0, "  ...use does not swing either sword");
+    check(attackMove(MV_AXE1).strikes == 1 && attackMove(MV_AXE1).pierce > attackMove(MV_DAGGER1).pierce && attackMove(MV_DAGGER1).impact < attackMove(MV_AXE1).impact,
+          "an axe bites one foe through armour; a dagger is lighter");
+    P->inv[0] = ItemStack("stone_knife", 1); P->offhand[0] = ItemStack();
+    P->sneaking = true; P->onGround = true; P->sprinting = false;
+    P->atkMove = 0; P->atkT = 0; P->atkGap = 9; P->atkCombo = 0;
+    PlayerInput sn; sn.attackPressed = true;
+    tickMelee(*L, *P, 0.01f, sn, true, false);
+    check(P->atkMove == MV_DAGGER3, "sneaking with a knife lunges");
+    P->atkMove = 0; P->atkGap = 9; P->inv[0] = ItemStack("iron_axe", 1);
+    tickMelee(*L, *P, 0.01f, sn, true, false);
+    check(P->atkMove == MV_AXE2 && P->data.value("sneakHeavy", 0.f) > 1.f, "sneaking with an axe opens with the heavy cut");
+    P->sneaking = false; P->atkMove = 0; P->data.erase("sneakHeavy");
     P->offhand[0] = ItemStack(); P->shield[0] = ItemStack(); P->inv[0] = ItemStack();
   }
   {   // the crafting guide's "Lay it out": a recipe set out on a crafting table from the bag, piece by piece
@@ -884,6 +931,23 @@ int main(int argc, char** argv) {
     int left = 0; for (auto& it : (*wc.blockEntity(ch.x, ch.y, ch.z))["items"]) if (!it.is_null()) left += ItemStack::fromJson(it).n;
     check(onGrid == 4 && left == 6, "picking it lays 4 planks out of the chest on the grid (" + std::to_string(onGrid) + " laid, " + std::to_string(left) + " left)");
     for (auto& g : S.grid) g.clear();
+    // the far half of a double chest is not beside the table; the near half is empty
+    const ivec3 far = ch + ivec3(1, 0, 0);
+    json empty = json::array(); for (int i = 0; i < 27; i++) empty.push_back(nullptr);
+    json farItems = empty; farItems[2] = ItemStack("planks", 8).toJson();
+    wc.setBlock(ch.x, ch.y, ch.z, B("chest"), 0);
+    wc.setBlock(far.x, far.y, far.z, B("chest"), 0);
+    wc.setBlockEntity(ch.x, ch.y, ch.z, json{{"type", "chest"}, {"items", empty}});
+    wc.setBlockEntity(far.x, far.y, far.z, json{{"type", "chest"}, {"items", farItems}});
+    InvSession D(*P, &wc, o, false);
+    check(canCraft(D.bags(), reg().recipes[ri]), "the far half of a double chest counts too");
+    D.bookPick(ri, false, true);
+    int fromFar = 0; for (auto& g : D.grid) if (g.id == "planks") fromFar += g.n;
+    int farLeft = 0; for (auto& it : (*wc.blockEntity(far.x, far.y, far.z))["items"]) if (!it.is_null()) farLeft += ItemStack::fromJson(it).n;
+    int nearLeft = 0; for (auto& it : (*wc.blockEntity(ch.x, ch.y, ch.z))["items"]) if (!it.is_null()) nearLeft += ItemStack::fromJson(it).n;
+    check(fromFar == 4 && farLeft == 4 && nearLeft == 0, "picking it takes the planks from the far half (" + std::to_string(fromFar) + " laid, " + std::to_string(farLeft) + " left)");
+    for (auto& g : D.grid) g.clear();
+    wc.setBlock(far.x, far.y, far.z, AIR);
     wc.setBlock(ch.x, ch.y, ch.z, AIR); wc.setBlock(tb.x, tb.y, tb.z, AIR);
   }
 

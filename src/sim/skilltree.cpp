@@ -18,7 +18,7 @@ int SkillTree::find(const std::string& id) const {
 const std::vector<SkillTree>& skillTrees() {
   static const std::vector<SkillTree> T = [] {
     std::vector<SkillTree> out;
-    auto j = readJson(dataDir() / "local_models" / "skilltree.json");
+    auto j = readJson(dataDir() / "skilltree.json");
     if (!j || !j->contains("trees")) return out;
     for (const char* k : {"warrior", "ranger", "rogue", "mage"}) {
       if (!(*j)["trees"].contains(k)) continue;
@@ -73,7 +73,22 @@ std::string treeWhyNot(const Player& p, const SkillTree& t, const TreeNode& n) {
   return "";
 }
 
+int treeSanitise(Player& p) {
+  if (!p.stats.contains("tree") || !p.stats["tree"].is_object() || !p.stats["tree"]["nodes"].is_array()) return 0;
+  json keep = json::array();
+  int drop = 0;
+  for (auto& x : p.stats["tree"]["nodes"]) {
+    const std::string id = x.is_string() ? x.get<std::string>() : "";
+    bool ok = false;
+    for (const SkillTree& t : skillTrees()) if (t.find(id) >= 0) { ok = true; break; }
+    if (ok) keep.push_back(id); else drop++;
+  }
+  if (drop) p.stats["tree"]["nodes"] = keep;
+  return drop;
+}
+
 bool treeLearn(Player& p, const std::string& tree, const std::string& id) {
+  treeSanitise(p);
   for (const SkillTree& t : skillTrees()) {
     if (t.key != tree) continue;
     const int i = t.find(id);
@@ -86,6 +101,7 @@ bool treeLearn(Player& p, const std::string& tree, const std::string& id) {
   return false;
 }
 void treeReset(Player& p) { p.stats["tree"] = json{{"nodes", json::array()}}; p.recalcMax(); }
+std::string treeNodeGainLine(const TreeNode& n) { return n.title.empty() ? "Learnt" : n.title; }
 
 static float sumAttr(const Player& p, const std::string& attr, bool pct) {
   float s = gemAttr(p, attr, pct);   // (gems set in the gear worn and held: sim/spell_items.h)

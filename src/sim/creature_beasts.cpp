@@ -463,13 +463,25 @@ static void waterColumn(World& w, float x, float y, float z, float& top, float& 
   for (int k = by; k > by - 16; k--) if (reg().tLiquid[w.getBlock(bx, k, bz)] != med) { floor = (float)k + 1; break; }
 }
 static bool inMediumAt(World& w, float x, float y, float z, int med) { return reg().tLiquid[w.getBlock(ifloor(x), ifloor(y), ifloor(z))] == med; }
+static float swimUnder(const Creature& m) { return m.T->aquatic ? 0.3f : -m.h * 0.4f; }
+// lo/hi of the swim band (hi < lo: the column is shorter than the body)
+static void aquaticBand(Level& lv, const Creature& m, float under, float& lo, float& hi) {
+  float top, floor;
+  waterColumn(lv.world(m.realm), m.pos.x, m.pos.y + std::min(m.h * 0.5f, 0.5f), m.pos.z, top, floor, m.T->medium);
+  lo = floor + 0.05f; hi = top - m.h - under;
+}
 // the height an aquatic creature may swim at here: off the floor, its whole body under the surface (a fish no longer
 // rises to the top and bobs there); in water too shallow for that, along the bottom. under: how far below the top
 float aquaticDepth(Level& lv, const Creature& m, float ty, float under) {
+  float lo, hi;
+  aquaticBand(lv, m, under, lo, hi);
+  return hi < lo ? lo : clampv(ty, lo, hi);
+}
+// too shallow to submerge: standing on the bottom, or the column shorter than the body (hi < lo)
+static bool waterTooShallow(Level& lv, const Creature& m) {
   float top, floor;
   waterColumn(lv.world(m.realm), m.pos.x, m.pos.y + std::min(m.h * 0.5f, 0.5f), m.pos.z, top, floor, m.T->medium);
-  const float lo = floor + 0.05f, hi = top - m.h - under;
-  return hi < lo ? lo : clampv(ty, lo, hi);
+  return top - floor <= 1.15f;   // 1-deep: walk/paddle. A deep pool's bed is still a swim.
 }
 // a fresh place to swim to: somewhere in open water a few blocks off, up or down a little (false: none found)
 bool aquaticWaypoint(Level& lv, Creature& m, bool deep) {
@@ -496,10 +508,13 @@ void aquaticSteer(Level& lv, Creature& m, float& dir, float& ty, float& want, fl
     if (chasing) want = 0;
     else { m.swimDir = dir = dir + PI * (0.75f + frand() * 0.5f); m.hasSwimDir = true; m.swimT = 1.5f + frand() * 2; }
   }
-  if (!surfacing) ty = aquaticDepth(lv, m, ty, m.T->aquatic ? 0.3f : -m.h * 0.4f);
+  float lo, hi;
+  aquaticBand(lv, m, swimUnder(m), lo, hi);
+  const bool shallow = m.onGround || hi < lo;
+  if (!surfacing) ty = hi < lo ? lo : clampv(ty, lo, hi);
   m.swimVy = clampv((ty - m.pos.y) * 1.2f, -2.f, 2.f);
   const float hs = std::hypot(m.vel.x, m.vel.z);
-  const float aim = clampv(-std::atan2(m.vel.y, std::max(hs, 0.6f)), -0.7f, 0.7f);
+  const float aim = shallow ? 0.f : clampv(-std::atan2(m.vel.y, std::max(hs, 0.6f)), -0.7f, 0.7f);   // shallows: keep pitch near 0
   m.swimPitch += (aim - m.swimPitch) * std::min(1.f, dt * 4);
 }
 
@@ -574,12 +589,17 @@ static Move amphibianAI(Level& lv, Creature& m, Entity* p, float dist, float toP
       }
     }
   }
+  const bool shallow = m.inWater && waterTooShallow(lv, m);
   if (!T.prey.empty() && m.inWater && !m.baby) if (auto* pr = dynamic_cast<Creature*>(m.ent(lv, m.nearPrey))) if (pr->inWater) {
     m.bite(lv, pr, T.damage > 0 ? T.damage : 2);
-    m.swimVy = clampv((pr->pos.y - m.pos.y) * 1.5f, -2.f, 2.f);
-    return {T.swimSpeed, heading(m.pos.x, m.pos.z, pr->pos.x, pr->pos.z)};
+    if (!shallow) {
+      m.swimVy = clampv((pr->pos.y - m.pos.y) * 1.5f, -2.f, 2.f);
+      return {T.swimSpeed, heading(m.pos.x, m.pos.z, pr->pos.x, pr->pos.z)};
+    }
+    m.swimVy = 0; m.swimPitch = 0;
+    return {T.speed, heading(m.pos.x, m.pos.z, pr->pos.x, pr->pos.z)};
   }
-  if (m.inWater) {
+  if (m.inWater && !shallow) {
     m.swimT -= dt;
     // swims about under the water, up and down, and now and then makes for the bank and climbs out (it lives on both)
     if (m.swimT <= 0) { m.swimT = 3 + frand() * 4; m.swimDir = frand() * TAU; m.swimUp = (frand() - (T.playsDead ? 0.6f : 0.5f)) * 3.f; m.swimY = m.pos.y + m.swimUp; }
@@ -590,6 +610,7 @@ static Move amphibianAI(Level& lv, Creature& m, Entity* p, float dist, float toP
     return {want, dir};
   }
   m.swimPitch = 0;
+  if (m.inWater) m.swimVy = 0;   // shallows: walk/paddle, no flop, no glide off the bottom
   bool spooked = p && dist < 4 && !pawnSneaking(p) && T.sound == "frog";
   if (spooked && m.panicT <= 0) { m.panicT = 1.5f; m.fleeFrom = p->id; }
   if (m.panicT > 0) { m.panicT -= dt; return {T.speed * 2.5f, m.fleeDir(m.ent(lv, m.fleeFrom))}; }

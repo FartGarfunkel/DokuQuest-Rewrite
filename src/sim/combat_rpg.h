@@ -17,12 +17,14 @@ struct PlayerInput;
 
 void combatRpgTick(Level& lv, Player& p, float dt);
 void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt);
+float guardKeep(const Player& p);     // a shield keeps BLOCK_KEEP; a weapon keeps more of the blow
+float guardWindow(const Player& p);   // a shield's parry window; a weapon's is shorter
 float combatRpgIncoming(Level& lv, Player& p, float amount, DamageSource& src);
 bool combatRpgSecondChance(Level& lv, Player& p);
 float combatRpgOutgoing(Level& lv, Player& p, Entity& e, float dmg, bool& finishing);
 float combatRpgBossCap(Level& lv, Entity& e, float dmg);
 float combatRpgMobScale(const Entity& attacker, float amount);
-int playerCombatLevel(const Player& p);         // the level creatures measure you by (all your skills' levels / 8)
+int playerCombatLevel(const Player& p);         // the level creatures measure you by (all your skills' levels / 12, plus progressMobLevels)
 void mobApplyLevel(Entity& e, int lvl, bool elite, float base);   // set its level (base: its health at level 1)
 void mobLevelUpdate(Level& lv, Entity& e);      // its level once (from the party near it), its health with the party about it
 float mobXpScale(const Entity& e);

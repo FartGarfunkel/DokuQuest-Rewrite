@@ -96,6 +96,14 @@ public:
         Creature* m = spawnCreature(l, REALM_MAIN, type, openSpot(l.world(REALM_MAIN), at));
         if (!m) continue;
         m->data[dungeon ? "dungeon" : "structBoss"] = S->id; m->huntT = 60; m->persistent = true; m->kept = true;
+        m->data["home"] = json::array({m->pos.x, m->pos.y, m->pos.z});
+        if (B.contains("box") && B["box"].is_array() && B["box"].size() >= 6) {
+          const json& b = B["box"];
+          m->data["homeBox"] = json::array({b[0].get<float>(), b[1].get<float>() + (float)base, b[2].get<float>(),
+                                            b[3].get<float>(), b[4].get<float>() + (float)base, b[5].get<float>()});
+        } else if (dungeon) {
+          m->data["homeBox"] = json::array({at.x - 5.5f, at.y - 1.f, at.z - 5.5f, at.x + 5.5f, at.y + 6.f, at.z + 5.5f});
+        }
         if (type == "valkyrie_queen" && isCreatureType("valkyrie"))   // her guard wakes with her (tools/port/skylands_more.py)
           for (int k = 0; k < 2; k++) if (Creature* g = spawnCreature(l, REALM_MAIN, "valkyrie", at + vec3(k ? 2.5f : -2.5f, 0, 1.5f))) { g->huntT = 60; g->persistent = true; }
         if (type == "sun_spirit" && isCreatureType("fire_minion"))   // the Skylands' gold dungeon: two fire minions with it (tools/port/skyland_mobs.py)
@@ -132,7 +140,8 @@ private:
       if (!k.dungeon) { const vec3 xp = at + vec3(0, 2, 0); grantXP(lv, *q, 150, &xp); }
     }
     if (k.dungeon) {
-      dropItem(lv, REALM_MAIN, ItemStack("emerald", 4 + (int)(frand() * 6)), at + vec3(0, 1, 0), true);
+      dropItem(lv, REALM_MAIN, ItemStack("gold_coin", 2 + (int)(frand() * 3)), at + vec3(0, 1, 0), true);
+      if (frand() < 0.22f) dropItem(lv, REALM_MAIN, ItemStack("emerald", 1), at + vec3(0, 1, 0), true);
       if (frand() < 0.35f && reg().item("heart_crystal")) dropItem(lv, REALM_MAIN, ItemStack("heart_crystal", 1), at + vec3(0, 1, 0), true);
     }
   }

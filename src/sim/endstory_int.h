@@ -16,7 +16,8 @@ namespace dq::es {
 // what a brain remembers between ticks (not saved: the original kept these on the Mob object)
 struct Mem {
   // endermen
-  float stareT = 0, lookT = 0, tpT = 2, wetCd = 0;
+  float stareT = 0, lookT = 0, tpT = 2, wetCd = 0, coverT = 0;
+  int coverX = 0, coverZ = 0; bool hasCover = false;
   // dragons
   float stT = 4, orbit = 0, flapT = 0, pbT = 2, breathHitT = 0, stuckT = 0, ringT = 0, beamT = 0; int node = 0; bool hasOrbit = false, breathed = false, perched = false, hasBreathPt = false;
   vec3 breathPt{0};
@@ -112,6 +113,10 @@ json& sub(json& j, const char* k, bool array = false);   // j[k] as an object (o
 double num(const json& j, const char* k, double d = 0);
 int jint(const json& j, const char* k, int d = 0);
 vec3 jvec(const json& j, vec3 d = vec3(0));
+Player* dartTargetOnPlate(Level& lv, const json& plates, const std::vector<Player*>& players);
+// a standing cell an enderman can blink to that is under a roof (not open to the sky, not water)
+bool enderCoveredAt(World& w, int x, int feetY, int z);
+bool enderNearestCover(World& w, int x0, int feetY, int z0, int radius, int& ox, int& oy, int& oz);
 inline json vj(vec3 v) { return json::array({v.x, v.y, v.z}); }
 float rnd();                                   // Math.random()
 inline float clampf(float v, float a, float b) { return v < a ? a : v > b ? b : v; }
@@ -131,9 +136,12 @@ void particles(Level& lv, const std::string& tile, vec3 at, int n, float speed, 
 bool lineOfSight(Level& lv, int realm, vec3 eye, vec3 to, float d);   // haunt.js lineOfSight (leaves don't block)
 int standY(World& w, float x, float z, float py);                  // riftarc.js riftStandY (-1 none)
 bool hurtPawn(Level& lv, Entity& who, float amount, Entity* by, const std::string& type, float knock = -1, const std::string& element = "");
+// the jaw opens, then the snap. A guard in that window parries it and fills the dragon's posture.
+bool dragonSnap(Level& lv, Creature& m, Entity& who, float dt, float dmg, float knock);
 // structures (plans from the band generator's StructureIndex; data in the original's shape)
 struct Plan { std::string id, name; int dim = 0, x0 = 0, z0 = 0, x1 = 0, z1 = 0, y = 0, cx = 0, cz = 0; json data; };
 std::vector<Plan> plansNear(Level& lv, int dim, const std::string& key, int x, int z, int pad);
+bool onPlate(Level& lv, vec3 plateAt);   // player, item or living creature on this plate (global y)
 const json& mobType(const std::string& key);
 std::string capLabel(const std::string& label);   // "the Ender Dragon" -> "The Ender Dragon"
 

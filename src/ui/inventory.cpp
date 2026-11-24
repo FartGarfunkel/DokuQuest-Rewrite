@@ -12,11 +12,13 @@
 #include "client/session.h"
 #include "audio/audio.h"
 #include "render/chest_layer.h"
+#include "sim/chest_work.h"
 #include "sim/machines.h"
 #include "sim/trommel.h"
 #include "ui/creative_catalogue.h"
 #include "ui/book.h"
 #include "sim/enchanting.h"
+#include "core/tool_parts.h"
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
@@ -69,6 +71,8 @@ public:
 
   void onOpen(App& a) override {
     if (o.mode == "container" && o.hasPos) chestScreenOpened(o.pos, true);   // the chest's lid lifts (render/chest_layer.cpp)
+    if (o.mode == "container" && o.hasPos && a.session && reg().block(a.session->world().getBlock(o.pos.x, o.pos.y, o.pos.z)).key == "oak_coffin")
+      setChestLidOpen(a.session->world(), o.pos, true);   // a coffin lifts its own lid with the screen (fallen remains stay a screen)
     Player* p = player(a);
     if (!p) { uiDefer([](App& app) { app.popScreen(); }); return; }
     creative = p->creative() && o.mode == "inventory";
@@ -94,6 +98,8 @@ public:
   void pickRecipe(int idx) { if (sess) sess->bookPick(idx, false, true); }
   void onClose(App& a) override {
     if (o.mode == "container" && o.hasPos) chestScreenOpened(o.pos, false);
+    if (o.mode == "container" && o.hasPos && a.session && reg().block(a.session->world().getBlock(o.pos.x, o.pos.y, o.pos.z)).key == "oak_coffin")
+      setChestLidOpen(a.session->world(), o.pos, false);
     if (!sess) return;
     sess->close();
     if (o.mode == "container" && o.hasPos && a.audio) {
@@ -843,7 +849,7 @@ public:
     std::vector<std::pair<std::string, u32>> lines;
     if (f && f->k == H_SLOT) {
       t = std::string("A take/place \xC2\xB7 X split \xC2\xB7 Y quick move \xC2\xB7 ") + (o.mode == "table" ? "LB recipe book" : "LB/RB menus") + " \xC2\xB7 B close";
-    } else if (f && f->k == H_CI) { if (const ItemDef* d = reg().item(f->s)) itemInfoText(ItemStack(d->key, 1), &sess->p, &lines); }
+    } else if (f && f->k == H_CI) { if (const ItemDef* d = reg().item(f->s)) itemInfoText(proceduralOf(d->key), &sess->p, &lines); }
     else if (f && f->k == H_CUT && f->i < (int)sess->cutOpts.size()) { itemInfoText(ItemStack(sess->cutOpts[f->i].first, sess->cutOpts[f->i].second), &sess->p, &lines); lines.push_back({"  A one \xC2\xB7 Y all", 0xa8987e}); }
     float x = p.x;
     for (auto& [txt, c] : lines) {
@@ -863,7 +869,7 @@ public:
     ItemStack s;
     if (h->k == H_SLOT) { const ItemStack* st = sess->at(h->g, h->i); if (st) { if (st->id == "enchanted_book") enchOf(*const_cast<ItemStack*>(st)); s = *st; } }   // a treasure book settles what it holds the first time it is looked at
     else if (h->k == H_BOOKR) { const Recipe& r = reg().recipes[h->i]; s = ItemStack(r.out, r.n); }
-    else if (h->k == H_CI) s = ItemStack(h->s, 1);
+    else if (h->k == H_CI) s = proceduralOf(h->s);
     else if (h->k == H_CUT && h->i < (int)sess->cutOpts.size()) s = ItemStack(sess->cutOpts[h->i].first, sess->cutOpts[h->i].second);
     if (s.empty()) return;
     std::vector<std::pair<std::string, u32>> lines;
@@ -1012,7 +1018,7 @@ public:
       for (auto& key : creativeItems(q.empty() && B.ccat != "inv" ? B.ccat : "all")) {
         const ItemDef* d = reg().item(key); if (!d) continue;
         if (!q.empty() && lower(d->name).find(q) == std::string::npos) continue;
-        list.push_back({H_CI, 0, key, ItemStack(key, 1), 3});
+        list.push_back({H_CI, 0, key, proceduralOf(key), 3});
       }
     } else {
       const auto& R = reg().recipes;

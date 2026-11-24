@@ -54,14 +54,21 @@ struct CharPose {
   float block = 0, xbowCharge = 0, throwCharge = 0, spearCharge = 0; bool xbowAim = false;
   bool atkOff = false;      // the attack move is the off hand's: drawn mirrored (render/attack_poses.cpp)
   bool blockMain = false;   // the shield in the main hand: the right arm raises it (block above is how far up)
+  bool twoHand = false;     // a greatsword or a spear: both hands on it, and the guard is the weapon's
+  bool greatsword = false;  // the two-hand blade stands from the grip in front, not along the forearm over the shoulder
+  bool dual = false;        // a weapon in each hand: on guard they cross in front
+  bool bladeGuard = false;  // blocking with a weapon, no shield up
   i8 shieldArm = 0;         // a shield strapped on a forearm (1: the left, -1: the right): carried with the forearm level
   // a dodge roll (sim/combat_rpg.h): 0..1 through it (0: none), tucked and over once about the middle; backwards when it
   // goes away from where they face (a step back), else forwards with the body turned the way it goes
   float roll = 0; bool rollBack = false;
   bool armed = false;
+  bool pick = false;        // mining with a pick: the forearm pumps, the shoulder stays quiet
+  i8 hurtLeg = 0;           // 1 the right leg, -1 the left: that leg drags
+  i8 hurtArm = 0;           // 1 the right arm, -1 the left: it stays short and does not swing the cut
   float runAmt = -1, sneakAmt = -1;   // eased amounts (-1: from sprint / sneak as they are)
   vec2 hurtDir{0, 1};             // the blow came from: x their right, y their front
-  u8 swingKind = 0;               // 0 the classic swing; 1-3 a weapon combo's cuts (render/char_anim.cpp weaponSwing)       // a weapon or a shield in hand: standing, they keep a fighter's stance (render/char_anim.cpp)
+  u8 swingKind = 0;               // 0 the classic swing; 1-3 a weapon combo's cuts; 4 an overhand throw (right arm); 5 the left (render/char_anim.cpp)
   float guardHit = 0;       // a blow taken on the shield: 1 when it lands, down to 0 (render/char_poses.cpp knocks the guard back)
   bool sitGround = false;
   float bed = -1, bedRecline = 0;   // getting into bed (render/char_layer.cpp bedFrame: 0 beside it .. 1 lying in it; -1 no), how far laid back   // sat on the ground (by a campfire: ui/cinematic_work.cpp), knees up, the seat down on it
@@ -83,6 +90,10 @@ float attackWeight(const CharPose& pose);
 bool devAttackPose(u8& move, float& t);
 // the held thing's frame from the forearm's, turned by the grip (the fist at 0,-6,-1 of the forearm)
 mat4 gripTurn(const mat4& fore, vec2 turn);
+// while running, a few degrees that open that forearm outward, so a blade along it passes the head.
+// The item stays in the fist. Still, walking, a swing and a block are 0.
+// Positive opens the right forearm (a right-handed turn about the forearm's +Z).
+float runForeTwist(const CharPose& pose, bool left);
 CharAngles charAnimate(const CharPose& pose);
 // the newer poses on top of charAnimate's (render/char_poses.cpp; charAnimate calls it last)
 void charMorePoses(CharAngles& A, const CharPose& pose);

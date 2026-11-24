@@ -2,6 +2,7 @@
 #include "sim/panning.h"
 #include "sim/player.h"
 #include "sim/gameplay.h"
+#include "sim/balance.h"
 #include "core/registry.h"
 #include <random>
 #include <set>
@@ -42,13 +43,18 @@ public:
 }
 
 void setPanRoll(float r) { g_roll = r; }
-ItemStack panFind(float r, float r2) {
+ItemStack panFind(float r, float r2, int tier) {
   if (r < 0.30f) {
     static const std::pair<const char*, float> T[] = {{"copper", 0.3f}, {"tin", 0.2f}, {"gold", 0.15f}, {"silver", 0.1f}, {"zinc", 0.1f}, {"bismuth", 0.1f}, {"iron", 0.05f}};
     float a = 0; for (auto& [m, f] : T) { a += f; if (r2 < a) return ItemStack(std::string(m) + "_ore_sample", 1); }
     return ItemStack("copper_ore_sample", 1);
   }
-  if (r < 0.33f) { const char* g = r2 < 0.3f ? "emerald" : r2 < 0.6f ? "ruby" : r2 < 0.9f ? "sapphire" : "diamond"; if (reg().item(g)) return ItemStack(g, 1); }
+  if (r < 0.33f) {
+    const char* g = (tier < 3)
+      ? (r2 < 0.4f ? "coal" : r2 < 0.75f ? "flint" : "gold_nugget")
+      : (r2 < 0.3f ? "emerald" : r2 < 0.6f ? "ruby" : r2 < 0.9f ? "sapphire" : (tier >= 6 ? "diamond" : "sapphire"));
+    if (reg().item(g)) return ItemStack(g, 1);
+  }
   return {};
 }
 
@@ -65,7 +71,7 @@ bool panUse(Level& lv, Player& p, const RayHit& hit, bool repeat, float step) {
   if (t < PAN_HOLD) return true;
   d["panT"] = 0.0;
   if (!waterBy(w, b.x, b.y, b.z)) { toast(lv, p, "It needs water beside it to wash"); return true; }
-  ItemStack f = panFind(roll(), roll2());
+  ItemStack f = panFind(roll(), roll2(), progressTier(p));
   if (!f.empty()) giveItem(lv, p, f);
   if (roll2() < 0.25f) w.setBlock(b.x, b.y, b.z, AIR);
   lv.fx->sound("splash", vec3(b) + vec3(0.5f, 1, 0.5f), 12);
@@ -100,7 +106,7 @@ void sluiceTick(Level& lv, double dt) {
       e["t"] = t;
       if (t >= SLUICE_EVERY) {
         e["t"] = 0.0;
-        ItemStack f = panFind(roll(), roll2());
+        ItemStack f = panFind(roll(), roll2(), -1);   // no player: surface junk, not a gem
         if (!f.empty() && e["out"].size() < 16) e["out"].push_back(f.toJson());
         e["finds"] = e.value("finds", 0) + 1;
         if (e.value("finds", 0) >= SLUICE_LIFE) { spillEntity(lv, *w, e, x, y, z); w->setBlockEntity(x, y, z, nullptr); w->setBlock(x, y, z, AIR); dropItem(lv, w->realm, ItemStack("lumber", 3), vec3(x + 0.5f, y + 0.5f, z + 0.5f), true); l.erase(l.begin() + i); continue; }

@@ -11,7 +11,7 @@
               "Name": "nature:cattail",
               "Properties": {
                 "half": "lower",
-                "waterlogged": "false"
+                "waterlogged": "true"
               }
             }
           }
@@ -29,20 +29,37 @@
                   "Name": "nature:cattail",
                   "Properties": {
                     "half": "lower",
-                    "waterlogged": "false"
+                    "waterlogged": "true"
                   }
                 }
               },
               {
-                "type": "main:matching_blocks",
-                "blocks": [
-                  "main:air",
-                  "main:water"
+                "type": "main:any_of",
+                "predicates": [
+                  {
+                    "type": "main:matching_blocks",
+                    "blocks": [
+                      "main:water"
+                    ]
+                  },
+                  {
+                    "type": "main:matching_blocks",
+                    "blocks": [
+                      "main:air"
+                    ]
+                  }
                 ]
               },
               {
                 "type": "main:any_of",
                 "predicates": [
+                  {
+                    "type": "main:matching_fluids",
+                    "fluids": [
+                      "main:water",
+                      "main:flowing_water"
+                    ]
+                  },
                   {
                     "type": "main:matching_fluids",
                     "fluids": [
@@ -89,13 +106,6 @@
                       0,
                       -1,
                       -1
-                    ]
-                  },
-                  {
-                    "type": "main:matching_fluids",
-                    "fluids": [
-                      "main:water",
-                      "main:flowing_water"
                     ]
                   }
                 ]

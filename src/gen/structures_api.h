@@ -14,7 +14,9 @@ namespace dq {
 void registerStructures();
 const StructureIndex* structureIndexOf(const DimGenerator* g);
 // the nearest plan of a kind (structure key, e.g. "tower", "village", "nether_fortress") to (x, z) in band `dim`
-const StructurePlan* locateStructure(const WorldGen& wg, int dim, const std::string& kind, int x, int z, int maxRegions = 12);
+const StructurePlan* locateStructure(const WorldGen& wg, int dim, const std::string& kind, int x, int z, int maxRegions = 48);
+// structure type index, or -1. Accepts aliases ("mineshafts", "mine" → mineshaft).
+int structureKind(const std::string& kind);
 // a new world's first spawn at the edge of the nearest village, facing it (global y); false = no village near
 bool villageStartPoint(const WorldGen& wg, vec3& pos, float& yaw);
 // World setting "Start in the wild": dry land with no village within 200 blocks, outward from the origin (global y)

@@ -1,6 +1,7 @@
 // core/tool_parts.cpp — see tool_parts.h.
 #include "core/tool_parts.h"
 #include "core/metals.h"
+#include "sim/weapon_quality.h"
 #include <mutex>
 #include <map>
 #include "common/fs.h"
@@ -24,7 +25,21 @@ const Weights* weightsOf(const std::string& kind) {
   static const Weights S{{0.5f, 0.5f}, {0.4f, 0.6f}, {0.6f, 0.4f}, {0.5f, 0.5f}};                                 // sword: tip, base
   static const Weights H{{0.5f, 0.5f}, {0.5f, 0.5f}, {0.5f, 0.5f}, {0.5f, 0.5f}};                                 // hoe
   static const Weights V{{1.f}, {1.f}, {1.f}, {1.f}};                                                               // shovel
-  if (kind == "knife" || kind == "hammer" || kind == "saw" || kind == "scythe" || kind == "javelin" || kind == "propick" || kind == "chisel") return &V;   // (one-piece heads)
+  static const Weights GS{{0.18f, 0.16f, 0.18f, 0.16f, 0.14f, 0.18f}, {0.12f, 0.14f, 0.12f, 0.18f, 0.26f, 0.18f},
+                          {0.20f, 0.16f, 0.20f, 0.16f, 0.12f, 0.16f}, {0.17f, 0.16f, 0.17f, 0.16f, 0.17f, 0.17f}};   // greatsword: six cells, top row then middle (edges cut, centre wears)
+  static const Weights SP{{0.65f, 0.35f}, {0.35f, 0.65f}, {0.70f, 0.30f}, {0.6f, 0.4f}};                                 // spear: tip, base
+  static const Weights MC{{0.3f, 0.4f, 0.3f}, {0.3f, 0.4f, 0.3f}, {0.35f, 0.3f, 0.35f}, {0.34f, 0.32f, 0.34f}};   // mace: left, middle, right of the head
+  static const Weights LS{{0.30f, 0.30f, 0.20f, 0.20f}, {0.20f, 0.30f, 0.25f, 0.25f}, {0.35f, 0.35f, 0.15f, 0.15f}, {0.25f, 0.25f, 0.25f, 0.25f}};   // longsword: tip, blade, left quillon, right
+  static const Weights BA{{0.22f, 0.22f, 0.22f, 0.12f, 0.22f}, {0.15f, 0.15f, 0.20f, 0.30f, 0.20f}, {0.24f, 0.24f, 0.20f, 0.12f, 0.20f}, {0.20f, 0.20f, 0.20f, 0.20f, 0.20f}};   // battleaxe: two bits, both edges, the eye
+  static const Weights WH{{0.25f, 0.25f, 0.25f, 0.25f}, {0.20f, 0.40f, 0.20f, 0.20f}, {0.30f, 0.30f, 0.30f, 0.10f}, {0.25f, 0.25f, 0.25f, 0.25f}};   // warhammer: three of the head, the collar
+  if (kind == "knife" || kind == "hammer" || kind == "saw" || kind == "scythe" || kind == "javelin" || kind == "propick" || kind == "chisel" || kind == "throwing_knife") return &V;   // (one-piece heads)
+  if (kind == "throwing_axe") return &S;
+  if (kind == "greatsword") return &GS;
+  if (kind == "spear") return &SP;
+  if (kind == "mace") return &MC;
+  if (kind == "longsword") return &LS;
+  if (kind == "battleaxe") return &BA;
+  if (kind == "warhammer") return &WH;
   return kind == "pickaxe" ? &P : kind == "axe" ? &A : kind == "sword" ? &S : kind == "hoe" ? &H : kind == "shovel" ? &V : nullptr;
 }
 struct Gem { const char* item; const char* name; const char* effect; float speed, dur, dmg; int tier; const char* element; };
@@ -41,6 +56,13 @@ const Gem GEMS[] = {
 };
 const Gem* gemOf(const std::string& item) { for (auto& g : GEMS) if (item == g.item) return &g; return nullptr; }
 std::string cap(std::string s) { if (!s.empty()) s[0] = (char)std::toupper((unsigned char)s[0]); return s; }
+std::string prettyKind(std::string k) {
+  for (size_t i = 0; i < k.size(); i++) {
+    if (k[i] == '_') k[i] = ' ';
+    if (i == 0 || k[i - 1] == ' ') k[i] = (char)std::toupper((unsigned char)k[i]);
+  }
+  return k;
+}
 } // namespace
 
 const std::vector<ToolMaterial>& toolMaterials() {
@@ -119,7 +141,9 @@ const ToolMaterial* toolMaterialOfStack(const ItemStack& s) {
   return listed;
 }
 std::string partToolBaseKind(const std::string& k) {
-  if (k == "knife" || k == "javelin" || k == "saw") return "sword";
+  if (k == "knife" || k == "javelin" || k == "saw" || k == "greatsword" || k == "spear" || k == "mace"
+      || k == "longsword" || k == "warhammer" || k == "throwing_knife") return "sword";
+  if (k == "battleaxe" || k == "throwing_axe") return "axe";
   if (k == "hammer" || k == "propick") return "pickaxe";
   if (k == "scythe") return "hoe";
   return k;
@@ -127,6 +151,8 @@ std::string partToolBaseKind(const std::string& k) {
 std::string partToolBaseItem(const std::string& k) {
   if (k == "knife" || k == "hammer" || k == "scythe" || k == "javelin" || k == "saw") return "flint_" + k;   // (their models: assets/item_parts.cpp)
   if (k == "propick") return "iron_pickaxe";
+  if (k == "greatsword" || k == "spear" || k == "mace" || k == "longsword" || k == "battleaxe" || k == "warhammer"
+      || k == "throwing_knife" || k == "throwing_axe") return "mixed_" + k;   // its own shape, not the sword's
   return "iron_" + k;
 }
 int partToolSections(const std::string& k) { const Weights* W = weightsOf(k); return W ? (int)W->speed.size() : 0; }
@@ -206,10 +232,12 @@ ToolInfo toolOf(const ItemStack& s) {
 int toolMaxDurability(const ItemStack& s) {
   const ItemDef* d = s.empty() ? nullptr : s.def();
   if (!d) return 0;
-  if (d->hasTool) return std::max(0, toolOf(s).durability);
-  if (isPartArmor(s)) return s.tag["pa"].value("dur", 0);
-  if (d->props.contains("armor") && d->props["armor"].is_object()) return d->props["armor"].value("durability", 0);
-  return 0;
+  int dur = 0;
+  if (d->hasTool) dur = std::max(0, toolOf(s).durability);
+  else if (isPartArmor(s)) dur = s.tag["pa"].value("dur", 0);
+  else if (d->props.contains("armor") && d->props["armor"].is_object()) dur = d->props["armor"].value("durability", 0);
+  if (dur > 0 && (isPartTool(s) || isPartArmor(s))) dur = std::max(1, (int)std::lround(dur * gearQualityFactor(s)));
+  return dur;
 }
 
 std::string stackName(const ItemStack& s) {
@@ -230,7 +258,7 @@ std::string stackName(const ItemStack& s) {
     std::string mats;
     for (size_t i = 0; i < names.size(); i++) mats += (i ? (i + 1 == names.size() ? " & " : ", ") : "") + names[i];
     const Haft* h = haftOf(p.value("h", std::string("stick")));
-    base = std::string(h ? h->adj : "") + mats + " " + cap(p.value("t", std::string("tool")));
+    base = std::string(h ? h->adj : "") + mats + " " + prettyKind(p.value("t", std::string("tool")));
   } else if (isPartArmor(s)) {
     std::vector<std::string> names;
     for (auto& m : s.tag["pa"]["m"]) if (m.is_string()) { const ToolMaterial* tm = toolMaterial(m.get<std::string>()); std::string n = tm ? tm->name : m.get<std::string>(); if (std::find(names.begin(), names.end(), n) == names.end()) names.push_back(n); }
@@ -292,7 +320,10 @@ ItemStack proceduralOf(const std::string& id, int n) {
   if (!mat) return plain;
   ItemStack out;
   if (armour ? makePartArmor(kind, std::vector<std::string>(armorPattern(kind)->cells.size(), mat->key), out)
-             : makePartTool(kind, std::vector<std::string>(partToolSections(kind), mat->key), "stick", out)) return out;
+             : makePartTool(kind, std::vector<std::string>(partToolSections(kind), mat->key), "stick", out)) {
+    stampGearQuality(out);
+    return out;
+  }
   return plain;
 }
 
@@ -331,6 +362,15 @@ const std::vector<ToolPattern>& toolPatterns() {
     {"axe", 2, 3, {{0, 0}, {1, 0}, {0, 1}}, {{1, 1}, {1, 2}}},
     {"shovel", 1, 3, {{0, 0}}, {{0, 1}, {0, 2}}},
     {"sword", 1, 3, {{0, 0}, {0, 1}}, {{0, 2}}},
+    {"greatsword", 3, 3, {{0, 0}, {1, 0}, {2, 0}, {0, 1}, {1, 1}, {2, 1}}, {{1, 2}}},   // six of the blade, stick at the grip
+    {"longsword", 3, 3, {{1, 0}, {1, 1}, {0, 2}, {2, 2}}, {{1, 2}}},                     // a long blade with a crossguard
+    {"battleaxe", 3, 3, {{0, 0}, {2, 0}, {0, 1}, {1, 1}, {2, 1}}, {{1, 2}}},             // two bits and a broad head
+    {"warhammer", 3, 3, {{0, 0}, {1, 0}, {2, 0}, {1, 1}}, {{1, 2}}},                     // a heavy head, then the collar
+    {"throwing_knife", 1, 2, {{0, 0}}, {{0, 1}}},                                       // a short blade on a grip (metal on top)
+    {"chisel", 1, 2, {{0, 1}}, {{0, 0}}},                                               // stick on top, any metal under it (not the knife)
+    {"throwing_axe", 2, 2, {{0, 0}, {1, 0}}, {{1, 1}}},                                  // a small head, stick under one side
+    {"spear", 2, 3, {{0, 0}, {1, 0}}, {{0, 1}, {0, 2}}},         // a broad point on a long shaft
+    {"mace", 3, 2, {{0, 0}, {1, 0}, {2, 0}}, {{1, 1}}},          // a heavy head over a short haft
     {"hoe", 2, 3, {{0, 0}, {1, 0}}, {{1, 1}, {1, 2}}},
   };
   return P;
@@ -367,6 +407,14 @@ bool makePartTool(const std::string& kind, const std::vector<std::string>& mats,
     if (std::find(distinct.begin(), distinct.end(), mats[i]) == distinct.end()) distinct.push_back(mats[i]);
   }
   du *= 1 + 0.08f * (float)(distinct.size() - 1);   // a head of several metals worked together is a little tougher
+  if (kind == "greatsword") { dm *= 1.35f; sp *= 0.8f; }
+  else if (kind == "spear") { dm *= 1.05f; sp *= 1.05f; }
+  else if (kind == "mace") { dm *= 1.3f; sp *= 0.75f; }
+  else if (kind == "longsword") { dm *= 1.18f; sp *= 0.9f; }
+  else if (kind == "battleaxe") { dm *= 1.28f; sp *= 0.82f; }
+  else if (kind == "warhammer") { dm *= 1.42f; sp *= 0.62f; }   // slow, the mace family's pierce
+  else if (kind == "throwing_knife") { dm *= 0.8f; sp *= 1.25f; }
+  else if (kind == "throwing_axe") { dm *= 1.05f; sp *= 1.1f; }
   out = ItemStack("mixed_" + kind, 1);
   json p = {{"t", kind}, {"m", mats}, {"h", haft}, {"tier", (int)std::lround(ti)}, {"speed", std::round(sp * H->speed * 100) / 100},
             {"dmg", std::round(dm * 10) / 10}, {"dur", (int)std::lround(du * H->dur)}};

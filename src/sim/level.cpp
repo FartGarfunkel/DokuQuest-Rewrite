@@ -8,6 +8,7 @@
 #include <map>
 
 namespace dq {
+void creatureGhostSwing(Entity& e, float dt);   // sim/creature.cpp (creature.h clashes here)
 
 // the host's clock a little behind, for net replicas to be drawn at (net/client.cpp sets it; < 0: none)
 
@@ -154,10 +155,12 @@ void Level::tick(double dt) {
     if (e->ghost) {   // net replica: simulated elsewhere
       if (info.remote && !frameGlide) e->glide(dt);   // (a game drawing it glides it every frame instead: client/session.cpp)
       // a swing in progress plays on between the snapshots (its owner's game runs it; net/ sends move, time and facing)
-      if (e->isPlayer()) if (auto* pl = static_cast<Player*>(e); pl->atkMove) {
-        pl->atkT += (float)dt;
-        if (pl->atkMove >= MV_COUNT || pl->atkT >= attackMove(pl->atkMove).len) { pl->atkMove = MV_NONE; pl->atkT = 0; }
-      }
+      if (e->isPlayer()) {
+        if (auto* pl = static_cast<Player*>(e); pl->atkMove) {
+          pl->atkT += (float)dt;
+          if (pl->atkMove >= MV_COUNT || pl->atkT >= attackMove(pl->atkMove).len) { pl->atkMove = MV_NONE; pl->atkT = 0; }
+        }
+      } else creatureGhostSwing(*e, (float)dt);
       continue;
     }
     if (prof) { const double t = nowSeconds(); e->tick(*this, dt); hitch("entity " + e->type, nowSeconds() - t); }

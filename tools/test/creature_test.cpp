@@ -11,6 +11,10 @@
 #include "sim/mobai.h"
 #include "sim/player.h"
 #include "sim/combat.h"
+#include "sim/combat_rpg.h"
+#include "sim/attack_moves.h"
+#include "sim/shield_shape.h"
+#include "core/tool_parts.h"
 #include "gen/structures_api.h"
 #include <thread>
 #include <cstdio>
@@ -25,6 +29,9 @@ static void run(Level& lv, Player& p, float secs, bool keepAlive = true) {
   for (int i = 0; i < (int)(secs / TICK_DT); i++) { lv.tick(TICK_DT); p.invuln = std::max(0.f, p.invuln - (float)TICK_DT); if (keepAlive) { p.hp = p.maxHp; p.dead = false; } }
 }
 static void clearCreatures(Level& lv) { for (auto& e : lv.entities()) if (!e->isPlayer()) e->removed = true; lv.tick(TICK_DT); }
+static void driveMelee(Level& lv, Creature& m) {
+  for (int i = 0; i < 80 && m.atkMove; i++) m.tickMeleeBlow(lv, 0.02f);
+}
 
 int main(int argc, char** argv) {
   CoreOptions co; co.server = true; co.userDirOverride = "/tmp/dq-creature-test";
@@ -99,7 +106,34 @@ int main(int argc, char** argv) {
       const float half = 0.0625f * M->scale;
       const int miss = rigHitPart(*c, *M, tip + sideways * (half + 0.12f) + vec3(0, 3, 0), vec3(0, -1, 0));
       CHECK(miss != shin, "a swing a hand's breadth outside the leg misses it (%s)", miss >= 0 ? M->parts[miss].name.c_str() : "nothing");
+      const vec3 a = tip + vec3(0, 0.4f, 0), b = tip - vec3(0, 0.2f, 0);
+      const int cut = rigSegHitPart(*c, *M, a, b, 0.08f);
+      CHECK(cut >= 0 && rigLimbPart(*M, cut) >= 0 && M->parts[rigLimbPart(*M, cut)].limb == "slegR1",
+            "a blade through a leg strikes that leg (%s)", cut >= 0 ? M->parts[cut].name.c_str() : "nothing");
+      const int missSeg = rigSegHitPart(*c, *M, a + sideways * (half + 0.18f), b + sideways * (half + 0.18f), 0.08f);
+      CHECK(missSeg != shin, "a blade a hand's breadth outside the leg misses it");
     }
+    // a drawn sword's sweep, not the whole AABB: a ghoul in front is struck, one well to the side is not
+    auto eg = createEntity("ghoul"); auto* gh = dynamic_cast<Creature*>(eg.get());
+    const RigModel* Mg = gh ? rigModel(gh->modelKey()) : nullptr;
+    if (Mg) {
+      gh->pos = vec3(0, 0, -1.35f); gh->yaw = 3.14159f; gh->onGround = true; gh->age = 2;
+      const int hit = bladeSweepHitsCreature(MV_SWORD1, 0, 1, vec3(0), 0, 0, *gh, *Mg, 1.f);
+      CHECK(hit >= 0, "a sword swing hits a ghoul standing in front (%s)", hit >= 0 ? Mg->parts[hit].name.c_str() : "nothing");
+      const int limb = hit >= 0 ? rigLimbPart(*Mg, hit) : -1;
+      CHECK(hit < 0 || limb < 0 || !Mg->parts[limb].limb.empty(),
+            "that part is the limb tryDismember will take (%s)", limb >= 0 ? Mg->parts[limb].limb.c_str() : "torso");
+      gh->pos = vec3(4.0f, 0, 0);
+      const int sideMiss = bladeSweepHitsCreature(MV_SWORD1, 0, 1, vec3(0), 0, 0, *gh, *Mg, 1.f);
+      CHECK(sideMiss < 0, "a ghoul well to the side is missed by that swing");
+      gh->pos = vec3(0, 0, -1.35f);
+      CHECK(bladeSweepHitsCreature(MV_GS1, 0, 1, vec3(0), 0, 0, *gh, *Mg, 1.15f) >= 0, "a greatsword cut hits that ghoul");
+      CHECK(bladeSweepHitsCreature(MV_SPEAR1, 0, 1, vec3(0), 0, 0, *gh, *Mg, 1.35f) >= 0, "a spear thrust hits that ghoul");
+      CHECK(bladeSweepHitsCreature(MV_MACE1, 0, 1, vec3(0), 0, 0, *gh, *Mg, 0.9f) >= 0, "a mace blow hits that ghoul");
+      CHECK(bladeSweepHitsCreature(MV_AXE1, 0, 1, vec3(0), 0, 0, *gh, *Mg, 1.f) >= 0, "an axe chop hits that ghoul");
+      CHECK(bladeSweepHitsCreature(MV_DAGGER1, 0, 1, vec3(0), 0, 0, *gh, *Mg, 1.f) >= 0, "a dagger stab hits that ghoul");
+      CHECK(bladeSweepHitsCreature(MV_TOOL1, 0, 1, vec3(0), 0, 0, *gh, *Mg, 1.f) >= 0, "a tool swing hits that ghoul");
+    } else CHECK(false, "a ghoul has a rig for a blade sweep");
   }
 
   ThreadPool pool(1);
@@ -164,6 +198,173 @@ int main(int argc, char** argv) {
   for (int i = 0; i < 300 && g && !g->removed; i++) { float before = p.hp; lv->tick(TICK_DT); hurt += std::max(0.f, before - p.hp); p.hp = p.maxHp; p.dead = false; }
   CHECK(hurt > 0, "a ghoul walked up and hit the player (%.1f damage)", hurt);
   clearCreatures(*lv);
+
+  printf("limb armour and a raised guard\n");
+  {
+    p.mode = "survival"; p.dead = false; p.hp = 20; p.invuln = 0; p.blockT = 0; p.stamina = 100;
+    p.shield[0].clear();
+    for (auto& a : p.armor) a.clear();
+    DamageSource openSrc; openSrc.type = "mob";
+    const float open = damagePlayer(*lv, p, 10, openSrc);
+    p.invuln = 0; p.hp = 20; p.blockT = 1.0f; p.stamina = 100;
+    p.shield[0] = ItemStack("shield", 1);
+    const float kept = damagePlayer(*lv, p, 10, openSrc);
+    CHECK(open > 0 && kept > 0 && kept < open * 0.5f, "a raised shield keeps most of a blow (%.1f -> %.1f)", open, kept);
+    p.invuln = 0; p.hp = 20; p.blockT = 1.0f; p.stamina = 100;
+    DamageSource bodyBlow; bodyBlow.type = "mob"; bodyBlow.armorSlot = 1;
+    const float missedGuard = damagePlayer(*lv, p, 10, bodyBlow);
+    CHECK(missedGuard > kept * 1.4f, "a blow that missed the guard is not kept (%.1f vs kept %.1f)", missedGuard, kept);
+    p.invuln = 0; p.hp = 20; p.blockT = 1.0f; p.stamina = 100;
+    DamageSource onGuard; onGuard.type = "mob"; onGuard.metGuard = true;
+    const float met = damagePlayer(*lv, p, 10, onGuard);
+    CHECK(met <= kept + 0.1f, "a blow that met the guard is kept (%.1f)", met);
+    p.blockT = 0; p.shield[0].clear(); p.invuln = 0; p.hp = 20;
+    ItemStack helm, chest;
+    CHECK(makePartArmor("helmet", std::vector<std::string>(5, "iron"), helm) &&
+          makePartArmor("chestplate", std::vector<std::string>(8, "iron"), chest), "mixed iron armour crafts");
+    p.armor[0] = helm;
+    DamageSource head; head.type = "attack"; head.armorSlot = 0;
+    DamageSource body; body.type = "attack"; body.armorSlot = 1;
+    const float dHead = damagePlayer(*lv, p, 10, head);
+    p.invuln = 0; p.hp = 20;
+    const float dChest = damagePlayer(*lv, p, 10, body);
+    CHECK(dHead < dChest, "a helmet protects the head more than a blow on the chest (%.1f < %.1f)", dHead, dChest);
+    p.armor[0].clear(); p.armor[1] = chest; p.invuln = 0; p.hp = 20;
+    const float dChestArm = damagePlayer(*lv, p, 10, body);
+    p.invuln = 0; p.hp = 20;
+    const float dHeadBare = damagePlayer(*lv, p, 10, head);
+    CHECK(dChestArm < dHeadBare, "a chestplate protects the chest more than a blow on the bare head (%.1f < %.1f)",
+          dChestArm, dHeadBare);
+    p.armor[1].clear(); p.invuln = 0; p.hp = 20; p.blockT = 0;
+    // a ghoul in front of a raised shield: its claw meets the guard
+    Creature* g2 = spawnCreature(*lv, 0, "ghoul", p.pos + vec3(0, 0, -1.2f));
+    if (g2) {
+      p.yaw = 0; p.blockT = 0.2f; p.shield[0] = ItemStack("shield", 1); p.stamina = 100;
+      ShieldBox guard;
+      const vec3 from = g2->pos + vec3(0, g2->h * 0.62f, 0);
+      const vec3 claw = (p.pos + vec3(0, 1.1f, 0)) - from;
+      CHECK(playerGuardBox(p, guard) && shieldRayHit(guard, from, claw, 1.f),
+            "a ghoul's claw in front meets a raised shield");
+      p.yaw = 3.14159f;
+      ShieldBox behind;
+      CHECK(playerGuardBox(p, behind) && !shieldRayHit(behind, from, claw, 1.f),
+            "turning your back, that claw misses the shield");
+      p.invuln = 0; p.hp = 20; p.blockT = 1.0f; p.stamina = 100; p.yaw = 0;
+      g2->attackCd = 0; g2->atkMove = 0; g2->atkHit.clear();
+      g2->meleeAt(*lv, p, 1.f, 0.f);
+      driveMelee(*lv, *g2);
+      const float front = 20.f - p.hp;
+      p.invuln = 0; p.hp = 20; p.blockT = 1.0f; p.stamina = 100; p.yaw = 3.14159f;
+      g2->attackCd = 0; g2->atkMove = 0; g2->atkHit.clear();
+      g2->meleeAt(*lv, p, 1.f, 0.f);
+      driveMelee(*lv, *g2);
+      const float back = 20.f - p.hp;
+      CHECK(front > 0 && back > front * 1.4f, "a claw in the back is not kept (front %.1f, back %.1f)", front, back);
+      g2->removed = true;
+    } else CHECK(false, "a ghoul's claw in front meets a raised shield");
+    p.blockT = 0; p.shield[0].clear(); p.yaw = 0; p.hp = p.maxHp; p.invuln = 0;
+    // a mixed blade's own swing, not an AABB: the cut has to pass through the ghoul
+    Creature* g3 = spawnCreature(*lv, 0, "ghoul", p.pos + vec3(0, 0, -1.35f));
+    if (g3) {
+      g3->calm = true; g3->vel = vec3(0); g3->maxHp = 200; g3->hp = 200;
+      p.yaw = 0; p.pitch = 0; p.mode = "creative"; p.atkMove = 0; p.atkT = 0; p.atkGap = 9; p.atkCombo = 0;
+      ItemStack blade;
+      CHECK(makePartTool("sword", {"iron", "iron"}, "stick", blade), "a mixed iron sword for the swing");
+      p.inv[0] = blade; p.selected = 0;
+      float hp0 = g3->hp;
+      PlayerInput swing; swing.attackPressed = true;
+      tickMelee(*lv, p, 0.01f, swing, true, false);
+      for (int k = 0; k < 100 && p.atkMove; k++) tickMelee(*lv, p, 0.01f, PlayerInput{}, true, false);
+      CHECK(!g3->removed && g3->hp < hp0, "a mixed iron sword swing lands on a ghoul in front (%.1f -> %.1f)", hp0, g3->hp);
+      g3->hp = 200; g3->invulnT = 0; g3->hurtTime = 0; g3->removed = false; g3->data.erase("invulnT");
+      ItemStack gs;
+      CHECK(makePartTool("greatsword", {"iron", "iron", "iron", "iron", "iron", "iron"}, "stick", gs), "a mixed iron greatsword for the swing");
+      p.inv[0] = gs; p.atkMove = 0; p.atkGap = 9; p.atkCombo = 0; hp0 = g3->hp;
+      PlayerInput swing2; swing2.attackPressed = true;
+      tickMelee(*lv, p, 0.01f, swing2, true, false);
+      for (int k = 0; k < 120 && p.atkMove; k++) tickMelee(*lv, p, 0.01f, PlayerInput{}, true, false);
+      CHECK(!g3->removed && g3->hp < hp0, "a mixed greatsword swing lands on that ghoul (%.1f -> %.1f)", hp0, g3->hp);
+      g3->removed = true;
+      p.mode = "survival"; p.inv[0] = ItemStack(); p.atkMove = 0;
+    } else CHECK(false, "a mixed iron sword swing lands on a ghoul in front");
+    // a ghoul with a sword: the cut is visible, then it lands, and a raised guard can parry it
+    Creature* g4 = spawnCreature(*lv, 0, "ghoul", p.pos + vec3(0, 0, -1.2f));
+    if (g4) {
+      g4->calm = true; g4->vel = vec3(0); g4->heldItem = "copper_sword"; g4->yaw = 0;
+      p.yaw = 0; p.pitch = 0; p.mode = "survival"; p.invuln = 0; p.hp = 20; p.blockT = 0; p.stamina = 100; p.shield[0].clear();
+      g4->attackCd = 0; g4->atkMove = 0; g4->atkHit.clear();
+      g4->meleeAt(*lv, p, 1.f, 0.f);
+      CHECK(g4->atkMove != 0 && p.hp == 20.f, "a sword swing does not land on the press (move %d, hp %.1f)", (int)g4->atkMove, p.hp);
+      driveMelee(*lv, *g4);
+      CHECK(p.hp < 20.f, "the cut lands in its live window (hp %.1f)", p.hp);
+      p.invuln = 0; p.hp = 20; p.blockT = 0.05f; p.stamina = 100; p.shield[0] = ItemStack("shield", 1); p.parryFlash = 0;
+      g4->attackCd = 0; g4->atkMove = 0; g4->atkT = 0; g4->atkHit.clear();
+      g4->meleeAt(*lv, p, 1.f, 0.f);
+      driveMelee(*lv, *g4);
+      CHECK(p.parryFlash > 0.f && p.hp >= 19.9f, "you can parry the cut you saw coming (flash %.2f, hp %.1f)", p.parryFlash, p.hp);
+      // re-tapping the guard inside the window shrinks it; a parry or dropping it clears the mash
+      {
+        p.data.erase("blkUse"); p.data.erase("blkMash"); p.data.erase("blkIdle");
+        p.invuln = 0; p.hp = 20; p.blockT = 0; p.stamina = 100; p.parryFlash = 0;
+        p.shield[0] = ItemStack("shield", 1);
+        CHECK(std::fabs(guardWindow(p) - 0.18f) < 0.001f, "an unmashed shield still opens 0.18s");
+        PlayerInput tap; tap.use = true;
+        combatRpgInput(*lv, p, tap, 0.01f);
+        CHECK(p.blockT > 0.f && p.data.value("blkMash", 0) == 0, "the first raise is not a mash");
+        const float stam0 = p.stamina;
+        p.stamina = 100; p.blockT = 0.05f;
+        combatRpgInput(*lv, p, tap, 0.10f);
+        const float unmashedSpend = 100.f - p.stamina;
+        for (int n = 0; n < 4; n++) {
+          combatRpgInput(*lv, p, PlayerInput{}, 0.01f);
+          p.stamina = 100;
+          combatRpgInput(*lv, p, tap, 0.01f);
+        }
+        CHECK(p.data.value("blkMash", 0) >= 3 && guardWindow(p) < 0.10f,
+              "four re-taps shrink the window (mash %d, window %.3f)", p.data.value("blkMash", 0), guardWindow(p));
+        p.data["blkUse"] = true;
+        p.stamina = 100; p.blockT = 0.05f;
+        combatRpgInput(*lv, p, tap, 0.10f);
+        const float mashedSpend = 100.f - p.stamina;
+        CHECK(mashedSpend > unmashedSpend * 1.2f && stam0 <= 100.f,
+              "mashing the guard costs more stamina (%.2f -> %.2f)", unmashedSpend, mashedSpend);
+        p.invuln = 0; p.hp = 20; p.blockT = 0.05f; p.stamina = 100; p.parryFlash = 0;
+        g4->staggerT = 0; g4->attackCd = 0; g4->atkMove = 0; g4->atkT = 0; g4->atkHit.clear();
+        g4->meleeAt(*lv, p, 1.f, 0.f);
+        driveMelee(*lv, *g4);
+        CHECK(p.parryFlash <= 0.f && p.hp < 20.f,
+              "a mashed guard does not parry that cut (flash %.2f, hp %.1f, window %.3f)",
+              p.parryFlash, p.hp, guardWindow(p));
+        p.data["blkMash"] = 4;
+        p.invuln = 0; p.hp = 20; p.blockT = 0.01f; p.stamina = 100; p.parryFlash = 0;
+        g4->staggerT = 0; g4->attackCd = 0; g4->atkMove = 0; g4->atkT = 0; g4->atkHit.clear();
+        g4->meleeAt(*lv, p, 1.f, 0.f);
+        driveMelee(*lv, *g4);
+        CHECK(p.parryFlash > 0.f && p.data.value("blkMash", 0) == 0 && p.hp >= 19.9f,
+              "a successful parry clears the mash (flash %.2f, mash %d)", p.parryFlash, p.data.value("blkMash", 0));
+        p.data["blkMash"] = 4; p.data["blkUse"] = true; p.blockT = 0.05f; p.stamina = 100;
+        for (int i = 0; i < 20; i++) combatRpgInput(*lv, p, PlayerInput{}, 0.02f);
+        CHECK(p.data.value("blkMash", 0) == 0 && std::fabs(guardWindow(p) - 0.18f) < 0.001f,
+              "dropping the guard past the window clears the mash");
+      }
+      g4->removed = true;
+      p.blockT = 0; p.shield[0].clear();
+    } else CHECK(false, "a sword swing does not land on the press");
+    {
+      p.mode = "creative"; p.yaw = 0; p.pitch = -0.9f; p.atkMove = 0; p.atkT = 0; p.atkGap = 9; p.atkCombo = 0;
+      p.inv[0] = ItemStack("iron_sword", 1); p.selected = 0;
+      PlayerInput look; look.attackPressed = true;
+      tickMelee(*lv, p, 0.01f, look, true, false);
+      while (p.atkMove && p.atkT < attackMove(p.atkMove).turnLock + 0.02f)
+        tickMelee(*lv, p, 0.01f, PlayerInput{}, true, false);
+      const float frozen = p.atkPitch;
+      p.pitch = 0.9f;
+      for (int k = 0; k < 12 && p.atkMove; k++) tickMelee(*lv, p, 0.02f, PlayerInput{}, true, false);
+      CHECK(p.atkMove != 0 && std::fabs(frozen + 0.9f) < 0.05f && std::fabs(p.atkPitch - frozen) < 0.001f,
+            "the cut keeps the look pitch it started with (%.2f)", p.atkPitch);
+      p.atkMove = 0; p.mode = "survival"; p.inv[0] = ItemStack(); p.pitch = 0;
+    }
+  }
 
   printf("arrows\n");
   Creature* sk = spawnCreature(*lv, 0, "skeleton", vec3(4.5f, Y, 16.5f));
@@ -266,7 +467,12 @@ int main(int argc, char** argv) {
       Creature* gh = spawnCreature(*lv, 0, "ghoul", p.pos + vec3(2.5f, 0.2f, 0)); gh->calm = true;
       lv->tick(TICK_DT);
       for (int h = 0; h < 6 && gh->alive(); h++) {
-        DamageSource d2; d2.attacker = p.id; d2.tool = "axe"; d2.hasRay = true; d2.rayO = p.pos + vec3(0, 1.62f, 0); d2.rayD = glm::normalize(gh->pos + vec3(0, 0.3f + h * 0.3f, 0) - d2.rayO);
+        DamageSource d2; d2.attacker = p.id; d2.tool = "axe"; d2.hasRay = true;
+        d2.rayO = p.pos + vec3(0, 1.62f, 0); d2.rayD = glm::normalize(gh->pos + vec3(0, 0.3f + h * 0.3f, 0) - d2.rayO);
+        if (const RigModel* Mh = rigModel(gh->modelKey())) {
+          rigPose(*gh, *Mh, creatureBase(*gh, false));
+          d2.hitPart = rigHitPart(*gh, *Mh, d2.rayO, d2.rayD);
+        }
         damageEntity(*lv, *gh, 3, d2);
       }
       gibs = countType(*lv, "gib");

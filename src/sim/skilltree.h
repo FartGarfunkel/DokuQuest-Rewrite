@@ -1,5 +1,4 @@
-// sim/skilltree.h — the passive skill trees (the warrior, ranger, rogue and mage trees, tools/local/skilltree_import.py ->
-// data/local_models/skilltree.json; git-ignored, so a game without it simply has none). Points come from your total level
+// sim/skilltree.h — the four path trees in data/skilltree.json (Knight, Ranger, Rogue, Mage). Points come from your total level
 // (a point every 3) and your deeds (sim/deeds.h); the start of your Path's tree is free. You learn a tree's starting
 // node first, then any node joined to one you have. A tree's limits (its tags) cap how many of a kind (one subclass, two
 // keystones of a school...). What you've learnt adds to your attributes:
@@ -23,7 +22,7 @@ struct TreeNode {
 };
 struct SkillTree { std::string key, name; std::vector<TreeNode> nodes; json limits; int find(const std::string& id) const; };
 
-const std::vector<SkillTree>& skillTrees();          // empty without the import
+const std::vector<SkillTree>& skillTrees();          // empty without data/skilltree.json
 int treePointsEarned(const Player& p);
 int treePointsSpent(const Player& p);
 bool treeHas(const Player& p, const std::string& id);
@@ -31,6 +30,8 @@ bool treeHas(const Player& p, const std::string& id);
 std::string treeWhyNot(const Player& p, const SkillTree& t, const TreeNode& n);
 bool treeLearn(Player& p, const std::string& tree, const std::string& id);
 void treeReset(Player& p);
+int treeSanitise(Player& p);   // drop learnt ids the current trees do not have; how many dropped
+std::string treeNodeGainLine(const TreeNode& n);   // toast when learnt: title, or "Learnt"
 float treeAttr(const Player& p, const std::string& attr);      // flat
 float treeAttrPct(const Player& p, const std::string& attr);   // fraction
 // the keys of what you've learnt (and stats "attrBonus") that start with `prefix`, the prefix cut off: "grant_spell." -> the

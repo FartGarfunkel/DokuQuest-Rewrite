@@ -13196,19 +13196,6 @@
     "side": "magma_block",
     "end": "magma_block",
     "nocol": true
-   },
-   {
-    "b": [
-     5,
-     9.5,
-     5,
-     11,
-     15,
-     11
-    ],
-    "side": "fire",
-    "end": "fire",
-    "nocol": true
    }
   ],
   "spike_trap": [
@@ -16991,6 +16978,372 @@
     ],
     "side": "shelf_fungus",
     "end": "shelf_fungus"
+   }
+  ],
+  "oak_desk": [
+   {
+    "b": [
+     0,
+     13,
+     0,
+     16,
+     16,
+     16
+    ],
+    "side": "planks",
+    "end": "planks"
+   },
+   {
+    "b": [
+     1,
+     0,
+     1,
+     3.5,
+     13,
+     3.5
+    ],
+    "side": "stripped_oak_log_side",
+    "end": "stripped_oak_log_side"
+   },
+   {
+    "b": [
+     12.5,
+     0,
+     1,
+     15,
+     13,
+     3.5
+    ],
+    "side": "stripped_oak_log_side",
+    "end": "stripped_oak_log_side"
+   },
+   {
+    "b": [
+     1,
+     0,
+     12.5,
+     3.5,
+     13,
+     15
+    ],
+    "side": "stripped_oak_log_side",
+    "end": "stripped_oak_log_side"
+   },
+   {
+    "b": [
+     12.5,
+     0,
+     12.5,
+     15,
+     13,
+     15
+    ],
+    "side": "stripped_oak_log_side",
+    "end": "stripped_oak_log_side"
+   },
+   {
+    "b": [
+     3,
+     4,
+     3,
+     13,
+     5,
+     13
+    ],
+    "side": "stripped_oak_log_side",
+    "end": "stripped_oak_log_side"
+   },
+   {
+    "b": [
+     0,
+     8,
+     0,
+     16,
+     16,
+     1.5
+    ],
+    "side": "planks",
+    "end": "planks"
+   },
+   {
+    "b": [
+     1.5,
+     8,
+     14.5,
+     7.5,
+     12.5,
+     16
+    ],
+    "side": "planks",
+    "end": "planks"
+   },
+   {
+    "b": [
+     8.5,
+     8,
+     14.5,
+     14.5,
+     12.5,
+     16
+    ],
+    "side": "planks",
+    "end": "planks"
+   },
+   {
+    "b": [
+     4,
+     9.8,
+     15.5,
+     5.2,
+     10.8,
+     16
+    ],
+    "side": "stripped_oak_log_side",
+    "end": "stripped_oak_log_side"
+   },
+   {
+    "b": [
+     11,
+     9.8,
+     15.5,
+     12.2,
+     10.8,
+     16
+    ],
+    "side": "stripped_oak_log_side",
+    "end": "stripped_oak_log_side"
+   }
+  ],
+  "oak_coffin": [
+   {
+    "b": [
+     2,
+     0,
+     1.5,
+     14,
+     7.5,
+     14.5
+    ],
+    "side": "planks",
+    "end": "planks"
+   },
+   {
+    "b": [
+     1.5,
+     7.5,
+     1,
+     14.5,
+     10,
+     15
+    ],
+    "side": "planks",
+    "end": "planks"
+   },
+   {
+    "b": [
+     1.5,
+     7.3,
+     1,
+     14.5,
+     8.2,
+     15
+    ],
+    "side": "stripped_oak_log_side",
+    "end": "stripped_oak_log_side"
+   },
+   {
+    "b": [
+     3,
+     10,
+     1,
+     13,
+     11.2,
+     4
+    ],
+    "side": "planks",
+    "end": "planks"
+   }
+  ],
+  "altar": [
+   {
+    "b": [
+     0,
+     0,
+     0,
+     16,
+     4,
+     16
+    ],
+    "side": "stone_bricks",
+    "end": "stone_bricks"
+   },
+   {
+    "b": [
+     4,
+     4,
+     2,
+     12,
+     5,
+     14
+    ],
+    "side": "red_wool",
+    "end": "red_wool"
+   },
+   {
+    "b": [
+     6.5,
+     5,
+     6.5,
+     9.5,
+     6.2,
+     9.5
+    ],
+    "side": "gold_block",
+    "end": "gold_block"
+   },
+   {
+    "b": [
+     3.5,
+     5,
+     3,
+     5.5,
+     11,
+     5
+    ],
+    "side": "honeycomb_block",
+    "end": "honeycomb_block"
+   },
+   {
+    "b": [
+     10.5,
+     5,
+     3,
+     12.5,
+     11,
+     5
+    ],
+    "side": "honeycomb_block",
+    "end": "honeycomb_block"
+   },
+   {
+    "b": [
+     4.2,
+     10.5,
+     2.2,
+     4.8,
+     16,
+     5.8
+    ],
+    "side": "fire",
+    "end": "fire",
+    "nocol": true,
+    "tv": 8
+   },
+   {
+    "b": [
+     3.2,
+     10.5,
+     3.7,
+     5.8,
+     16,
+     4.3
+    ],
+    "side": "fire",
+    "end": "fire",
+    "nocol": true,
+    "tv": 8
+   },
+   {
+    "b": [
+     11.2,
+     10.5,
+     2.2,
+     11.8,
+     16,
+     5.8
+    ],
+    "side": "fire",
+    "end": "fire",
+    "nocol": true,
+    "tv": 8
+   },
+   {
+    "b": [
+     10.2,
+     10.5,
+     3.7,
+     12.8,
+     16,
+     4.3
+    ],
+    "side": "fire",
+    "end": "fire",
+    "nocol": true,
+    "tv": 8
+   }
+  ],
+  "sconce": [
+   {
+    "b": [
+     5.5,
+     4,
+     0,
+     10.5,
+     12,
+     1.2
+    ],
+    "side": "iron_block",
+    "end": "iron_block"
+   },
+   {
+    "b": [
+     7,
+     7,
+     1.2,
+     9,
+     9,
+     6.5
+    ],
+    "side": "iron_block",
+    "end": "iron_block"
+   },
+   {
+    "b": [
+     6,
+     6,
+     5.5,
+     10,
+     8,
+     9.5
+    ],
+    "side": "iron_block",
+    "end": "iron_block"
+   },
+   {
+    "b": [
+     7.2,
+     7.5,
+     6.5,
+     8.8,
+     13,
+     8.1
+    ],
+    "side": "torch",
+    "end": "torch",
+    "nocol": true
+   },
+   {
+    "b": [
+     6.5,
+     12,
+     5.8,
+     9.5,
+     15.5,
+     8.8
+    ],
+    "side": "fire",
+    "end": "fire",
+    "nocol": true
    }
   ]
  }

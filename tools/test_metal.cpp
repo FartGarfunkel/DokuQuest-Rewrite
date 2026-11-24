@@ -21,6 +21,12 @@
 #include "sim/anvil.h"
 #include "sim/bloomery.h"
 #include "sim/prospect.h"
+#include "sim/fallen.h"
+#include "sim/inv_ops.h"
+#include "sim/controller.h"
+#include "gen/structures_common.h"
+#include "gen/proc_rooms.h"
+#include "gen/structures_town.h"
 #include "common/threadpool.h"
 #include "world/world.h"
 #include "world/dims.h"
@@ -451,6 +457,199 @@ int main(int argc, char** argv) {
     ItemStack ih = proceduralOf("iron_helmet"); ih.d = 40;
     StationResult mend = stationResult("anvil", ih, ItemStack("iron_ingot", 2));
     check(mend.ok && mend.out.d < 40, "a worn procedural iron helmet mends at the anvil with iron");
+    {   // found metal gear is the mixed piece, never the mixer baseline
+      auto leftover = [](const json& items) {
+        std::string bad;
+        if (!items.is_array()) return bad;
+        for (const auto& s : items) {
+          if (!s.is_object() || !s.contains("id") || !s["id"].is_string()) continue;
+          const std::string id = s["id"].get<std::string>();
+          if (proceduralOf(id).id != id) bad += id + " ";
+        }
+        return bad;
+      };
+      auto sawMixed = [](const json& items) {
+        if (!items.is_array()) return false;
+        for (const auto& s : items) if (s.is_object() && s.value("id", "").rfind("mixed_", 0) == 0) return true;
+        return false;
+      };
+      std::string bad; bool mixedSmithy = false, mixedDungeon = false, mixedStruct = false, mixedTop = false;
+      for (int i = 0; i < 800; i++) {
+        Mulberry32 r((u32)(2000 + i));
+        json smithy = vLoot("smithy", r);
+        json rare = dungeonLoot("rare", r);
+        json boss = dungeonLoot("boss", r);
+        json common = dungeonLoot("common", r);
+        json mine = structLoot("mineshaft", r);
+        json hold = structLoot("stronghold", r);
+        json pirate = structLoot("pirate", r);
+        json nether = structLoot("nether_fortress", r);
+        json extra = dungeonLoot("rare", r);
+        Mulberry32 r2((u32)(9000 + i));
+        lootTopUp(extra, "d:rare", 8, r2);
+        for (const json* t : {&smithy, &rare, &boss, &common, &mine, &hold, &pirate, &nether, &extra}) bad += leftover(*t);
+        mixedSmithy = mixedSmithy || sawMixed(smithy);
+        mixedDungeon = mixedDungeon || sawMixed(rare) || sawMixed(boss) || sawMixed(common);
+        mixedStruct = mixedStruct || sawMixed(mine) || sawMixed(hold) || sawMixed(pirate) || sawMixed(nether);
+        mixedTop = mixedTop || sawMixed(extra);
+      }
+      check(bad.empty(), "chests never leave a fixed metal tool, weapon or armour piece (" + bad + ")");
+      check(mixedSmithy, "a village smithy still rolls metal gear, as mixed");
+      check(mixedDungeon, "a dungeon chest still rolls metal gear, as mixed");
+      check(mixedStruct, "mineshafts, strongholds, pirate wrecks and nether fortresses still roll metal gear, as mixed");
+      check(mixedTop, "a later-opened dungeon chest tops up with mixed gear too");
+      {
+        long em = 0, dia = 0;
+        const int N = 400;
+        for (int i = 0; i < N; i++) {
+          Mulberry32 r((u32)(30000 + i));
+          for (const json& items : {dungeonLoot("common", r), dungeonLoot("rare", r), dungeonLoot("boss", r)})
+            for (const auto& s : items) if (s.is_object()) {
+              const std::string id = s.value("id", "");
+              if (id == "emerald") em += s.value("n", 1);
+              if (id == "diamond") dia += s.value("n", 1);
+            }
+        }
+        check(dia == 0, "a first dungeon has no diamonds (" + std::to_string(dia) + ")");
+        check(em == 0, "a first dungeon has no emeralds (" + std::to_string(em) + ")");
+        auto matsOf = [](const json& s) {
+          json mats = json::array();
+          if (s.contains("pt") && s["pt"].is_object()) mats = s["pt"].value("m", json::array());
+          else if (s.contains("pa") && s["pa"].is_object()) mats = s["pa"].value("m", json::array());
+          return mats;
+        };
+        auto isIronGear = [&](const json& s) {
+          const std::string id = s.value("id", "");
+          if (id == "iron_sword" || id == "iron_helmet" || id == "iron_pickaxe" || id == "iron_chestplate"
+              || id == "iron_axe" || id == "iron_leggings" || id == "iron_boots") return true;
+          if (id.rfind("mixed_", 0) != 0) return false;
+          for (const auto& m : matsOf(s)) if (m.is_string() && m.get<std::string>() == "iron") return true;
+          return false;
+        };
+        long steel = 0, mithril = 0, rareIronGear = 0;
+        for (int i = 0; i < N; i++) {
+          Mulberry32 r((u32)(31000 + i));
+          auto countDump = [&](const json& items, bool rare) {
+            for (const auto& s : items) if (s.is_object()) {
+              const std::string id = s.value("id", "");
+              if (id.find("steel") != std::string::npos) steel += s.value("n", 1);
+              if (id.find("mithril") != std::string::npos) mithril += s.value("n", 1);
+              if (rare && isIronGear(s)) rareIronGear++;
+            }
+          };
+          countDump(dungeonLoot("common", r), false);
+          countDump(dungeonLoot("rare", r), true);
+          countDump(dungeonLoot("boss", r), false);
+        }
+        check(steel == 0 && mithril == 0, "a first dungeon has no steel or mithril (" + std::to_string(steel) + " steel, " + std::to_string(mithril) + " mithril)");
+        check(rareIronGear == 0, "a first rare chest is not a second iron kit (" + std::to_string(rareIronGear) + ")");
+        long hEm = 0, hDia = 0, smEm = 0, rEm = 0, rDia = 0, mDia = 0;
+        auto countGems = [](const json& items, long& em, long& dia) {
+          for (const auto& s : items) if (s.is_object()) {
+            const std::string id = s.value("id", "");
+            if (id == "emerald") em += s.value("n", 1);
+            if (id == "diamond" || id == "ruby" || id == "sapphire") dia += s.value("n", 1);
+          }
+        };
+        for (int i = 0; i < N; i++) {
+          Mulberry32 r((u32)(40000 + i));
+          countGems(vLoot("house", r), hEm, hDia);
+          countGems(vLoot("smithy", r), smEm, hDia);
+          countGems(structLoot("ruin", r), rEm, rDia);
+          long ign = 0; countGems(structLoot("mineshaft", r), ign, mDia);
+        }
+        check(hDia == 0 && hEm == 0, "a village house has no gems (" + std::to_string(hEm) + " em, " + std::to_string(hDia) + " gems)");
+        check(smEm == 0, "a village smithy has no emeralds (" + std::to_string(smEm) + ")");
+        long smithIron = 0;
+        for (int i = 0; i < N; i++) {
+          Mulberry32 r((u32)(41000 + i));
+          for (const auto& s : vLoot("smithy", r)) if (s.is_object() && isIronGear(s)) smithIron++;
+        }
+        check(smithIron == 0, "a village smithy at spawn stocks copper and bronze, not iron (" + std::to_string(smithIron) + ")");
+        long pirateIron = 0;
+        for (int i = 0; i < N; i++) {
+          Mulberry32 r((u32)(42000 + i));
+          for (const auto& s : structLoot("pirate", r)) if (s.is_object() && (s.value("id", "") == "iron_sword" || isIronGear(s))) pirateIron++;
+        }
+        check(pirateIron == 0, "a pirate wreck at spawn has no iron_sword (" + std::to_string(pirateIron) + ")");
+        check(rDia == 0 && rEm == 0, "a ruin has no gems (" + std::to_string(rEm) + " em, " + std::to_string(rDia) + " gems)");
+        check(mDia == 0, "a mineshaft has no diamonds (" + std::to_string(mDia) + ")");
+        auto dumpLate = [](const std::string& id) {
+          return id == "diamond" || id == "emerald" || id.find("mithril") != std::string::npos
+              || id.rfind("diamond_", 0) == 0;
+        };
+        auto hasIronMat = [&](const json& s) {
+          const std::string id = s.value("id", "");
+          if (id == "iron_ingot" || id == "iron_nugget") return true;
+          return isIronGear(s);
+        };
+        long bossIron = 0, walkIron = 0, spawnDump = 0;
+        static const char* SPAWN_KINDS[] = {
+          "ruin", "tower", "archmage", "temple", "ocean", "wreck_supply", "wreck_treasure",
+          "mineshaft", "maze", "stronghold", "stronghold_library", "pirate", "nether_fortress",
+          "bone_pit", "sky_shrine", "moa_nest"
+        };
+        for (int i = 0; i < N; i++) {
+          Mulberry32 r((u32)(43000 + i));
+          for (const auto& s : dungeonLoot("boss", r)) if (s.is_object() && hasIronMat(s)) bossIron += s.value("n", 1);
+          for (const json& items : {dungeonLoot("common", r), dungeonLoot("rare", r)})
+            for (const auto& s : items) if (s.is_object() && hasIronMat(s)) walkIron += s.value("n", 1);
+          for (const char* k : SPAWN_KINDS)
+            for (const auto& s : structLoot(k, r)) if (s.is_object() && dumpLate(s.value("id", ""))) spawnDump += s.value("n", 1);
+        }
+        check(bossIron > 0, "the first dungeon's boss chest still has iron (" + std::to_string(bossIron) + ")");
+        check(walkIron == 0, "a first common or rare chest has no iron (" + std::to_string(walkIron) + ")");
+        check(spawnDump == 0, "spawn-tier chests have no diamond, emerald or mithril (" + std::to_string(spawnDump) + ")");
+        {
+          bool cages = true;
+          for (int i = 0; i < 80; i++) {
+            Mulberry32 r((u32)(7 + i * 13));
+            const std::string k = pickProcKind(r, "spawner", i);
+            if (k != "spawner" && k != "cells" && k != "prison") cages = false;
+          }
+          check(cages, "a spawner role is a cage room, never a well or a crypt");
+        }
+        {
+          const int combo = PROC_ROOM_KIND_N * PROC_PATTERN_N * PROC_YAW_N * PROC_PAL_N * PROC_CLUTTER_N;
+          check(combo >= 50000, "room options: " + std::to_string(combo) + " kind x pattern x yaw x pal x clutter");
+          check(PROC_PAL_N == 12 && PROC_PATTERN_N == 12 && PROC_ROOM_KIND_N == 34,
+                "12 palettes, 12 patterns, 34 room kinds");
+          check(std::string(palette(PAL_SAND).wall).find("sand") != std::string::npos
+                && std::string(palette(PAL_PRISM).wall).find("prismarine") != std::string::npos
+                && std::string(palette(PAL_PURPUR).wall).find("purpur") != std::string::npos
+                && std::string(palette(PAL_BLACK).wall).find("blackstone") != std::string::npos
+                && std::string(palette(PAL_QUARTZ).wall).find("quartz") != std::string::npos
+                && (std::string(palette(PAL_ICE).wall).find("ice") != std::string::npos
+                    || std::string(palette(PAL_ICE).wall).find("permafrost") != std::string::npos),
+                "biome palettes: sand, prismarine, purpur, blackstone, quartz, ice");
+          {
+            ProcRoom pr;
+            applyProcLayout(pr, ProcLayout{2, 11, PAL_PURPUR, 2});
+            check(pr.pattern == 11 && pr.pal == PAL_PURPUR && pr.yaw == 2,
+                  "applyProcLayout keeps pattern 11 (not masked to 0-7)");
+          }
+          int ox = 0, oz = 0;
+          rotOffset(0, -1, 1, ox, oz);
+          check(ox == 1 && oz == 0 && rotDir(0, 1) == 1 && rotDir(2, 2) == 0, "a north offset turns east with yaw 1");
+          bool sawPat[12] = {}, sawYaw[4] = {};
+          int nPat = 0, nYaw = 0;
+          for (int i = 0; i < 800; i++) {
+            Mulberry32 r((u32)(90000 + i * 17));
+            ProcLayout L = pickProcLayout(r, i % PROC_PAL_N, i % PROC_CLUTTER_N);
+            const int pat = ((L.pattern % PROC_PATTERN_N) + PROC_PATTERN_N) % PROC_PATTERN_N;
+            if (!sawPat[pat]) { sawPat[pat] = true; nPat++; }
+            if (!sawYaw[L.yaw & 3]) { sawYaw[L.yaw & 3] = true; nYaw++; }
+          }
+          check(nPat == PROC_PATTERN_N && nYaw == PROC_YAW_N, "layouts cover 12 patterns and 4 yaws (" + std::to_string(nPat) + " / " + std::to_string(nYaw) + ")");
+        }
+        {
+          bool ironHang = false;
+          for (const auto& id : townDecor("weapons")) if (id.find("iron") != std::string::npos || id.find("steel") != std::string::npos) ironHang = true;
+          for (const auto& id : townDecor("tools")) if (id == "iron_pickaxe" || id == "iron_sword" || id == "iron_axe") ironHang = true;
+          check(!ironHang && !townDecor("weapons").empty(), "a village smithy hangs copper and bronze, not iron");
+        }
+      }
+    }
   }
 
   printf("[immersive progression: no shortcuts]\n");
@@ -538,6 +737,46 @@ int main(int argc, char** argv) {
     recipeGate().immersive = false;
     m = matchGrid(g, 3);
     check(m && m.out == "mixed_pickaxe" && stackName(m.result()) == "Iron Pickaxe", "classic: an iron pickaxe as ever (the procedural one)");
+  }
+
+  {
+    InvOpen o; InvSession sess(*rg.P, nullptr, o, true);
+    rg.P->cursor.clear();
+    sess.creativePick("iron_sword", false);
+    check(rg.P->cursor.id == "mixed_sword" && isPartTool(rg.P->cursor), "creative pick of an iron sword: the mixed iron sword");
+    sess.creativePick("wood_sword", false);
+    check(rg.P->cursor.id == "wood_sword", "  ...wood stays wood");
+    sess.creativePick("diamond_sword", false);
+    check(rg.P->cursor.id == "diamond_sword", "  ...diamond stays diamond");
+    rg.P->cursor.clear();
+    World& ww = rg.lv->world();
+    std::string fbad; bool sawMixedPick = false;
+    for (int x = 10; x < 30; x++) {
+      ww.setBlock(x, rg.Y + 1, 10, reg().blockId("remains_miner")); ww.setBlockEntity(x, rg.Y + 1, 10, nullptr);
+      json* e = containerEntity(ww, x, rg.Y + 1, 10);
+      if (!e || !e->contains("items")) continue;
+      for (const auto& s : (*e)["items"]) {
+        if (!s.is_object() || !s.contains("id") || !s["id"].is_string()) continue;
+        const std::string id = s["id"].get<std::string>();
+        if (proceduralOf(id).id != id) fbad += id + " ";
+        if (id == "mixed_pickaxe") sawMixedPick = true;
+      }
+    }
+    check(fbad.empty(), "a fallen miner's things never leave a fixed metal piece (" + fbad + ")");
+    check(sawMixedPick, "a fallen miner sometimes still carried a pick, mixed");
+    long fDia = 0, fGem = 0;
+    for (int x = 40; x < 240; x++) {
+      ww.setBlock(x, rg.Y + 1, 12, reg().blockId("remains_miner")); ww.setBlockEntity(x, rg.Y + 1, 12, nullptr);
+      json* e = containerEntity(ww, x, rg.Y + 1, 12);
+      if (!e || !e->contains("items")) continue;
+      for (const auto& s : (*e)["items"]) {
+        if (!s.is_object()) continue;
+        const std::string id = s.value("id", "");
+        if (id == "diamond") fDia += s.value("n", 1);
+        if (id == "ruby" || id == "sapphire" || id == "emerald" || id == "mithril_ingot") fGem += s.value("n", 1);
+      }
+    }
+    check(fDia == 0 && fGem == 0, "a fallen miner carries coal and iron, not gems (" + std::to_string(fDia) + " dia, " + std::to_string(fGem) + " gems)");
   }
 
   printf("\n%d passed, %d failed\n", passes, fails);

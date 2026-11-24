@@ -105,7 +105,9 @@ bool partBoxes(const World& w, int x, int y, int z, BlockId id, u8 meta, int pur
   PartNb nb(w, x, y, z, id, meta);
   if (bhas(id, BF::Sign) && !reg().tShape[id]) signBoxes(meta, boxes);
   else if (!shapeBoxes(id, meta, nb, purpose, boxes)) return false;
-  float ox = 0, oz = 0, oy = (float)sinkOffset(id, nb);
+  int ix = 0, iy = 0, iz = 0;
+  restShift(id, nb, ix, iy, iz);
+  float ox = (float)ix, oz = (float)iz, oy = (float)iy;
   if (reg().tRender[id] == (u8)Render::Torch) {
     const int m = meta & 7;
     if (torchSetBack((u8)m, nb) > 0) { ox = m == 1 ? -8.f : m == 2 ? 8.f : 0; oz = m == 3 ? -8.f : m == 4 ? 8.f : 0; }

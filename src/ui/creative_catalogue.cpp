@@ -1,6 +1,7 @@
 // ui/creative_catalogue.cpp — see creative_catalogue.h.
 #include "ui/creative_catalogue.h"
 #include "core/registry.h"
+#include "core/tool_parts.h"
 #include "sim/crafting.h"
 #include <algorithm>
 #include <cstring>
@@ -16,7 +17,6 @@ const std::vector<CreativeTab>& creativeTabs() {
     {"tools", "Tools & gear", "iron_pickaxe"}, {"combat", "Combat", "iron_sword"}, {"food", "Food", "apple"},
     {"magic", "Magic & potions", "apprentice_staff"}, {"mat", "Materials", "iron_ingot"}, {"nether", "The Nether", "netherrack"},
     {"sky", "The Skylands", "skyland_grass_block"}, {"end", "The End", "end_stone"}, {"eggs", "Spawn eggs", "sheep_spawn_egg"},
-    {"forged", "Forged & mixed", "steel_hafted_iron_pickaxe"},
   };
   return T;
 }
@@ -62,6 +62,28 @@ Key sortKey(const ItemDef& d, const BlockDef* b) {
   k.group = s;
   return k;
 }
+// a mold, a tool head, or a tool, weapon or armour whose stats are the craft: mixed ores and the roll happen there, not in creative
+bool craftedGear(const ItemDef& d) {
+  const std::string& k = d.key;
+  if (k.rfind("mixed_", 0) == 0 || k.rfind("unfinished_", 0) == 0) return true;
+  if (d.has("mold") || d.has("forged") || d.has("forgeHead") || d.has("metalHead")) return true;
+  if (k.size() >= 5 && k.compare(k.size() - 5, 5, "_mold") == 0) return true;
+  if (k.size() > 5 && k.compare(k.size() - 5, 5, "_head") == 0) {   // a pickaxe head, an axe head; a ghoul's head is not one
+    const std::string stem = k.substr(0, k.size() - 5);
+    const size_t u = stem.rfind('_');
+    const std::string kind = u == std::string::npos ? stem : stem.substr(u + 1);
+    if (partToolSections(kind) > 0) return true;
+  }
+  const size_t u = k.rfind('_');
+  if (u != std::string::npos && u > 0) {
+    const std::string prefix = k.substr(0, u), kind = k.substr(u + 1);
+    const bool gear = armorPattern(kind) || partToolSections(kind) > 0;
+    if (gear && reg().item("mixed_" + kind)) {
+      for (const ToolMaterial& m : toolMaterials()) if (m.prefix == prefix && m.tools) return true;
+    }
+  }
+  return false;
+}
 }
 
 std::string creativeTabOf(const std::string& key) {
@@ -70,7 +92,6 @@ std::string creativeTabOf(const std::string& key) {
   const ItemDef& d = *dp;
   const std::string& k = d.key;
   if (d.has("spawnEgg")) return "eggs";
-  if (d.has("forged") || d.has("mixedTool") || d.has("mixedArmor") || d.has("forgeHead")) return "forged";
   if (d.has("tome") || d.has("staff") || d.has("charm") || d.has("potion") || d.has("splash") || d.has("school") || d.has("drink") || starts(k, "enchanted_book")) return "magic";
   if (!d.block.empty()) {
     const BlockDef& b = reg().block(reg().blockId(d.block));
@@ -112,7 +133,7 @@ const std::vector<std::string>& creativeItems(const std::string& tab) {
   std::vector<E> all;
   size_t n = 0;
   for (auto& d : reg().items) {
-    if (d.key.empty() || d.has("hidden") || d.has("hideCreative")) continue;
+    if (d.key.empty() || d.has("hidden") || d.has("hideCreative") || craftedGear(d)) continue;
     const BlockDef* b = d.block.empty() ? nullptr : &reg().block(reg().blockId(d.block));
     all.push_back({d.key, creativeTabOf(d.key), sortKey(d, b), n++});
   }

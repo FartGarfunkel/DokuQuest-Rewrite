@@ -6,6 +6,7 @@
 #include "sim/skills.h"
 #include "sim/gameplay.h"
 #include "sim/combat.h"
+#include "sim/attack_moves.h"
 #include "sim/creature.h"
 #include "core/registry.h"
 #include <algorithm>
@@ -25,8 +26,18 @@ constexpr float PARRY_COST = 18;
 constexpr float BLOCK_KEEP = 0.35f;
 constexpr float SECOND_CHANCE_CD = 180;
 constexpr float BOSS_CAP_FRAC = 0.08f;
+constexpr float MASH_FLOOR = 0.05f;   // about one tick; extra mashes cannot shrink the window below this
+constexpr int MASH_FREE = 2;          // the first two re-taps leave the window as it was
+constexpr float MASH_STAM = 0.15f;    // each mash raises block/parry stamina a little
 
 bool holdingShield(const Player& p) { return shieldSide(p) != 0; }
+int mashCount(const Player& p) { return std::max(0, p.data.value("blkMash", 0)); }
+float mashStam(const Player& p) { return 1.f + MASH_STAM * (float)mashCount(p); }
+void setMash(Player& p, int n) {
+  if (n > 0) p.data["blkMash"] = n;
+  else p.data.erase("blkMash");
+}
+void clearMash(Player& p) { p.data.erase("blkMash"); }
 const json& mobDef(const std::string& type) {
   static const json none = json::object();
   const json& m = reg().mobs;
@@ -37,6 +48,9 @@ void spend(Player& p, float n) {
   p.data["stamIdle"] = 0;
 }
 }
+
+static bool twoHandWeapon(const Player& p);
+static bool canWeaponGuard(const Player& p);
 
 void combatRpgTick(Level& lv, Player& p, float dt) {
   if (p.dead || dt <= 0) return;
@@ -51,6 +65,11 @@ void combatRpgTick(Level& lv, Player& p, float dt) {
   if (p.staggerT > 0) p.staggerT = std::max(0.f, p.staggerT - dt);
   if (p.posture > 0 && p.staggerT <= 0) p.posture = std::max(0.f, p.posture - 8.f * dt);
   if (p.secondChanceCd > 0) p.secondChanceCd = std::max(0.f, p.secondChanceCd - dt);
+  if (float h = p.data.value("hurtLimbT", 0.f); h > 0) {
+    h -= dt;
+    if (h <= 0) { p.data.erase("hurtLimbT"); p.data.erase("hurtLeg"); p.data.erase("hurtArm"); }
+    else p.data["hurtLimbT"] = h;
+  }
   const int earned = statPointsEarned(p);
   if (p.data.value("conSeen", -1) != p.statCon) { p.data["conSeen"] = p.statCon; p.recalcMax(); }   // (Constitution's health)
   const int spent = p.statCon + p.statStr + p.statAgi + p.statInt + p.statLck + p.statFoc;
@@ -72,7 +91,7 @@ void combatRpgTick(Level& lv, Player& p, float dt) {
 // best, so a newcomer's friend doesn't make the world trivial or impossible), give or take a little; one in fourteen hostile
 // ones is an elite, three levels up, tougher and richer. Each level: +8% health, +5% damage, +6% experience. With more
 // players about, its health grows (40% for each beyond the first, while they stay near) so a party has a fight too.
-int playerCombatLevel(const Player& p) { return std::max(1, totalLevel(p) / 8); }
+int playerCombatLevel(const Player& p) { return std::max(1, totalLevel(p) / 12 + progressMobLevels(progressTier(p))); }
 namespace {
 float levelHp(int lvl) { return mobLevelHp(lvl); }
 float levelDmg(int lvl) { return mobLevelDmg(lvl); }
@@ -106,7 +125,7 @@ void mobLevelUpdate(Level& lv, Entity& e) {
     float base = e.maxHp;
     if (e.data.value("lvlHp", false)) base /= 1.f + 0.03f * (std::max(1, e.mobLevel) - 1);
     const int party = (int)std::lround((sum / n + best) * 0.5f);
-    // (no extra for progress here: the party's combat level already grows with the skills; progressTier only scales loot)
+    // (progress adds at most MOB_TIER_MAX on top of skills/12, so a spent tree still pulls ahead of the land)
     int lvl = std::max(1, party + (int)std::floor(rnd() * 4) - 1);   // (-1 .. +2)
     const bool elite = hostile && !boss && !e.data.value("boss", false) && rnd() < ELITE_CHANCE;
     if (elite) lvl += ELITE_LEVELS;
@@ -140,22 +159,47 @@ void combatRpgInput(Level& lv, Player& p, const PlayerInput& in, float dt) {
   const ItemDef* md = mh.empty() ? nullptr : reg().item(mh.id);
   const bool mainShield = md && (mh.id == "shield" || md->has("shield"));
   const bool mainBusy = md && !mainShield && itemHasUse(*md);
-  const bool block = holdingShield(p) && !mainBusy && in.use && p.stamina > 0 && p.dodgeT <= 0;
+  const bool twoHand = twoHandWeapon(p);
+  const bool shieldGuard = holdingShield(p) && !twoHand;
+  const bool block = (shieldGuard || canWeaponGuard(p)) && !mainBusy && in.use && p.stamina > 0 && p.dodgeT <= 0;
+  const bool wasUse = p.data.value("blkUse", false);
+  int mash = mashCount(p);
+  const float idle = p.data.value("blkIdle", 0.f);
   if (block) {
+    // a rising use while the guard is already up, or a re-tap still inside the window, is a mash
+    if (in.use && !wasUse) {
+      if (p.blockT > 0.001f) mash++;
+      else if (idle > 0.f && idle <= PARRY_WINDOW) mash++;
+    }
     if (p.blockT <= 0) p.blockT = 0.001f;
     else p.blockT += dt;
-    spend(p, BLOCK_COST * (1 - stunResist(p)) * dt);   // (stagger resistance: a steadier guard)
+    const float cost = (shieldGuard ? BLOCK_COST : BLOCK_COST * 1.5f) * (1.f + MASH_STAM * (float)mash);
+    spend(p, cost * (1 - stunResist(p)) * dt);   // (a weapon's guard costs half again; a shield stays as it was)
+    p.data["blkIdle"] = 0.f;
     if (p.stamina <= 0) p.blockT = 0;
-  } else p.blockT = 0;
+  } else {
+    p.blockT = 0;
+    const float down = idle + dt;
+    p.data["blkIdle"] = down;
+    if (down > PARRY_WINDOW) mash = 0;   // the guard has been down past the window
+  }
+  if (in.use) p.data["blkUse"] = true;
+  else p.data.erase("blkUse");
+  setMash(p, mash);
 }
 
 float combatRpgIncoming(Level& lv, Player& p, float amount, DamageSource& src) {
   if (amount <= 0 || src.type == "void" || src.bypass) return amount;
   if (p.dodgeT > 0) return 0;
-  if (p.blockT > 0 && p.blockT < PARRY_WINDOW && p.stamina >= PARRY_COST && src.attacker) {
-    spend(p, PARRY_COST);
+  if (src.attacker && src.type != "magic" && dodgeChance(p) > 0 && rnd() < dodgeChance(p)) { toast(lv, p, "Evaded", "good"); return 0; }
+  // a locational body hit (the blade missed the guard) is not a parry or a keep
+  const bool locational = src.armorSlot >= 0 && !src.metGuard;
+  if (locational) return amount * (1 - conReduction(p)) * damageTakenFactor(p);
+  if (p.blockT > 0 && p.blockT < guardWindow(p) && p.stamina >= PARRY_COST * mashStam(p) && src.attacker) {
+    spend(p, PARRY_COST * mashStam(p));
     p.parryFlash = 0.35f;
     p.blockT = PARRY_WINDOW;
+    clearMash(p);
     if (Entity* a = lv.entity(src.attacker)) {
       a->staggerT = std::max(a->staggerT, 0.8f);
       a->posture = a->maxPosture;
@@ -164,9 +208,7 @@ float combatRpgIncoming(Level& lv, Player& p, float amount, DamageSource& src) {
     sfxUi(lv, p, "crit");
     return 0;
   }
-  // a talent's chance to slip a creature's or player's blow outright
-  if (src.attacker && src.type != "magic" && dodgeChance(p) > 0 && rnd() < dodgeChance(p)) { toast(lv, p, "Evaded", "good"); return 0; }
-  if (p.blockT > 0) { p.guardFlash = 0.35f; amount *= BLOCK_KEEP; }
+  if (p.blockT > 0) { p.guardFlash = 0.35f; amount *= guardKeep(p); }
   return amount * (1 - conReduction(p)) * damageTakenFactor(p);   // Constitution: toughness; the trees' damage reduction
 }
 
@@ -233,12 +275,14 @@ bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& t
   }
   if (!hit) return false;
   const vec3 at = from + step * best;
-  const bool parry = hit->blockT > 0 && hit->blockT < PARRY_WINDOW && hit->stamina >= PARRY_COST;
+  const float parryCost = PARRY_COST * mashStam(*hit);
+  const bool parry = hit->blockT > 0 && hit->blockT < guardWindow(*hit) && hit->stamina >= parryCost;
   if (parry) {
-    hit->stamina = std::max(0.f, hit->stamina - PARRY_COST);
+    hit->stamina = std::max(0.f, hit->stamina - parryCost);
     hit->data["stamIdle"] = 0;
     hit->parryFlash = 0.35f;
     hit->blockT = PARRY_WINDOW;
+    clearMash(*hit);
     vec3 back = -arrow.vel;
     float sp = glm::length(back);
     if (sp < 0.5f) back = -step;
@@ -253,7 +297,7 @@ bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& t
     return true;
   }
   if (hit->blockT > 0) {
-    hit->stamina = std::max(0.f, hit->stamina - 8.f);
+    hit->stamina = std::max(0.f, hit->stamina - 8.f * mashStam(*hit));
     hit->data["stamIdle"] = 0;
   }
   hit->guardFlash = 0.35f;
@@ -262,6 +306,35 @@ bool arrowStrikeShield(Level& lv, Entity& arrow, const vec3& from, const vec3& t
   sfxAt(lv, "arrow_hit", at);
   arrow.removed = true;
   return true;
+}
+
+static bool twoHandWeapon(const Player& p) {
+  const ItemStack& h = p.inv[p.selected];
+  const ItemDef* d = h.empty() ? nullptr : h.def();
+  return d && d->num("hands") >= 2.f;
+}
+static bool canWeaponGuard(const Player& p) {
+  const ItemStack& h = p.inv[p.selected];
+  if (h.empty() || !h.def()) return false;
+  switch (movesetOf(h.def())) {
+    case Moveset::Sword: case Moveset::Dagger: case Moveset::Axe:
+    case Moveset::Greatsword: case Moveset::Spear: case Moveset::Mace: return true;
+    default: return false;
+  }
+}
+float guardKeep(const Player& p) {
+  if (holdingShield(p) && !twoHandWeapon(p)) return BLOCK_KEEP;
+  if (twoHandWeapon(p)) return BLOCK_KEEP + 0.25f * (1.f - BLOCK_KEEP);
+  return BLOCK_KEEP + 0.5f * (1.f - BLOCK_KEEP);
+}
+float guardWindow(const Player& p) {
+  float w = PARRY_WINDOW;
+  if (holdingShield(p) && !twoHandWeapon(p)) w = PARRY_WINDOW;
+  else if (twoHandWeapon(p)) w = PARRY_WINDOW * 0.8f;
+  else w = PARRY_WINDOW * 0.6f;
+  const int extra = std::max(0, mashCount(p) - MASH_FREE);
+  if (extra) w *= std::pow(0.5f, (float)extra);
+  return std::max(MASH_FLOOR, w);
 }
 
 int shieldSide(const Player& p) {

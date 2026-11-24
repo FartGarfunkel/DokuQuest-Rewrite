@@ -71,6 +71,8 @@ constexpr ShipDims SHIP{};
 // the galleon is the sailing ship built 1.6 times over (two masts, a bigger hold): its dims are SHIP's scaled
 inline ShipDims shipDimsOf(float s) { ShipDims d; d.deck *= s; d.halfW *= s; d.bow *= s; d.stern *= s; d.helm *= s; d.cargo *= s; return d; }
 float shipHalfAt(float lz, const ShipDims& D = SHIP);
+// the sailboat is the longboat: the bow and the stern both narrow (the ship's stern stays square)
+float deckHalfAt(float lz, const ShipDims& D = SHIP);
 bool onShipDeck(float lx, float lz, float inset = 0, const ShipDims& D = SHIP);
 struct SmallBoat { float top = 0.6f, bow = -1.42f, stern = 1.16f; float half(float lz) const { return lz > -0.52f ? 0.7f : 0.7f * clampv((lz + 1.42f) / 0.9f, 0.08f, 1.f); } };
 constexpr SmallBoat SMALL_BOAT{};
@@ -86,8 +88,9 @@ public:
   json cargo;                  // any other block riding along {id, key, meta, ent}
   const BoatType& T() const { return boatType(kind); }
   bool ship() const { return T().ship; }
+  bool hasDeck() const { return ship() || kind == "sailboat"; }   // a deck you walk, then the tiller
   float scale() const { return T().scale; }
-  ShipDims dims() const { return shipDimsOf(ship() ? T().scale : 1.f); }
+  ShipDims dims() const;
   int holdSlots() const { return kind == "galleon" ? 54 : 27; }
   void tick(Level& lv, double dt) override;
   json save() const override;

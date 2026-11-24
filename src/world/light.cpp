@@ -7,6 +7,21 @@ namespace dq {
 
 u8 skyTopLevel(int dim) { return dim == DIM_NETHER || isUnderworld(dim) ? 0 : 15; }   // (the Underworld: under the land, no sky)
 
+u8 aroundAirLight(const World& w, int x, int y, int z) {
+  const Registry& R = reg();
+  static const int D[7][3] = {{0, 0, 0}, {0, 1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}};
+  u8 packed[7]; bool loaded[7];
+  for (int i = 0; i < 7; i++) {
+    const int ax = x + D[i][0], ay = y + D[i][1], az = z + D[i][2];
+    if (!w.isLoaded(ax, ay, az)) { packed[i] = 0; loaded[i] = false; continue; }
+    const BlockId id = w.getBlock(ax, ay, az);
+    if (id && R.tOpaque[id] && !w.getCarve(ax, ay, az)) { packed[i] = 0; loaded[i] = false; continue; }  // a solid cube holds no light
+    packed[i] = w.getLight(ax, ay, az);
+    loaded[i] = true;
+  }
+  return packedLightMaxLoaded(packed, loaded, 7);
+}
+
 // A chiseled (carved) block of an opaque material takes light in, so its open octants and the faces beside them are
 // lit, but passes none on: light doesn't leak through walls of slabs, stairs and carved blocks.
 static inline bool carvedSink(const Registry& R, const Chunk& c, int lx, int ly, int lz, BlockId id) {
@@ -37,6 +52,15 @@ static void absorb(u8* c, const Registry& R, BlockId id) {
 // through the glass instead of being painted full white.
 static bool stopsSky(const Registry& R, BlockId b) {
   return b && (R.tOpaque[b] || R.tAtt[b] || R.tLiquid[b] || R.tAbsR[b] || R.tAbsG[b] || R.tAbsB[b]);
+}
+
+bool cellOpenToSky(const Chunk& c, int x, int y, int z) {
+  if (!skyTopLevel(c.dim)) return false;
+  const Registry& R = reg();
+  for (int yy = y + 1; yy < DIM_H; yy++) {
+    if (stopsSky(R, c.get(x, yy, z))) return false;
+  }
+  return true;
 }
 
 // One step out of a cell. Full white sun going straight down (d == 3, -Y) does not decay. After water

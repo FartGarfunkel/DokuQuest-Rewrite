@@ -128,6 +128,7 @@ _s = _u.spec_from_file_location('mob_heads', pathlib.Path(__file__).with_name('m
 
 # ---- classic-style blocks (tools/port/classic_blocks.py) ----
 _s = _u.spec_from_file_location('classic_blocks', pathlib.Path(__file__).with_name('classic_blocks.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
+_s = _u.spec_from_file_location('furniture_more', pathlib.Path(__file__).with_name('furniture_more.py')); _m = _u.module_from_spec(_s); _s.loader.exec_module(_m); _m.main(d)
 _s2 = _u.spec_from_file_location('more_items', pathlib.Path(__file__).with_name('more_items.py')); _m2b = _u.module_from_spec(_s2); _s2.loader.exec_module(_m2b); _m2b.main(d)
 _s3 = _u.spec_from_file_location('nether_lands', pathlib.Path(__file__).with_name('nether_lands.py')); _m3 = _u.module_from_spec(_s3); _s3.loader.exec_module(_m3); _m3.main(d)
 _s4 = _u.spec_from_file_location('discs', pathlib.Path(__file__).with_name('discs.py')); _m4 = _u.module_from_spec(_s4); _s4.loader.exec_module(_m4); _m4.main(d)

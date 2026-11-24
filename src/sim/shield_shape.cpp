@@ -62,7 +62,13 @@ bool playerShieldBox(const Player& p, ShieldBox& out) {
   if (p.dead || p.sleeping || p.swimming || p.crawling || p.riding || p.dodgeT > 0) return false;
   const int side = shieldSide(p);   // (sim/combat_rpg.h: a shield in a hand, or the shield slot's on the free forearm)
   if (!side) return false;
-  out = shieldBoxAt(p.pos, p.yaw, p.pitch, p.blockT > 0, p.sneaking, side > 0);
+  // a two-handed block does not raise a shield that is also equipped, so arrows do not meet the raised box
+  bool twoHand = false;
+  if (p.blockT > 0 && p.selected >= 0 && p.selected < (int)p.inv.size()) {
+    const ItemDef* d = p.inv[p.selected].def();
+    twoHand = d && d->num("hands") >= 2.0;
+  }
+  out = shieldBoxAt(p.pos, p.yaw, p.pitch, p.blockT > 0 && !twoHand, p.sneaking, side > 0);
   return true;
 }
 
@@ -89,6 +95,44 @@ bool shieldContains(const ShieldBox& b, const vec3& p, float margin) {
   const vec3 r = p - b.c;
   return std::fabs(glm::dot(r, b.ax)) <= b.half.x + margin && std::fabs(glm::dot(r, b.ay)) <= b.half.y + margin &&
          std::fabs(glm::dot(r, b.az)) <= b.half.z + margin;
+}
+
+bool playerWeaponGuardBox(const Player& p, ShieldBox& out) {
+  if (p.dead || p.sleeping || p.swimming || p.crawling || p.riding || p.dodgeT > 0) return false;
+  if (p.blockT <= 0) return false;
+  out = shieldBoxAt(p.pos, p.yaw, p.pitch, true, p.sneaking, true);
+  out.half = vec3(0.48f, 0.58f, 0.14f);
+  return true;
+}
+bool playerGuardBox(const Player& p, ShieldBox& out) {
+  if (p.blockT <= 0) return false;
+  bool twoHand = false;
+  if (p.selected >= 0 && p.selected < (int)p.inv.size()) {
+    const ItemDef* d = p.inv[p.selected].def();
+    twoHand = d && d->num("hands") >= 2.0;
+  }
+  // a two-hand block keeps the slung shield at the hip; the blade in front is the guard
+  if (!twoHand && playerShieldBox(p, out)) return true;
+  return playerWeaponGuardBox(p, out);
+}
+
+int playerLimbBoxes(const Player& p, PlayerLimbBox out[6]) {
+  const vec3 f(-std::sin(p.yaw), 0, -std::cos(p.yaw)), r(std::cos(p.yaw), 0, -std::sin(p.yaw));
+  const vec3 feet = p.pos;
+  auto box = [&](vec3 c, vec3 h) {
+    PlayerLimbBox b;
+    b.lo = c - h; b.hi = c + h;
+    return b;
+  };
+  const vec3 chest = feet + vec3(0, 1.12f, 0) + f * 0.02f;
+  out[0] = box(feet + vec3(0, 1.62f, 0) + f * 0.04f, vec3(0.22f, 0.18f, 0.22f)); out[0].armorSlot = 0; out[0].name = "head";
+  out[1] = box(chest, vec3(0.28f, 0.32f, 0.18f)); out[1].armorSlot = 1; out[1].name = "chest";
+  out[2] = box(chest - r * 0.34f, vec3(0.14f, 0.28f, 0.14f)); out[2].armorSlot = 1; out[2].name = "armL";
+  out[3] = box(chest + r * 0.34f, vec3(0.14f, 0.28f, 0.14f)); out[3].armorSlot = 1; out[3].name = "armR";
+  out[4] = box(feet + vec3(0, 0.45f, 0) - r * 0.12f, vec3(0.14f, 0.45f, 0.14f)); out[4].armorSlot = 2; out[4].name = "legL";
+  out[5] = box(feet + vec3(0, 0.45f, 0) + r * 0.12f, vec3(0.14f, 0.45f, 0.14f)); out[5].armorSlot = 2; out[5].name = "legR";
+  out[4].armorSlot = 2; // legs; boots ride along in playerHurtRaw
+  return 6;
 }
 
 }  // namespace dq

@@ -23,6 +23,7 @@ namespace dq {
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
 bool tryWitherSummon(Level& lv, int realm, ivec3 at);   // sim/wither.cpp
 void primeFormidi(Level& lv, World& w, int x, int y, int z, const std::string& key);   // sim/wither_storm.cpp: Super TNT, the Formidibomb
+bool sleepingBagSleep(Level& lv, Player& p, int x, int y, int z);   // sim/camping.cpp: a bag keeps the old spawn
 
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
 
@@ -77,6 +78,15 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
   int x = t.x, y = t.y, z = t.z;
   BlockId cur = w.getBlock(x, y, z);
   bool wet = R.tLiquid[cur] == 1 && (w.getMeta(x, y, z) & 15) == 0;
+  if (bid == B.cattail && !wet) {   // plant into the water, not on top of it
+    auto fullWater = [&](int ax, int ay, int az) {
+      return inWorldY(ay) && R.tLiquid[w.getBlock(ax, ay, az)] == 1 && (w.getMeta(ax, ay, az) & 15) == 0;
+    };
+    if (fullWater(x, y - 1, z)) { y -= 1; cur = w.getBlock(x, y, z); wet = true; }
+    else if (fullWater(hit.block.x, hit.block.y, hit.block.z)) {
+      x = hit.block.x; y = hit.block.y; z = hit.block.z; cur = hit.id; wet = true;
+    }
+  }
   int nx = hit.normal.x, ny = hit.normal.y, nz = hit.normal.z;
   auto set = [&](int xx, int yy, int zz, u8 m, bool merge = false) { out.x = xx; out.y = yy; out.z = zz; out.meta = m; out.merge = merge; return true; };
   // ---- placeSpecial (blocks2.js) ----
@@ -102,7 +112,7 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
     out.also.push_back({x, y - 1, z, bid, f | 4});
     return set(x, y, z, (u8)f);
   }
-  if (d.has("facingModel")) return set(x, y, z, (u8)(d.str("station") == "anvil" ? (lookDir(p) + 1) & 3 : lookDir(p)));
+  if (d.has("facingModel") && kind != ShapeKind::Bed) return set(x, y, z, (u8)(d.str("station") == "anvil" ? (lookDir(p) + 1) & 3 : lookDir(p)));   // a bed (sleeping bag, coffin) is two cells, below
   if (bid == B.pointed_dripstone && bid) return set(x, y, z, (u8)((ny == -1 ? 1 : 0) | (wet ? WLOG : 0)));
   if (bhas(bid, BF::Hangs) && ny != -1 && w.getBlock(x, y + 1, z) != bid && !R.tSolid[w.getBlock(x, y + 1, z)]) { toastMsg("This hangs from a ceiling"); return false; }
   // ---- the usual rules (build.js) ----
@@ -153,6 +163,7 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
   } else if (bhas(bid, BF::Double)) {
     BlockId up = w.getBlock(x, y + 1, z);
     if (!inWorldY(y + 1) || (up && !R.tReplaceable[up])) return false;
+    if (bid == B.cattail && up) return false;   // 1-deep only: the upper half is air
     out.also.push_back({x, y + 1, z, bid, 1});
   } else if (bhas(bid, BF::AxisBlock)) {
     meta = (u8)(nx ? 1 : nz ? 2 : 0);
@@ -412,7 +423,10 @@ bool PlayerController::supportOK(BlockId bid, int x, int y, int z, u8 meta) {
     return in(below, {B.crimson_nylium, B.warped_nylium, B.netherrack, B.soul_soil, B.soul_sand}) || inSoil(below);
   if (bid == B.brown_mushroom || bid == B.red_mushroom || bid == B.amethyst_cluster || bid == B.small_amethyst_bud || bid == B.medium_amethyst_bud ||
       bid == B.large_amethyst_bud || bid == B.loose_stones || bid == B.sea_pickle || bid == B.pointed_dripstone) return R.tSolid[below];
-  if (bid == B.cattail) return in(below, {B.sand, B.clay, B.gravel}) || inSoil(below);
+  if (bid == B.cattail) {
+    auto okGround = [&](BlockId v) { return in(v, {B.sand, B.clay, B.gravel}) || inSoil(v); };
+    return okGround(below);
+  }
   { static const BlockId palmSap = reg().blockId("palm_sapling"); if (palmSap && bid == palmSap) return in(below, {B.sand, B.red_sand, B.desert_sand}) || inSoil(below); }   // palms take to sand
   if (R.tSink[bid]) return R.tSolid[below];   // things set down on a surface (jars...), not plants
   return inSoil(below);
@@ -827,7 +841,10 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
     if (partBlocked(w, x, y, z, -1, id, m)) { toastMsg("It's blocked"); return true; }   // (a part sharing the cell is in its way: sim/attach_play.h)
     w.setBlock(x, y, z, id, m, SetFlags::Urgent); sfxAt(lv, doorSound(id, m & 4), c); swingArm(); return true;
   }
-  if (bhas(id, BF::Bed)) { sleep(x, y, z, meta); return true; }
+  if (bhas(id, BF::Bed)) {   // a sleeping bag keeps the old spawn, and gives it back in the morning
+    if (!sleepingBagSleep(lv, p, x, y, z)) return true;
+    sleep(x, y, z, meta); return true;
+  }
   if (b.has("noteBlock")) {
     int n = ((meta & 31) + 1) % 25;
     w.setBlock(x, y, z, id, (u8)(n | (meta & 0x20)));
@@ -892,7 +909,8 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   // collide them as octant boxes. The crosshair raycast's entry point is the geometry under the cursor, and a hit through
   // a carved notch still lands inside the aimed octant, so the same click toggles it back. Each octant toggles on its own.
   if (tool == "chisel") {
-    bool chiselable = R.tSolid[id] && R.tOpaque[id] && !R.tShape[id] && !R.tWlog[id] && !(b.has("family") || b.has("base"));   // wlog blocks (lanterns, snow...) carry live meta state
+    bool chiselable = R.tSolid[id] && R.tOpaque[id] && !R.tShape[id] && !R.tWlog[id] && !(b.has("family") || b.has("base"))
+                      && !b.has("table") && b.key.find("crafting_table") == std::string::npos;   // a crafting table is a workplace, not a block to carve; wlog blocks carry live meta
     u8 carve = w.getCarve(x, y, z);
     if (chiselable) {
       int enc = aimedOctant(hit.point, x, y, z, hit.normal.x, hit.normal.y, hit.normal.z);
@@ -948,7 +966,7 @@ void PlayerController::afterBreak(int x, int y, int z, BlockId id, u8 meta) {
     const int oy = (meta & 4) ? y + 1 : y - 1;
     if (w.getBlock(x, oy, z) == id && ((w.getMeta(x, oy, z) & 4) != 0) != ((meta & 4) != 0)) w.setBlock(x, oy, z, AIR, 0, SetFlags::Urgent);
   }
-  if (bhas(id, BF::Bed) && !R.block(id).has("bag")) {
+  if (bhas(id, BF::Bed) || R.tShape[id] == ShapeKind::Bed) {
     int f = meta & 3, s = (meta & 4) ? -1 : 1, ox = x + DIRX[f] * s, oz = z + DIRZ[f] * s;
     if (w.getBlock(ox, y, oz) == id) w.setBlock(ox, y, oz, AIR, 0, SetFlags::Urgent);
   }

@@ -27,6 +27,7 @@ struct BlockTraits {
   u8 tint = 0;                  // climate tint: 0 none, 1 grass, 2 foliage
   u8 cloth = 0;                 // 1 flag, 2 banner, 3 bunting, 4 washing line, 5 shop sign
   u8 campfire = 0;              // 1 campfire, 2 soul campfire
+  bool brazier = false;         // dungeon brazier: always-lit campfire_fire planes in the bowl
   bool branch = false, logLike = false;   // a tree branch (shape Branch) and what it grows from
   bool pickle = false, chorus = false, chorusFlower = false, tripwire = false, door = false, candle = false, cauldron = false, pot = false;
   bool endRod = false, facingModel = false, lantern = false, bamboo = false, pile = false, backpack = false, hive = false;
@@ -91,6 +92,7 @@ namespace ShapePurpose { enum : int { Draw = 0, Collide = 1, Select = 2 }; }
 // original); true with `out` possibly empty for "nothing" (an open gate, dust's collision).
 bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector<ShapeBox>& out);
 int sinkOffset(BlockId id, const ShapeNb& nb);          // pixels: -8 when it sits on a bottom half slab
+void restShift(BlockId id, const ShapeNb& nb, int& ox, int& oy, int& oz);  // sit on a bottom half and nestle into a vertical slab gap
 float torchSetBack(u8 meta, const ShapeNb& nb);          // 0.5 when a wall torch leans on a vertical slab's open face
 bool slabGap(BlockId id, u8 meta, int side, u8 carve = 0);   // carve: a chiseled slab counts too
 
@@ -108,6 +110,13 @@ constexpr u8 WLOG = 0x80;   // waterlogged meta bit
 #endif
 inline bool isWaterlogged(BlockId id, u8 meta);
 void rotBox(ShapeBox& b, int f);                       // north-facing box turned to face f (0 N, 1 E, 2 S, 3 W)
+u8 rotOnly(u8 only, int f);                            // ShapeBox::only, turned the same way rotBox turns the box
+// One-block model placed as a bed (a coffin, a sleeping bag). Low Z is the head end; flipZ when the
+// authored head (the bag's pillow) sits at high Z. Each cell gets its half, stretched to fill the cell.
+// A face the cut made is cleared in ShapeBox::only (pre-rotation: bit 4 is +Z, bit 5 is -Z).
+void bedHalfBoxes(const std::vector<ShapeBox>& model, bool head, bool flipZ, std::vector<ShapeBox>& out);
+// an open coffin's lid, swung up off the left rim (call after bedHalfBoxes, before rotBox)
+void hingeCoffinLid(std::vector<ShapeBox>& boxes);
 void flipBox(ShapeBox& b);                             // upside down
 ShapeBox attachBox(const ShapeBox& b, u8 meta);        // levers/buttons: floor/ceiling/wall
 vec3 attachPoint(vec3 p, u8 meta, bool vec);

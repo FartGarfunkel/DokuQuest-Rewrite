@@ -1,7 +1,7 @@
 {
   "alligator_snapping_turtle": {"amphibious": true, "drops": [["turtle_scute", 0, 1, 0.5], ["bone", 0, 1, 0.5]]},
   "anteater": {"drops": [["raw_meat", 1, 2, 1], ["leather", 0, 2, 1]]},
-  "banana_slug": {"carry": "basket", "drops": [["slime_ball", 0, 1, 0.8]]},
+  "banana_slug": {"removed": true, "carry": "basket", "drops": [["slime_ball", 0, 1, 0.8]]},
   "blobfish": {"carry": "basket", "aquatic": true},
   "blue_jay": {"carry": "pet", "tame": {"foods": ["wheat_seeds", "melon_seeds", "pumpkin_seeds", "beetroot_seeds"], "chance": 0.34}},
   "cachalot_whale": {"aquatic": true, "drops": [["raw_meat", 3, 6, 1], ["bone", 2, 4, 1], ["ink_sac", 0, 2, 0.5]]},

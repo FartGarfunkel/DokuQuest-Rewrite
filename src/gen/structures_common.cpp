@@ -101,17 +101,119 @@ static void maybeTemplate(json& items, const std::string& kind) {
   }
 }
 
+void convertLootGear(json& items) {
+  for (auto& s : items) if (s.is_object() && s.contains("id") && s["id"].is_string()) {
+    const std::string id = s["id"].get<std::string>();
+    const int n = s.value("n", 1), d = s.value("d", 0);
+    const ItemStack p = proceduralOf(id, n);
+    if (p.id == id) continue;
+    json j = p.toJson();
+    if (d) j["d"] = d;
+    s = std::move(j);
+  }
+}
+
+// late places keep the rich baked table; everything a new player can walk into from spawn does not.
+static bool lateLootKind(const std::string& k) {
+  // a wizard tower (archmage) can stand next to spawn: it is not late
+  return k == "maze_heart" || k == "end_city" || k == "ancient_city"
+      || k == "deep_secret" || k == "deep_vault" || k == "twin_vault" || k == "buried_treasure"
+      || k == "ember_spire" || k == "ember_bastion" || k == "sky_temple" || k == "sky_sanctum"
+      || k == "skyship" || k == "deep" || k == "forge";
+}
+static bool dumpGem(const std::string& id) {
+  if (id == "flint_and_steel") return false;
+  return id == "emerald" || id == "diamond" || id == "ruby" || id == "sapphire"
+      || id == "mithril_ingot" || id == "steel_ingot" || id == "adamantite_ingot"
+      || id == "emerald_block" || id == "gold_block"
+      || id.rfind("diamond_", 0) == 0 || id.rfind("mithril_", 0) == 0
+      || id.rfind("steel_", 0) == 0 || id.rfind("adamantite_", 0) == 0
+      || id.rfind("ruby_", 0) == 0 || id.rfind("sapphire_", 0) == 0;
+}
+static json stripDumpGems(const json& src) {
+  json out = json::array();
+  if (!src.is_array()) return out;
+  for (const auto& e : src) {
+    if (!e.is_array() || e.empty() || !e[0].is_string()) continue;
+    if (dumpGem(e[0].get<std::string>())) continue;
+    out.push_back(e);
+  }
+  return out;
+}
+// dumpGem leaves iron. At spawn (tier 0) a pirate wreck still rolled iron_sword; map those pieces to copper.
+static void remapSpawnIron(json& table) {
+  if (!table.is_array()) return;
+  for (auto& e : table) {
+    if (!e.is_array() || e.empty() || !e[0].is_string()) continue;
+    const std::string id = e[0].get<std::string>();
+    if (id == "iron_sword") e[0] = "copper_sword";
+    else if (id == "iron_helmet") e[0] = "copper_helmet";
+    else if (id == "iron_pickaxe") e[0] = "copper_pickaxe";
+    else if (id == "iron_axe") e[0] = "copper_axe";
+    else if (id == "iron_shovel") e[0] = "copper_shovel";
+    else if (id == "iron_hoe") e[0] = "copper_hoe";
+    else if (id == "iron_chestplate") e[0] = "copper_chestplate";
+    else if (id == "iron_leggings") e[0] = "copper_leggings";
+    else if (id == "iron_boots") e[0] = "copper_boots";
+    else if (id == "iron_ingot") e[0] = "copper_ingot";
+    else if (id == "gold_sword") e[0] = "copper_sword";
+    else if (id == "gold_ingot") e[0] = "gold_nugget";
+  }
+}
+static json structTable(const std::string& kind, int tier = 0) {
+  const json& L = SD()["STRUCT_LOOT"];
+  const json& src = L.contains(kind) ? L[kind] : L["ruin"];
+  if (lateLootKind(kind) && tier >= 3) return src;
+  json out = stripDumpGems(src);
+  if (tier <= 0) remapSpawnIron(out);
+  if (tier >= 3) {
+    out.push_back(json::array({"gold_ingot", 1, 2, 0.12}));
+    out.push_back(json::array({"emerald", 1, 1, 0.06}));
+  }
+  if (tier >= 6) {
+    out.push_back(json::array({"gold_ingot", 1, 3, 0.16}));
+    out.push_back(json::array({"emerald", 1, 2, 0.10}));
+    out.push_back(json::array({"diamond", 1, 1, 0.08}));
+  }
+  return out;
+}
+static json villageTable(const std::string& kind) {
+  json table = json::array();
+  auto add = [&](const char* id, int a, int b, double p) { table.push_back(json::array({id, a, b, p})); };
+  if (kind == "house") {
+    add("bread", 1, 3, 0.55); add("apple", 1, 2, 0.40); add("wheat_seeds", 1, 4, 0.35);
+    add("torch", 1, 4, 0.30); add("potato", 1, 3, 0.25); add("carrot", 1, 2, 0.25); add("stick", 1, 4, 0.28);
+    add("coal", 1, 2, 0.12);
+  } else if (kind == "smithy") {
+    add("copper_ingot", 1, 2, 0.40); add("bronze_ingot", 1, 1, 0.18);
+    add("coal", 2, 5, 0.55); add("bread", 1, 2, 0.35);
+    add("copper_pickaxe", 1, 1, 0.12); add("copper_sword", 1, 1, 0.08);
+    add("bronze_pickaxe", 1, 1, 0.06); add("copper_helmet", 1, 1, 0.05);
+  } else if (kind == "library") {
+    add("book", 1, 2, 0.60); add("paper", 1, 4, 0.50); add("feather", 1, 2, 0.35);
+    add("empty_map", 1, 1, 0.10); add("ink_sac", 1, 2, 0.20);
+  } else if (kind == "tavern" || kind == "store") {
+    add("bread", 1, 3, 0.60); add("cooked_beef", 1, 2, 0.28); add("apple", 1, 3, 0.40);
+    add("honey_bottle", 1, 1, 0.18); add("bowl", 1, 2, 0.20); add("coal", 1, 2, 0.18);
+    add("gold_nugget", 1, 3, 0.08);
+  } else {
+    const json& L = SD()["VLOOT"];
+    if (L.contains(kind)) {
+      json out = stripDumpGems(L[kind]);
+      remapSpawnIron(out);
+      return out;
+    }
+  }
+  return table;
+}
+
 json structLoot(const std::string& kind, Mulberry32& rnd) {
   json items = emptySlots();
-  const json& L = SD()["STRUCT_LOOT"];
-  rollTable(items, L.contains(kind) ? L[kind] : L["ruin"], rnd);
-  for (auto& s : items) if (s.is_object() && s.contains("id") && s["id"].is_string()) {   // metal gear: procedural (core/tool_parts.h)
-    const ItemStack p = proceduralOf(s["id"].get<std::string>(), s.value("n", 1));
-    if (p.id != s["id"].get<std::string>()) s = p.toJson();
-  }
+  rollTable(items, structTable(kind, 0), rnd);
+  convertLootGear(items);
   // a chest is never quite empty
   bool any = false; for (auto& s : items) if (!s.is_null()) { any = true; break; }
-  if (!any) { int k = jsFloor(rnd() * 27); items[k] = json{{"id", hasItem("emerald") ? "emerald" : "coal"}, {"n", 1 + jsFloor(rnd() * 3)}}; }
+  if (!any) { int k = jsFloor(rnd() * 27); items[k] = json{{"id", hasItem("coal") ? "coal" : "bone"}, {"n", 1 + jsFloor(rnd() * 3)}}; }
   // now and then, an old book
   const double pb = kind == "tower" ? 0.45 : kind == "maze_heart" || kind == "archmage" ? 0.6 : 0.18;
   if (rnd() < pb) {
@@ -125,11 +227,28 @@ json structLoot(const std::string& kind, Mulberry32& rnd) {
   return items;
 }
 
-static json dungeonTable(const std::string& kind) {
-  const json& L = SD()["DUNGEON_LOOT"];
-  json table = L[kind];
-  if (kind == "boss") for (auto& e : L["rare"]) table.push_back(e);
-  else if (kind == "rare") for (int i = 0; i < 8 && i < (int)L["common"].size(); i++) table.push_back(L["common"][i]);
+static json dungeonTable(const std::string& kind, int tier = 0) {
+  // world gen has no player: a first dungeon is poor. Later opens (lootTopUp) use a richer table.
+  json table = json::array();
+  auto add = [&](const char* id, int a, int b, double p) { table.push_back(json::array({id, a, b, p})); };
+  if (kind == "common") {
+    add("bread", 1, 2, 0.40); add("bone", 1, 4, 0.55); add("arrow", 2, 6, 0.30);
+    add("coal", 1, 4, 0.30); add("string", 1, 3, 0.22); add("rotten_flesh", 1, 3, 0.28);
+    add("torch", 2, 4, 0.22); add("copper_ingot", 1, 1, 0.10);
+    if (tier >= 3) { add("iron_ingot", 1, 2, 0.18); add("gold_ingot", 1, 1, 0.08); add("iron_sword", 1, 1, 0.08); }
+    if (tier >= 6) { add("emerald", 1, 1, 0.08); add("steel_ingot", 1, 1, 0.08); }
+  } else if (kind == "rare") {
+    add("copper_ingot", 1, 2, 0.30); add("bread", 1, 2, 0.25); add("bone", 2, 4, 0.30);
+    add("potion_heal", 1, 1, 0.08); add("copper_sword", 1, 1, 0.08); add("bronze_helmet", 1, 1, 0.05);
+    if (tier >= 3) { add("iron_sword", 1, 1, 0.10); add("iron_helmet", 1, 1, 0.07); add("gold_ingot", 1, 2, 0.16); add("steel_sword", 1, 1, 0.10); add("emerald", 1, 1, 0.08); add("enchanted_book", 1, 1, 0.10); }
+    if (tier >= 6) { add("diamond", 1, 1, 0.10); add("ruby", 1, 1, 0.10); add("sapphire", 1, 1, 0.10); add("steel_chestplate", 1, 1, 0.08); }
+  } else {   // boss
+    add("iron_chestplate", 1, 1, 0.16); add("iron_ingot", 1, 2, 0.18); add("iron_sword", 1, 1, 0.12);
+    add("potion_heal", 1, 1, 0.14); add("golden_apple", 1, 1, 0.08);
+    add("enchanted_book", 1, 1, 0.10);
+    if (tier >= 3) { add("steel_ingot", 1, 2, 0.18); add("steel_sword", 1, 1, 0.16); add("steel_chestplate", 1, 1, 0.12); add("gold_sword", 1, 1, 0.10); add("emerald", 1, 2, 0.14); }
+    if (tier >= 6) { add("diamond", 1, 2, 0.18); add("mithril_sword", 1, 1, 0.10); add("mithril_ingot", 1, 2, 0.14); }
+  }
   return table;
 }
 
@@ -140,8 +259,8 @@ int lootTopUp(json& items, const std::string& tableKind, int tier, Mulberry32& r
   const bool dungeon = tableKind.rfind("d:", 0) == 0;
   const std::string kind = tableKind.substr(2);
   json table;
-  if (dungeon) { if (!SD()["DUNGEON_LOOT"].contains(kind)) return 0; table = dungeonTable(kind); }
-  else { const json& L = SD()["STRUCT_LOOT"]; table = L.contains(kind) ? L[kind] : L["ruin"]; }
+  if (dungeon) { if (!SD()["DUNGEON_LOOT"].contains(kind)) return 0; table = dungeonTable(kind, tier); }
+  else { table = structTable(kind, tier); }
   float passes = progressLootRolls(tier); int added = 0;
   const double mul = progressLootChance(tier);
   for (; passes > 0; passes -= 1) {
@@ -149,7 +268,7 @@ int lootTopUp(json& items, const std::string& tableKind, int tier, Mulberry32& r
     json extra = emptySlots(); rollTable(extra, table, rnd, mul);
     for (auto& s : extra) {
       if (!s.is_object()) continue;
-      if (!dungeon && s["id"].is_string()) { const ItemStack p = proceduralOf(s["id"].get<std::string>(), s.value("n", 1)); if (p.id != s["id"].get<std::string>()) s = p.toJson(); }
+      if (s["id"].is_string()) { const ItemStack p = proceduralOf(s["id"].get<std::string>(), s.value("n", 1)); if (p.id != s["id"].get<std::string>()) s = p.toJson(); }
       for (size_t k = 0; k < items.size(); k++) if (items[k].is_null()) { items[k] = s; added++; break; }
     }
   }
@@ -158,17 +277,19 @@ int lootTopUp(json& items, const std::string& tableKind, int tier, Mulberry32& r
 
 json dungeonLoot(const std::string& kind, Mulberry32& rnd) {
   json items = emptySlots();
-  const json& L = SD()["DUNGEON_LOOT"];
-  json table = dungeonTable(kind);
+  json table = dungeonTable(kind, 0);   // a chest in the world: the poor table; a far-come player tops it up on first open
   rollTable(items, table, rnd);
-  maybeScroll(items, rnd, kind == "boss" ? 0.85 : kind == "rare" ? 0.45 : 0.2, kind == "boss" ? 9 : kind == "rare" ? 6 : 3);
+  maybeScroll(items, rnd, kind == "boss" ? 0.25 : kind == "rare" ? 0.08 : 0.03, kind == "boss" ? 4 : kind == "rare" ? 3 : 2);
+  convertLootGear(items);
+  bool any = false; for (auto& s : items) if (!s.is_null()) { any = true; break; }
+  if (!any) { int k = jsFloor(rnd() * 27); items[k] = json{{"id", hasItem("coal") ? "coal" : "bone"}, {"n", 1 + jsFloor(rnd() * 3)}}; }
   return items;
 }
 
 json vLoot(const std::string& kind, Mulberry32& rnd) {
   json items = emptySlots();
-  const json& L = SD()["VLOOT"];
-  if (L.contains(kind)) rollTable(items, L[kind], rnd);
+  rollTable(items, villageTable(kind), rnd);
+  convertLootGear(items);
   return items;
 }
 
@@ -198,6 +319,16 @@ int SP::chest(int x, int y, int z, int f, const std::string& kind) {
   if (i >= 0) { Mulberry32 r(hash32(x, y + S.hashDy, z, (i32)S.seed)); setEntity(i, json{{"type", "chest"}, {"items", structLoot(kind, r)}, {"lk", "s:" + kind}}); }
   return i;
 }
+int SP::barrel(int x, int y, int z, int f, const std::string& kind) {
+  int i = put(x, y, z, "barrel", (2 - f) & 3);
+  if (i >= 0) {
+    Mulberry32 r(hash32(x, y + S.hashDy, z, (i32)S.seed ^ 0xBA22ELu));
+    const bool dungeon = kind == "common" || kind == "rare" || kind == "boss";
+    json items = dungeon ? dungeonLoot(kind, r) : structLoot(kind.empty() ? "ruin" : kind, r);
+    setEntity(i, json{{"type", "chest"}, {"items", items}, {"lk", dungeon ? "d:" + kind : "s:" + kind}});
+  }
+  return i;
+}
 
 int SP::lectern(int x, int y, int z, int f, const std::string& lore) {
   int i = put(x, y, z, "lectern", (f + 2) & 3);
@@ -206,6 +337,22 @@ int SP::lectern(int x, int y, int z, int f, const std::string& lore) {
     setEntity(i, json{{"type", "lectern"}, {"book", true}, {"lore", !lore.empty() ? lore : K[jsFloor(hw(x, y, z, 5) * K.size())]}});
   }
   return i;
+}
+
+int SP::hang(int x, int y, int z, std::string_view key) {
+  if (!in(x, z) || get(x, y, z) != AIR) return -1;
+  const BlockId above = get(x, y + 1, z);
+  if (above == NOBLOCK || above == AIR || !tSolid(above) || tLiquid(above)) return -1;
+  return put(x, y, z, key, 1);
+}
+
+int SP::wallTorch(int x, int y, int z, int toward, std::string_view key) {
+  static const u8 T[4] = {3, 2, 4, 1};   // torch meta toward the supporting block (N E S W)
+  toward &= 3;
+  if (!in(x, z) || get(x, y, z) != AIR) return -1;
+  const BlockId wall = get(x + DIRX[toward], y, z + DIRZ[toward]);
+  if (wall == NOBLOCK || wall == AIR || !tSolid(wall) || tLiquid(wall)) return -1;
+  return put(x, y, z, key, T[toward]);
 }
 
 int SP::spawner(int x, int y, int z, const std::string& mob) {

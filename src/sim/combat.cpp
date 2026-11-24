@@ -11,6 +11,9 @@
 #include "sim/mob_carry.h"
 #include "sim/combat_rpg.h"
 #include "sim/attack_moves.h"
+#include "sim/shield_shape.h"
+#include "sim/weapon_quality.h"
+#include "core/tool_parts.h"
 #include "sim/magic.h"
 #include "sim/gameplay.h"
 #include "sim/rules.h"
@@ -54,6 +57,10 @@ const ToolInfo* heldTool(const Player& p) {
   if (!d || !d->hasTool) return nullptr;
   if (!h.tag.is_object()) return &d->tool;
   thread_local ToolInfo mixed; mixed = toolOf(h);   // a mixed tool's own stats, a gem's (core/tool_parts.h)
+  if (isPartTool(h)) {
+    const float q = gearQualityFactor(h);
+    mixed.speed *= q; mixed.damage *= q;
+  }
   return &mixed;
 }
 std::string heldToolElement(const Player& p) {
@@ -93,7 +100,19 @@ static float playerHurtRaw(Player& p, float amount, const DamageSource& src) {
   if (p.dead || amount <= 0) return 0;
   if (p.invuln > 0 && !src.bypass) return 0;
   float dmg = amount;
-  if (!src.bypassArmor) dmg *= 1 - std::min(0.8f, (armorPoints(p) + treeAttr(p, "armor")) * (1 + treeAttrPct(p, "armor")) * (1 - src.pierce) * 0.032f);   // (an attacker's armour piercing)
+  if (!src.bypassArmor) {
+    auto slotPts = [&](int slot) -> float {
+      if (slot < 0 || slot >= (int)p.armor.size() || p.armor[slot].empty()) return 0.f;
+      return armorPointsOf(p.armor[slot]) * gearQualityFactor(p.armor[slot]);
+    };
+    float pts = armorPoints(p);
+    if (src.armorSlot >= 0 && src.armorSlot < 4) {
+      const float struck = slotPts(src.armorSlot) + (src.armorSlot == 2 ? slotPts(3) * 0.5f : 0.f);
+      pts = struck * 1.8f + pts * 0.35f;
+    }
+    pts = (pts + treeAttr(p, "armor")) * (1 + treeAttrPct(p, "armor"));
+    dmg *= 1 - std::min(0.8f, pts * (1 - src.pierce) * 0.032f);
+  }
   if (src.type == "magic") dmg *= 1 - std::min(0.6f, treeAttrPct(p, "spell_resist") + treeAttr(p, "spell_resist"));
   if (src.raw > 0 && !src.bypassArmor) dmg = std::max(dmg, src.raw * 0.2f);
   if (src.element == "fire" || src.type == "lava" || src.type == "burn") dmg *= 1 - fireResist(p);
@@ -126,6 +145,22 @@ float damagePlayer(Level& lv, Player& p, float amount, DamageSource src) {
   if (mj.contains("knock") && mj["knock"].is_number()) src.knock = mj["knock"].get<float>();
   float dealt = playerHurtRaw(p, amount, src);
   if (!dealt) return 0;
+  if (dealt >= 4.f && src.attacker && src.type != "magic" && src.type != "fall" && src.type != "drown") {
+    if (Entity* a = lv.entity(src.attacker)) {
+      const vec3 to = a->pos - p.pos;
+      const float side = to.x * std::cos(p.yaw) - to.z * std::sin(p.yaw);
+      const bool leg = a->pos.y + a->h * 0.35f < p.pos.y + 0.9f;
+      auto slotPts = [&](int slot) {
+        if (slot < 0 || slot >= (int)p.armor.size() || p.armor[slot].empty()) return 0.f;
+        return armorPointsOf(p.armor[slot]) * gearQualityFactor(p.armor[slot]);
+      };
+      const float worn = leg ? slotPts(2) + slotPts(3) * 0.5f : slotPts(1);
+      const float dur = 14.f * (1.f - std::min(0.65f, worn * 0.03f));
+      if (leg) p.data["hurtLeg"] = side >= 0 ? 1 : -1;
+      else p.data["hurtArm"] = side >= 0 ? 1 : -1;
+      p.data["hurtLimbT"] = std::max(p.data.value("hurtLimbT", 0.f), dur);
+    }
+  }
   afterPlayerHurt(lv, p, dealt, mj);
   gearOnHurt(lv, p, src, dealt);   // a dragon set strikes back (sim/item_uses.h)
   if (dealt >= 5) DQ_LOG("%s took %.1f (%s)", p.name.c_str(), dealt, src.type.c_str());   // big hits, for playtests and the bridge's log
@@ -221,12 +256,16 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
   // a sneak attack: a creature that hasn't caught on to you (its back to you, after nobody), struck before it turns
   const bool sneakHit = creatureUnaware(e, p);
   if (sneakHit) dmg = std::ceil(dmg * 1.75f);
-  DamageSource src; src.attacker = p.id; src.element = heldToolElement(p); src.knock = 5 * knockMul * knockbackFactor(p); src.pierce = armorPierce(p);
+  DamageSource src; src.attacker = p.id; src.element = heldToolElement(p); src.knock = 5 * knockMul * knockbackFactor(p);
+  src.pierce = armorPierce(p);
+  if (p.atkMove && p.atkMove < MV_COUNT) src.pierce = std::min(0.55f, src.pierce + attackMove(p.atkMove).pierce);   // a heavy head bites armour; a dagger does not
   if (tool) src.tool = tool->type;
   if (!p.inv[p.selected].empty()) src.weapon = p.inv[p.selected].id;
   dmg = spellbladeHit(lv, p, e, dmg, src.element);   // a spell carried on the blade (sim/magic_hands.cpp)
   dmg *= pathMeleeFactor(p);                          // the Knight's Heavy Blows (sim/villager_quests.cpp)
   dmg *= skillHitFactor(p, "melee", p.inv[p.selected]);   // the Melee skill and a well-used weapon (sim/skills.h)
+  if (!isPartTool(p.inv[p.selected])) dmg *= weaponQualityFactor(p.inv[p.selected]);   // a plain sword's tag; a mixed tool already carries it in its stats
+  if (p.data.value("sneakHeavy", 0.f) > 1.f) dmg *= p.data.value("sneakHeavy", 1.f);   // the heavy opener, while you are sneaking
   const float hpBefore = e.hp;
   bool finishing = false;
   dmg = combatRpgOutgoing(lv, p, e, dmg, finishing);
@@ -236,7 +275,29 @@ float attackEntity(Level& lv, Player& p, Entity& e, float dmgMul, float knockMul
       dmg *= 1.5f;
       lv.fx->particles("end_mote", e.pos + vec3(0, e.h * 0.6f, 0), 6);
     }
-  src.hasRay = true; src.rayO = p.pos + vec3(0, p.eye, 0); src.rayD = lookVector(p.yaw, p.pitch);   // dismember.js: the ray from your eyes
+  src.hasRay = true;
+  if (p.atkMove && p.atkMove < MV_COUNT) {
+    vec3 h, tp; bladeAt(p.atkMove, std::max(p.atkT, attackMove(p.atkMove).hitFrom), h, tp);
+    src.rayO = attackFrameToWorld(h, p.pos, p.atkYaw, p.atkPitch);
+    const vec3 tw = attackFrameToWorld(tp, p.pos, p.atkYaw, p.atkPitch);
+    const vec3 dd = tw - src.rayO;
+    const float L = glm::length(dd);
+    src.rayD = L > 1e-4f ? dd / L : lookVector(p.atkYaw, p.atkPitch);
+  } else {
+    src.rayO = p.pos + vec3(0, p.eye, 0); src.rayD = lookVector(p.yaw, p.pitch);
+  }
+  if (p.data.contains("hitArmorSlot")) src.armorSlot = p.data.value("hitArmorSlot", -1);
+  if (p.data.value("metGuard", false)) src.metGuard = true;
+  if (p.data.contains("hitPart")) src.hitPart = p.data.value("hitPart", -1);
+  if (p.data.contains("hitRayO") && p.data["hitRayO"].is_array() && p.data["hitRayO"].size() >= 3) {
+    src.hasRay = true;
+    src.rayO = vec3(p.data["hitRayO"][0].get<float>(), p.data["hitRayO"][1].get<float>(), p.data["hitRayO"][2].get<float>());
+    if (p.data.contains("hitRayD") && p.data["hitRayD"].is_array() && p.data["hitRayD"].size() >= 3) {
+      const vec3 d(p.data["hitRayD"][0].get<float>(), p.data["hitRayD"][1].get<float>(), p.data["hitRayD"][2].get<float>());
+      const float L = glm::length(d);
+      if (L > 1e-4f) src.rayD = d / L;
+    }
+  }
   float dealt;
   if (e.ghost && lv.net && lv.net->isClient()) {   // a joined world: the server's creature; it takes the hit there
     lv.net->hitEntity(p, e.id, dmg, {{"element", src.element}, {"knock", src.knock}, {"tool", src.tool}, {"weapon", src.weapon}, {"crit", crit},
@@ -278,56 +339,108 @@ bool isHandWeapon(const ItemStack& s) {
   for (const char* n : NOT) if (d->tool.type == n) return false;
   return !(s.id == "shield" || d->has("shield"));
 }
+static bool dualWield(const Player& p) {
+  return isHandWeapon(p.inv[p.selected]) && !p.offhand.empty() && isHandWeapon(p.offhand[0]);
+}
 bool offHandSwings(const Player& p, bool attackPressed, bool usePressed) {
   if (p.offhand.empty() || !isHandWeapon(p.offhand[0])) return false;
-  const bool mainArmed = isHandWeapon(p.inv[p.selected]);
-  return mainArmed ? usePressed : attackPressed && p.inv[p.selected].empty();
+  if (isHandWeapon(p.inv[p.selected])) return false;   // both hands: one attack button chains them; use stays the block
+  (void)usePressed;
+  return attackPressed && p.inv[p.selected].empty();
 }
 static void beginSwingOf(Player& p, bool sprint, bool air, bool off);
 static void beginSwing(Player& p, bool sprint, bool air) { beginSwingOf(p, sprint, air, false); }
-static void beginSwingRaw(Player& p, bool sprint, bool air) {
-  const ToolInfo* tool = heldTool(p);
-  const std::string type = tool ? tool->type : "";
-  const std::string key = p.inv[p.selected].empty() ? "" : p.inv[p.selected].id;
-  const Moveset ms = movesetOf(type, key);
-  const int n = p.atkGap < COMBO_WINDOW ? (int)p.atkCombo : 0;
-  const u8 id = attackMoveFor(ms, n, sprint && p.onGround, air);
+static void beginSwingRaw(Player& p, bool sprint, bool air, int moveN, int nextCombo) {
+  const ItemStack& held = p.inv[p.selected];
+  const Moveset ms = movesetOf(held.empty() ? nullptr : held.def());
+  const int len = std::max(1, comboLength(ms));
+  const int n = ((moveN % len) + len) % len;
+  u8 id = attackMoveFor(ms, n, sprint && p.onGround, air);
+  p.data.erase("sneakHeavy");
+  // the extra move: a dagger lunges when you sneak; an axe, mace or greatsword opens with its heavy cut
+  if (p.sneaking && p.onGround && !air) {
+    if (ms == Moveset::Dagger) id = MV_DAGGER3;
+    else if (ms == Moveset::Axe || ms == Moveset::Mace || ms == Moveset::Greatsword) {
+      id = attackMoveFor(ms, 1, false, false);
+      p.data["sneakHeavy"] = 1.25f;
+    }
+  }
   if (id == MV_NONE) return;
   p.atkMove = id;
   p.atkT = 0.0001f;
+  if (p.data.value("counterT", 0.f) > 0) {   // a parry just opened this: the cut is already out
+    p.data["counterT"] = 0;
+    p.atkT = std::max(p.atkT, attackMove(id).hitFrom);
+  }
   p.atkYaw = p.yaw;
-  p.atkCombo = (u8)((n + 1) % std::max(1, comboLength(ms)));
+  p.atkPitch = p.pitch;
+  p.atkCombo = (u8)(nextCombo & 255);
   p.atkHit.clear();
   p.atkGap = 0;
   p.data.erase("atkQueue");
   p.swing = 0.0001f;
   p.swinging = true;
 }
-// the off hand's swing: the same moves, with its own weapon (swapped into the hand for the start and each blow) and drawn
-// on the other side (render/attack_poses.cpp mirrors it; its sweep is the main hand's mirrored across your facing)
+// the off hand's swing: the same cut the main hand just used, with its own weapon (swapped in for the start and each
+// blow) and drawn mirrored (render/attack_poses.cpp). Two weapons alternate hands every press, so the off hand is
+// every other cut, not one step of the weapon's own chain.
 static void beginSwingOf(Player& p, bool sprint, bool air, bool off) {
+  const bool dual = dualWield(p);
+  const int chain = p.atkGap < COMBO_WINDOW ? (int)p.atkCombo : 0;
   if (off && !p.offhand.empty()) std::swap(p.inv[p.selected], p.offhand[0]);
-  beginSwingRaw(p, sprint, air);
+  const ItemStack& held = p.inv[p.selected];
+  const int len = std::max(1, comboLength(movesetOf(held.empty() ? nullptr : held.def())));
+  const int moveN = dual ? (chain / 2) % len : ((chain % len) + len) % len;
+  const int next = dual ? (chain + 1) & 255 : (moveN + 1) % len;
+  beginSwingRaw(p, sprint, air, moveN, next);
   if (off && !p.offhand.empty()) std::swap(p.inv[p.selected], p.offhand[0]);
   p.atkOff = off && p.atkMove != MV_NONE;
+}
+// a queued cut is the weapon in the hand now. A press stored on a fist must not follow through on a greatsword.
+static bool queuedSwingAllowed(Level& lv, Player& p) {
+  if (!p.data.value("atkQueue", false)) return false;
+  const bool off = p.data.value("atkQueueOff", false);
+  const ItemStack& hand = off && !p.offhand.empty() ? p.offhand[0] : p.inv[p.selected];
+  if (weaponSkillMet(p, hand)) return true;
+  toast(lv, p, "Needs more melee practice.", "info");
+  p.data.erase("atkQueue");
+  p.data.erase("atkQueueOff");
+  return false;
 }
 void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allowStart, bool offStart) {
   const ToolInfo* tool = heldTool(p);
   (void)tool;
-  const bool offPress = offStart || (in.attackPressed && offHandSwings(p, true, false));   // (the main hand empty: the attack button is the off hand's)
-  if ((in.attackPressed || offStart) && allowStart) {
-    if (p.atkMove != MV_NONE && p.atkT < attackMove(p.atkMove).recovery) { p.data["atkQueue"] = true; p.data["atkQueueOff"] = offPress; }
-    else beginSwingOf(p, p.sprinting, !p.onGround, offPress);
+  const bool dual = dualWield(p);
+  const int step = p.atkGap < COMBO_WINDOW ? (int)p.atkCombo : 0;
+  // a held attack button is one press. Without this, the second frame of a click queued the off hand and it
+  // played by itself, so the next real click was the main hand again.
+  const bool repeat = dual && in.attackPressed && p.data.value("dualHold", false);
+  if (dual) { if (in.attackPressed) p.data["dualHold"] = true; else p.data.erase("dualHold"); }
+  const bool attack = in.attackPressed && !repeat;
+  // both hands armed: attack alternates hands (main, off, main, off). The off hand repeats the main hand's cut, mirrored.
+  // Use stays the block.
+  const bool offPress = offStart || (dual && attack && (step & 1)) || (!dual && attack && offHandSwings(p, true, false));
+  bool started = false;
+  if ((attack || offStart) && allowStart) {
+    const ItemStack& hand = offPress && !p.offhand.empty() ? p.offhand[0] : p.inv[p.selected];
+    if (!weaponSkillMet(p, hand)) toast(lv, p, "Needs more melee practice.", "info");
+    else if (p.atkMove != MV_NONE && p.atkT < attackMove(p.atkMove).recovery) { p.data["atkQueue"] = true; p.data["atkQueueOff"] = offPress; }
+    else {
+      if (p.data.value("counterT", 0.f) > 0) toast(lv, p, "Counter", "good");
+      beginSwingOf(p, p.sprinting, !p.onGround, offPress);
+      started = true;
+    }
   }
-  if (p.atkMove == MV_NONE) { p.atkGap += dt; if (p.data.value("atkQueue", false)) beginSwingOf(p, p.sprinting, !p.onGround, p.data.value("atkQueueOff", false)); return; }
+  if (p.atkMove == MV_NONE) { p.atkGap += dt; if (queuedSwingAllowed(lv, p)) beginSwingOf(p, p.sprinting, !p.onGround, p.data.value("atkQueueOff", false)); return; }
   const AttackMove& m = attackMove(p.atkMove);
   if ((p.dodgeT > 0 || p.blockT > 0.001f) && p.atkT < m.hitFrom) {
-    p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = COMBO_WINDOW; p.data.erase("atkQueue");
+    p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = COMBO_WINDOW; p.data.erase("atkQueue"); p.data.erase("sneakHeavy");
     return;
   }
-  if (p.atkT < m.turnLock) p.atkYaw = p.yaw;
+  if (p.atkT < m.turnLock) { p.atkYaw = p.yaw; p.atkPitch = p.pitch; }
   const float t0 = p.atkT;
-  p.atkT += dt;
+  const bool sore = p.data.value("hurtLimbT", 0.f) > 0 && ((p.atkOff && p.data.value("hurtArm", 0) < 0) || (!p.atkOff && p.data.value("hurtArm", 0) > 0));
+  p.atkT += sore ? dt * 0.55f : dt;   // a hurt arm is slow, and it does not reach the cut
   if (t0 < m.hitFrom && p.atkT >= m.hitFrom) {   // the blade through the air: its whoosh (a heavy head's deeper; fists a soft one)
     const ItemStack& w = p.atkOff && !p.offhand.empty() ? p.offhand[0] : p.inv[p.selected];
     const ItemDef* wd = w.empty() ? nullptr : reg().item(w.id);
@@ -355,12 +468,54 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
       if (e->removed || e->id == p.id || e->realm != p.realm || e->hp <= 0 || (!isMob(*e) && !e->isPlayer())) continue;
       if (std::find(p.atkHit.begin(), p.atkHit.end(), e->id) != p.atkHit.end()) continue;
       vec3 ep = e->pos;
-      if (p.atkOff) { const vec3 right(std::cos(p.atkYaw), 0, -std::sin(p.atkYaw)); ep -= right * (2 * glm::dot(ep - p.pos, right)); }   // (the off hand: its sweep the mirror of the main hand's)
-      const vec3 lo = ep - vec3(e->w, 0.05f, e->w), hi = ep + vec3(e->w, e->h, e->w);
-      if (!bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.pitch, lo, hi)) continue;
-      const bool swapIn = p.atkOff && !p.offhand.empty();
-      if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);   // (the blow is the off hand's weapon's: its damage, its wear)
+      const float reach = sore ? m.reach * 0.35f : m.reach;
+      const bool left = p.atkOff;
+      if (auto* hitP = dynamic_cast<Player*>(e.get())) {
+        ShieldBox guard;
+        if (hitP->blockT > 0 && playerGuardBox(*hitP, guard) &&
+            bladeSweepHitsShield(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.atkPitch, guard, reach, left)) {
+          const bool swapIn = left && !p.offhand.empty();
+          if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
+          p.data["metGuard"] = true;
+          attackEntity(lv, p, *e, m.dmg, m.impact, p.atkMove == MV_SWORD_AIR, false);
+          p.data.erase("metGuard");
+          if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
+          p.atkHit.push_back(e->id);
+          continue;
+        }
+        PlayerLimbBox limbs[6];
+        const int nL = playerLimbBoxes(*hitP, limbs);
+        bool hitLimb = false; int slot = -1;
+        for (int i = 0; i < nL; i++) {
+          if (bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.atkPitch, limbs[i].lo, limbs[i].hi, reach, nullptr, left)) {
+            hitLimb = true; slot = limbs[i].armorSlot; break;
+          }
+        }
+        if (!hitLimb) continue;
+        const bool swapIn = left && !p.offhand.empty();
+        if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
+        p.data["hitArmorSlot"] = slot;
+        attackEntity(lv, p, *e, m.dmg, m.impact, p.atkMove == MV_SWORD_AIR, false);
+        p.data.erase("hitArmorSlot");
+        if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
+        p.atkHit.push_back(e->id);
+        continue;
+      }
+      vec3 at(0), dir(0);
+      const int part = bladeSweepHitsEntity(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.atkPitch, *e, reach, &at, left, &dir);
+      if (part == -1) continue;
+      if (part == -2) {
+        const vec3 lo = ep - vec3(e->w, 0.05f, e->w), hi = ep + vec3(e->w, e->h, e->w);
+        if (!bladeSweepHits(p.atkMove, t0, p.atkT, p.pos, p.atkYaw, p.atkPitch, lo, hi, reach, nullptr, left)) continue;
+      } else {
+        p.data["hitRayO"] = json::array({at.x, at.y, at.z});
+        p.data["hitRayD"] = json::array({dir.x, dir.y, dir.z});
+        p.data["hitPart"] = part;
+      }
+      const bool swapIn = left && !p.offhand.empty();
+      if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
       attackEntity(lv, p, *e, m.dmg, m.impact, p.atkMove == MV_SWORD_AIR, false);
+      p.data.erase("hitRayO"); p.data.erase("hitRayD"); p.data.erase("hitPart");
       if (swapIn) std::swap(p.inv[p.selected], p.offhand[0]);
       p.atkHit.push_back(e->id);
       if (isMob(*e)) {
@@ -369,10 +524,17 @@ void tickMelee(Level& lv, Player& p, float dt, const PlayerInput& in, bool allow
       }
     }
   }
-  if ((in.attackPressed || offStart) && p.atkT < m.recovery) { p.data["atkQueue"] = true; p.data["atkQueueOff"] = offPress; }
+  // a press during the swing is the next cut. With two weapons the press that just started this cut is not
+  // also the next one: that was spending the off-hand step, so the following click came back to the main hand.
+  if (!(started && dual) && (attack || offStart) && p.atkT < m.recovery) {
+    const bool qOff = dual ? ((int)p.atkCombo & 1) != 0 : offPress;
+    const ItemStack& qHand = qOff && !p.offhand.empty() ? p.offhand[0] : p.inv[p.selected];
+    if (weaponSkillMet(p, qHand)) { p.data["atkQueue"] = true; p.data["atkQueueOff"] = qOff; }
+    else toast(lv, p, "Needs more melee practice.", "info");
+  }
   if (p.atkT >= m.len) {
-    p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = 0; p.atkOff = false;
-    if (p.data.value("atkQueue", false)) beginSwingOf(p, p.sprinting, !p.onGround, p.data.value("atkQueueOff", false));
+    p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); p.atkGap = 0; p.atkOff = false; p.data.erase("sneakHeavy");
+    if (queuedSwingAllowed(lv, p)) beginSwingOf(p, p.sprinting, !p.onGround, p.data.value("atkQueueOff", false));
   }
 }
 

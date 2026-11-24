@@ -8,6 +8,7 @@
 #include "ui/theme.h"
 #include "ui/book.h"
 #include "sim/crafting.h"
+#include "sim/weapon_quality.h"
 #include "ui/char_preview.h"
 #include "render/char_layer.h"
 #include <imgui.h>
@@ -64,6 +65,24 @@ double manaMax(const Player& p) {
 std::string fmt1(double v) { double r = std::round(v * 10) / 10; char b[32]; snprintf(b, sizeof b, "%g", r); return b; }
 std::string num(double v) { char b[32]; snprintf(b, sizeof b, "%g", v); return b; }
 u32 hexCol(const char* h) { return (u32)std::strtoul(h + 1, nullptr, 16); }
+// harvest tool.tier is not the metal: copper is 2, which used to print "stone". Name the id prefix; fall back to harvest tier.
+std::string harvestMetalName(const ItemStack& s, int tier) {
+  if (isPartTool(s) && s.tag.contains("pt") && s.tag["pt"].contains("m") && s.tag["pt"]["m"].is_array()
+      && !s.tag["pt"]["m"].empty() && s.tag["pt"]["m"][0].is_string())
+    return s.tag["pt"]["m"][0].get<std::string>();
+  const std::string& id = s.id;
+  static const char* METALS[] = {"adamantite", "mithril", "diamond", "bronze", "copper", "silver", "steel", "stone", "iron", "gold", "wood"};
+  static const char* TIER[] = {"", "wood", "stone", "copper", "steel", "mithril", "adamantite"};
+  size_t at = 0;
+  const size_t h = id.find("_hafted_");
+  if (h != std::string::npos) at = h + 8;
+  for (const char* m : METALS) {
+    const size_t n = std::char_traits<char>::length(m);
+    if (id.size() > at + n && id.compare(at, n, m) == 0 && id[at + n] == '_') return m;
+  }
+  if (tier > 0 && tier < 7 && TIER[tier][0]) return TIER[tier];
+  return {};
+}
 }
 
 // itemInfoHTML: lines of (text, colour); returns the first line (the name)
@@ -73,12 +92,20 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
   const ItemDef* d = s.def();
   if (!d) { L.push_back({s.id, TN}); if (out) *out = L; return s.id; }
   std::string rar = d->str("rarity");
-  L.push_back({stackName(s) + (s.n > 1 ? " \xC3\x97" + std::to_string(s.n) : ""), rar == "rare" ? 0x8fe3ff : rar == "epic" ? 0xc88cff : isPartTool(s) ? 0xffd27a : TN});
+  std::string title = stackName(s);
+  if (s.tag.is_object() && s.tag.contains("qual") && s.tag["qual"].is_string()) {
+    const std::string q = s.tag["qual"].get<std::string>();
+    const char* label = q == "poor" ? "Poor " : q == "normal" ? "Normal " : q == "fine" ? "Fine " : q == "great" ? "Great " : q == "legendary" ? "Legendary " : "";
+    if (*label) title = label + title;
+  }
+  L.push_back({title + (s.n > 1 ? " \xC3\x97" + std::to_string(s.n) : ""), rar == "rare" ? 0x8fe3ff : rar == "epic" ? 0xc88cff : (isPartTool(s) || isPartArmor(s)) ? 0xffd27a : TN});
   { std::vector<std::pair<std::string, u32>> en; if (tooltipEnchantLines(s, en)) { L[0].second = 0x8fe8ff; L.insert(L.end(), en.begin(), en.end()); } }   // .tn.enchanted
   tooltipEffectLines(s, L);
   if (d->has("food") && d->props["food"].is_object()) { double h = d->props["food"].value("heal", 0.0); L.push_back({"Heals " + num(h / 2) + (h == 2 ? " heart" : " hearts") + " instantly", TS}); }
   if (d->hasTool) {
-    const ToolInfo t = toolOf(s);
+    const float qf = gearQualityFactor(s);
+    ToolInfo t = toolOf(s);
+    t.speed *= qf; t.damage *= qf;
     static const std::map<std::string, std::string> EL = {{"fire", "Fire"}, {"frost", "Frost"}, {"physical", "Physical"}};
     std::string el = d->props.contains("tool") && d->props["tool"].is_object() ? d->props["tool"].value("element", std::string()) : "";
     if (isPartTool(s) && s.tag["pt"].contains("el")) el = s.tag["pt"].value("el", std::string());
@@ -86,9 +113,10 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
     // only what it does: a digging tool its speed and its blow, a sword or staff its blow, the rest (bows, rods,
     // strikers, shears...) neither (a staff used to read "mining speed")
     const bool digs = t.type == "pickaxe" || t.type == "axe" || t.type == "shovel" || t.type == "hoe" || t.type == "hammer";
-    const bool melee = digs || t.type == "sword" || t.type == "staff";
+    const bool melee = digs || t.type == "sword" || t.type == "mace" || t.type == "staff";
     if (melee) L.push_back({(digs ? "Mining speed " + num(t.speed) + "\xC3\x97 \xC2\xB7 attack" : std::string("Attack")) + " " + num(t.damage / 2) + " \xE2\x99\xA5" + (e != EL.end() ? " \xC2\xB7 " + e->second + " element" : ""), TS});
-    L.push_back({"Durability " + std::to_string(t.durability - s.d) + " / " + std::to_string(t.durability), TD});
+    const int durShown = toolMaxDurability(s);
+    L.push_back({"Durability " + std::to_string(durShown - s.d) + " / " + std::to_string(durShown), TD});
     if (d->has("staff") && d->props["staff"].is_object()) {   // what a staff does: casts your chosen spell, stronger
       const json& st = d->props["staff"];
       L.push_back({"Casts your chosen spell (sneak + use to change it)", 0xc88cff});
@@ -99,10 +127,12 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
       if (!k.empty()) L.push_back({k, 0xc88cff});
       if (const double rg = st.value("regen", 0.0); rg > 0) L.push_back({"+" + num(rg) + " mana a second while held", 0xc88cff});
     }
-    if (isPartTool(s)) {   // what it's made of (core/tool_parts.h)
+    if (isPartTool(s)) {   // what it's made of (core/tool_parts.h). A weapon is not a harvesting tool.
       std::string mk; const json& m = s.tag["pt"]["m"];
       for (size_t i = 0; i < m.size(); i++) { const ToolMaterial* tm = toolMaterial(m[i].get<std::string>()); mk += (i ? " \xC2\xB7 " : "") + (tm ? tm->name : m[i].get<std::string>()); }
-      L.push_back({"Head: " + mk + " \xC2\xB7 harvest tier " + std::to_string(t.tier), TS});
+      const std::string kind = s.tag["pt"].value("t", "");
+      const bool harvest = digs && kind != "sword" && kind != "greatsword" && kind != "spear" && kind != "mace" && kind != "dagger" && kind != "knife";
+      L.push_back({(harvest ? "Head: " + mk + " \xC2\xB7 harvest tier " + std::to_string(t.tier) : (kind == "mace" ? "Head: " : "Blade: ") + mk), TS});
     }
     if (s.tag.is_object() && s.tag.contains("gem") && s.tag["gem"].is_string()) if (const char* ge = gemEffect(s.tag["gem"].get<std::string>())) {
       const ItemDef* gd = reg().item(s.tag["gem"].get<std::string>());
@@ -112,7 +142,8 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
   if (d->has("armor")) {
     const json& a = d->props["armor"];
     (void)a;
-    L.push_back({"Armor +" + num(armorPointsOf(s)) + (armorFireResistOf(s) ? " \xC2\xB7 fire resist" : ""), TS});
+    const float aq = gearQualityFactor(s);
+    L.push_back({"Armor +" + num(armorPointsOf(s) * aq) + (armorFireResistOf(s) ? " \xC2\xB7 fire resist" : ""), TS});
     int dur = toolMaxDurability(s); L.push_back({"Durability " + std::to_string(dur - s.d) + " / " + std::to_string(dur), TD});
     if (isPartArmor(s)) {
       std::string mk; const json& m = s.tag["pa"]["m"]; std::vector<std::string> seen;
@@ -138,10 +169,12 @@ std::string itemInfoText(const ItemStack& s, const Player* p, std::vector<std::p
       std::string line = "In your hands: " + fmt1(mine) + " \xE2\x99\xA5 a blow";
       if (!held.empty() && &held != &s) line += cmp(mine, blowOf(*p, held), "");
       L.push_back({line, TS});
-      static const char* TIER[] = {"", "wood", "stone", "iron", "diamond", "mithril", "adamantite"};
       int tier = d->tool.tier;
       const std::string& ty = d->tool.type;
-      if ((ty == "pickaxe" || ty == "axe" || ty == "shovel" || ty == "hoe" || ty == "hammer") && tier) L.push_back({"Tier " + std::to_string(tier) + (tier < 7 && *TIER[tier] ? std::string(" (") + TIER[tier] + ")" : "") + " \xC2\xB7 digs " + fmt1(d->tool.speed * (1 + gearBonus(s, 0.35))) + "\xC3\x97 as fast as a bare hand", TD});
+      if ((ty == "pickaxe" || ty == "axe" || ty == "shovel" || ty == "hoe" || ty == "hammer") && tier) {
+        const std::string named = harvestMetalName(s, tier);
+        L.push_back({"Tier " + std::to_string(tier) + (named.empty() ? "" : " (" + named + ")") + " \xC2\xB7 digs " + fmt1(d->tool.speed * (1 + gearBonus(s, 0.35))) + "\xC3\x97 as fast as a bare hand", TD});
+      }
     }
     if (d->has("armor")) {
       int slot = d->props["armor"].value("slot", 0);

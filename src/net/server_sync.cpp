@@ -109,7 +109,7 @@ json entitySnapshot(const Entity& e) {
     if (p->eatT > 0) { s["et"] = r3(p->eatT); if (!p->eatId.empty()) s["ei"] = p->eatId; }   // a bite in progress (the food bitten down in their hand)
     if (p->blockT > 0) s["sb"] = r3(p->blockT);   // their shield up, their roll, a parry's knock (sim/combat_rpg.h; render/char_poses.cpp)
     if (p->dodgeT > 0) { s["dg"] = r3(p->dodgeT); s["dy"] = r3(p->dodgeYaw); }
-    if (p->atkMove) { s["am"] = p->atkMove; s["at"] = r3(p->atkT); s["ay"] = r3(p->atkYaw); if (p->atkOff) s["ao"] = 1; }   // a swing in progress (sim/attack_moves.h)
+    if (p->atkMove) { s["am"] = p->atkMove; s["at"] = r3(p->atkT); s["ay"] = r3(p->atkYaw); s["ap"] = r3(p->atkPitch); if (p->atkOff) s["ao"] = 1; }   // a swing in progress (sim/attack_moves.h)
     if (p->parryFlash > 0) s["py"] = r3(p->parryFlash);   // ("bk" is their back slot, "pf" their flags)
     if (p->guardFlash > 0) s["gf"] = r3(p->guardFlash);   // a blow taken on their shield (the guard knocked in)
   }

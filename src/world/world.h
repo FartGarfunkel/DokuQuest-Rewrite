@@ -61,6 +61,7 @@ public:
   u8 getCarve(int x, int y, int z) const;   // chisel octant mask (parallel to meta; 0 = never carved)
   u8 getCoat(int x, int y, int z) const;    // snow caps on a carved block (not meta: fronts use the low bits)
   u8 getLight(int x, int y, int z) const;        // sky<<4 | block; unloaded -> full sky
+  bool openToSky(int x, int y, int z) const;     // air from this cell up to the sky (a roofed room is not)
   bool setBlock(int x, int y, int z, BlockId id, u8 meta = 0, u32 flags = 0);
   bool setMeta(int x, int y, int z, u8 meta, u32 flags = 0);
   bool setCarve(int x, int y, int z, u8 carve, u32 flags = 0);

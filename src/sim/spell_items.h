@@ -36,4 +36,5 @@ int gearSockets(const ItemStack& s);                                      // 0: 
 std::vector<std::string> gearGems(const ItemStack& s);                    // the gems set in it
 float gemAttr(const Player& p, const std::string& attr, bool pct);        // from the worn and held gear
 std::string gemSocketsLine(const ItemStack& s);                           // "Sockets: Ruby (+5% damage), empty" ("" with none)
+std::string gearRollLine(const ItemStack& s);                             // a found piece's rolled boon, drawback, and rare major ("" with none)
 } // namespace dq

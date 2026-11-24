@@ -4,6 +4,7 @@
 #include "render/chest_layer.h"
 #include "render/mesher.h"
 #include "world/shapes.h"
+#include <algorithm>
 
 namespace dq {
 
@@ -104,7 +105,7 @@ bool emitVoxelDoor(MeshCtx& c, std::vector<ChunkVertex>& d, BlockId id, int x, i
 // tell rail from tie). top: what's seen; under: the bottom (a rail on a slope).
 struct RailPlate { std::vector<PanelVert> top, under; };
 std::shared_ptr<const RailPlate> railPlate(const MeshTiles* tiles, int tile, int straight);
-void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross);
+void emitPlanes(MeshCtx& c, std::vector<ChunkVertex>& d, int tile, float x, float y, float z, float inset, float scale, float sk, float bl, bool cross, float span = 1.f);
 
 // 3D grass: short blades over the top of a grass block, swaying, faded out with
 // distance in chunk.glsl (sway codes 80..95 mark a tuft's tip). blades per block, 0 = off (settings grass3d).
@@ -118,13 +119,30 @@ void applyGrassSetting(const struct Settings& s);   // world_renderer.cpp: setti
 struct FaceCorners { float sky[4], bl[4], ao[4]; int aoi[4]; LightRgb rgb[4]; u32 lit[4]; };
 void faceCorners(const MeshCtx& c, int x, int y, int z, int f, FaceCorners& fc);
 
-// Apron sample. Outside the gathered neighbourhood: dark below the world, full sun elsewhere.
+// Apron sample. Outside the gathered neighbourhood: dark, never noon (a missing chunk is not sky 15).
 inline bool meshApron(int x, int y, int z) {
   return x >= -1 && x <= 16 && z >= -1 && z <= 16 && y >= MeshInput::Y0 && y <= 16;
 }
 inline LightRgb rgbAt(const MeshCtx& c, int x, int y, int z) {
-  if (!meshApron(x, y, z)) return y < 0 ? LightRgb{} : fullSunRgb();
+  if (!meshApron(x, y, z)) return LightRgb{};
   return c.in.rgb[c.I(x, y, z)];
+}
+// brightest open cell round a station or a carved cube. Skip leftover noon in opaque cells
+// (the cell itself even when carved) and skip the unloaded apron.
+inline LightRgb aroundAirRgb(const MeshCtx& c, int x, int y, int z) {
+  LightRgb L{};
+  static const int D[7][3] = {{0, 0, 0}, {0, 1, 0}, {1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}, {0, -1, 0}};
+  bool any = false;
+  for (int i = 0; i < 7; i++) {
+    const int ax = x + D[i][0], ay = y + D[i][1], az = z + D[i][2];
+    if (!meshApron(ax, ay, az)) continue;
+    const BlockId id = c.at(ax, ay, az);
+    if (id && c.R.tOpaque[id] && (i == 0 || !c.carveAt(ax, ay, az))) continue;
+    const LightRgb S = rgbAt(c, ax, ay, az);
+    for (int k = 0; k < 3; k++) { L.s[k] = std::max(L.s[k], S.s[k]); L.b[k] = std::max(L.b[k], S.b[k]); }
+    any = true;
+  }
+  return any ? L : LightRgb{};
 }
 // smooth bias: along the face normal, a neighbour up to 8 darker pulls this sample down by 2.5 times that gap.
 inline void biasLightChannel(u8& a, u8 nxt) {

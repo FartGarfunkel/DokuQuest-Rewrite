@@ -27,6 +27,7 @@ namespace dq { struct FishCatch { std::string id, kind; int cm = 0; }; FishCatch
 #include <functional>
 #include <map>
 #include <cstdio>
+#include <cmath>
 #include <thread>
 
 using namespace dq;
@@ -66,6 +67,38 @@ int main(int argc, char** argv) {
   if (!initCore(co)) { printf("FAIL initCore\n"); return 1; }
   const MagicData& md = magicData();
   check(md.loaded && md.spells.size() == 29 && md.ench.size() == 35 && md.potions.size() == 22 && md.skills.size() == 14, "data/magic.json: 29 spells, 35 enchantments, 22 potions, 14 skills");
+  {
+    bool six = true; std::string why;
+    std::map<std::string, std::string> titles;
+    for (const char* k : {"knight", "ranger", "mage", "rogue"}) {
+      if (!md.paths.contains(k) || !md.paths[k].contains("tiers") || md.paths[k]["tiers"].size() != 3) {
+        six = false; why += std::string(" ") + k + " tiers";
+        continue;
+      }
+      int n = 0;
+      for (const auto& row : md.paths[k]["tiers"]) {
+        n += (int)row.size();
+        for (const auto& t : row) if (t.is_array() && t.size() >= 2 && t[1].is_string()) {
+          const std::string title = t[1].get<std::string>();
+          if (titles.count(title)) { six = false; why += " path dup " + title; }
+          titles[title] = k;
+        }
+      }
+      if (n != 6) { six = false; why += std::string(" ") + k + "=" + std::to_string(n); }
+    }
+    check(six, "each path has 3 tiers and 6 talents" + why);
+    bool collide = false; std::string cwhy;
+    for (const auto& [sk, perks] : md.perks) for (const auto& pk : perks) {
+      if (titles.count(pk.name)) { collide = true; cwhy += " " + pk.name; }
+    }
+    check(!collide, "perk names do not copy path talent names" + cwhy);
+    Player q;
+    q.stats["path"] = json{{"k", "rogue"}, {"t", {{"vanish", 1}}}};
+    q.sneaking = true;
+    check(noticeRange(q, 20.f) <= 20.f * 0.76f, "Vanish: sneaking, creatures notice you a quarter less far");
+    q.stats["path"]["t"] = json{{"cutpurse", 1}};
+    check(talent(q, "loot_double") >= 0.19f, "Cutpurse: one kill in five drops its loot twice");
+  }
 
   // ---- skills ----
   check(skillLevel(82) == 1 && skillLevel(83) == 2 && skillLevel(101333) == 50 && skillLevel(13034431) == 99 && near(skillXpFor(99), 13034431), "skill curve: 83 -> 2, 101,333 -> 50, 13,034,431 -> 99");
@@ -292,12 +325,64 @@ int main(int argc, char** argv) {
   std::string r = runCommand(*lv, cs, "/learn all");
   check(knownSpells(p).size() == 29, "/learn all (" + r + ")");
 
-  // ---- the passive skill trees (sim/skilltree.h; only once the trees are imported: tools/local/skilltree_import.py) ----
+  // ---- the passive skill trees (sim/skilltree.h; data/skilltree.json) ----
   if (!skillTrees().empty()) {
     const SkillTree* W = nullptr; for (auto& t : skillTrees()) if (t.key == "warrior") W = &t;
-    check(W && W->nodes.size() > 100, "the warrior tree is there");
+    const TreeNode* start = nullptr; if (W) for (auto& n : W->nodes) if (n.start) start = &n;
+    check(W && W->nodes.size() >= 18 && W->nodes.size() <= 22, "the Knight tree is short");
+    check(start && start->id == "warrior", "Knight start id stays warrior");
+    {
+      int armsUp = 0;
+      if (W) for (const TreeNode& n : W->nodes) if (!n.start && n.y < -10.f) armsUp++;
+      check(W && armsUp == (int)W->nodes.size() - 1, "the Knight tree is a Y: every arm leaves the start up the page");
+    }
+    {
+      bool unique = true, mageOnHit = true, banned = false;
+      std::string why;
+      static const char* BAN[] = {
+        "Last Stand", "Afterimage", "Thick Hide", "Light Feet", "Deep Breath", "Night Oil", "Kind Rest",
+        "Wider Cut", "Hotter Word", "Deeper Cold", "Short Rest", "Ready Again", "Spring", "Bound",
+        "Lessons Stick", "Quick Study", "Double Pouch", "Cut Purse", "Spark", "Kindling", "Numb Air", "Ember", "Rime", "Nick"
+      };
+      for (const SkillTree& t : skillTrees()) {
+        std::map<std::string, std::string> titles, sigs;
+        for (const TreeNode& n : t.nodes) {
+          if (!n.start && titles.count(n.title)) { unique = false; why += " title " + n.title; }
+          titles[n.title] = n.id;
+          std::string sig;
+          for (const auto& b : n.bonus) sig += b.attr + ":" + std::to_string(b.v) + ":" + std::to_string(b.pct) + ";";
+          if (!n.start && !sig.empty() && sigs.count(sig)) { unique = false; why += " clone " + n.id + "/" + sigs[sig]; }
+          if (!sig.empty()) sigs[sig] = n.id;
+          if (t.key == "mage") for (const auto& b : n.bonus)
+            if (b.attr == "burn_chance" || b.attr == "slow_chance" || b.attr == "bleed_chance" || b.attr == "poison_chance") {
+              mageOnHit = false; why += " mage " + n.id + " " + b.attr;
+            }
+          for (const char* b : BAN) if (n.title == b) { banned = true; why += " banned " + n.title; }
+        }
+      }
+      check(unique, "every tree node has its own title and its own bonus" + why);
+      check(mageOnHit, "mage nodes use spell verbs, not melee-on-hit chances" + why);
+      check(!banned, "no leftover clone or imported titles" + why);
+    }
+    int nTrees = 0, keystones = 0; bool fat = true, named = true;
+    for (const SkillTree& t : skillTrees()) {
+      nTrees++;
+      for (const TreeNode& n : t.nodes) {
+        if (n.title.empty() || n.desc.empty() || n.desc.find('(') != std::string::npos) named = false;
+        for (const std::string& tg : n.tags) if (tg == "Keystone") keystones++;
+        for (auto& b : n.bonus) {
+          if (b.attr.rfind("grant_spell.", 0) == 0) continue;
+          if (b.attr == "venom_undead" || b.attr == "venom_lethal") continue;
+          if (b.pct && std::fabs(b.v) + 1e-5f < 0.04f) fat = false;
+          if (!b.pct && std::fabs(b.v) + 1e-5f < 1.f) fat = false;
+        }
+      }
+    }
+    check(nTrees == 4, "four path trees");
+    check(keystones == 12, "three keystones on each tree");
+    check(named, "every node has a title and plain words");
+    check(fat, "every bonus is fat enough to feel");
     if (W) {
-      const TreeNode* start = nullptr; for (auto& n : W->nodes) if (n.start) start = &n;
       treeReset(p);
       const int before = treePointsEarned(p);
       for (auto& sk : magicData().skills) skillGain(*lv, p, sk.key, 200000);
@@ -312,6 +397,24 @@ int main(int argc, char** argv) {
       check(rs && !treeLearn(p, "ranger", rs->id), "one class at a time: not the ranger's start as well");
       treeReset(p);
       check(treePointsSpent(p) == 0 && p.maxHp == hp0, "a reset gives the points back");
+      p.stats["tree"]["nodes"] = json::array({"warrior", "warrior_159"});
+      check(treeSanitise(p) == 1 && treeHas(p, "warrior") && !treeHas(p, "warrior_159"), "an old import id is dropped; the Knight start stays");
+      p.stats["tree"]["nodes"] = json::array({"warrior", "warrior_159"});
+      p.recalcMax();
+      check(treeHas(p, "warrior") && !treeHas(p, "warrior_159"), "recalc drops old ids too, as a load would");
+      treeReset(p);
+      check(treeLearn(p, "warrior", "warrior"), "start again for a keystone");
+      bool might = true;
+      for (const char* id : {"w_might1", "w_might2", "w_might3", "w_might4", "w_might5", "w_might6"})
+        if (!treeLearn(p, "warrior", id)) might = false;
+      check(might && treeHas(p, "w_might6"), "the Might keystone can be learnt");
+      const int iG = W->find("w_guard6"), iW = W->find("w_wound6");
+      check(iG >= 0 && !treeWhyNot(p, *W, W->nodes[iG]).empty() && iW >= 0 && !treeWhyNot(p, *W, W->nodes[iW]).empty(),
+            "one Keystone: the other two are refused");
+      TreeNode sample; sample.title = "Keen";
+      check(treeNodeGainLine(sample) == "Keen", "a node's toast is its title");
+      sample.title.clear();
+      check(treeNodeGainLine(sample) == "Learnt", "a nameless node still has a line");
     }
   }
 
@@ -503,7 +606,9 @@ int main(int argc, char** argv) {
     const json keepSkills = p.stats.value("skills", json::object());
     json sk = json::object(); for (auto& d : magicData().skills) sk[d.key] = skillXpFor(20); p.stats["skills"] = sk;
     const int L = playerCombatLevel(p);
-    check(L == 14 * 20 / 8, "all fourteen skills at 20: combat level " + std::to_string(L));
+    const int want = 14 * 20 / 12 + progressMobLevels(progressTier(p));
+    check(L == want, "all fourteen skills at 20: combat level " + std::to_string(L));
+    check(L < 14 * 20 / 8, "the land trails a matching-every-eight-levels formula (" + std::to_string(L) + ")");
     int lo = 999, hi = 0, elites = 0, plain = 0, plainOk = 0; float base = 0;
     for (int i = 0; i < 300; i++) {
       Entity* z = spawnCreature(*lv, "skeleton", 0, p.pos + vec3(3, 0, 3));

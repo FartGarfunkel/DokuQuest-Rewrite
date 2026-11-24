@@ -35,6 +35,17 @@ struct VoxelModel {
   ivec3 size{0};               // grid size (voxels)
   VoxelMeshData data;          // CPU mesh (dropped after upload)
   VoxelMeshGL gl;
+  // a mace: the haft is drawn on its own, and each link and the ball hang from the one above (the full mesh keeps
+  // them at rest, for an icon or a drop)
+  VoxelFrame haftFrame;
+  VoxelMeshData haftData;
+  VoxelMeshGL haftGl;
+  struct Loose {
+    vec3 a{0}, b{0};         // its two ends, in model space (the same space as haftFrame)
+    VoxelMeshData data;
+    std::unique_ptr<VoxelMeshGL> gl;
+  };
+  std::vector<Loose> loose;
   bool built = false;          // finished building (it may still be empty: an item without a picture)
   bool ready() const { return gl.ready(); }
   mat4 matrix() const { return frame.matrix(); }

@@ -5,12 +5,24 @@ runs it after forging.py:
 - data/tool_materials.json: every material a tool head can be made of: the items that count as it, its name, its colour
   (the head of its own pickaxe's picture, so it matches the pack), the tool set whose stats it brings (<prefix>_pickaxe...),
   and an element (fire for emberglass)
-- the mixed tools: mixed_pickaxe, mixed_axe, mixed_shovel, mixed_sword, mixed_hoe. The crafting table makes one when the
+- the mixed tools: mixed_pickaxe, mixed_axe, mixed_shovel, mixed_sword, mixed_hoe, and mixed weapons (greatsword, spear,
+  mace, longsword, battleaxe, warhammer, throwing knife, throwing axe). The crafting table makes one when the
   head of a tool's pattern holds more than one material (core/tool_parts.cpp); its stats, name and colours are on the stack."""
 import json, sys, pathlib, colorsys
 from PIL import Image
 
 TYPES = ['pickaxe', 'axe', 'shovel', 'sword', 'hoe']
+# mixed weapons with no iron_* base: (kind, name, icon, tool, extra fields). greatsword/spear/mace already live this way.
+EXTRA_WEAPONS = [
+    ('greatsword', 'Greatsword', 'iron_sword', {'type': 'sword', 'tier': 3, 'speed': 4.5, 'damage': 8, 'durability': 251}, {'hands': 2, 'moveset': 'greatsword'}),
+    ('spear', 'Spear', 'iron_sword', {'type': 'sword', 'tier': 3, 'speed': 6, 'damage': 6, 'durability': 251}, {'hands': 2, 'moveset': 'spear'}),
+    ('mace', 'Mace', 'iron_sword', {'type': 'mace', 'tier': 3, 'speed': 4, 'damage': 7, 'durability': 251}, {'hands': 1, 'moveset': 'mace'}),
+    ('longsword', 'Longsword', 'iron_sword', {'type': 'sword', 'tier': 3, 'speed': 5.5, 'damage': 7, 'durability': 251}, {'hands': 1, 'moveset': 'sword'}),
+    ('battleaxe', 'Battleaxe', 'iron_axe', {'type': 'axe', 'tier': 3, 'speed': 5, 'damage': 8, 'durability': 251}, {'hands': 2, 'moveset': 'axe'}),
+    ('warhammer', 'Warhammer', 'iron_sword', {'type': 'mace', 'tier': 3, 'speed': 3.5, 'damage': 9, 'durability': 251}, {'hands': 2, 'moveset': 'mace'}),
+    ('throwing_knife', 'Throwing Knife', 'iron_sword', {'type': 'sword', 'tier': 2, 'speed': 8, 'damage': 3, 'durability': 80}, {'hands': 1, 'moveset': 'throw'}),
+    ('throwing_axe', 'Throwing Axe', 'iron_axe', {'type': 'axe', 'tier': 2, 'speed': 6, 'damage': 4, 'durability': 80}, {'hands': 1, 'moveset': 'throw'}),
+]
 # key: (items, name, tool prefix, element)
 MATS = {
     'wood': (['#planks'], 'Wooden', 'wood', ''),
@@ -150,6 +162,12 @@ def main(d):
         it = {'key': k, 'name': t.capitalize(), 'maxStack': 1, 'icon': base.get('icon', 'iron_' + t), 'mixedTool': t,
               'tool': dict(base.get('tool', {'type': t, 'tier': 3, 'speed': 6, 'damage': 4, 'durability': 251})), 'hideCreative': True,
               'desc': 'Made of more than one material.'}
+        items[k] = it
+    for kind, name, icon, tool, extra in EXTRA_WEAPONS:
+        k = 'mixed_' + kind
+        it = {'key': k, 'name': name, 'maxStack': 1, 'icon': icon, 'mixedTool': kind,
+              'tool': dict(tool), 'hideCreative': True, 'desc': 'Made of more than one material.'}
+        it.update(extra)
         items[k] = it
     for piece, slot in (('helmet', 0), ('chestplate', 1), ('leggings', 2), ('boots', 3)):   # mixed armour (core/tool_parts.h)
         base = items.get('iron_' + piece, {})
