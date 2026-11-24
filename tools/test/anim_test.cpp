@@ -200,6 +200,18 @@ int main(int argc, char** argv) {
     CHECK(diff(charAnimate(xc), base) > 0.3f, "a crossbow being wound");
     CharPose tr = p; tr.throwCharge = 1; tr.held = true;
     CHECK(charAnimate(tr).armR.x > 2.5f, "a trident drawn back over the shoulder");
+    CharPose ck; ck.swingKind = 4; ck.swing = 0.16f; ck.held = true;
+    CharPose fl; fl.swingKind = 4; fl.swing = 0.48f; fl.held = true;
+    const CharAngles CK = charAnimate(ck), FL = charAnimate(fl);
+    CHECK(CK.armR.x > 2.2f && CK.foreR.x > 0.5f, "an overhand throw cocks the arm back (arm %.2f fore %.2f)", CK.armR.x, CK.foreR.x);
+    CHECK(FL.armR.x < CK.armR.x - 0.9f && FL.armR.x > 0.5f && FL.armR.x < 2.0f && FL.foreR.x < CK.foreR.x - 0.4f,
+          "then flings it forward along the look (arm %.2f fore %.2f)", FL.armR.x, FL.foreR.x);
+    CharPose up = fl; up.headPitch = 0.8f;
+    CHECK(charAnimate(up).armR.x > FL.armR.x + 0.4f, "the fling follows the look up");
+    CharPose lf; lf.swingKind = 5; lf.swing = 0.16f; lf.held = true;
+    const CharAngles LF = charAnimate(lf);
+    CHECK(std::fabs(LF.armL.x - CK.armR.x) < 1e-3f && std::fabs(LF.armL.y + CK.armR.y) < 1e-3f && std::fabs(LF.armL.z + CK.armR.z) < 1e-3f,
+          "the off hand throws with the other arm");
     CharPose sp = p; sp.spearCharge = 1; sp.held = true;
     const CharAngles SP = charAnimate(sp);
     CHECK(SP.armR.x > 0.8f && SP.armR.x < 1.8f && SP.body.x < base.body.x, "a spear couched, leaning into the charge");
@@ -259,6 +271,7 @@ int main(int argc, char** argv) {
       p.block = rnd() < 0.1f ? rnd() : 0; p.xbowCharge = rnd() < 0.1f ? rnd() : 0; p.xbowAim = rnd() < 0.1f;
       p.throwCharge = rnd() < 0.1f ? rnd() : 0; p.spearCharge = rnd() < 0.1f ? rnd() : 0; p.backward = rnd() < 0.2f; p.airLeft = rnd() < 0.5f;
       p.swing = rnd() < 0.3f ? rnd() : 0; p.land = rnd() < 0.2f ? rnd() * 0.3f : 0;
+      p.swingKind = rnd() < 0.15f ? (u8)(1 + (int)(rnd() * 5)) : 0;
       if (!finite(charAnimate(p))) ok = false;
     }
     CHECK(ok, "4000 random poses, all finite");

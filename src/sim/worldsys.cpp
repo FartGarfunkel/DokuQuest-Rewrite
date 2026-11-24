@@ -22,7 +22,12 @@
 
 namespace dq {
 
-bool waterFormsInfiniteSourceAt(int y) { return y <= SEA_LEVEL; }
+bool waterFormsInfiniteSourceAt(int y) {
+  // y here is a stacked world coordinate. The Overworld sea is band-local 64, which
+  // sits at y 576 in the usual layout, so a raw compare with 64 never filled the sea.
+  if (landOf(dimOfY(y)) == DIM_OVERWORLD) return y <= dimBase(DIM_OVERWORLD) + SEA_LEVEL;
+  return y <= SEA_LEVEL;
+}
 
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
 

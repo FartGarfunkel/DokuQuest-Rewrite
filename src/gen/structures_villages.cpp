@@ -705,10 +705,20 @@ static void townWall(SP& P, const Town& v, const VStyle& st) {
     return false;
   };
   const int H = W.h;
+  const std::vector<GateCells> gates = gatesOf(v);
+  auto gateFloor = [&](int x, int z, int& h0) {
+    for (const GateCells& G : gates) for (const auto& c : G.cells) if (c[0] == x && c[2] == z) { h0 = G.h0; return true; }
+    return false;
+  };
   auto wallAt = [&](int x, int z, int ix, int iz) {
     if (!P.in(x, z)) return;
-    const int h = ground(x, z);
-    for (int y = h; y > h - 4 && softBlock(P.get(x, y, z)); y--) P.put(x, y, z, stone ? sb : std::string("dirt"));
+    const int gh = ground(x, z);
+    int h0 = 0;
+    const bool opening = gateFloor(x, z, h0);
+    // the arch is one height (the street's). A slope used to step each post, and the beam left them.
+    const int h = opening ? h0 : gh;
+    if (opening && gh < h) for (int y = std::max(1, gh); y <= h; y++) P.put(x, y, z, stone ? sb : std::string("dirt"));
+    else for (int y = h; y > h - 4 && softBlock(P.get(x, y, z)); y--) P.put(x, y, z, stone ? sb : std::string("dirt"));
     if (gate(x, z)) {
       // the gateway: an arch over the road
       if (stone) { for (int y = h + 6; y <= h + H + 1; y++) P.put(x, y, z, wb(x, y, z)); if ((x + z) % 2 == 0) P.put(x, h + H + 2, z, sb); }
@@ -730,7 +740,12 @@ static void townWall(SP& P, const Town& v, const VStyle& st) {
   for (int z = W.z0 + 1; z < W.z1; z++) { wallAt(W.x0, z, 1, 0); wallAt(W.x1, z, -1, 0); }
   // towers at the corners, and either side of every gate
   for (const auto& [tx, tz] : wallTowers(v)) {
-    const int h = ground(tx, tz), R = stone ? 2 : 1, TH = H + 4;
+    int h = ground(tx, tz);
+    for (const GateCells& G : gates) {
+      const int dx = std::abs(tx - G.cx), dz = std::abs(tz - G.cz);
+      if ((tx == G.cx || tz == G.cz) && std::max(dx, dz) <= G.hw + 6) { h = G.h0; break; }   // a gate tower shares the arch's floor
+    }
+    const int R = stone ? 2 : 1, TH = H + 4;
     for (int dz = -R; dz <= R; dz++) for (int dx = -R; dx <= R; dx++) {
       const int x = tx + dx, z = tz + dz; if (!P.in(x, z)) continue;
       const bool edge = std::abs(dx) == R || std::abs(dz) == R;

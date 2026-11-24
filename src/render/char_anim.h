@@ -68,7 +68,7 @@ struct CharPose {
   i8 hurtArm = 0;           // 1 the right arm, -1 the left: it stays short and does not swing the cut
   float runAmt = -1, sneakAmt = -1;   // eased amounts (-1: from sprint / sneak as they are)
   vec2 hurtDir{0, 1};             // the blow came from: x their right, y their front
-  u8 swingKind = 0;               // 0 the classic swing; 1-3 a weapon combo's cuts (render/char_anim.cpp weaponSwing)       // a weapon or a shield in hand: standing, they keep a fighter's stance (render/char_anim.cpp)
+  u8 swingKind = 0;               // 0 the classic swing; 1-3 a weapon combo's cuts; 4 an overhand throw (right arm); 5 the left (render/char_anim.cpp)
   float guardHit = 0;       // a blow taken on the shield: 1 when it lands, down to 0 (render/char_poses.cpp knocks the guard back)
   bool sitGround = false;
   float bed = -1, bedRecline = 0;   // getting into bed (render/char_layer.cpp bedFrame: 0 beside it .. 1 lying in it; -1 no), how far laid back   // sat on the ground (by a campfire: ui/cinematic_work.cpp), knees up, the seat down on it

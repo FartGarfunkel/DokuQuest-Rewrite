@@ -292,6 +292,18 @@ bool onPlate(Level& lv, vec3 p) {
   }
   return false;
 }
+Player* dartTargetOnPlate(Level& lv, const json& plates, const std::vector<Player*>& players) {
+  const int base = dimBase(DIM_OVERWORLD);
+  for (Player* q : players) {
+    for (auto& pl : plates) {
+      vec3 world(jvec(pl)); world.y += base;
+      if (q->dead || q->realm != REALM_MAIN) continue;
+      if (ifloor(q->pos.x) == ifloor(world.x) && ifloor(q->pos.z) == ifloor(world.z) &&
+          q->pos.y >= world.y - 0.1f && q->pos.y <= world.y + 1.2f) return q;
+    }
+  }
+  return nullptr;
+}
 static bool inBox(const Entity& q, const json& b, int base, float pad = 1) {
   if (!b.is_array() || b.size() < 6) return false;
   return q.pos.x >= b[0].get<float>() && q.pos.x <= b[3].get<float>() + pad && q.pos.z >= b[2].get<float>() && q.pos.z <= b[5].get<float>() + pad &&
@@ -320,8 +332,7 @@ static void hallsTick(Level& lv, EndStory& S) {
         for (size_t i = 0; i < traps.size(); i++) {
           const json& t = traps[i]; std::string k = std::to_string(i);
           if (num(trapT, k.c_str()) > now) continue;
-          Player* who = nullptr;
-          for (Player* q : ps) for (auto& pl : t["plates"]) { vec3 a = at(pl); if (ifloor(q->pos.x) == (int)a.x && ifloor(q->pos.z) == (int)a.z && std::fabs(q->pos.y - a.y) < 0.6f) who = q; }
+          Player* who = dartTargetOnPlate(lv, t["plates"], ps);
           if (!who) continue;
           trapT[k] = now + 2.2;
           const json& room = t["room"];

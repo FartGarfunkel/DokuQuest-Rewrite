@@ -110,6 +110,13 @@ constexpr u8 WLOG = 0x80;   // waterlogged meta bit
 #endif
 inline bool isWaterlogged(BlockId id, u8 meta);
 void rotBox(ShapeBox& b, int f);                       // north-facing box turned to face f (0 N, 1 E, 2 S, 3 W)
+u8 rotOnly(u8 only, int f);                            // ShapeBox::only, turned the same way rotBox turns the box
+// One-block model placed as a bed (a coffin, a sleeping bag). Low Z is the head end; flipZ when the
+// authored head (the bag's pillow) sits at high Z. Each cell gets its half, stretched to fill the cell.
+// A face the cut made is cleared in ShapeBox::only (pre-rotation: bit 4 is +Z, bit 5 is -Z).
+void bedHalfBoxes(const std::vector<ShapeBox>& model, bool head, bool flipZ, std::vector<ShapeBox>& out);
+// an open coffin's lid, swung up off the left rim (call after bedHalfBoxes, before rotBox)
+void hingeCoffinLid(std::vector<ShapeBox>& boxes);
 void flipBox(ShapeBox& b);                             // upside down
 ShapeBox attachBox(const ShapeBox& b, u8 meta);        // levers/buttons: floor/ceiling/wall
 vec3 attachPoint(vec3 p, u8 meta, bool vec);

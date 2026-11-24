@@ -299,8 +299,23 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
       }
     }
   }
-  // an immersive world: tools come from heads (knapped, cast, smithed) and armour from the anvil, never the grid's patterns
-  if (recipeGate().immersive) return {};
+  // an immersive world: tools come from heads (knapped, cast, smithed) and armour from the anvil, never the grid's patterns.
+  // the chisel stays on the grid: a stick over any ingot, the same metals as the other tools
+  if (recipeGate().immersive) {
+    if (bw == 1 && bh == 2 && count == 2) {
+      const ItemStack& top = at(0, 0), &bot = at(0, 1);
+      const ToolMaterial* tm = toolMaterialOfStack(bot);
+      if (tm && top.id == "stick") {
+        ItemStack out;
+        if (makePartTool("chisel", {tm->key}, top.id, out)) {
+          giveCraftQuality(out);
+          CraftMatch m = special(out.id, 1, 1, 2); m.extra = out.tag;
+          return m;
+        }
+      }
+    }
+    return {};
+  }
   for (const ToolPattern& P : toolPatterns()) {
     if (P.w != bw || P.h != bh || (int)(P.head.size() + P.haft.size()) != count) continue;
     for (int mirror = 0; mirror < (P.w > 1 ? 2 : 1); mirror++) {
@@ -317,7 +332,8 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
       ItemStack out;
       if (!makePartTool(P.kind, mats, haft, out)) continue;
       giveCraftQuality(out);
-      CraftMatch m = special(out.id, 1, P.w, P.h); m.extra = out.tag;
+      const int made = P.kind == "throwing_axe" ? 4 : 1;   // a throwing axe is a handful, thrown one at a time
+      CraftMatch m = special(out.id, made, P.w, P.h); m.extra = out.tag;
       return m;
     }
   }

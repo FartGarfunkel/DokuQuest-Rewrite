@@ -75,7 +75,23 @@ static void testTwinVaultPlates() {
   for (int dx = -1; dx <= 1; dx++) for (int dy = 0; dy < 3; dy++) w.setBlock(3207 + dx, py + dy, 36, B("ward_stone"));
   const vec3 plate((float)px, (float)py, (float)pz);
   const vec3 plate2((float)px2, (float)py, (float)pz2);
+  json plates = json::array({json::array({px, py - OB, pz})});
   printf("\n[twin vault plates]\n");
+  std::vector<Player*> players{P};
+  P->pos = vec3(px + 0.5f, (float)py + 1.0f, pz + 0.5f);
+  check(es::dartTargetOnPlate(*L, plates, players) == P, "dart plate: finds a player standing on the block");
+  P->pos = vec3(px + 0.5f, (float)py + 2.5f, pz + 0.5f);
+  check(es::dartTargetOnPlate(*L, plates, players) == nullptr, "dart plate: ignores a player well above it");
+  {
+    const int cx = 3196, cz = 32, fy = Y + 1;
+    for (int y = fy; y < fy + 6; y++) w.setBlock(cx, y, cz, AIR);
+    check(!es::enderCoveredAt(w, cx, fy, cz), "open ground is not a roof");
+    w.setBlock(cx, fy + 3, cz, B("stone"));
+    check(es::enderCoveredAt(w, cx, fy, cz), "three blocks of air under stone is cover");
+    int ox = 0, oy = 0, oz = 0;
+    check(es::enderNearestCover(w, cx + 4, fy, cz, 8, ox, oy, oz) && es::enderCoveredAt(w, ox, oy, oz),
+          "rain cover search returns a roofed standing cell");
+  }
   P->pos = vec3(px + 0.5f, (float)py, pz + 0.5f);
   check(es::onPlate(*L, plate), "onPlate: player feet in the plate cell (global y)");
   P->pos = vec3(px + 0.5f, (float)py + 1.0f, pz + 0.5f);

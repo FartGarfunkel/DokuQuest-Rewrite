@@ -23,6 +23,7 @@ namespace dq {
 // (declared out here: MSVC gives a function declared inside a block the global namespace, so these never linked on Windows)
 bool tryWitherSummon(Level& lv, int realm, ivec3 at);   // sim/wither.cpp
 void primeFormidi(Level& lv, World& w, int x, int y, int z, const std::string& key);   // sim/wither_storm.cpp: Super TNT, the Formidibomb
+bool sleepingBagSleep(Level& lv, Player& p, int x, int y, int z);   // sim/camping.cpp: a bag keeps the old spawn
 
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
 
@@ -111,7 +112,7 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
     out.also.push_back({x, y - 1, z, bid, f | 4});
     return set(x, y, z, (u8)f);
   }
-  if (d.has("facingModel")) return set(x, y, z, (u8)(d.str("station") == "anvil" ? (lookDir(p) + 1) & 3 : lookDir(p)));
+  if (d.has("facingModel") && kind != ShapeKind::Bed) return set(x, y, z, (u8)(d.str("station") == "anvil" ? (lookDir(p) + 1) & 3 : lookDir(p)));   // a bed (sleeping bag, coffin) is two cells, below
   if (bid == B.pointed_dripstone && bid) return set(x, y, z, (u8)((ny == -1 ? 1 : 0) | (wet ? WLOG : 0)));
   if (bhas(bid, BF::Hangs) && ny != -1 && w.getBlock(x, y + 1, z) != bid && !R.tSolid[w.getBlock(x, y + 1, z)]) { toastMsg("This hangs from a ceiling"); return false; }
   // ---- the usual rules (build.js) ----
@@ -840,7 +841,10 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
     if (partBlocked(w, x, y, z, -1, id, m)) { toastMsg("It's blocked"); return true; }   // (a part sharing the cell is in its way: sim/attach_play.h)
     w.setBlock(x, y, z, id, m, SetFlags::Urgent); sfxAt(lv, doorSound(id, m & 4), c); swingArm(); return true;
   }
-  if (bhas(id, BF::Bed)) { sleep(x, y, z, meta); return true; }
+  if (bhas(id, BF::Bed)) {   // a sleeping bag keeps the old spawn, and gives it back in the morning
+    if (!sleepingBagSleep(lv, p, x, y, z)) return true;
+    sleep(x, y, z, meta); return true;
+  }
   if (b.has("noteBlock")) {
     int n = ((meta & 31) + 1) % 25;
     w.setBlock(x, y, z, id, (u8)(n | (meta & 0x20)));
@@ -905,7 +909,8 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   // collide them as octant boxes. The crosshair raycast's entry point is the geometry under the cursor, and a hit through
   // a carved notch still lands inside the aimed octant, so the same click toggles it back. Each octant toggles on its own.
   if (tool == "chisel") {
-    bool chiselable = R.tSolid[id] && R.tOpaque[id] && !R.tShape[id] && !R.tWlog[id] && !(b.has("family") || b.has("base"));   // wlog blocks (lanterns, snow...) carry live meta state
+    bool chiselable = R.tSolid[id] && R.tOpaque[id] && !R.tShape[id] && !R.tWlog[id] && !(b.has("family") || b.has("base"))
+                      && !b.has("table") && b.key.find("crafting_table") == std::string::npos;   // a crafting table is a workplace, not a block to carve; wlog blocks carry live meta
     u8 carve = w.getCarve(x, y, z);
     if (chiselable) {
       int enc = aimedOctant(hit.point, x, y, z, hit.normal.x, hit.normal.y, hit.normal.z);
@@ -961,7 +966,7 @@ void PlayerController::afterBreak(int x, int y, int z, BlockId id, u8 meta) {
     const int oy = (meta & 4) ? y + 1 : y - 1;
     if (w.getBlock(x, oy, z) == id && ((w.getMeta(x, oy, z) & 4) != 0) != ((meta & 4) != 0)) w.setBlock(x, oy, z, AIR, 0, SetFlags::Urgent);
   }
-  if (bhas(id, BF::Bed) && !R.block(id).has("bag")) {
+  if (bhas(id, BF::Bed) || R.tShape[id] == ShapeKind::Bed) {
     int f = meta & 3, s = (meta & 4) ? -1 : 1, ox = x + DIRX[f] * s, oz = z + DIRZ[f] * s;
     if (w.getBlock(ox, y, oz) == id) w.setBlock(ox, y, oz, AIR, 0, SetFlags::Urgent);
   }

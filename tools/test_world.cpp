@@ -22,6 +22,7 @@
 #include "gen/structures_api.h"
 #include "gen/biome_features.h"
 #include "gen/nether_painted.h"
+#include "gen/village_pieces.h"
 #include "sim/dyntree.h"
 #include "sim/blockinfo.h"
 #include "sim/physics.h"
@@ -655,6 +656,13 @@ int main(int argc, char** argv) {
   {
     check(!stoneHoodoosOn(), "eroded badlands and sugi/strat biomes grow no stone spires");
   }
+  printf("[coast cliffs]\n");
+  {
+    check(coastCliffCap(120, 2) <= SEA_LEVEL + 8, "a cliff 2 blocks from the sea is a slope, not a wall");
+    check(coastCliffCap(120, 1) <= SEA_LEVEL + 6, "the waterline is a shore, not a 40-block drop");
+    check(coastCliffCap(120, 40) == 120, "inland peaks keep their height");
+    check(coastCliffCap(SEA_LEVEL + 2, 2) == SEA_LEVEL + 2, "low shores stay low");
+  }
   printf("[surface rock cubes]\n");
   {
     check(isClutterRockKey("travertine"), "travertine 2x2 cubes are clutter");
@@ -664,10 +672,31 @@ int main(int argc, char** argv) {
     check(!isClutterRockKey("pumpkin") && !isClutterRockKey("carved_pumpkin") && !isClutterRockKey("melon"),
           "pumpkins and melons still make a 2x2");
   }
+  printf("[rigid structures]\n");
+  {
+    VPPiece lamp; lamp.terrain = true; lamp.kind = "terminators";
+    lamp.blocks.push_back({0, 0, 0, 0}); lamp.blocks.push_back({0, 5, 0, 0}); lamp.blocks.push_back({2, 5, 0, 0});
+    check(!pieceFollowsLand(lamp), "a lamp post stands as one piece");
+    VPPiece well; well.terrain = true; well.kind = "terminators";
+    well.blocks.push_back({0, 0, 0, 0}); well.blocks.push_back({1, 3, 1, 0});
+    check(!pieceFollowsLand(well), "a well stands as one piece");
+    VPPiece road; road.terrain = true; road.kind = "streets";
+    road.blocks.push_back({0, 0, 0, 0}); road.blocks.push_back({0, 2, 0, 0});
+    check(pieceFollowsLand(road), "a street follows the land");
+    VPPiece cap; cap.terrain = true; cap.kind = "terminators";
+    cap.blocks.push_back({0, 0, 0, 0}); cap.blocks.push_back({1, 1, 0, 0});
+    check(pieceFollowsLand(cap), "a flat road end follows the land");
+    const int floor = rigidFloorY(0, 0, 2, 0, [](int x, int) { return 40 + x; });
+    check(floor == 42, "a lamp takes the high ground under it, not a different height per post");
+  }
   printf("[hillside water]\n");
   {
     check(waterFormsInfiniteSourceAt(SEA_LEVEL), "the sea still fills from two sources");
     check(!waterFormsInfiniteSourceAt(SEA_LEVEL + 8), "a hillside does not grow infinite water");
+    const int owSea = dimBase(DIM_OVERWORLD) + SEA_LEVEL;
+    check(owSea > SEA_LEVEL, "the overworld sea is above band-local 64 in the stacked world");
+    check(waterFormsInfiniteSourceAt(owSea), "the overworld sea, in stacked coordinates, still fills from two sources");
+    check(!waterFormsInfiniteSourceAt(owSea + 8), "a hillside above the overworld sea does not grow infinite water");
   }
   printf("[locate mineshaft]\n");
   {

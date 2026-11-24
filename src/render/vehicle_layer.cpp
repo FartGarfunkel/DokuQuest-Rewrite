@@ -135,6 +135,130 @@ mat4 oarFrame(const Boat& b, vec3 rel, int sd) {
 }
 } // namespace
 
+#include "render/sailboat_parts.inc"
+std::vector<Part> sailBoxes(const SailBox* b, int n) {
+  std::vector<Part> v;
+  v.reserve(n);
+  for (int i = 0; i < n; i++) {
+    Part p;
+    const float* a = b[i].n;
+    p.c = vec3(a[0], a[1], a[2]);
+    p.h = vec3(std::max(0.004f, a[3]), std::max(0.004f, a[4]), std::max(0.004f, a[5]));
+    p.R[0] = vec3(a[6], a[7], a[8]);
+    p.R[1] = vec3(a[9], a[10], a[11]);
+    p.R[2] = vec3(a[12], a[13], a[14]);
+    p.tile.fill(b[i].tile);
+    v.push_back(p);
+  }
+  return v;
+}
+
+// The square sail's sheets and its yard. The sheets were baked as straight segments that
+// stop short of the cloth, so they are drawn on their own from the cleat to the clew.
+// The yard (and the lashings on it) turns with the sail. The mast stays with the hull.
+static bool looseSheet(const Part& p) {
+  if (p.tile[0] != "rope") return false;
+  if (std::fabs(p.c.x) < 1.05f || p.c.y > 2.4f || p.c.z > 0.2f || p.c.z < -3.55f) return false;
+  vec3 e = vec3(std::fabs(p.R[0].x), std::fabs(p.R[0].y), std::fabs(p.R[0].z)) * p.h.x
+         + vec3(std::fabs(p.R[1].x), std::fabs(p.R[1].y), std::fabs(p.R[1].z)) * p.h.y
+         + vec3(std::fabs(p.R[2].x), std::fabs(p.R[2].y), std::fabs(p.R[2].z)) * p.h.z;
+  return std::max(e.x, std::max(e.y, e.z)) > 0.16f;
+}
+static bool onYard(const Part& p) { return p.c.y > 4.95f && p.c.y < 5.25f && p.c.z < -3.25f; }
+static std::vector<Part> sailStill() {
+  auto v = sailBoxes(kSailHull, kSailHull_N);
+  std::vector<Part> o;
+  o.reserve(v.size());
+  for (auto& p : v) if (!looseSheet(p) && !onYard(p)) o.push_back(p);
+  return o;
+}
+static std::vector<Part> sailYardParts() {
+  auto v = sailBoxes(kSailHull, kSailHull_N);
+  std::vector<Part> o;
+  for (auto& p : v) if (onYard(p)) o.push_back(p);
+  return o;
+}
+static std::vector<Part> sailSheetParts() { return {box({-0.02f, -0.02f, -0.5f}, {0.02f, 0.02f, 0.5f}, "rope")}; }
+
+namespace {
+// the sailed boat's own planks. Each face is cut into small quads and the pack tile is
+// stamped on them, the same way a ship's wood is, so the grain stays and the plank stays a plank.
+void buildExact(Model& out, const std::vector<Part>& parts, const TileSet& ts) {
+  const int FC[6][4][3] = {
+    {{1, 0, 1}, {1, 0, 0}, {1, 1, 0}, {1, 1, 1}},
+    {{0, 0, 0}, {0, 0, 1}, {0, 1, 1}, {0, 1, 0}},
+    {{0, 1, 1}, {1, 1, 1}, {1, 1, 0}, {0, 1, 0}},
+    {{0, 0, 0}, {1, 0, 0}, {1, 0, 1}, {0, 0, 1}},
+    {{0, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}},
+    {{1, 0, 0}, {0, 0, 0}, {0, 1, 0}, {1, 1, 0}},
+  };
+  auto corn = [](const Part& p, int x, int y, int z) {
+    return p.c + p.R * vec3(x ? p.h.x : -p.h.x, y ? p.h.y : -p.h.y, z ? p.h.z : -p.h.z);
+  };
+  vec3 lo(1e9f), hi(-1e9f);
+  for (auto& p : parts) for (int x = 0; x < 2; x++) for (int y = 0; y < 2; y++) for (int z = 0; z < 2; z++) {
+    vec3 c = corn(p, x, y, z); lo = glm::min(lo, c); hi = glm::max(hi, c);
+  }
+  out.built = true;
+  out.vox = 1.f / 128.f;   // fine enough that a rope stays round and a plank edge stays straight
+  out.origin = lo - vec3(0.05f);
+  VoxelMeshData md;
+  if (lo.x > hi.x) return;
+  const float step = 1.f / 16.f;
+  const int S = ts.size;
+  auto texel = [&](const Part& p, int tile, int f, vec3 world) -> u32 {
+    vec3 l = glm::transpose(p.R) * (world - p.c) + p.h;
+    int ax = f / 2;
+    float a = ax == 0 ? l.z : l.x, b = ax == 1 ? l.z : l.y;
+    int px = clampv((int)std::floor(fractf(a) * S), 0, S - 1);
+    int py = clampv((int)std::floor((1.f - fractf(b)) * S), 0, S - 1);
+    u32 col = tile >= 0 ? tileVoxel(ts, tile, px, py) : 0;
+    if (!col && tile >= 0) col = ts.avgColor(tile) | 0xFF000000u;
+    if (!col) col = voxRGBA(150, 110, 64);
+    return col;
+  };
+  auto emit = [&](vec3 p, int face, u32 col) {
+    vec3 g = (p - out.origin) / out.vox;
+    VoxelVertex vv;
+    vv.x = (u16)clampv((int)std::lround(g.x), 0, 65535);
+    vv.y = (u16)clampv((int)std::lround(g.y), 0, 65535);
+    vv.z = (u16)clampv((int)std::lround(g.z), 0, 65535);
+    vv.nao = (u8)(face | (3 << 3));
+    vv.pad = 0;
+    vv.rgba = col;
+    md.verts.push_back(vv);
+  };
+  for (auto& p : parts) {
+    int tiles[6];
+    for (int f = 0; f < 6; f++) {
+      auto it = ts.index.find(p.tile[f]);
+      tiles[f] = it == ts.index.end() ? -1 : it->second;
+    }
+    for (int f = 0; f < 6; f++) {
+      vec3 C[4];
+      for (int k = 0; k < 4; k++) C[k] = corn(p, FC[f][k][0], FC[f][k][1], FC[f][k][2]);
+      vec3 eu = C[1] - C[0], ev = C[3] - C[0];
+      float du = glm::length(eu), dv = glm::length(ev);
+      if (du < 1e-4f || dv < 1e-4f) continue;
+      int nu = clampv((int)std::ceil(du / step), 1, 48);
+      int nv = clampv((int)std::ceil(dv / step), 1, 48);
+      vec3 nrm = ((f & 1) ? -1.f : 1.f) * p.R[f / 2];
+      int ax = 0;
+      if (std::fabs(nrm.y) > std::fabs(nrm[ax])) ax = 1;
+      if (std::fabs(nrm.z) > std::fabs(nrm[ax])) ax = 2;
+      const int face = ax * 2 + (nrm[ax] < 0.f ? 1 : 0);
+      auto at = [&](float u, float v) { return C[0] + eu * u + ev * v; };
+      for (int i = 0; i < nu; i++) for (int j = 0; j < nv; j++) {
+        float u0 = i / (float)nu, u1 = (i + 1) / (float)nu, v0 = j / (float)nv, v1 = (j + 1) / (float)nv;
+        vec3 q[4] = {at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)};
+        for (int k = 0; k < 4; k++) emit(q[k], face, texel(p, tiles[f], f, q[k]));
+      }
+    }
+  }
+  out.gl.upload(md);
+}
+}
+
 class VehicleLayer : public RenderLayer {
 public:
   explicit VehicleLayer(GameSession& s) {
@@ -220,8 +344,7 @@ public:
       Minecart* a = placeCart(lv, p.realm, "furnace", x0 + 3, y0, z0, 5); placeCart(lv, p.realm, "chest", x0 + 6, y0, z0, 5); placeCart(lv, p.realm, "tnt", x0 + 8, y0, z0, 5);
       if (a) a->fuel = 0;
       spawnBoat(lv, p.realm, "rowboat", vec3(x0 + 2, y0 + 1, z0 - 4), 0.6f);
-      spawnBoat(lv, p.realm, "sailboat", vec3(x0 + 7, y0 + 1, z0 - 5), -0.4f);
-      spawnBoat(lv, p.realm, "ship", vec3(x0 + 4, y0 + 1, z0 - 14), PI / 2);
+      spawnBoat(lv, p.realm, "sailboat", vec3(x0 + 7, y0 + 1, z0 - 8), -0.4f);
       w.setBlock(x0 + 12, y0 + 4, z0, B("windmill"), 2); w.setBlock(x0 + 12, y0 + 4, z0 + 1, B("axle"), 2); w.setBlock(x0 + 12, y0 + 4, z0 + 2, B("millstone"));
     }
     // wheels turn with the distance rolled
@@ -272,6 +395,11 @@ private:
   Model& model(const std::string& key, float vox, const std::function<std::vector<Part>()>& parts, const TileSet& ts) {
     Model& m = models[key];
     if (!m.built) buildModel(m, parts(), vox, ts);
+    return m;
+  }
+  Model& exactModel(const std::string& key, const std::function<std::vector<Part>()>& parts, const TileSet& ts) {
+    Model& m = models[key];
+    if (!m.built) buildExact(m, parts(), ts);
     return m;
   }
   void draw(const Model& m, const mat4& at, VoxelLight L, vec4 tint = vec4(0)) { if (m.gl.ready()) voxelRenderer().draw(m.gl, at * m.m(), L, tint); }
@@ -328,6 +456,8 @@ private:
   // ---------------------------------------------------------------- boats and the ship
 public:   // (the hulls are their items' models too: vehicleItemParts)
   static std::vector<Part> hullParts() { return hullOf("boat_planks", "boat_rail", "planks"); }
+  static std::vector<Part> sailHull() { return sailBoxes(kSailHull, kSailHull_N); }
+  static std::vector<Part> sailCloth() { return sailBoxes(kSailCloth, kSailCloth_N); }
   static std::vector<Part> hullOf(const std::string& P, const std::string& R, const std::string& IN) {   // boats2.js: the clinker rowboat hull (the sailboat's too, scaled)
     std::vector<Part> v;
     v.push_back(bb(0, 0.03f, -0.1f, 0.05f, 0.05f, 1.27f, 0, R));
@@ -419,6 +549,54 @@ private:
       if (!b.cargo.is_null() || b.items.is_array()) drawItem(!b.cargo.is_null() ? b.cargo.value("key", "chest") : (b.cargoKey.empty() ? "chest" : b.cargoKey), base * T(vec3(SHIP.cargo.x, dk + 0.5f, SHIP.cargo.y)), L);
       return;
     }
+    if (b.kind == "sailboat") {
+      const ShipDims D = b.dims();
+      VoxelLight L = lightAt(w, b.pos + vec3(0, D.deck + 0.4f, 0));
+      mat4 base = RX(RZ(RY(T(rel), b.yaw), b.heel * 0.35f + (b.shakeT > 0 ? std::sin(b.age * 60) * 0.03f : 0)), std::sin(b.bob * 1.15f) * 0.012f + clampv(b.speed * 0.004f, -0.02f, 0.03f));
+      // The yard and the two sheets are split out so they stay on the sail.
+      Model& hull = exactModel("sail_hull_still", sailStill, ts);
+      Model& yard = exactModel("sail_yard", sailYardParts, ts);
+      Model& cloth = exactModel("sail_cloth", sailCloth, ts);
+      Model& sheet = exactModel("sail_sheet", sailSheetParts, ts);
+      draw(hull, base, L);
+      const float set = std::max(0.72f, b.sail);   // the square sail hangs from the yard; W at the tiller lets the rest out
+      constexpr float top = 5.05f, foot = 2.01f, mz = -3.34f;
+      const float belly = set * (0.12f + b.eff * 0.45f);
+      const float drop = top - foot;
+      mat4 clothX(1.f);
+      clothX[1][1] = set;                 // gather the cloth up to the yard
+      clothX[1][2] = -belly / drop;       // the foot bellies aft; the head stays on the yard
+      mat4 pivot = T(vec3(0, -top, -mz)), back = T(vec3(0, top, mz));
+      mat4 yaw = RY(mat4(1), b.boom * 0.45f);
+      mat4 ym = base * back * yaw * pivot;             // the yard turns in the wind, and does not belly
+      mat4 sm = base * back * yaw * clothX * pivot;    // the cloth opens, closes, and turns with it
+      draw(yard, ym, L);
+      draw(cloth, sm, L);
+      auto placed = [](const mat4& m, vec3 p) { vec4 q = m * vec4(p, 1.f); return vec3(q); };
+      auto spanRope = [&](vec3 a, vec3 b) {
+        vec3 d = b - a;
+        float len = glm::length(d);
+        if (len < 0.05f) return;
+        vec3 z = d / len;
+        vec3 up = std::fabs(z.y) > 0.92f ? vec3(1, 0, 0) : vec3(0, 1, 0);
+        vec3 x = glm::normalize(glm::cross(up, z));
+        vec3 y = glm::cross(z, x);
+        mat4 m(1.f);
+        m[0] = vec4(x, 0.f); m[1] = vec4(y, 0.f); m[2] = vec4(z * len, 0.f); m[3] = vec4((a + b) * 0.5f, 1.f);
+        draw(sheet, m, L);
+      };
+      for (float sd : {-1.f, 1.f}) {   // one sheet each side: cleat on the rail, clew on the cloth
+        vec3 cleat = placed(base, vec3(sd * 1.26f, 1.04f, -0.06f));
+        vec3 clew = placed(sm, vec3(sd * 2.90f, 2.08f, -3.32f));
+        vec3 mid = (cleat + clew) * 0.5f;
+        mid.y -= std::min(0.16f, glm::length(clew - cleat) * 0.04f);
+        spanRope(cleat, mid);
+        spanRope(mid, clew);
+      }
+      if (!b.cargo.is_null() || b.items.is_array())
+        drawItem(!b.cargo.is_null() ? b.cargo.value("key", "chest") : (b.cargoKey.empty() ? "chest" : b.cargoKey), base * T(vec3(0, D.deck + 0.35f, 0.2f)), L);
+      return;
+    }
     VoxelLight L = lightAt(w, b.pos + vec3(0, 0.8f, 0));
     mat4 S = glm::scale(T(rel), vec3(sc));
     mat4 base = RX(RZ(RY(S, b.yaw), b.heel + (b.shakeT > 0 ? std::sin(b.age * 60) * 0.06f : 0)), std::sin(b.bob * 1.3f) * 0.025f + clampv(b.speed * 0.006f, -0.03f, 0.05f));
@@ -443,27 +621,11 @@ private:
       draw(mask, base, L);
       glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     }
-    if (b.kind == "sailboat") {
-      Model& mast = model("boat_mast", 1.f / 32, [] { return std::vector<Part>{box({-0.06f, 0.15f, -0.06f}, {0.06f, 3.2f, 0.06f}, "axle"), box({-0.1f, 0.15f, -0.1f}, {0.1f, 0.4f, 0.1f}, "axle_end")}; }, ts);
-      Model& boom = model("boat_boom", 1.f / 32, [] { return std::vector<Part>{box({-0.04f, 0.85f, 0}, {0.04f, 0.93f, 1.5f}, "axle")}; }, ts);
-      Model& sail = model("boat_sail", 1.f / 32, [] { return std::vector<Part>{box({-0.015f, 0.93f, 0}, {0.015f, 3.0f, 0.48f}, "sail")}; }, ts);
-      Model& flag = model("boat_flag", 1.f / 32, [] { return std::vector<Part>{box({-0.01f, 0, 0}, {0.01f, 0.2f, 0.55f}, "flag")}; }, ts);
-      draw(mast, base, L);
-      mat4 bm = RY(base * T(vec3(0, 0, 0.05f)), b.boom);
-      draw(boom, bm, L);
-      float fill = b.sail * (0.3f + b.eff * 0.7f);
-      for (int k = 0; k < 3; k++) {
-        float belly = std::sin((k + 0.5f) / 3 * PI) * fill * 0.28f * (b.boom < 0 ? -1.f : 1.f);
-        draw(sail, glm::scale(bm * T(vec3(-belly, 0, 0.12f + k * 0.48f)), vec3(1, 0.25f + b.sail * 0.75f, 1)), L);
-      }
-      draw(flag, RY(glm::scale(T(rel), vec3(sc)) * T(vec3(0, 3.15f, 0)), wind.dir + PI + std::sin(b.age * 7) * 0.12f), L);
-    } else {
-      // the oars sit in their oarlocks and dip while rowing
-      Model& oar = model("boat_oar", 1.f / 32, [] {
-        return std::vector<Part>{bb(0, 0, -0.25f, 0.028f, 0.028f, 0.65f, 0, "axle"), bb(0, 0, 0.42f, 0.035f, 0.035f, 0.07f, 0, "boat_rail"), bb(0, 0, -1.1f, 0.012f, 0.11f, 0.22f, 0, "boat_planks")};
-      }, ts);
-      for (int sd : {-1, 1}) draw(oar, oarFrame(b, rel, sd), L);
-    }
+    // the oars sit in their oarlocks and dip while rowing
+    Model& oar = model("boat_oar", 1.f / 32, [] {
+      return std::vector<Part>{bb(0, 0, -0.25f, 0.028f, 0.028f, 0.65f, 0, "axle"), bb(0, 0, 0.42f, 0.035f, 0.035f, 0.07f, 0, "boat_rail"), bb(0, 0, -1.1f, 0.012f, 0.11f, 0.22f, 0, "boat_planks")};
+    }, ts);
+    for (int sd : {-1, 1}) draw(oar, oarFrame(b, rel, sd), L);
     if (!b.cargo.is_null() || b.items.is_array()) {
       vec3 sp = b.seatPos(1) - b.pos;
       drawItem(!b.cargo.is_null() ? b.cargo.value("key", "chest") : (b.cargoKey.empty() ? "chest" : b.cargoKey),
@@ -572,13 +734,11 @@ std::vector<ModelPart> vehicleItemParts(const std::string& item) {
   } else if (item == "lava_rowboat") {   // the lava boat: an iron minecart (render/vehicle_layer.cpp drawBoat)
     add(cartBodyParts());
     for (int sx : {-1, 1}) for (int sz : {-1, 1}) add(cartWheelParts(), vec3(sx * 0.3f, 0.09f, sz * 0.4f));
-  } else if (item == "rowboat" || item == "sailboat") {
+  } else if (item == "rowboat") {
     add(VehicleLayer::hullParts());
-    if (item == "sailboat") {   // the mast, its boom and the sail set
-      v.push_back(box({-0.06f, 0.15f, -0.06f}, {0.06f, 3.2f, 0.06f}, "axle"));
-      v.push_back(box({-0.04f, 0.85f, 0}, {0.04f, 0.93f, 1.5f}, "axle"));
-      v.push_back(box({-0.015f, 0.93f, 0}, {0.015f, 3.0f, 1.4f}, "sail"));
-    }
+  } else if (item == "sailboat") {
+    add(VehicleLayer::sailHull());
+    add(VehicleLayer::sailCloth());
   } else if (item == "sailing_ship" || item == "galleon") {
     add(VehicleLayer::shipHull());
     for (float z : {-1.2f, 1.4f}) {   // two masts, a sail on each

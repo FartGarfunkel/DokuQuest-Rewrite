@@ -790,12 +790,15 @@ static bool minePlan(const TerrainQuery& t, int x, int z, Mulberry32& rnd, Struc
     if (len < 6) continue;
     const int ex = s.x + dx * len, ez = s.z + dz * len;
     // parallel corridors keep apart; a crossing of the other axis is a junction
-    const int nx0 = std::min(s.x + dx * step, ex) - 1, nx1 = std::max(s.x + dx * step, ex) + 1, nz0 = std::min(s.z + dz * step, ez) - 1, nz1 = std::max(s.z + dz * step, ez) + 1;
+    const int nx0 = std::min(s.x + dx * step, ex), nx1 = std::max(s.x + dx * step, ex), nz0 = std::min(s.z + dz * step, ez), nz1 = std::max(s.z + dz * step, ez);
     bool hit = false;
     for (const auto& o : segs) {
       const bool oX = o.dir == 1 || o.dir == 3;
-      if (oX != alongX) continue;
-      if (!(o.x1 + 1 < nx0 || o.x0 - 1 > nx1 || o.z1 + 1 < nz0 || o.z0 - 1 > nz1)) { hit = true; break; }
+      if (oX != alongX) continue;   // a crossing of the other axis is a junction, not a second tunnel
+      // a corridor is 3 wide: centre lines closer than 5 share a floor and lay two rails side by side
+      const bool alongOverlap = alongX ? !(o.x1 < nx0 || o.x0 > nx1) : !(o.z1 < nz0 || o.z0 > nz1);
+      const int apart = alongX ? std::abs(o.z0 - s.z) : std::abs(o.x0 - s.x);
+      if (alongOverlap && apart < 5) { hit = true; break; }
     }
     if (hit) continue;
     MineSeg g{s.x, s.z, ex, ez, s.dir, std::min(s.x, ex), std::max(s.x, ex), std::min(s.z, ez), std::max(s.z, ez), false, false};
@@ -943,6 +946,17 @@ static void mineBuild(ChunkWriter& w, const StructurePlan& S) {
       }
       if (P.h(ax, 0, az, 19) < 0.05 && k % step != 0 && k + 1 <= n && !(s.chest && k >= step && k <= step + 2))
         mineSeep(P, ax, y, az, alongX, pal, RAIL);
+      if (k == n) {
+        const int dx = DXL[s.dir], dz = DZL[s.dir];
+        for (int end = 0; end < 2; end++) {
+          const int bx = (end ? s.ex : s.x) + (end ? dx : -dx), bz = (end ? s.ez : s.z) + (end ? dz : -dz);
+          if (mineInCorridor(M, bx, bz)) continue;
+          for (int wv = -1; wv <= 1; wv++) {
+            const int x = alongX ? bx : bx + wv, z = alongX ? bz + wv : bz;
+            mineFillOpen(P, x, y - 1, beamY + 1, z, wallKey);
+          }
+        }
+      }
       if (s.chest && k == step + 1) {
         const int side = P.h(ax, 1, az, 7) < 0.5 ? -1 : 1;
         const int ox = alongX ? 0 : side, oz = alongX ? side : 0;

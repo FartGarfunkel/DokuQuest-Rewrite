@@ -17,6 +17,13 @@ namespace dq {
 
 bool stoneHoodoosOn() { return false; }   // eroded / sugi / stratified stone spires: they always look broken
 
+// Not applied while the land is filled. Shaving column tops to this ramp left
+// mountain pieces standing in the air (terrain 23's floating-land check).
+int coastCliffCap(int inlandH, int distToOcean) {
+  if (distToOcean >= 24) return inlandH;
+  return std::min(inlandH, SEA_LEVEL + std::max(4, distToOcean * 2));
+}
+
 
 using namespace vmap;
 
@@ -169,7 +176,8 @@ int OverworldGen::v14Corner(int x, int z) const {
       if (lo > 0 && !(fl_ && floatingAt(x, z, j))) { top = j * 8; for (int k = 7; k >= 1; k--) if (lo + (hi - lo) * k / 8.0 > 0) { top = j * 8 + k; break; } break; }
       hi = lo;
     }
-    e = {key, std::clamp(top, 1, DIM_H - 2)};
+    top = std::clamp(top, 1, DIM_H - 2);
+    e = {key, top};
     return e.y;
   }
   // from just above where its 2D shape puts the ground (depth = 0 where the imported data's y = 128 (1.5 + offset) - 64, the jagged
@@ -260,7 +268,7 @@ OverworldGen::BaseCol OverworldGen::baseColumn(int x, int z) const {
     const double t = c.temp, u = c.humid;
     u8 b;
     if (c.H < SEA_LEVEL) b = BIOME_OCEAN;
-    else if (c.H <= SEA_LEVEL + 2 && cont < -0.05 && ero > -0.2) b = BIOME_BEACH;   // (the sea's edge where the land is low and worn)
+    else if (c.H <= SEA_LEVEL + 6 && cont < 0.05 && ero > -0.35) b = BIOME_BEACH;   // (the sea's edge, including a short slope down from a cliff)
     else if (c.H > SEA_LEVEL + 70 || (c.H > SEA_LEVEL + 45 && ero < -0.2)) b = BIOME_MOUNTAINS;   // (the peaks: high and little worn)
     else if (t < -0.3) b = BIOME_TAIGA;
     else if (t > 0.32 && u < 0.12) b = BIOME_DESERT;
@@ -511,7 +519,7 @@ void OverworldGen::fillV14(GenBuf& b, OwColumn* cols, int cx, int cz) const {
     if (!top) top = 1;
     c.H = top; c.h = jsFloor(owSurfaceInv(top + 0.5));
     if (c.H < SEA_LEVEL && c.biome != BIOME_OCEAN && !c.special) c.biome = BIOME_OCEAN;
-    else if (c.H >= SEA_LEVEL && c.biome == BIOME_OCEAN) c.biome = c.H <= SEA_LEVEL + 2 ? BIOME_BEACH : BIOME_PLAINS;
+    else if (c.H >= SEA_LEVEL && c.biome == BIOME_OCEAN) c.biome = c.H <= SEA_LEVEL + 6 ? BIOME_BEACH : BIOME_PLAINS;
     if (v15) {   // (the land biomes' surface: surfaceV15, once the chunk's land is all here)
       if (!deep_) for (int y = 0; y < 5; y++) if (y == 0 || hf(wx, y, wz, seed_) < (5 - y) / 5.0) b.blocks[colIdx(x, y, z)] = B.bedrock;
       for (int y = top + 1; y <= SEA_LEVEL; y++) b.blocks[colIdx(x, y, z)] = B.water;

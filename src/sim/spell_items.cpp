@@ -7,7 +7,9 @@
 #include "sim/level.h"
 #include "core/itemstack.h"
 #include "core/registry.h"
+#include "sim/balance.h"
 #include <algorithm>
+#include <cstdio>
 
 namespace dq {
 
@@ -127,11 +129,39 @@ std::vector<std::string> gearGems(const ItemStack& s) {
 }
 float gemAttr(const Player& p, const std::string& attr, bool pct) {
   float s = 0;
-  auto add = [&](const ItemStack& it) { for (const std::string& g : gearGems(it)) { const GemDef* d = gemOf(g); if (d && d->pct == pct && attr == d->attr) s += d->v; } };
+  auto add = [&](const ItemStack& it) {
+    for (const std::string& g : gearGems(it)) { const GemDef* d = gemOf(g); if (d && d->pct == pct && attr == d->attr) s += d->v; }
+    if (!it.tag.is_object() || !it.tag.contains("roll") || !it.tag["roll"].is_array()) return;
+    for (const json& b : it.tag["roll"]) if (b.is_object() && b.value("a", std::string()) == attr && (b.value("p", 0) != 0) == pct) s += b.value("v", 0.f);
+  };
   for (const ItemStack& a : p.armor) add(a);
   if (!p.inv.empty() && p.selected >= 0 && p.selected < (int)p.inv.size()) add(p.inv[p.selected]);
   if (!p.offhand.empty()) add(p.offhand[0]);
   return s;
+}
+std::string gearRollLine(const ItemStack& s) {
+  if (!s.tag.is_object() || !s.tag.contains("roll") || !s.tag["roll"].is_array()) return "";
+  std::string o;
+  for (const json& b : s.tag["roll"]) {
+    if (!b.is_object()) continue;
+    if (!o.empty()) o += ", ";
+    if (b.value("major", 0)) o += "Major: ";
+    const float v = b.value("v", 0.f);
+    const std::string attr = b.value("a", std::string());
+    std::string name = attr;
+    for (char& c : name) if (c == '_') c = ' ';
+    if (const bal::TalentRule* rule = talentRule(attr); rule && rule->what && rule->what[0]) {
+      name = rule->what;
+      const size_t cut = name.find(" (");
+      if (cut != std::string::npos) name = name.substr(0, cut);
+      if (name.size() > 2 && name.compare(name.size() - 2, 2, " %") == 0) name.erase(name.size() - 2);
+    }
+    char buf[96];
+    if (b.value("p", 0)) std::snprintf(buf, sizeof buf, "%+.0f%% %s", v * 100.f, name.c_str());
+    else std::snprintf(buf, sizeof buf, "%+.0f %s", v, name.c_str());
+    o += buf;
+  }
+  return o;
 }
 std::string gemSocketsLine(const ItemStack& s) {
   int n = gearSockets(s);

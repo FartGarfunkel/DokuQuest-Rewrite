@@ -17,6 +17,14 @@ inline mat4 rot(mat4 m, vec3 r) {
   return m;
 }
 inline glm::mat3 rotM(vec3 r) { return glm::mat3(rot(mat4(1), r)); }
+// a swing, a draw, a bite, a guard: the arms and chest are already posed. Flight keeps the legs and leaves this.
+bool upperBusy(const CharPose& pose) {
+  return pose.atkMove || pose.swing > 0.f || pose.eat > 0.f || pose.bow > 0.f || pose.block > 0.f
+      || pose.castWind > 0.f || pose.scope || pose.gui || pose.carry
+      || pose.throwCharge > 0.f || pose.spearCharge > 0.f || pose.xbowCharge > 0.f || pose.xbowAim
+      || pose.spellR > 0.f || pose.spellL > 0.f || pose.wave > 0.f || pose.hoe > 0.f || pose.work || pose.read
+      || (pose.hurt > 0.f && pose.hurt < 0.45f);
+}
 // the angles (x, then y; no z) that point a limb's -y along the unit vector d, as rot() turns it
 vec3 aimAngles(vec3 d) {
   const float x = std::acos(clampf(-d.y, -1, 1));
@@ -272,6 +280,33 @@ void weaponSwing(CharAngles& A, const CharPose& pose) {
   const float pitch = clampf(pose.headPitch, -1.2f, 1.2f), cp = std::copysign(std::min(pitch * pitch / 0.52f, 0.52f), pitch);
   A.body.x += cp * 0.6f * k;
 }
+// a thrown knife or axe: the arm cocks back over the shoulder, then flings forward along the look (pose.swing 0..1 over ~0.4 s)
+void overhandThrow(CharAngles& A, const CharPose& pose) {
+  const float u = clampf(pose.swing, 0.f, 1.f);
+  const bool left = pose.swingKind == 5;
+  const float pitch = clampf(pose.headPitch, -1.2f, 1.2f);
+  auto ease = [](float x) { x = clampf(x, 0.f, 1.f); return x * x * (3.f - 2.f * x); };
+  const float cock = clampf(u / 0.22f, 0.f, 1.f);
+  const float fling = clampf((u - 0.18f) / 0.30f, 0.f, 1.f);
+  const float follow = clampf((u - 0.48f) / 0.22f, 0.f, 1.f);
+  const float k = std::min(ease(std::min(1.f, u / 0.08f)), ease(1.f - clampf((u - 0.72f) / 0.28f, 0.f, 1.f)));
+  const vec3 cocked(2.95f, -0.55f, 0.42f);
+  const vec3 flung(1.20f + pitch * 0.9f, 0.12f, 0.04f);   // out along the look (arm.x tracks pitch, as a bow's arm does)
+  const vec3 past(0.22f + pitch * 0.35f, 0.62f, -0.12f);
+  vec3 arm = cocked;
+  vec3 fore(0.9f, 0.f, 0.f);
+  if (follow > 0.f) { const float w = ease(follow); arm = mixv(flung, past, w); fore = mixv(vec3(0.05f, 0, 0), vec3(0.35f, 0, 0), w); }
+  else if (fling > 0.f) { const float w = ease(fling); arm = mixv(cocked, flung, w); fore = mixv(vec3(0.9f, 0, 0), vec3(0.05f, 0, 0), w); }
+  else { const float w = ease(cock); arm = mixv(vec3(0.55f, -0.05f, 0.08f), cocked, w); fore = mixv(vec3(0.15f, 0, 0), vec3(0.9f, 0, 0), w); }
+  float by = -0.42f * (1.f - ease(fling)) + 0.48f * ease(fling) * (1.f - 0.35f * ease(follow));
+  if (left) { arm.y = -arm.y; arm.z = -arm.z; by = -by; }
+  vec3& ar = left ? A.armL : A.armR;
+  vec3& fr = left ? A.foreL : A.foreR;
+  ar = mixv(ar, arm, k);
+  fr = mixv(fr, fore, k);
+  A.body.y += by * k;
+  A.body.x += pitch * 0.25f * k;
+}
 }  // namespace
 
 CharAngles charAnimate(const CharPose& pose) {
@@ -332,6 +367,7 @@ CharAngles charAnimate(const CharPose& pose) {
       fore.x += 0.22f;
     }
   }
+  else if (at > 0 && (pose.swingKind == 4 || pose.swingKind == 5)) overhandThrow(A, pose);
   else if (at > 0 && pose.swingKind > 0) weaponSwing(A, pose);
   else if (at > 0 && pose.pick) {
     // a pick: the forearm pumps at the elbow. The shoulder tips with the look so the head meets the block.
@@ -405,7 +441,7 @@ CharAngles charAnimate(const CharPose& pose) {
     A.body = vec3(-0.06f, 0, 0); A.lift = 0;
   }
   if (pose.sit) { A.legR = vec3(1.4f, 0, 0.1f); A.legL = vec3(1.4f, 0, -0.1f); A.shinR = A.shinL = vec3(-1.4f, 0, 0); }
-  if (pose.swim) {
+  if (pose.swim && !(pose.glide && upperBusy(pose))) {   // gliding through a swing: the cut stays, the wings still lay the body out
     // the fast swim, lying flat: a breaststroke (not a windmill). The arms glide out ahead together, sweep out wide and
     // pull in under the chest with the elbows bent, then shoot forward again; the legs frog-kick as the arms go forward,
     // and the head comes up for a breath on the pull. Keyframes through one stroke (u 0..1), eased between.
@@ -458,16 +494,17 @@ CharAngles charAnimate(const CharPose& pose) {
       // a looser walk: hips swing, shoulders counter-twist, arms swing wider and elbows bend, the head nods
       A.body.y += sL * 0.08f * a;   // (the shoulders counter the hips, about 0.2-0.3 each way)
       A.body.z += sL * 0.035f * a;
+      const bool throwL = pose.swing > 0 && pose.swingKind == 5;   // the off arm is throwing: leave that pose alone
       if (!busyR) A.armR.x *= 1.25f;
-      if (!pose.off) A.armL.x *= 1.25f;
+      if (!pose.off && !throwL) A.armL.x *= 1.25f;
       if (!busyR) A.armR.z += 0.06f * a;
-      A.armL.z -= 0.06f * a;
+      if (!throwL) A.armL.z -= 0.06f * a;
       if (!busyR) A.foreR.x += (0.18f + 0.3f * run) * a * (0.6f + 0.4f * std::max(0.f, -sL));
-      A.foreL.x += (0.18f + 0.3f * run) * a * (0.6f + 0.4f * std::max(0.f, sL));
+      if (!throwL) A.foreL.x += (0.18f + 0.3f * run) * a * (0.6f + 0.4f * std::max(0.f, sL));
       A.body.x -= 0.12f * run * a;
       A.body.x -= pose.accLean;
       if (!busyR) A.foreR.x += 0.08f * idle;
-      A.foreL.x += 0.08f * idle;
+      if (!throwL) A.foreL.x += 0.08f * idle;
     }
     A.body.z += pose.turnLean;
     float lt = pose.fp ? clampf(pose.legTurn - pose.headTurn, -0.8f, 0.8f) : pose.legTurn;
@@ -536,16 +573,22 @@ CharAngles charAnimate(const CharPose& pose) {
     A.legR = vec3(0.08f + std::sin(k) * 0.12f * hover + 0.6f * up, 0, 0.03f); A.legL = vec3(-0.04f - std::sin(k + 1.3f) * 0.12f * hover + 0.5f * up, 0, -0.03f);
     A.shinR = vec3(-0.25f * hover - 0.1f - 0.7f * up, 0, 0); A.shinL = vec3(-0.15f * hover - 0.05f - 0.7f * up, 0, 0);
     float ax = -0.25f * s + 0.15f * hover + 0.7f * down, az = 0.12f + 0.18f * hover + 0.25f * down;
-    if (!pose.held && !(pose.swing > 0)) { A.armR = vec3(ax, 0, az + std::sin(k) * 0.05f); A.foreR = vec3(0.15f, 0, 0); }
-    if (!pose.off) { A.armL = vec3(ax, 0, -az - std::sin(k) * 0.05f); A.foreL = vec3(0.15f, 0, 0); }
-    A.body = vec3(0, 0, std::sin(k * 0.7f) * 0.03f * hover + pose.turnLean * 1.5f);
-    A.head = vec3(pose.headPitch + pose.lean * 0.9f, pose.turned ? clampf(pose.headTurn, -1.25f, 1.25f) : 0, 0);
+    // the hover used to replace the chest and the arms after the swing was posed, so a cut while flying never showed
+    if (!upperBusy(pose)) {
+      if (!pose.held) { A.armR = vec3(ax, 0, az + std::sin(k) * 0.05f); A.foreR = vec3(0.15f, 0, 0); }
+      if (!pose.off) { A.armL = vec3(ax, 0, -az - std::sin(k) * 0.05f); A.foreL = vec3(0.15f, 0, 0); }
+      A.body = vec3(0, 0, std::sin(k * 0.7f) * 0.03f * hover + pose.turnLean * 1.5f);
+      A.head = vec3(pose.headPitch + pose.lean * 0.9f, pose.turned ? clampf(pose.headTurn, -1.25f, 1.25f) : 0, 0);
+    }
     A.lift = std::sin(k) * 0.04f * hover;
   }
-  // game/elytra.js: arms swept back along the sides, legs together
+  // game/elytra.js: arms swept back along the sides, legs together. A cut keeps the arms and the chest.
   if (pose.glide) {
-    A.armR = vec3(0.15f, 0, 0.32f); A.armL = vec3(0.15f, 0, -0.32f); A.foreR = A.foreL = vec3(0.05f, 0, 0);
-    A.legR = vec3(0, 0, 0.04f); A.legL = vec3(0, 0, -0.04f); A.shinR = A.shinL = vec3(0); A.body = vec3(0); A.lift = 0;
+    if (!upperBusy(pose)) {
+      A.armR = vec3(0.15f, 0, 0.32f); A.armL = vec3(0.15f, 0, -0.32f); A.foreR = A.foreL = vec3(0.05f, 0, 0);
+      A.body = vec3(0);
+    }
+    A.legR = vec3(0, 0, 0.04f); A.legL = vec3(0, 0, -0.04f); A.shinR = A.shinL = vec3(0); A.lift = 0;
   }
   // game/villagers.js avatarAnim: new moves for the shared body
   const vec3 bowR = A.armR, bowF = A.foreR;   // (the bow arm as it walks or stands, before the gestures)

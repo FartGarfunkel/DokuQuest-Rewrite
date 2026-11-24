@@ -177,6 +177,9 @@ void Registry::finalize() {
     std::string liq = b.str("liquid");
     tLiquid[i] = liq == "water" ? 1 : liq == "lava" ? 2 : liq == "acid" ? 3 : 0;   // 3: the Sulfur Pools' acid (swum like water, it burns)
     tPortal[i] = (u8)b.num("portal", 0);
+    // a sleeping bag and an oak coffin are one bed: foot here, head in front (meta bit 4). Their own mesh stays.
+    { const std::string sh = b.str("shape");
+      if (sh == "sleeping_bag" || sh == "oak_coffin" || b.key == "sleeping_bag" || b.key == "oak_coffin") b.shapeKind = ShapeKind::Bed; }
     tShape[i] = b.shapeKind; tWlog[i] = b.has("wlog") || b.has("isLeaves"); tSink[i] = b.has("sink"); tTrans[i] = b.has("translucent") || b.key == "ice";   // ice is see-through too (its tile carries the alpha); the JS data only flags the glass family
     tLMeta[i] = b.has("lightMeta"); tLeaves[i] = b.has("isLeaves");
     bool tick = b.has("tree") || b.has("crop") || b.has("fire") || b.has("oxidizes") || b.has("hive") || b.has("randomTick") || b.has("refill");

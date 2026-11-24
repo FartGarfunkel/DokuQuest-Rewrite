@@ -206,8 +206,13 @@ void placeBed(SP& P, int x, int y, int z, int facing, std::string_view key) {
 void placeCoffin(SP& P, int x, int y, int z, int facing, std::string_view key) {
   const int x2 = x + DIRX[facing & 3], z2 = z + DIRZ[facing & 3];
   if (!floorOk(P, x, y, z) || !floorOk(P, x2, y, z2)) return;
-  P.put(x, y, z, key, wetMeta(P, x, y, z, key, (u8)(facing & 3)));
+  const int foot = P.put(x, y, z, key, wetMeta(P, x, y, z, key, (u8)(facing & 3)));
   P.put(x2, y, z2, key, wetMeta(P, x2, y, z2, key, (u8)((facing & 3) | 4)));
+  if (foot >= 0) {   // one chest for the whole coffin; the head opens this half
+    json items = json::array();
+    for (int i = 0; i < 27; i++) items.push_back(nullptr);
+    P.setEntity(foot, json{{"type", "chest"}, {"items", items}, {"lk", "s:ruin"}});
+  }
 }
 
 const char* wallLightOf(const ProcRoom& r) {

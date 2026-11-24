@@ -12,6 +12,8 @@ namespace dq {
 
 // eroded badlands / sugi / stratified-desert stone hoodoos. Off: they always look broken.
 bool stoneHoodoosOn();
+// a cliff next to the sea steps down (2 up per 1 out). Inland peaks keep their height.
+int coastCliffCap(int inlandH, int distToOcean);
 
 struct OwColumn {
   int h = 0;            // the original's height (JS column().h with rivers and levelling), 128-world units

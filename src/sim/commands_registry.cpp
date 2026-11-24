@@ -1,6 +1,7 @@
 // sim/commands_registry.cpp — the chat command registry and where chat lines go (see sim/commands.h).
 #include "sim/commands.h"
 #include "sim/player.h"
+#include "sim/villagers.h"
 #include <mutex>
 #include <map>
 
@@ -88,6 +89,7 @@ void submitChat(Level& lv, Player* p, const std::string& text0) {
   }
   if (lv.events && !lv.events->emit("chat", json::array({who, text}))) return;   // a mod/plugin said no
   lv.fx->message(0, "<" + who + "> " + text, "chat");
+  if (p) npcHearChat(lv, *p, text);
 }
 
 } // namespace dq

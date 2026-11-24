@@ -13,6 +13,7 @@
 #include "sim/shield_shape.h"
 #include "core/tool_parts.h"
 #include "sim/balance.h"
+#include "sim/spell_items.h"
 #include <cmath>
 #include <cstdio>
 
@@ -215,9 +216,20 @@ int main() {
   CHECK(tkGrid && tkGrid.result().id == "mixed_throwing_knife" && movesetOf(tkGrid.result().def()) == Moveset::Throw
         && attackMoveFor(Moveset::Throw, 0, false, false) == MV_NONE && qualOk(tkGrid.result()),
         "an iron and a stick make a throwing knife");
-  CHECK(taGrid && taGrid.result().id == "mixed_throwing_axe" && movesetOf(taGrid.result().def()) == Moveset::Throw
+  CraftMatch chiselGrid = gridOf({{0, stick}, {3, ingot}});
+  CHECK(chiselGrid && chiselGrid.result().id.find("chisel") != std::string::npos && chiselGrid.result().id != "mixed_throwing_knife",
+        "a stick over an ingot is a chisel, not a throwing knife (%s)", chiselGrid ? chiselGrid.result().id.c_str() : "nothing");
+  CraftMatch copperChisel = gridOf({{0, stick}, {3, ItemStack("copper_ingot", 1)}});
+  CHECK(copperChisel && copperChisel.result().id == "mixed_chisel",
+        "any metal under a stick is a chisel (%s)", copperChisel ? copperChisel.result().id.c_str() : "nothing");
+  CraftMatch goldChisel = gridOf({{0, stick}, {3, ItemStack("gold_ingot", 1)}});
+  const bool goldMat = goldChisel && goldChisel.result().tag.is_object() && goldChisel.result().tag.contains("pt")
+                        && goldChisel.result().tag["pt"]["m"].is_array() && goldChisel.result().tag["pt"]["m"][0] == "gold";
+  CHECK(goldChisel && goldChisel.result().id == "mixed_chisel" && goldMat,
+        "a gold ingot under a stick is a gold chisel (%s)", goldChisel ? goldChisel.result().id.c_str() : "nothing");
+  CHECK(taGrid && taGrid.result().id == "mixed_throwing_axe" && taGrid.result().n == 4 && movesetOf(taGrid.result().def()) == Moveset::Throw
         && qualOk(taGrid.result()),
-        "two irons and a stick make a throwing axe");
+        "two irons and a stick make four throwing axes");
   {
     ItemStack ls, ba, wh, tk, ta;
     CHECK(makePartTool("longsword", {"iron", "iron", "iron", "iron"}, "stick", ls)
@@ -263,6 +275,9 @@ int main() {
   ItemStack dropA = mobGearRoll(found, 0.25, 0.4, 0.5), dropB = mobGearRoll(found, 0.25, 0.4, 0.5);
   CHECK(!dropA.empty() && qualOk(dropA) && dropA.tag.value("qual", "") == dropB.tag.value("qual", ""),
         "found gear rolls a quality from the loot rolls (%s)", dropA.tag.value("qual", "").c_str());
+  CHECK(dropA.tag.contains("roll") && dropA.tag["roll"].is_array() && dropA.tag["roll"].size() >= 2, "found gear carries a boon and a drawback");
+  const std::string rollLine = gearRollLine(dropA);
+  CHECK(!rollLine.empty() && rollLine.find('_') == std::string::npos, "the roll reads in words (%s)", rollLine.c_str());
   CHECK(comboLength(Moveset::Greatsword) == 2 && comboLength(Moveset::Spear) == 2 && comboLength(Moveset::Mace) == 2,
         "the new families chain two cuts");
   const AttackMove& g1 = attackMove(attackMoveFor(Moveset::Greatsword, 0, false, false));

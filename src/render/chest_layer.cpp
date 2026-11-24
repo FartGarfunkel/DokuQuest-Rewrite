@@ -205,6 +205,7 @@ public:
   int order() const override { return 130; }
   std::map<std::tuple<int, int, int>, Open> open;
   std::vector<ivec3> lidOpen; float lidScanT = 0;
+  std::vector<ivec3> coffins;   // open coffins: the mesher still draws them (lid hinged), this layer lays the things inside
   std::vector<DoorThing> doorThings;   // (lids left open about you)
 
   void update(GameSession& s, double dt) override {
@@ -245,6 +246,17 @@ public:
     }
     for (const ivec3& q : lidOpen) if (want.size() + 8 <= (size_t)CHEST_HIDE_MAX && chestLidOpen(w, q)) add(q);
     if (s.target.hit && chestLidOpen(w, s.target.block)) add(s.target.block);   // (the one you look at: open at once, not at the next look round)
+    coffins.clear();
+    auto noteCoffin = [&](ivec3 p) {
+      if (reg().block(w.getBlock(p.x, p.y, p.z)).key != "oak_coffin") return;
+      const ivec3 foot = coffinFoot(w, p);
+      if (!chestLidOpen(w, foot)) return;
+      for (const ivec3& c : coffins) if (c.x == foot.x && c.y == foot.y && c.z == foot.z) return;
+      coffins.push_back(foot);
+    };
+    for (const ivec3& q : lidOpen) noteCoffin(q);
+    for (auto& [k, c] : g_wanted) if (c > 0) noteCoffin(ivec3(std::get<0>(k), std::get<1>(k), std::get<2>(k)));
+    if (s.target.hit) noteCoffin(s.target.block);
     if (s.level) for (auto& e : s.level->entities()) {
       if (!e || e->removed || e.get() == s.player || !e->isPlayer() || e->realm != s.player->realm) continue;
       const Player* o = static_cast<const Player*>(e.get());
@@ -398,6 +410,15 @@ public:
       // what's inside, lying in its rows (seen once the lid is up)
       if (o.settling || o.t < 0.2f) continue;
       if (!(s.app.settings.handsStations && handsBarrel(w, pos))) drawInside(s, w, VR, o, pos, m, L, (float)f.time);   // (a barrel's tray: render/hands_chests.cpp)
+    }
+    for (const ivec3& pos : coffins) {   // the mesher draws the coffin, lid up; the things lie along it
+      const vec3 rel = f.cam.rel(glm::dvec3(pos));
+      if (!f.cam.frustum.sphere(rel + vec3(0.5f, 0.3f, 0.5f), 2.4f)) continue;
+      if (!begun) { VR.begin(f, f.cam.viewProj); begun = true; }
+      const u8 cl = aroundAirLight(w, pos.x, pos.y, pos.z);
+      const VoxelLight CL{(cl >> 4) / 15.f, (cl & 15) / 15.f};
+      Open co; co.facing = w.getMeta(pos.x, pos.y, pos.z) & 3; co.mine = true; co.t = 1;
+      drawInside(s, w, VR, co, pos, glm::translate(mat4(1), rel), CL, (float)f.time);
     }
     if (begun) VR.end();
     // a cupboard door's inside (the hands-on chest lid, on the door): our parchment with the name of what you look at, the sort button

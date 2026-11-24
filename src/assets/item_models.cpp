@@ -920,7 +920,27 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
     fr.origin.y = b.stand ? -0.5f + (fr.origin.y + 0.5f) * sz : fr.origin.y * sz;
   }
   out.kind = b.kind; out.stand = b.stand; out.depth = b.depth * sz;
-  finishGrid(out, P.g, fr, nullptr);
+  if (b.haft && !b.loose.empty()) {
+    // colour the whole flail once (the same pass the icon gets), then copy those colours onto the haft and each link
+    if (g_recolour) (*g_recolour)(P.g);
+    auto take = [&](VoxelGrid& dst) {
+      for (int z = 0; z < dst.size.z; z++) for (int y = 0; y < dst.size.y; y++) for (int x = 0; x < dst.size.x; x++)
+        if (dst.at(x, y, z)) dst.set(x, y, z, P.g.at(x, y, z));
+    };
+    take(*b.haft);
+    for (auto& bit : b.loose) take(bit.g);
+    buildVoxelMesh(*b.haft, out.haftData, nullptr);
+    out.haftFrame = fr;
+    out.loose.resize(b.loose.size());
+    for (size_t i = 0; i < b.loose.size(); i++) {
+      buildVoxelMesh(b.loose[i].g, out.loose[i].data, nullptr);
+      out.loose[i].a = b.loose[i].a * sz;
+      out.loose[i].b = b.loose[i].b * sz;
+    }
+    const auto* saved = g_recolour; g_recolour = nullptr;
+    finishGrid(out, P.g, fr, nullptr);
+    g_recolour = saved;
+  } else finishGrid(out, P.g, fr, nullptr);
   return true;
 }
 
@@ -954,6 +974,12 @@ void itemModelsUpdate() {
   for (auto& m : ready) {
     m->gl.upload(m->data);
     m->data.verts.clear(); m->data.verts.shrink_to_fit();
+    if (!m->haftData.verts.empty()) { m->haftGl.upload(m->haftData); m->haftData.verts.clear(); m->haftData.verts.shrink_to_fit(); }
+    for (auto& part : m->loose) {
+      part.gl = std::make_unique<VoxelMeshGL>();
+      part.gl->upload(part.data);
+      part.data.verts.clear(); part.data.verts.shrink_to_fit();
+    }
     std::string k = m->key;
     C.pending.erase(k);
     C.models[k] = std::move(m);

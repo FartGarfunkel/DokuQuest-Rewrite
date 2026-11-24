@@ -63,6 +63,9 @@ float combatHurt(Level& lv, Entity& t, float amount, const json& src0, Player* b
   if (by) amount = magicOutgoingDamage(lv, *by, amount, src);
   // creatures: their own hurt (death topple, drops, XP, sounds, severing), not a second copy here
   if (auto* c = dynamic_cast<Creature*>(&t)) {
+    const std::string school = src.value("element", std::string());
+    const bool boss = (c->T && c->T->boss) || c->data.value("boss", false);
+    if (boss && !school.empty() && c->data.value("weakSchool", std::string()) == school) amount *= 1.5f;
     DamageSrc s;
     s.type = src.value("type", std::string("magic")); s.element = src.value("element", std::string());
     s.knock = src.contains("knock") && src["knock"].is_number() ? src["knock"].get<float>() : -1.f;

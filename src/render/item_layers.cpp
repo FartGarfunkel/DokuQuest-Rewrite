@@ -226,7 +226,7 @@ void HeldItemLayer::update(GameSession& s, double dt) {
   float fdt = (float)std::min(dt, 0.1);
   bool menu = s.app.topScreen() != nullptr;
   // the step bob (player.js): its amount follows how fast you walk on the ground
-  float hs = std::hypot(p->vel.x, p->vel.z);
+  float hs = p->riding ? 0.f : std::hypot(p->vel.x, p->vel.z);   // the vehicle's speed is not a walk: the hands were thrashing in a moving boat
   bobAmt += ((p->onGround && !p->flying ? std::min(1.f, hs / 4.3f) : 0.f) - bobAmt) * std::min(1.f, fdt * 8);
   bob += hs * fdt * 1.6f;
   // what's in hand: a new thing comes up from below

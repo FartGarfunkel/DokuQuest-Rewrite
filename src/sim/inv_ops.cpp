@@ -267,15 +267,22 @@ Bags InvSession::bags() {
 void InvSession::loadNearStores() {
   nearStores.clear();
   if (!o.hasPos || !w) return;
+  auto already = [&](ivec3 at) { for (auto& [p, v] : nearStores) if (p.x == at.x && p.y == at.y && p.z == at.z) return true; return false; };
+  std::vector<ivec3> queue;
   static const ivec3 D[6] = {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
-  for (const ivec3& d : D) {
-    const ivec3 at = o.pos + d;
+  for (const ivec3& d : D) queue.push_back(o.pos + d);
+  for (size_t i = 0; i < queue.size(); i++) {
+    const ivec3 at = queue[i];
+    if (already(at)) continue;
     const BlockDef& b = reg().block(w->getBlock(at.x, at.y, at.z));
     if (!b.has("container") || b.has("enderChest")) continue;   // (an ender chest is yours alone, wherever it is)
     const json* e = w->blockEntity(at.x, at.y, at.z);
-    if (!e || !e->contains("items") || !(*e)["items"].is_array()) continue;
-    std::vector<ItemStack> v; for (auto& it : (*e)["items"]) v.push_back(ItemStack::fromJson(it));
-    nearStores.push_back({at, std::move(v)});
+    if (e && e->contains("items") && (*e)["items"].is_array()) {
+      std::vector<ItemStack> v; for (auto& it : (*e)["items"]) v.push_back(ItemStack::fromJson(it));
+      nearStores.push_back({at, std::move(v)});
+    }
+    ivec3 partner;
+    if (chestPartner(*w, at.x, at.y, at.z, partner)) queue.push_back(partner);   // the far half of a double chest
   }
 }
 void InvSession::storeNearStores() {

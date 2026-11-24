@@ -131,6 +131,8 @@ public:
   // animation (for renderers: view bob, arm swing, equip)
   float bob = 0, bobAmt = 0, swing = 0, equip = 1, stepAcc = 0, swimPh = 0, dustAcc = 0;
   bool swinging = false, wasWater = false;
+  // an overhand throw just begun (render/char_layer.cpp copies it onto that swing): 1 the main hand, 2 the off hand
+  u8 throwArm = 0; float throwArmFor = 0;
 
   ItemStack& held() { return inv[selected]; }
   bool creative() const { return mode == "creative"; }

@@ -239,6 +239,19 @@ int main(int argc, char** argv) {
       check(P->held().d == 1, "the rod wears a little");
     }
   }
+  // ------------------------------------------------------------ a sleeping bag and an oak coffin are beds (two cells, head bit 4)
+  {
+    check(reg().tShape[B("sleeping_bag")] == ShapeKind::Bed && reg().block(B("sleeping_bag")).shapeKind == ShapeKind::Bed
+          && reg().tShape[B("oak_coffin")] == ShapeKind::Bed && reg().block(B("oak_coffin")).shapeKind == ShapeKind::Bed,
+          "a sleeping bag and an oak coffin are beds (two cells, the head marked with bit 4)");
+    int bags = 0; bool bagOk = false;
+    for (const Recipe& r : reg().recipes) if (r.out == "sleeping_bag") {
+      bags++;
+      bagOk = r.n == 1 && r.shape.size() == 2 && r.shape[0] == "SSS" && r.shape[1] == "CCC"
+              && r.key.count('S') && r.key.at('S') == "straw" && r.key.count('C') && r.key.at('C') == "rotten_cloth";
+    }
+    check(bags == 1 && bagOk, "a sleeping bag is 3 straw over 3 rotten cloth");
+  }
   // ------------------------------------------------------------ campfires
   {
     BlockId cf = B("campfire");
@@ -918,6 +931,23 @@ int main(int argc, char** argv) {
     int left = 0; for (auto& it : (*wc.blockEntity(ch.x, ch.y, ch.z))["items"]) if (!it.is_null()) left += ItemStack::fromJson(it).n;
     check(onGrid == 4 && left == 6, "picking it lays 4 planks out of the chest on the grid (" + std::to_string(onGrid) + " laid, " + std::to_string(left) + " left)");
     for (auto& g : S.grid) g.clear();
+    // the far half of a double chest is not beside the table; the near half is empty
+    const ivec3 far = ch + ivec3(1, 0, 0);
+    json empty = json::array(); for (int i = 0; i < 27; i++) empty.push_back(nullptr);
+    json farItems = empty; farItems[2] = ItemStack("planks", 8).toJson();
+    wc.setBlock(ch.x, ch.y, ch.z, B("chest"), 0);
+    wc.setBlock(far.x, far.y, far.z, B("chest"), 0);
+    wc.setBlockEntity(ch.x, ch.y, ch.z, json{{"type", "chest"}, {"items", empty}});
+    wc.setBlockEntity(far.x, far.y, far.z, json{{"type", "chest"}, {"items", farItems}});
+    InvSession D(*P, &wc, o, false);
+    check(canCraft(D.bags(), reg().recipes[ri]), "the far half of a double chest counts too");
+    D.bookPick(ri, false, true);
+    int fromFar = 0; for (auto& g : D.grid) if (g.id == "planks") fromFar += g.n;
+    int farLeft = 0; for (auto& it : (*wc.blockEntity(far.x, far.y, far.z))["items"]) if (!it.is_null()) farLeft += ItemStack::fromJson(it).n;
+    int nearLeft = 0; for (auto& it : (*wc.blockEntity(ch.x, ch.y, ch.z))["items"]) if (!it.is_null()) nearLeft += ItemStack::fromJson(it).n;
+    check(fromFar == 4 && farLeft == 4 && nearLeft == 0, "picking it takes the planks from the far half (" + std::to_string(fromFar) + " laid, " + std::to_string(farLeft) + " left)");
+    for (auto& g : D.grid) g.clear();
+    wc.setBlock(far.x, far.y, far.z, AIR);
     wc.setBlock(ch.x, ch.y, ch.z, AIR); wc.setBlock(tb.x, tb.y, tb.z, AIR);
   }
 

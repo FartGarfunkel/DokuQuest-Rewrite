@@ -246,6 +246,11 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
         pr.light = "soul_torch"; pr.hangLight = "soul_lantern";
         furnishProcRoom(P, pr);
         P.put(cx, y, cz, "chiseled_nether_bricks");
+        for (int d = 0; d < 4; d++) if (n.links & (1 << d)) for (int a = -1; a <= 1; a++) {
+          const int x = cx + DIRX[d] * H + (-DIRZ[d]) * a, z = cz + DIRZ[d] * H + DIRX[d] * a;
+          if (!P.in(x, z)) continue;
+          for (int h = 1; h <= 4; h++) P.put(x, y + h, z, "air");
+        }
         break;
       }
       case F_END: {
@@ -260,6 +265,11 @@ void fortressBuildMC(ChunkWriter& w, const StructurePlan& S) {
           static const char* XK[] = {"hall", "gallery", "chapel", "armoury", "barracks", "dining", "shrine", "office"};
           const u32 xs = hash32(cx, y, cz, (i32)S.seed);
           furnishPlaced(P, cx, y + 1, cz, 3, 3, 5, XK[xs % 8], xs, (xs >> 4) & 1 ? PAL_BLACK : PAL_NETHER, (int)((xs >> 6) % 3));
+          for (int d = 0; d < 4; d++) if (n.links & (1 << d)) for (int a = -1; a <= 1; a++) {
+            const int x = cx + DIRX[d] * H + (-DIRZ[d]) * a, z = cz + DIRZ[d] * H + DIRX[d] * a;
+            if (!P.in(x, z)) continue;
+            for (int h = 1; h <= 4; h++) P.put(x, y + h, z, "air");
+          }
           // hang under the real roof (y+6), banners on closed walls
           for (int sx : {-1, 1}) for (int sz : {-1, 1}) {
             const int x = cx + sx * (H - 1), z = cz + sz * (H - 1);

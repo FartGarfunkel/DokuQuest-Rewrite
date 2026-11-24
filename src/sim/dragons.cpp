@@ -11,6 +11,35 @@
 namespace dq {
 using namespace es;
 
+namespace es {
+bool dragonSnap(Level& lv, Creature& m, Entity& who, float dt, float dmg, float knock) {
+  if (!m.data.is_object()) m.data = json::object();
+  if (!m.data.contains("biteT")) {
+    if (m.attackCd > 0) return false;
+    m.data["biteT"] = 0.62f;
+    m.data["biteHit"] = false;
+    m.swingT = 0.75f;
+    return false;
+  }
+  const float t = m.data.value("biteT", 0.f) - dt;
+  m.swingT = std::max(m.swingT, 0.4f);
+  if (t <= 0.18f && !m.data.value("biteHit", false)) {
+    m.data["biteHit"] = true;
+    const float d3 = glm::distance(who.pos + vec3(0, 1, 0), m.pos);
+    if (d3 < 3.6f + m.w) hurtPawn(lv, who, dmg, &m, "mob", knock);
+    lv.fx->sound("dragon_bite", m.pos + vec3(0, 1.2f, 0), 55);
+  }
+  if (t <= 0) {
+    m.data.erase("biteT");
+    m.data.erase("biteHit");
+    m.attackCd = 1.35f;
+    return true;
+  }
+  m.data["biteT"] = t;
+  return false;
+}
+}  // namespace es
+
 // ------------------------------------------------------------------ what each dragon breathes
 struct DragonKind { const char* key; const char* name; const char* breath; const char* fx; };
 static const DragonKind KINDS[] = {
@@ -166,11 +195,8 @@ static OptMove lairDragonAI(Level& lv, Creature& m, Entity* p, float dist, float
     m.noGravity = true; M.stT -= dt;
     float d3 = glm::distance(p->pos + vec3(0, 1, 0), m.pos);
     m.flyVy = clampf((p->pos.y + 0.6f - m.pos.y) * 2.5f, -11, 8);
-    if (d3 < 3 + m.w && m.attackCd <= 0) {
-      m.attackCd = 1.2f; m.swingT = 0.3f;
-      hurtPawn(lv, *p, T.damage, &m, "mob", 6);
-      lv.fx->sound("dragon_bite", m.pos + vec3(0, 1, 0));
-      m.state = "climb"; M.stT = 1.6f;
+    if (d3 < 3.4f + m.w || m.data.value("biteT", -1.f) >= 0) {
+      if (dragonSnap(lv, m, *p, dt, T.damage, 6)) { m.state = "climb"; M.stT = 1.6f; }
     }
     if (M.stT <= 0) { m.state = "climb"; M.stT = 1.4f; }
     return Move{T.speed * 3, toPlayer};
@@ -184,10 +210,8 @@ static OptMove lairDragonAI(Level& lv, Creature& m, Entity* p, float dist, float
     M.stT -= dt;
     if (!m.onGround) { m.noGravity = true; m.flyVy = -5; return Move{dist > 6 ? T.speed * 1.5f : 0, toPlayer}; }
     m.noGravity = false;
-    if (dist < 3.2f + m.w && std::fabs(dyp) < 3 && m.attackCd <= 0) {
-      m.attackCd = 1.4f; m.swingT = 0.3f;
-      hurtPawn(lv, *p, T.damage, &m, "mob", 5); lv.fx->sound("dragon_bite", m.pos + vec3(0, 1, 0));
-    }
+    if ((dist < 3.4f + m.w && std::fabs(dyp) < 3) || m.data.value("biteT", -1.f) >= 0)
+      dragonSnap(lv, m, *p, dt, T.damage, 5);
     if (M.stT <= 0) { m.state = "takeoff"; M.stT = 1.4f; m.noGravity = true; lv.fx->sound("dragon_roar", m.pos + vec3(0, 2, 0), 70); }
     std::optional<float> nd; if (dist > 4) nd = m.navDir(lv, p->pos, dt);
     return Move{dist < 3 ? 0 : T.speed, nd ? *nd : toPlayer};
@@ -510,8 +534,23 @@ static void animDragon(Creature& m, const RigModel& d, RigAnimOut& R) {
       R.lift = -9 * px + std::sin(t * 0.8f + seed) * 0.25f * px;
     }
   }
-  // the jaw: open wide to breathe or bite, a slow idle working otherwise
-  if (m.breathT > 0 || m.swingT > 0) { P.set("jaw", -0.6f, 0, 0); P.add("head", -0.15f, 0, 0); }
+  // a hurt wing stays folded. The other wing keeps the cycle above.
+  if (m.data.is_object()) {
+    const std::string hurt = m.data.value("wingHurt", std::string());
+    if ((hurt == "wingR" || hurt == "wingL") && m.age < m.data.value("wingHurtUntil", 0.0)) {
+      const int side = hurt == "wingL" ? 1 : 0;
+      const std::string S = side ? "L" : "R"; const float s = side ? -1.f : 1.f;
+      P.set("wing" + S, 0.95f, -s * 1.42f, s * 0.42f);
+      P.set("wing" + S + "2", 0, 0, s * 2.8f);
+      for (int k = 0; k < 3; k++) P.set("wing" + S + "f" + std::to_string(k), 0, -s * FINGER[k][0] * 0.85f, -s * 2.75f);
+    }
+  }
+  // the jaw hangs on the head. A bite brings the head down as the mouth opens; breath still gaps the jaw.
+  if (m.data.is_object() && m.data.contains("biteT")) {
+    const float u = 1.f - std::clamp(m.data.value("biteT", 0.f) / 0.62f, 0.f, 1.f);
+    P.set("jaw", -(0.2f + u * 0.85f), 0, 0);
+    P.add("head", -0.45f * u, 0, 0);
+  } else if (m.breathT > 0 || m.swingT > 0) { P.set("jaw", -0.6f, 0, 0); P.add("head", -0.15f, 0, 0); }
   else P.set("jaw", -0.04f - std::max(0.f, std::sin(t * 0.6f + seed)) * 0.06f, 0, 0);
 }
 static void animCrystal(Creature& m, const RigModel& d, RigAnimOut& R) {

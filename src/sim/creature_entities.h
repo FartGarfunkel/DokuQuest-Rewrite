@@ -2,7 +2,7 @@
 // projectiles (arrows, fireballs, llama spit, snowballs, hex flasks), felled trees and severed parts (gibs).
 // All are plain Entities with their state in `data` (so the network and saves see it):
 //   "item"          data.stack (ItemStack json), data.pickupDelay, data.floating
-//   "arrow"         data.owner, data.damage, data.pickup, data.stuck, data.burning
+//   "arrow"         data.owner, data.damage, data.pickup, data.item (picked up as this; "arrow" if absent), data.stuck, data.burning
 //   "projectile"    data.kind ("fireball" | "spit" | "snow"), data.owner
 //   "hex_flask"     data.kind ("poison" | "slow"), data.owner
 //   "falling_tree"  data.blocks [[x,y,z,blockKey]...] relative to pos (the stump), data.dirYaw, data.drops [stack...], data.t

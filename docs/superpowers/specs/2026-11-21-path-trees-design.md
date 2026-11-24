@@ -52,4 +52,4 @@ No 14 skill trees. No second class. No rewrite of path talents. No retune of bos
 
 ## Exact nodes
 
-`tools/local/write_path_trees.py` is the node list. Running it writes `data/skilltree.json`.
+`tools/write_path_trees.py` is the node list. Running it writes `data/skilltree.json`.

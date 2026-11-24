@@ -366,7 +366,8 @@ const std::vector<ToolPattern>& toolPatterns() {
     {"longsword", 3, 3, {{1, 0}, {1, 1}, {0, 2}, {2, 2}}, {{1, 2}}},                     // a long blade with a crossguard
     {"battleaxe", 3, 3, {{0, 0}, {2, 0}, {0, 1}, {1, 1}, {2, 1}}, {{1, 2}}},             // two bits and a broad head
     {"warhammer", 3, 3, {{0, 0}, {1, 0}, {2, 0}, {1, 1}}, {{1, 2}}},                     // a heavy head, then the collar
-    {"throwing_knife", 1, 2, {{0, 0}}, {{0, 1}}},                                       // a short blade on a grip
+    {"throwing_knife", 1, 2, {{0, 0}}, {{0, 1}}},                                       // a short blade on a grip (metal on top)
+    {"chisel", 1, 2, {{0, 1}}, {{0, 0}}},                                               // stick on top, any metal under it (not the knife)
     {"throwing_axe", 2, 2, {{0, 0}, {1, 0}}, {{1, 1}}},                                  // a small head, stick under one side
     {"spear", 2, 3, {{0, 0}, {1, 0}}, {{0, 1}, {0, 2}}},         // a broad point on a long shaft
     {"mace", 3, 2, {{0, 0}, {1, 0}, {2, 0}}, {{1, 1}}},          // a heavy head over a short haft

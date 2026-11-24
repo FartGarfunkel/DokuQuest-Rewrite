@@ -94,6 +94,12 @@ public:
   }
   bool onBack(App& a) override {
     if (t.mode == "shop") { if (GameSession* s = sess(a)) talkShopBack(*s->level, *s->player, t); sel = 0; return true; }
+    if (t.mode == "say") {
+      if (backConsumedByText()) return true;   // Esc leaves the text box first
+      if (GameSession* s = sess(a)) talkSayOwn(*s->level, *s->player, t, "");
+      said.clear();
+      return true;
+    }
     return false;
   }
   void update(App& a, double dt) override {
@@ -118,7 +124,7 @@ public:
       sel = padStep(a, sel, (int)L.size(), false);
       if (in.pressed(Act::MenuLeft) || in.pressed(Act::MenuRight) || in.pressed(Act::MenuTabLeft) || in.pressed(Act::MenuTabRight)) { t.tab = t.tab == "buy" ? "sell" : "buy"; sel = 0; }
       if (in.pressed(Act::MenuOk) && !L.empty()) talkShopTrade(lv, p, t, sel);
-    } else {
+    } else if (t.mode != "say") {
       sel = padStep(a, sel, (int)t.opts.size(), false);
       int pick = in.pressed(Act::MenuOk) ? sel : digitPressed();
       if (pick >= 0 && pick < (int)t.opts.size()) { choose(lv, p, pick); }
@@ -143,7 +149,9 @@ public:
     std::vector<float> oh;           // an option is a .btn: 44px at least, taller when its label wraps (padding 4 + border 2)
     std::vector<std::string> ics;
     float optsH = 0;
-    if (!shop) for (size_t i = 0; i < t.opts.size(); i++) {
+    const bool saying = t.mode == "say";
+    if (saying) optsH = 48 * z;
+    else if (!shop) for (size_t i = 0; i < t.opts.size(); i++) {
       ics.push_back(t.opts[i].icon.empty() ? std::to_string(i + 1) : t.opts[i].icon);
       float lw = mw - 20 * z - textSize(F_H3, ics[i].c_str(), 0, nsz).x - 8 * z;
       oh.push_back(std::max(44 * z, textLinesSize(F_MID, t.opts[i].label.c_str(), lw, olh, osz).y + 12 * z));
@@ -179,7 +187,16 @@ public:
     while (nshown > 0 && nshown < t.text.size() && ((u8)t.text[nshown] & 0xC0) == 0x80) nshown--;
     const float ty = fp.y + nameH + 6 * z;
     textLines(dl, F_BODY, ImVec2(mx, ty), col::text, t.text.substr(0, nshown).c_str(), mw, lh, tsz);
-    if (!shop) {
+    if (saying) {
+      if (!sayWas) { sayFocus = true; said.clear(); }
+      const float top = ty + textH + 8 * z;
+      ImGui::SetCursorScreenPos(ImVec2(mx, top));
+      if (sayFocus) { ImGui::SetKeyboardFocusHere(); ImGui::GetIO().InputQueueCharacters.resize(0); sayFocus = false; }
+      ImGui::PushFont(font(F_BODY));
+      bool enter = inputText("##say", &said, "Type what you want to say", 160, mw, ImGuiInputTextFlags_EnterReturnsTrue);
+      ImGui::PopFont();
+      if (enter) { std::string line = said; said.clear(); talkSayOwn(lv, p, t, line); }
+    } else if (!shop) {
       // .nt-opts: a column of .btn rows, 4px apart. They sit in their own scrolling list (mouse wheel, right stick,
       // d-pad), so a long list never runs off the card; the list is 4px / 3px wider so a selected row's outline isn't cut.
       const float top = ty + textH + 8 * z, availH = std::max(40 * z, c0.y + ch - bd - padY - top);
@@ -219,6 +236,7 @@ public:
       ImGui::PopStyleVar();
     }
     ImGui::End();
+    sayWas = t.mode == "say";
     if (shop) drawShop(a, lv, p, c0, cw); else shopR = ImVec4(0, 0, 0, 0);
     // a click on the dim backdrop (outside the card and the shop) closes it (NpcTalk: pointerdown on the overlay)
     if (age > 0.25f && (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1) || ImGui::IsMouseClicked(2))) {
@@ -231,6 +249,7 @@ public:
 private:
   u32 npc; bool confront; std::string victim; bool startShop;
   Talk t; bool failed = false, closeReq = false; int sel = 0, lines = -1, scrolledTo = -1, spokenSeen = 0, voiceH = 0; float shown = 0, age = 0; GLuint face = 0;
+  std::string said; bool sayFocus = false, sayWas = false;
   ImVec4 cardR{0, 0, 0, 0}, shopR{0, 0, 0, 0};   // the windows' rectangles (x0 y0 x1 y1), for the backdrop click
   void choose(Level& lv, Player& p, int i) { playClick(); talkChoose(lv, p, t, i); sel = 0; scrolledTo = -1; }   // b.onclick: sfx.play('click'), then the option
   // villagers.js babble(sfx, text, npcVoice(seed), { rate: 26 }): the line starts to babble as its words start to type out;

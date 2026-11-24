@@ -54,7 +54,7 @@ void SpellBolt::hit(Level& lv, Entity* e) {
   lv.fx->sound("spell_hit", pos, 28);
   if (!e && spell == "firebolt") igniteAt(lv, realm, pos, vel, by);   // a firebolt sets alight what it strikes
   if (!e) return;
-  if (spell == "missiles") { combatHurt(lv, *e, dmg, json{{"type", "magic"}, {"knock", 0.5}}, by); return; }
+  if (spell == "missiles") { combatHurt(lv, *e, dmg, json{{"type", "magic"}, {"element", "arcane"}, {"knock", 0.5}}, by); return; }
   combatHurt(lv, *e, dmg, json{{"type", "magic"}, {"element", spell == "firebolt" ? "fire" : "frost"}, {"knock", 1}}, by);
   if (spell == "firebolt" && !isFireImmune(*e)) setMobStatus(lv, *e, "burnT", 4, by);
   if (spell == "frost") setMobStatus(lv, *e, "slowT", 4, by);

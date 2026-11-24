@@ -45,6 +45,7 @@ void tooltipEffectLines(const ItemStack& s, std::vector<std::pair<std::string, u
 
 void tooltipGearLines(const ItemStack& s, std::vector<std::pair<std::string, u32>>& out) {
   if (const std::string g = gemSocketsLine(s); !g.empty()) out.push_back({g, 0x7fe0c8});   // (gem sockets: sim/spell_items.h)
+  if (const std::string r = gearRollLine(s); !r.empty()) out.push_back({r, 0xc9b6ff});   // a found piece's rolled boon and drawback
   if (isScroll(s)) { const int r = s.tag.value("rank", 1); out.push_back({std::string(spellRarityName(r)) + " scroll \xC2\xB7 one cast, no staff or mana", spellRarityColor(r)}); }
   if (bookSlots(s.id)) { for (auto& [k, r] : bookSpells(s)) out.push_back({spellLabel(k, r), spellRarityColor(r)}); out.push_back({std::to_string(bookSpells(s).size()) + " of " + std::to_string(bookSlots(s.id)) + " slots written", TD}); }
   const ItemDef* d = s.def();

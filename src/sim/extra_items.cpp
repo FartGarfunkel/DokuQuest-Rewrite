@@ -7,9 +7,11 @@
 #include "sim/gameplay.h"
 #include "sim/controller.h"
 #include "sim/creature.h"
+#include "sim/creature_entities.h"
 #include "sim/player.h"
 #include "sim/inventory.h"
 #include "core/registry.h"
+#include "core/tool_parts.h"
 #include "world/world.h"
 #include "sim/physics.h"
 #include "common/noise.h"
@@ -171,9 +173,16 @@ void registerExtraItems() {
       const bool throwKnife = mix == "throwing_knife" || pt == "throwing_knife" || def.key.find("throwing_knife") != std::string::npos;
       if (def.str("moveset") == "throw" || throwAxe || throwKnife) {
         Player& p = pc.p; const vec3 L = lookVector(p.yaw, p.pitch);
-        spawnProjectile(pc.lv, p.realm, p.pos + vec3(0, p.eye - 0.1f, 0) + L * 0.5f, L * (throwAxe ? 18.f : 24.f) + vec3(0, 1.5f, 0), "snow", &p);
-        if (!p.creative() && --held.n <= 0) held.clear();
-        sfxUi(pc.lv, p, "throw"); pc.swingArm();
+        float dmg = 0.f;
+        if (const ItemDef* td = held.def(); td && td->hasTool) dmg = toolOf(held).damage;
+        if (!(dmg > 0.f)) dmg = throwAxe && !throwKnife ? 8.f : 6.f;
+        const float sp = throwAxe && !throwKnife ? 18.f : 24.f;
+        const bool keep = p.creative();
+        const vec3 pos = p.pos + vec3(L.x * 0.4f, p.eye - 0.1f + L.y * 0.4f, L.z * 0.4f);
+        Entity* a = spawnArrow(pc.lv, p.realm, pos, L * sp + vec3(0, 1.2f, 0), &p, dmg, !keep);
+        if (a) a->data["item"] = held.id;   // sticks like an arrow and comes back as this stack's id
+        if (!keep && --held.n <= 0) held.clear();
+        sfxUi(pc.lv, p, "throw"); pc.swingThrow(pc.useFromOff);
         return true;
       }
     }

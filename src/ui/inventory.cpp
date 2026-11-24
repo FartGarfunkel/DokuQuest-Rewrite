@@ -12,6 +12,7 @@
 #include "client/session.h"
 #include "audio/audio.h"
 #include "render/chest_layer.h"
+#include "sim/chest_work.h"
 #include "sim/machines.h"
 #include "sim/trommel.h"
 #include "ui/creative_catalogue.h"
@@ -70,6 +71,8 @@ public:
 
   void onOpen(App& a) override {
     if (o.mode == "container" && o.hasPos) chestScreenOpened(o.pos, true);   // the chest's lid lifts (render/chest_layer.cpp)
+    if (o.mode == "container" && o.hasPos && a.session && reg().block(a.session->world().getBlock(o.pos.x, o.pos.y, o.pos.z)).key == "oak_coffin")
+      setChestLidOpen(a.session->world(), o.pos, true);   // a coffin lifts its own lid with the screen (fallen remains stay a screen)
     Player* p = player(a);
     if (!p) { uiDefer([](App& app) { app.popScreen(); }); return; }
     creative = p->creative() && o.mode == "inventory";
@@ -95,6 +98,8 @@ public:
   void pickRecipe(int idx) { if (sess) sess->bookPick(idx, false, true); }
   void onClose(App& a) override {
     if (o.mode == "container" && o.hasPos) chestScreenOpened(o.pos, false);
+    if (o.mode == "container" && o.hasPos && a.session && reg().block(a.session->world().getBlock(o.pos.x, o.pos.y, o.pos.z)).key == "oak_coffin")
+      setChestLidOpen(a.session->world(), o.pos, false);
     if (!sess) return;
     sess->close();
     if (o.mode == "container" && o.hasPos && a.audio) {

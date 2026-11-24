@@ -535,6 +535,8 @@ void CharacterLayer::update(GameSession& s, double dt) {
       v = vec3(v.x * c + v.z * sn, v.y, -v.x * sn + v.z * c);
       st.vel = v;
     }
+    // sitting a boat, a cart, or a mount: that speed is the vehicle's, not a stride
+    if (p->riding && (devPose.empty() || p != s.player)) { v.x = v.z = 0; st.vel.x = st.vel.z = 0; }
     float hs = std::hypot(v.x, v.z);
     bool ground = e->onGround || (!devPose.empty() && p == s.player && devPose != "fly");
     st.bobAmt += ((ground ? std::min(1.f, hs / 4.3f) : 0.f) - st.bobAmt) * std::min(1.f, fdt * 8);
@@ -591,6 +593,7 @@ void CharacterLayer::update(GameSession& s, double dt) {
     // weapon combos: a swing begun within 0.8 s of the last is the next of the chain (the combo window)
     if (p->swingT > 0 && (st.lastSwing <= 0 || p->swingT < st.lastSwing - 0.05f)) {
       st.swingN = time - st.swingAt < 0.8 ? (u8)((st.swingN + 1) % 3) : 0; st.swingAt = time; st.swingU = 0.0001f;
+      st.throwArm = p->throwArm; if (p->throwArm) p->throwArm = 0;   // the throw that started this swing (the arm that let it go)
     }
     st.lastSwing = p->swingT;
     {   // getting into bed and out again (bedFrame above): the bed found under them when they lie down
@@ -637,7 +640,7 @@ void CharacterLayer::update(GameSession& s, double dt) {
     }
     // a cut runs on its own clock (WEAPON_SWING_T): the blow lands as fast as the arm's swing, the follow-through is held
     // a moment and the pose given back after (the game's swing timer is shorter)
-    if (st.swingU > 0 && (st.swingU += fdt / 0.5f) >= 1) st.swingU = 0;
+    if (st.swingU > 0 && (st.swingU += fdt / (st.throwArm ? 0.40f : 0.50f)) >= 1) { st.swingU = 0; st.throwArm = 0; }   // a throw is a short overhand (~0.4 s)
     if (st.hurtT > 1) st.hurtT = 0;
     st.lastHurt = p->hurtTime;
     const bool inAir = !e->onGround && !e->inWater && !p->flying;
@@ -656,7 +659,11 @@ void CharacterLayer::update(GameSession& s, double dt) {
         { const float rate = 0.9f + 1.1f * hs, d = rate * fdt; st.climbY = st.climbY > 0 ? std::max(0.f, st.climbY - d) : std::min(0.f, st.climbY + d); }   // (a steady rise, as the view's)
         st.lastY = e->pos.y; st.haveY = true;
       }
-      if (e->onGround && hs < 6.f && !p->swimming && !p->riding && !p->sleeping && !p->dead) {
+      // on a deck the world under the feet is water, so the planter was dropping the legs through the hold
+      bool onDeck = false;
+      if (VehicleSystem* vs = vehicleSystem(*s.level)) onDeck = vs->ps(p->id).aboard != 0;
+      if (onDeck) wl = wr = 0;
+      else if (e->onGround && hs < 6.f && !p->swimming && !p->riding && !p->sleeping && !p->dead) {
         if ((st.footT -= fdt) <= 0) {
           st.footT = hs > 0.5f ? 0.04f : 0.12f;
           const float c = std::cos(st.bodyYaw), sn = std::sin(st.bodyYaw);
@@ -1091,7 +1098,8 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
     ps.atkMove = p.atkMove; ps.atkT = p.atkT; ps.atkOff = p.atkOff; ps.swing = 0; ps.swingKind = 0;
     ps.headPitch = p.atkPitch;   // the drawn cut uses the frozen look, same as the blade's hit (sim/combat.cpp)
     if (!fp) { ps.bodyYaw = p.atkYaw; ps.hasBodyYaw = true; }
-  } else if (st.swingU > 0 && ps.armed && !isShieldItem(wear.held) && !p.swinging) { ps.swingKind = (u8)(1 + st.swingN); ps.swing = st.swingU; }
+  } else if (st.swingU > 0 && st.throwArm && !p.swinging) { ps.swingKind = st.throwArm == 2 ? (u8)5 : (u8)4; ps.swing = st.swingU; }
+  else if (st.swingU > 0 && ps.armed && !isShieldItem(wear.held) && !p.swinging) { ps.swingKind = (u8)(1 + st.swingN); ps.swing = st.swingU; }
   {   // a spell held up in a free hand after a cast (render/spell_hands.h)
     float rdy[2], thr[2]; spellHandPose(p.id, rdy, thr);
     auto freeHand = [&](const std::string& it) { const ItemDef* d = it.empty() ? nullptr : reg().item(it); return it.empty() || (d && d->props.contains("staff")); };

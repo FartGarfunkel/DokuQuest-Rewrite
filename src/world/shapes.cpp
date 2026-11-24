@@ -296,6 +296,49 @@ void rotBox(ShapeBox& b, int f) {
   else { ax = z0; az = 16 - x0; bx = z1; bz = 16 - x1; }
   b.b[0] = std::min(ax, bx); b.b[2] = std::min(az, bz); b.b[3] = std::max(ax, bx); b.b[5] = std::max(az, bz);
 }
+u8 rotOnly(u8 only, int f) {
+  if (!f || only == 63) return only;
+  const int px = (only >> 0) & 1, nx = (only >> 1) & 1, pz = (only >> 4) & 1, nz = (only >> 5) & 1;
+  int npx, nnx, npz, nnz;
+  if (f == 1) { npx = nz; nnx = pz; npz = px; nnz = nx; }          // +X comes from -Z
+  else if (f == 2) { npx = nx; nnx = px; npz = nz; nnz = pz; }
+  else { npx = pz; nnx = nz; npz = nx; nnz = px; }
+  u8 o = (u8)(only & ((1 << 2) | (1 << 3)));
+  if (npx) o |= 1 << 0; if (nnx) o |= 1 << 1; if (npz) o |= 1 << 4; if (nnz) o |= 1 << 5;
+  return o;
+}
+void bedHalfBoxes(const std::vector<ShapeBox>& model, bool head, bool flipZ, std::vector<ShapeBox>& out) {
+  out.clear();
+  for (ShapeBox b : model) {
+    float z0 = b.b[2], z1 = b.b[5];
+    if (flipZ) { z0 = 16.f - b.b[5]; z1 = 16.f - b.b[2]; }
+    const float a0 = head ? z0 * 2.f : z0 * 2.f - 16.f;
+    const float a1 = head ? z1 * 2.f : z1 * 2.f - 16.f;
+    float lo = std::min(a0, a1), hi = std::max(a0, a1);
+    const bool cutLo = lo < -0.01f, cutHi = hi > 16.01f;
+    lo = std::max(0.f, lo); hi = std::min(16.f, hi);
+    if (hi - lo < 0.05f) continue;
+    b.b[2] = lo; b.b[5] = hi;
+    u8 hide = 0;
+    if (cutHi) hide |= 1 << 4;
+    if (cutLo) hide |= 1 << 5;
+    b.only = (u8)(b.only & ~hide);
+    out.push_back(b);
+  }
+}
+void hingeCoffinLid(std::vector<ShapeBox>& boxes) {
+  const float hx = 1.5f, hy = 7.5f;   // the left rim, where the lid meets the box
+  for (ShapeBox& b : boxes) {
+    if (b.b[1] < 7.f) continue;   // the coffin itself stays; the lid and its trim swing up
+    float nx0 = 1e9f, ny0 = 1e9f, nx1 = -1e9f, ny1 = -1e9f;
+    for (float x : {b.b[0], b.b[3]}) for (float y : {b.b[1], b.b[4]}) {
+      const float rx = x - hx, ry = y - hy;
+      const float ox = hx - ry, oy = hy + rx;   // a quarter turn up, off the left side
+      nx0 = std::min(nx0, ox); nx1 = std::max(nx1, ox); ny0 = std::min(ny0, oy); ny1 = std::max(ny1, oy);
+    }
+    b.b[0] = nx0; b.b[3] = nx1; b.b[1] = ny0; b.b[4] = ny1;
+  }
+}
 void flipBox(ShapeBox& b) { float y0 = b.b[1], y1 = b.b[4]; b.b[1] = 16 - y1; b.b[4] = 16 - y0; }
 
 ShapeBox attachBox(const ShapeBox& b, u8 m) {
@@ -840,6 +883,16 @@ bool shapeBoxes(BlockId id, u8 meta, const ShapeNb& nb, int purpose, std::vector
       return true;
     }
     case ShapeKind::Bed: {
+      if (T.model >= 0) {   // sleeping bag, oak coffin: one model stretched over the two cells, head at low Z
+        const std::vector<ShapeBox>* boxes = modelShape(T.model);
+        if (!boxes) return false;
+        const int f = m & 3;
+        thread_local std::vector<ShapeBox> half;
+        bedHalfBoxes(*boxes, m & 4, def.key == "sleeping_bag", half);
+        if (def.key == "oak_coffin" && (m & 0x20)) hingeCoffinLid(half);   // the lid is up (sim/chest_work.h LID_OPEN)
+        for (ShapeBox b : half) { b.only = rotOnly(b.only, f); pushRot(b, f); }
+        return true;
+      }
       int f = m & 3, head = m & 4;
       if (purpose != ShapePurpose::Draw) {   // the mattress on its feet, down to the floor (nothing rolls under it); the pillow picked too
         push(ShapeBox(0, 0, 0, 16, 9, 16));

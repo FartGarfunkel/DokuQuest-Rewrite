@@ -1004,12 +1004,23 @@ void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
       townBuildingBuild(P, v, b);
       continue;
     }
-    if (!p.terrain) {   // a rigid piece: the plants and snow and any tree out of its box first, and no lake or river in it:
-      // its ground made good under it (its own water, the farms' channels, goes in after with its blocks)
+    const bool follow = pieceFollowsLand(p);
+    // a lamp, a well, a fountain: one floor (the high ground under it). Each column of the
+    // slope used to carry its own height, and the beam left the post.
+    int rigidY = 0;
+    if (p.terrain && !follow)
+      rigidY = rigidFloorY(q.x0, q.z0, q.x1(), q.z1(), [&](int x, int z) { return P.ground(x, z); });
+    if (!follow) {   // a rigid piece: the plants and snow and any tree out of its box first, and no lake or river in it
+      const int y0 = p.terrain ? rigidY : q.y0;
       const BlockId TOPG = bid(vbase(v.style) == VS_DESERT ? "sand" : "grass");
       for (int z = az; z <= ez; z++) for (int x = ax; x <= ex; x++) {
-        for (int y = std::max(1, q.y0 - 6); y <= q.y0; y++) if (tLiquid(P.get(x, y, z))) P.putId(x, y, z, y == q.y0 ? TOPG : DIRT);
-        for (int y = q.y0 + 1; y <= std::min(DIM_H - 1, q.y0 + p.top + 2); y++) { const BlockId g = P.get(x, y, z); if (g != AIR && g != NOBLOCK && softBlock(g)) P.put(x, y, z, "air"); }
+        if (p.terrain) {
+          const int g = P.ground(x, z);
+          for (int y = std::max(1, g); y < y0; y++) P.putId(x, y, z, DIRT);   // the low side, filled up to the floor
+        } else {
+          for (int y = std::max(1, y0 - 6); y <= y0; y++) if (tLiquid(P.get(x, y, z))) P.putId(x, y, z, y == y0 ? TOPG : DIRT);
+        }
+        for (int y = y0 + 1; y <= std::min(DIM_H - 1, y0 + p.top + 2); y++) { const BlockId g = P.get(x, y, z); if (g != AIR && g != NOBLOCK && softBlock(g)) P.put(x, y, z, "air"); }
       }
     }
     const MillFix mf = J.millOut && !p.terrain ? millFix(p, WINDMILL, AXLE) : MillFix{};
@@ -1034,7 +1045,7 @@ void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
       if (!P.in(x, z)) continue;
       const VPState& s = p.states[k.s];
       BlockId id = s.id; int y; int stairMeta = -1;
-      if (p.terrain) {
+      if (follow) {
         int g = P.ground(x, z);
         if (g < SEA_LEVEL && tLiquid(P.get(x, g + 1, z))) { g = SEA_LEVEL; if (k.y == 0 && !reg().tLiquid[id]) id = PLANKS; }   // bridged over water
         y = g + k.y;
@@ -1048,8 +1059,8 @@ void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
           if (f >= 0) { const BlockId sb = stairOf(id); if (sb != NOBLOCK && sb != AIR) { id = sb; stairMeta = f; } }
         }
       } else {
-        y = q.y0 + k.y;
-        if (k.y == 0) for (int yy = y - 1; yy > y - 8 && yy > 1 && softBlock(P.get(x, yy, z)) && P.get(x, yy, z) != NOBLOCK; yy--) P.putId(x, yy, z, DIRT);
+        y = (p.terrain ? rigidY : q.y0) + k.y;
+        if (!p.terrain && k.y == 0) for (int yy = y - 1; yy > y - 8 && yy > 1 && softBlock(P.get(x, yy, z)) && P.get(x, yy, z) != NOBLOCK; yy--) P.putId(x, yy, z, DIRT);
       }
       if (y < 1 || y >= DIM_H) continue;
       const int idx = P.putId(x, y, z, id, stairMeta >= 0 ? (u8)stairMeta : s.meta[q.r]);
@@ -1097,11 +1108,11 @@ void jigsawTownBuild(SP& P, const Town& v, const JigsawTown& J) {
         const int x = q.x0 + tx, z = q.z0 + tz;
         if (!P.in(x, z)) continue;
         int y;
-        if (p.terrain) {
+        if (follow) {
           int g = P.ground(x, z);
           if (g < SEA_LEVEL && tLiquid(P.get(x, g + 1, z))) g = SEA_LEVEL;
           y = g + k.y;
-        } else y = q.y0 + k.y;
+        } else y = (p.terrain ? rigidY : q.y0) + k.y;
         if (y < 1 || y >= DIM_H - 1 || P.get(x, y, z) != STAND) continue;
         fixGeneratedStand(P, x, y, z);
       }

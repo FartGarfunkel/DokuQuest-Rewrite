@@ -259,30 +259,36 @@ int main(int argc, char** argv) {
       for (int y = Y - 4; y < Y; y++) w.setBlock(x, y, z, B("water"), 0, SetFlags::NoNotify);
       w.setBlock(x, Y - 5, z, B("sand"), 0, SetFlags::NoNotify);
     }
-    Boat* ship = static_cast<Boat*>(spawnBoat(*lv, 0, "ship", vec3(SX + 0.5f, Y - 0.4f, SZ - 8), 0));
+    Boat* ship = static_cast<Boat*>(spawnBoat(*lv, 0, "sailboat", vec3(SX + 0.5f, Y - 0.4f, SZ - 8), 0));
     Boat* boat = static_cast<Boat*>(spawnBoat(*lv, 0, "rowboat", vec3(SX + 6.5f, Y - 0.4f, SZ - 2), 0.5f));
     json chest{{"kind", "block"}, {"key", "chest"}, {"meta", 0}, {"ent", {{"type", "chest"}, {"items", json::array({ItemStack("gold_ingot", 7).toJson()})}}}};
     check(loadVehicle(*lv, *boat, chest) && boat->items.is_array() && ItemStack::fromJson(boat->items[0]).n == 7, "a chest (with its gold) goes in the rowboat");
     run(20);
-    check(std::fabs(ship->pos.y - (Y - 0.12f - 0.32f)) < 0.2f, "the ship floats (" + std::to_string(ship->pos.y - Y) + ")");
+    check(std::fabs(ship->pos.y - (Y - 0.12f - (-0.05f))) < 0.2f, "the ship floats (" + std::to_string(ship->pos.y - Y) + ")");
     p.pos = vec3(SX + 0.5f, Y, SZ + 6.5f); p.yaw = 0; p.pitch = -0.1f;
     ship->mount(*lv, p);
     auto& st = vehicleSystem(*lv)->ps(p.id);
-    check(st.aboard == ship->id && std::fabs(p.pos.y - ship->pos.y - 1.3f) < 0.01f, "climb aboard onto the deck");
+    const float deck = ship->dims().deck;
+    check(st.aboard == ship->id && std::fabs(p.pos.y - ship->pos.y - deck) < 0.01f, "climb aboard onto the deck");
     for (int i = 0; i < 10; i++) { run(1); vehiclesAfterPlayerMove(*lv, p, 0.05); }
-    check(st.aboard == ship->id && std::fabs(p.pos.y - (ship->pos.y + 1.3f)) < 0.05f, "standing on deck");
-    vec2 h = ship->toWorld(0, 3.6f); p.pos = vec3(h.x, ship->pos.y + 1.3f, h.y);
+    check(st.aboard == ship->id && std::fabs(p.pos.y - (ship->pos.y + deck)) < 0.05f, "standing on deck");
+    vec2 h = ship->toWorld(ship->dims().helm.x, ship->dims().helm.y); p.pos = vec3(h.x, ship->pos.y + deck, h.y);
     use("", 0, 0, 0, -1);
-    check(p.riding == ship->id, "use beside the wheel takes it");
+    check(p.riding == ship->id, "use beside the tiller takes it");
     ship->sail = 1; windOf(*lv).dir = ship->yaw + PI / 2; windOf(*lv).strength = 0.9f;
     vec3 s0 = ship->pos;
     for (int i = 0; i < 50; i++) { vehicleInput(*lv, p, vec2(0), false, false); run(1); vehiclesAfterPlayerMove(*lv, p, 0.05); windOf(*lv).dir = ship->yaw + PI / 2; windOf(*lv).strength = 0.9f; }
     float moved = std::hypot(ship->pos.x - s0.x, ship->pos.z - s0.z);
     check(moved > 2, "the wind on the beam sails the ship (" + std::to_string(moved) + ")");
+    check(std::hypot(p.vel.x, p.vel.z) < 0.05f, "sitting the tiller does not take the boat's speed (" + std::to_string(std::hypot(p.vel.x, p.vel.z)) + ")");
     vehicleInput(*lv, p, vec2(0), false, true); vehicleInput(*lv, p, vec2(0), false, false);
     check(p.riding == 0 && st.aboard == ship->id, "letting go of the wheel leaves you on deck");
     for (int i = 0; i < 20; i++) { run(1); vehiclesAfterPlayerMove(*lv, p, 0.05); }
-    check(st.aboard == ship->id && std::fabs(p.pos.y - (ship->pos.y + 1.3f)) < 0.1f && ship->speed > 0.5f, "the moving ship carries you (aboard " + std::to_string(st.aboard == ship->id) + " dy " + std::to_string(p.pos.y - ship->pos.y) + " speed " + std::to_string(ship->speed) + ")");
+    check(st.aboard == ship->id && std::fabs(p.pos.y - (ship->pos.y + ship->dims().deck)) < 0.1f && ship->speed > 0.5f, "the moving boat carries you (aboard " + std::to_string(st.aboard == ship->id) + " dy " + std::to_string(p.pos.y - ship->pos.y) + " speed " + std::to_string(ship->speed) + ")");
+    vec2 loc0 = ship->toLocal(p.pos.x, p.pos.z); float relY = p.pos.y - ship->pos.y;
+    ship->tick(*lv, 0.05);
+    vec2 loc1 = ship->toLocal(p.pos.x, p.pos.z);
+    check(std::hypot(loc1.x - loc0.x, loc1.y - loc0.y) < 0.02f && std::fabs((p.pos.y - ship->pos.y) - relY) < 0.02f, "the moving hull keeps you on the same plank");
     // a rowboat: row it
     p.pos = boat->pos + vec3(1.5f, 0.5f, 0); st.aboard = 0;
     Boat* row = static_cast<Boat*>(spawnBoat(*lv, 0, "rowboat", vec3(SX - 8.5f, Y - 0.4f, SZ), 0));

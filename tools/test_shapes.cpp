@@ -12,8 +12,11 @@
 #include "world/carve_faces.h"
 #include "sim/fallen.h"
 #include "sim/blockinfo.h"
+#include "sim/controller.h"
 #include "common/fs.h"
+#include "common/threadpool.h"
 #include <map>
+#include <thread>
 #include <set>
 #include <cstdio>
 #include <cmath>
@@ -199,6 +202,72 @@ int main(int argc, char** argv) {
   loadStations();
   const Registry& R = reg();
   int restFails = 0;
+  {
+    const BlockId bag = R.blockId("sleeping_bag"), coffin = R.blockId("oak_coffin");
+    if (R.tShape[bag] != ShapeKind::Bed || R.block(bag).shapeKind != ShapeKind::Bed
+        || R.tShape[coffin] != ShapeKind::Bed || R.block(coffin).shapeKind != ShapeKind::Bed) {
+      printf("FAIL sleeping bag and oak coffin should be beds (shape %d / %d)\n", R.tShape[bag], R.tShape[coffin]);
+      restFails++;
+    } else printf("ok   a sleeping bag and an oak coffin are beds\n");
+    int bags = 0; bool bagOk = false;
+    for (const Recipe& r : R.recipes) if (r.out == "sleeping_bag") {
+      bags++;
+      bagOk = r.n == 1 && r.shape.size() == 2 && r.shape[0] == "SSS" && r.shape[1] == "CCC"
+              && r.key.count('S') && r.key.at('S') == "straw" && r.key.count('C') && r.key.at('C') == "rotten_cloth";
+    }
+    if (bags != 1 || !bagOk) { printf("FAIL sleeping bag recipe should be 3 straw over 3 rotten cloth (%d recipes)\n", bags); restFails++; }
+    else printf("ok   a sleeping bag is 3 straw over 3 rotten cloth\n");
+    ThreadPool pool(2); EventBus bus;
+    LevelInfo li; li.name = "BedFoot"; li.seedText = "beds"; li.worldType = "debug";
+    auto lvp = Level::create(userSub("saves"), li, &pool, &bus);
+    Level& lv = *lvp; World& w = lv.world();
+    const int Y = dimBase(DIM_OVERWORLD) + 40;
+    Player* P; { auto p = std::make_unique<Player>(); p->name = "Tester"; p->pos = vec3(4.5f, Y + 1, 4.5f); P = static_cast<Player*>(lv.spawn(std::move(p))); }
+    double t0 = nowSeconds();
+    while (nowSeconds() - t0 < 30) {
+      w.stream({{P->pos, 2, false}}, 20);
+      if (w.chunk(DIM_OVERWORLD, 0, 0)) break;
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    const BlockId stone = R.blockId("stone");
+    for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++) w.setBlock(x, Y, z, stone);
+    PlayerController pc(lv, *P);
+    P->yaw = 0; P->pitch = 0;
+    const int f = lookDir(*P);
+    auto lay = [&](BlockId id, int x, int z) {
+      for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) if (w.getBlock(x + dx, Y + 1, z + dz)) w.setBlock(x + dx, Y + 1, z + dz, AIR);
+      RayHit hit; hit.hit = true; hit.block = ivec3(x, Y, z); hit.normal = ivec3(0, 1, 0); hit.id = stone; hit.dist = 2;
+      Placement pl;
+      if (!pc.placement(hit, id, pl)) return false;
+      if (pl.x != x || pl.y != Y + 1 || pl.z != z || pl.meta != (u8)f || pl.also.size() != 1) return false;
+      const auto& a = pl.also[0];
+      if (a[0] != x + DIRX[f] || a[1] != Y + 1 || a[2] != z + DIRZ[f] || a[3] != (int)id || a[4] != (f | 4)) return false;
+      w.setBlock(pl.x, pl.y, pl.z, id, pl.meta);
+      w.setBlock(a[0], a[1], a[2], (BlockId)a[3], (u8)a[4]);
+      pc.breakBlock(a[0], a[1], a[2]);
+      return w.getBlock(pl.x, pl.y, pl.z) == AIR && w.getBlock(a[0], a[1], a[2]) == AIR;
+    };
+    if (!lay(bag, 4, 8) || !lay(coffin, 10, 8)) {
+      printf("FAIL placing a sleeping bag or oak coffin should take two cells (head bit 4) and breaking one half should clear the other (facing %d)\n", f);
+      restFails++;
+    } else printf("ok   placing either takes two cells; breaking one half removes the other\n");
+    struct Flat : ShapeNb {
+      BlockId id(int, int, int) const override { return 0; }
+      u8 meta(int, int, int) const override { return 0; }
+      u8 carve(int, int, int) const override { return 0; }
+    } flat;
+    auto top = [&](BlockId id, u8 meta) {
+      std::vector<ShapeBox> bx; shapeBoxes(id, meta, flat, ShapePurpose::Draw, bx);
+      float y = -1.f; for (auto& b : bx) y = std::max(y, b.b[4]); return y;
+    };
+    const bool oneCoffin = top(coffin, 4) > 10.5f && top(coffin, 0) <= 10.1f;
+    const bool oneBag = top(bag, 4) > top(bag, 0) + 0.5f;
+    if (!oneCoffin || !oneBag) {
+      printf("FAIL a coffin and a sleeping bag should be one long shape (head %.2f/%.2f, foot %.2f/%.2f)\n",
+             top(coffin, 4), top(bag, 4), top(coffin, 0), top(bag, 0));
+      restFails++;
+    } else printf("ok   each is one shape stretched over the two cells, the head end on the head\n");
+  }
   {
     const BlockId stone = R.blockId("stone"), chest = R.blockId("chest");
     Nb nb{};
