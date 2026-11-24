@@ -16,6 +16,9 @@ for f in glob.glob('src/**/*.cpp', recursive=True):
 sfx = json.load(open('data/sfx.json'))
 table, rec = sfx.get('names', {}), sfx.get('recipes', {})
 ev = json.load(open('data/sounds.json')).get('events', {})
+# Creature and swing packs live beside the main sound table (audio/sfxlib.cpp loads *_sounds.json).
+for f in glob.glob('data/local_models/*_sounds.json'):
+    ev.update(json.load(open(f)).get('events') or {})
 special = {'note'}   # audio.cpp plays note blocks by pitch
 def ok(n):
     return n in table or n in added or n in special or any(k in rec for k in ('fx.' + n, 'vx.' + n)) or any(k in ev for k in ('mob.' + n, 'fx.' + n))
