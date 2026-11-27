@@ -14,6 +14,7 @@
 #include "sim/magic_combat.h"
 #include "sim/enchanting.h"
 #include "sim/stations.h"
+#include "sim/slot_work.h"
 
 namespace dq {
 
@@ -140,6 +141,15 @@ bool handsFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStac
     return takeFirst(OUT) || takeFirst(IN);
   }
   return take(1);
+}
+
+bool handsTrommelUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held) {
+  if (binfo(w.getBlock(hit.block.x, hit.block.y, hit.block.z)).furnace != "trommel") return false;
+  const bool firebox = hit.normal.y <= 0 && (hit.point.y - hit.block.y) < 0.45f;   // the opening low in the front
+  const int spot = firebox ? 1 : 0;   // 0 the hopper on top, 1 the firebox
+  if (held.empty()) slotTake(lv, p, w, hit.block, spot);
+  else slotPut(lv, p, w, hit.block, spot, held);
+  return true;
 }
 
 bool handsAnvilUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held) {

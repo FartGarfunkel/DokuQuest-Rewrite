@@ -206,10 +206,10 @@ int main(int argc, char** argv) {
   printf("[classic crafting and smelting]\n");
   {
     recipeGate().immersive = false;
-    std::vector<ItemStack> g(9); g[1] = ItemStack("stick", 1); g[4] = ItemStack("iron_ingot", 1);
+    std::vector<ItemStack> g(9); g[1] = ItemStack("iron_ingot", 1); g[4] = ItemStack("stick", 1);
     CraftMatch m = matchGrid(g, 3);
-    printf("  (stick over iron ingot -> %s)\n", m ? m.out.c_str() : "nothing");
-    check(m && m.out.find("chisel") != std::string::npos, "classic: a stick over an iron ingot is a chisel");
+    printf("  (iron ingot over a stick -> %s)\n", m ? m.out.c_str() : "nothing");
+    check(m && m.out.find("chisel") != std::string::npos, "classic: an iron ingot over a stick is a chisel");
     check(smeltResult("bismuth_ore", "furnace") == "bismuth_ingot" && smeltResult("zinc_ore", "furnace") == "zinc_ingot", "classic: bismuth and zinc ore smelt in the furnace");
     std::vector<ItemStack> a(9); a[0] = ItemStack("copper_ingot", 1); a[1] = ItemStack("copper_ingot", 1); a[2] = ItemStack("copper_ingot", 1); a[3] = ItemStack("zinc_ingot", 1); a[4] = ItemStack("bismuth_ingot", 1);
     CraftMatch al = matchGrid(a, 3);

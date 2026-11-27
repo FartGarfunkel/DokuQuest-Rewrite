@@ -2,6 +2,7 @@
 // golems, "accidents happen" — the warning and the sword; towns3.js: nobody stays stuck, the watch at the gates;
 // hearth.js: the missing villager who waits, waves and follows you home).
 #include "sim/villagers_internal.h"
+#include "sim/blockfx.h"
 #include "sim/mob_combat.h"
 #include "core/registry.h"
 #include "sim/physics.h"
@@ -60,7 +61,7 @@ static void npcOpen(Level& lv, Creature& e, NpcMind& M, int x, int y, int z) {
   if (reg().tShape[id] == ShapeKind::Door) {
     int lower = m & 16 ? y - 1 : y; m = w.getMeta(x, lower, z);
     if (m & 4) return;
-    w.setBlock(x, lower, z, id, (u8)((m | 4) & ~16)); w.setBlock(x, lower + 1, z, id, (u8)(m | 4 | 16));
+    setDoorOpen(w, x, lower, z, true);
     lv.fx->sound(doorSnd(b, true), vec3(x + 0.5f, lower + 1, z + 0.5f));
     M.doors.push_back({ivec3(x, lower, z), S->now});
   } else if (reg().tShape[id] == ShapeKind::Gate && !(m & 4)) {
@@ -81,7 +82,7 @@ void npcShutDoors(Level& lv, Creature& e, NpcMind& M, bool all) {
     for (Entity* p : pawns) if (std::fabs(p->pos.x - x - 0.5f) < 0.9f && std::fabs(p->pos.z - z - 0.5f) < 0.9f && std::fabs(p->pos.y - y) < 2) someone = true;
     if (someone && !all) { keep.push_back(d); continue; }
     BlockId id = w.getBlock(x, y, z); u8 m = w.getMeta(x, y, z); const BlockDef& b = reg().block(id);
-    if (reg().tShape[id] == ShapeKind::Door && (m & 4)) { w.setBlock(x, y, z, id, (u8)(m & ~4)); w.setBlock(x, y + 1, z, id, (u8)((m & ~4) | 16)); lv.fx->sound(doorSnd(b, false), vec3(x + 0.5f, y + 1, z + 0.5f)); }
+    if (reg().tShape[id] == ShapeKind::Door && (m & 4)) { setDoorOpen(w, x, y, z, false); lv.fx->sound(doorSnd(b, false), vec3(x + 0.5f, y + 1, z + 0.5f)); }
     else if (reg().tShape[id] == ShapeKind::Gate && (m & 4)) { w.setBlock(x, y, z, id, (u8)(m & ~4)); lv.fx->sound(doorSnd(b, false), vec3(x + 0.5f, y + 0.5f, z + 0.5f)); }
   }
   M.doors = keep;

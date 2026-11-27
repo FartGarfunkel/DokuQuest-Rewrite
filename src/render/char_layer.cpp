@@ -603,11 +603,13 @@ void CharacterLayer::update(GameSession& s, double dt) {
       } else st.digT = 0;
     }
     // weapon combos: a swing begun within 0.8 s of the last is the next of the chain (the combo window).
-    // a dig or a place is not one of those. Its swing is the arm pump, and this clock was a second motion after it.
+    // only an attack or a throw. A pickup, a place, and setting something on a station are the arm pump.
+    const bool attackSwing = p->atkMove || p->throwArm;
     if ((p->armJob == 1 || p->armJob == 2) && p->swingT > 0) st.armLatch = p->armJob;
+    else if (!attackSwing && p->swingT > 0) st.armLatch = 2;
     else if (p->swingT <= 0) st.armLatch = 0;
     if (st.armLatch) { st.swingU = 0; st.throwArm = 0; }
-    else if (p->swingT > 0 && (st.lastSwing <= 0 || p->swingT < st.lastSwing - 0.05f)) {
+    else if (attackSwing && p->swingT > 0 && (st.lastSwing <= 0 || p->swingT < st.lastSwing - 0.05f)) {
       st.swingN = time - st.swingAt < 0.8 ? (u8)((st.swingN + 1) % 3) : 0; st.swingAt = time; st.swingU = 0.0001f;
       st.throwArm = p->throwArm; if (p->throwArm) p->throwArm = 0;   // the throw that started this swing (the arm that let it go)
     }

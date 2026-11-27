@@ -4,6 +4,7 @@
 #include "sim/world_life.h"
 #include "sim/attach_play.h"
 #include "sim/redstone.h"
+#include "sim/blockfx.h"
 #include "sim/catchup.h"
 #include "sim/crafting.h"
 #include "sim/moving.h"
@@ -483,12 +484,18 @@ void Redstone::update(int x, int y, int z) {
       int lower = m & 16 ? y - 1 : y;
       if (w.getBlock(x, lower, z) != id || w.getBlock(x, lower + 1, z) != id) break;
       int ml = w.getMeta(x, lower, z);
-      bool on = powerAt(x, lower, z) > 0 || powerAt(x, lower + 1, z) > 0;
-      if (on != !!(ml & 0x20)) {
-        int nm = (ml & ~(4 | 0x20 | 16)) | (on ? 4 | 0x20 : 0);
-        w.setBlock(x, lower, z, id, nm); w.setBlock(x, lower + 1, z, id, nm | 16);
-        if (!!(ml & 4) != on) lv.fx->sound(doorSound(R.block(id), on), c);
+      bool self = powerAt(x, lower, z) > 0 || powerAt(x, lower + 1, z) > 0;
+      if (self == !!(ml & 0x20)) break;   // this door's own power has not changed: a hand open stays open
+      bool on = self;
+      const int f = ml & 3, side = (ml & 8) ? (f + 3) & 3 : (f + 1) & 3;
+      const int px = x + DIRX[side], pz = z + DIRZ[side];
+      if (w.getBlock(px, lower, pz) == id && w.getBlock(px, lower + 1, pz) == id) {
+        const u8 pm = w.getMeta(px, lower, pz);
+        if ((pm & 3) == f && ((pm & 8) != 0) != ((ml & 8) != 0))
+          on = on || powerAt(px, lower, pz) > 0 || powerAt(px, lower + 1, pz) > 0;
       }
+      setDoorOpen(w, x, lower, z, on, self ? 1 : 0);
+      if (!!(ml & 4) != on) lv.fx->sound(doorSound(R.block(id), on), c);
       break;
     }
     case TRAPDOOR: case GATE: {
@@ -1254,7 +1261,7 @@ void Redstone::dispense(int x, int y, int z) {
       const int fm = w.getMeta(ax, ay, az);
       if (fb.has("door")) {
         const int lower = fm & 16 ? ay - 1 : ay, ml = w.getMeta(ax, lower, az);
-        w.setBlock(ax, lower, az, front, ml ^ 4); w.setBlock(ax, lower + 1, az, front, (ml ^ 4) | 16);
+        setDoorOpen(w, ax, lower, az, !(ml & 4));
         lv.fx->sound(doorSound(fb, !(ml & 4)), ac);
       } else if (fb.has("trapdoor") || R.tShape[front] == ShapeKind::Gate) {
         w.setBlock(ax, ay, az, front, fm ^ 4);

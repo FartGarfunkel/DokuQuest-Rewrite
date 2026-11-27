@@ -376,10 +376,70 @@ int main(int argc, char** argv) {
     r.p->inv[0].clear();
     aimFace({0, Y, 1}, {0, 0, 1}); r.step(0.3); r.step(0.05, use);
     CHECK(r.w().getMeta(0, Y, 1) & 4, "using a door opens it");
+    r.step(0.3);
+    CHECK(r.w().getMeta(0, Y, 1) & 4, "a door opened by hand stays open");
+    const u8 shut = (u8)(r.w().getMeta(0, Y, 1) & ~(4 | 16));
+    r.set(0, Y, 1, door, shut); r.set(0, Y + 1, 1, door, (u8)(shut | 16));
+    const u8 dm = r.w().getMeta(0, Y, 1);
+    const int df = dm & 3, dRight = dm & 8;
+    const int hside = dRight ? (df + 1) & 3 : (df + 3) & 3;   // the hinge side: the second door goes here, so the first has to flip
+    const int px = DIRX[hside], pz = 1 + DIRZ[hside];
+    const int back = (df + 2) & 3;
+    r.set(px, Y - 1, pz, stone);
+    r.hold(0, "oak_door", 1);
+    r.put(px + DIRX[back] + 0.5f, Y, pz + DIRZ[back] + 0.5f, 0, 0);   // looking the same way as the first door
+    aimFace({px, Y - 1, pz}, {0, 1, 0}); r.step(0.3); r.step(0.05, use);
+    const u8 pm = r.w().getMeta(px, Y, pz), dm2 = r.w().getMeta(0, Y, 1);
+    CHECK(r.get(px, Y, pz) == door && r.get(px, Y + 1, pz) == door
+          && (pm & 3) == (dm2 & 3) && ((pm & 8) != 0) != ((dm2 & 8) != 0),
+          "the second door mirrors the first, hinges on the outside (first %d, second %d)", dm2 & 15, pm & 15);
+    r.p->inv[0].clear();
+    r.put(0.5f, Y, 2.5f, 0, 0);
+    aimFace({0, Y, 1}, {0, 0, 1}); r.step(0.3); r.step(0.05, use);
+    CHECK((r.w().getMeta(0, Y, 1) & 4) && (r.w().getMeta(px, Y, pz) & 4),
+          "using one door opens both (first %d, second %d at %d,%d)", r.w().getMeta(0, Y, 1) & 15, r.w().getMeta(px, Y, pz) & 15, px, pz);
+    r.step(0.3);
+    CHECK((r.w().getMeta(0, Y, 1) & 4) && (r.w().getMeta(px, Y, pz) & 4), "the pair stays open");
     r.set(0, Y + 1, 1, AIR); r.set(0, Y, 1, AIR);
+    r.set(px, Y + 1, pz, AIR); r.set(px, Y, pz, AIR); r.set(px, Y - 1, pz, AIR);
     r.step(0.3);
     CHECK(r.get(0, Y, 1) == AIR && r.get(0, Y + 1, 1) == AIR, "breaking a door removes both halves");
+    r.put(0.5f, Y, 2.5f, 0, 0);
     r.set(0, Y, 0, AIR);
+    r.set(4, Y, 4, stone);
+    r.hold(0, "iron_chisel", 1);
+    r.put(4.5f, Y, 5.5f, 0, 0);
+    aimFace({4, Y, 4}, {0, 1, 0});
+    PlayerInput sneakUse = use; sneakUse.sneak = true;
+    r.step(0.3); r.step(0.05, sneakUse);
+    CHECK(r.get(4, Y + 1, 4) == r.B("item_pile") && r.w().getCarve(4, Y, 4) == 0 && r.p->inv[0].empty(),
+          "sneak sets a chisel down instead of carving (above %s, carve %d, held %s)",
+          reg().block(r.get(4, Y + 1, 4)).key.c_str(), (int)r.w().getCarve(4, Y, 4), r.p->inv[0].id.c_str());
+    r.set(4, Y + 1, 4, AIR);
+    r.hold(0, "iron_chisel", 1);
+    r.step(0.3); r.step(0.05, use);
+    CHECK(r.w().getCarve(4, Y, 4) != 0, "a plain use still carves (carve %d)", (int)r.w().getCarve(4, Y, 4));
+    r.set(4, Y, 4, AIR);
+    r.p->inv[0].clear();
+    r.set(6, Y, 6, r.B("trommel"), 0);
+    r.hold(0, "gravel", 4);
+    r.put(6.5f, Y, 7.5f, 0, 0);
+    aimFace({6, Y, 6}, {0, 1, 0});
+    r.step(0.2); r.step(0.05, use);
+    json* te = r.w().blockEntity(6, Y, 6);
+    const json* ti = te && te->contains("items") ? &(*te)["items"] : nullptr;
+    const bool hopper = ti && ti->is_array() && ti->size() > 0 && ItemStack::fromJson((*ti)[0]).id == "gravel";
+    CHECK(hopper && r.get(6, Y + 1, 6) != r.B("gravel"), "gravel set on a trommel goes in its hopper, not a menu or a block");
+    r.hold(0, "coal", 3);
+    aimFace({6, Y, 6}, {0, 0, 1}, 0.2f);
+    r.step(0.2); r.step(0.05, use);
+    te = r.w().blockEntity(6, Y, 6);
+    ti = te && te->contains("items") ? &(*te)["items"] : nullptr;
+    CHECK(ti && ti->is_array() && ti->size() > 4 && ItemStack::fromJson((*ti)[4]).id == "coal",
+          "coal set on the trommel's front goes in its firebox (%s)", ti && ti->is_array() && ti->size() > 4 ? ItemStack::fromJson((*ti)[4]).id.c_str() : "empty");
+    r.set(6, Y, 6, AIR);
+    r.p->inv[0].clear();
+    r.put(0.5f, Y, 2.5f, 0, 0);
     r.hold(0, "bed", 1);
     aimFace({0, Y - 1, 1}, {0, 1, 0}); r.step(0.3); r.step(0.05, use);
     int f = lookDir(*r.p);

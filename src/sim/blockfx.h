@@ -26,6 +26,9 @@ void riseFromBed(Player& p);
 void onBlockChangedRules(Level& lv, World& w, int x, int y, int z, BlockId oldId, BlockId newId);
 // After a chisel changes a block's octants: things on a face that is no longer whole drop off.
 void onCarveChangedRules(Level& lv, World& w, int x, int y, int z);
+// Open or shut a door, and the one beside it when they are a pair (same kind, same facing, hinges opposite
+// so they meet). powered: -1 leave the powered bit, 0 clear it, 1 set it. The other door keeps its own.
+void setDoorOpen(World& w, int x, int y, int z, bool open, int powered = -1);
 
 void registerBlockFxEntities();
 

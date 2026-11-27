@@ -62,7 +62,9 @@ public:
       sp.right = (turn(vec3(mx - 1, FM->floorY, dz), q) - turn(vec3(mx, FM->floorY, dz), q));   // (model -x: to the picture's right)
       sp.in = (turn(vec3(mx, FM->floorY, dz + 1), q) - turn(vec3(mx, FM->floorY, dz), q));
       sp.width = std::max(0.08f, (FM->floorX1 - FM->floorX0) / 16.f - 0.08f);
-      const json& it = e.contains("items") && e["items"].is_array() && e["items"].size() > 1 ? e["items"][1] : json();
+      const bool trom = binfo(id).furnace == "trommel";
+      const json& it = e.contains("items") && e["items"].is_array() && (trom ? e["items"].size() > 4 : e["items"].size() > 1)
+                       ? e["items"][trom ? 4 : 1] : json();
       const ItemStack fuel = ItemStack::fromJson(it);
       sp.fuel = fuel.empty() ? "" : fuel.id; sp.n = fuel.n;
       sp.burning = b.light > 0;
@@ -77,10 +79,20 @@ public:
         sp.rackAt = vec3(x, y, z) + turn(vec3((x0 + x1) * 0.5f, fy, FM->up ? 4.5f : 2.5f), q) / 16.f;
         sp.rackW = (x1 - x0) / 16.f; sp.rackH = (ty - fy) / 16.f;
       }
-      const ItemStack in = ItemStack::fromJson(e["items"].is_array() && !e["items"].empty() ? e["items"][0] : json());
-      const ItemStack out = ItemStack::fromJson(e["items"].is_array() && e["items"].size() > 2 ? e["items"][2] : json());
-      if (!in.empty()) { sp.input = in.id; sp.inN = in.n; sp.makes = smeltResult(in.id, binfo(id).furnace); }
-      if (!out.empty()) { sp.output = out.id; sp.outN = out.n; }
+      if (trom) {   // what was set in the hopper, lying in the mouth; the fuel is already the firebox slot
+        sp.rackAt = vec3(x, y, z) + turn(vec3(8.f, 13.05f, 8.f), q) / 16.f;
+        sp.rackW = 0.32f; sp.rackH = 0.2f;
+        if (e.contains("items") && e["items"].is_array()) for (int k = 0; k < 4 && k < (int)e["items"].size(); k++) {
+          const ItemStack s = ItemStack::fromJson(e["items"][k]);
+          if (s.empty()) continue;
+          sp.inN += s.n; if (sp.input.empty()) sp.input = s.id;
+        }
+      } else {
+        const ItemStack in = ItemStack::fromJson(e["items"].is_array() && !e["items"].empty() ? e["items"][0] : json());
+        const ItemStack out = ItemStack::fromJson(e["items"].is_array() && e["items"].size() > 2 ? e["items"][2] : json());
+        if (!in.empty()) { sp.input = in.id; sp.inN = in.n; sp.makes = smeltResult(in.id, binfo(id).furnace); }
+        if (!out.empty()) { sp.output = out.id; sp.outN = out.n; }
+      }
       sp.cook = std::clamp((float)(e.value("cook", 0.0) / SMELT_TIME), 0.f, 1.f);
       if (sp.fuel.empty() && !sp.burning && sp.input.empty() && sp.output.empty()) return;
       const u8 l = w.getLight(x + DX[fd], y, z + DZ[fd]);

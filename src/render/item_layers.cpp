@@ -274,7 +274,7 @@ void HeldItemLayer::update(GameSession& s, double dt) {
       // and a place then played the old flail, which turns the whole body.
       swing = p->swing; swingJob = job;
     } else {
-      if (swingJob == 1 || swingJob == 2) { swing = 0; swingJob = 0; }   // the block swing is over: do not play it on as a flail
+      if (swingJob == 1 && p->swing <= 0) { swing = 0; swingJob = 0; }   // the dig is over: do not play it on as a flail
       auto begin = [&](u8 j) {
         const bool restart = swing == 0 || swing > 0.6f;
         swingArm();
@@ -289,8 +289,13 @@ void HeldItemLayer::update(GameSession& s, double dt) {
     }
   }
   simSwing = p->swing;
-  { static double lastTap = -1; const double t = cinematicTapTime(); if (t != lastTap) { if (lastTap >= 0 || t > 0) swingArm(); lastTap = t; } }   // (setting a thing down at a station: your arm's own swing)
+  { static double lastTap = -1; const double t = cinematicTapTime(); if (t != lastTap) { if (lastTap >= 0 || t > 0) { swingArm(); swingJob = 2; } lastTap = t; } }   // setting down or taking at a station: the place pump
   if (p->armJob == 1 || p->armJob == 2) { swing = p->swing; swingJob = p->armJob; }   // the station tap must not start a second swing over a dig or a place
+  else if (swing > 0 && !p->atkMove && !p->throwArm) {
+    if (swingJob == 0) swingJob = 2;   // a pickup or a use while a tool is in hand: the arm pump, not the body flail
+    swing += fdt * fpSwingRate(p->held().id, false);
+    if (swing >= 1) { swing = 0; swingJob = 0; }
+  }
   else if (swinging || swing > 0) { swing += fdt * fpSwingRate(p->held().id, s.breaking || swingJob == 1); if (swing >= 1) { swing = 0; swingJob = 0; } }
   swinging = false;
   // a light for the hand: where your eyes are, and what you carry

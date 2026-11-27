@@ -300,14 +300,14 @@ static CraftMatch matchPartTool(const std::vector<ItemStack>& slots, int W) {
     }
   }
   // an immersive world: tools come from heads (knapped, cast, smithed) and armour from the anvil, never the grid's patterns.
-  // the chisel stays on the grid: a stick over any ingot, the same metals as the other tools
+  // the chisel stays on the grid: any ingot over a stick, the same metals as the other tools
   if (recipeGate().immersive) {
     if (bw == 1 && bh == 2 && count == 2) {
       const ItemStack& top = at(0, 0), &bot = at(0, 1);
-      const ToolMaterial* tm = toolMaterialOfStack(bot);
-      if (tm && top.id == "stick") {
+      const ToolMaterial* tm = toolMaterialOfStack(top);
+      if (tm && bot.id == "stick") {
         ItemStack out;
-        if (makePartTool("chisel", {tm->key}, top.id, out)) {
+        if (makePartTool("chisel", {tm->key}, bot.id, out)) {
           giveCraftQuality(out);
           CraftMatch m = special(out.id, 1, 1, 2); m.extra = out.tag;
           return m;

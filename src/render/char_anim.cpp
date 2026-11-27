@@ -408,14 +408,11 @@ CharAngles charAnimate(const CharPose& pose) {
   } else if (at > 0 && (pose.swingKind == 4 || pose.swingKind == 5)) overhandThrow(A, pose);
   else if (at > 0 && pose.swingKind > 0) weaponSwing(A, pose);
   else if (at > 0) {
-    float tw = std::sin(std::sqrt(at) * TAU) * 0.2f;
-    float f = 1 - at; f *= f; f *= f; f = 1 - f;
-    float f2 = std::sin(f * PI), f3 = std::sin(at * PI) * (pose.headPitch + 0.7f) * 0.75f;
-    if (at < 0.16f) { const float w = std::sin(at / 0.16f * PI); f2 -= 0.45f * w; A.body.y += 0.08f * w; }   // anticipation: a wind-up before the blow
-    A.body.y -= tw;
-    A.armR.x += f2 * 1.2f + f3; A.armR.y -= tw * 2; A.armR.z -= std::sin(at * PI) * 0.4f;
-    A.armL.y -= tw; A.armL.x -= tw;
-    A.foreR.x += f2 * 0.25f;
+    // a pickup, a station, a use: the same arm pump as setting a block down. The body twist is not the leftover swing.
+    const float f = std::sin(at * PI) * 0.55f;
+    const float look = std::clamp(pose.headPitch, -1.1f, 1.1f);
+    A.armR = vec3(0.45f + look * 0.32f + f * 0.28f, 0.12f, 0);
+    A.foreR = vec3(0.25f + f * 1.05f, 0, 0);
   }
   if (pose.bow > 0) {   // the bow arm straight out at the target; the drawing hand pulls back to the chin (third person:
                         // charRig's bowDrawArms puts the hands on the bow); the body turns its bow shoulder to the target

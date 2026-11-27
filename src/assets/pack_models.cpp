@@ -376,6 +376,37 @@ void buildFurnaceModels(TileSet& ts) {
     (*D)[front] = fm;
     if (lit >= 0) { FurnaceModel fl = fm; fl.back.boxes[0].face[0].tile = lit; (*D)[lit] = fl; }   // (lit: the same holes, its fire behind them)
   }
+  {   // the trommel: its own machine, not a hollowed cube. A drum on two cradles, a hopper open on top, a firebox open in the front.
+    const int front = at("trommel_front"), lit = at("trommel_front_lit"), side = at("trommel_side"), top = at("trommel_top"), bot = at("trommel_bottom");
+    if (front >= 0 && side >= 0 && top >= 0) {
+      auto face = [&](int tile) { PackModelFace f; f.tile = tile; f.uv = vec4(0, 0, 16, 16); return f; };
+      auto box = [&](vec3 a, vec3 b, int tile) {
+        PackModelBox bx; bx.from = a; bx.to = b; for (int i = 0; i < 6; i++) bx.face[i] = face(tile); return bx;
+      };
+      FurnaceModel fm;
+      fm.floorY = 3; fm.floorX0 = 5; fm.floorX1 = 11; fm.topY = 6;   // the firebox floor, where the fuel lies
+      fm.up = true; fm.upFloorY = 13; fm.upTopY = 16; fm.upX0 = 5; fm.upX1 = 11;   // the hopper mouth
+      fm.body.boxes.push_back(box({0, 0, 0}, {16, 3, 16}, bot >= 0 ? bot : side));          // the bed
+      fm.body.boxes.push_back(box({0, 3, 3}, {3, 14, 13}, side));                            // the two cradles
+      fm.body.boxes.push_back(box({13, 3, 3}, {16, 14, 13}, side));
+      fm.body.boxes.push_back(box({3, 4, 6}, {13, 13, 14}, side));                           // the drum
+      fm.body.boxes.push_back(box({4, 5, 5}, {12, 12, 6}, side));                            // its front cap, behind the firebox
+      fm.body.boxes.push_back(box({4, 6, 0}, {5, 8, 6}, front));                             // the firebox frame
+      fm.body.boxes.push_back(box({11, 6, 0}, {12, 8, 6}, front));
+      fm.body.boxes.push_back(box({5, 6, 0}, {11, 8, 6}, front));                            // its lintel
+      fm.body.boxes.push_back(box({5, 2, 0}, {11, 3, 6}, front));                            // its sill
+      fm.body.boxes.push_back(box({3, 13, 3}, {13, 16, 5}, top));                            // the hopper rim, open in the middle
+      fm.body.boxes.push_back(box({3, 13, 11}, {13, 16, 13}, top));
+      fm.body.boxes.push_back(box({3, 13, 5}, {5, 16, 11}, top));
+      fm.body.boxes.push_back(box({11, 13, 5}, {13, 16, 11}, top));
+      fm.body.boxes.push_back(box({5, 12.6f, 5}, {11, 13, 11}, side));                       // the hopper's floor, what you set in sits on it
+      PackModelBox back; back.from = vec3(5, 3, 5.6f); back.to = vec3(11, 6, 6); back.shade = false;
+      back.face[0] = face(front);                                                            // the firebox's back wall, seen through the opening
+      fm.back.boxes.push_back(back);
+      (*D)[front] = fm;
+      if (lit >= 0) { FurnaceModel fl = fm; fl.back.boxes[0].face[0].tile = lit; (*D)[lit] = fl; }
+    }
+  }
   std::atomic_store(&g_furnace, std::shared_ptr<const std::unordered_map<int, FurnaceModel>>(D));
   if (!D->empty()) DQ_LOG("furnaces hollowed: %zu fronts", D->size());
 }

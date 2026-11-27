@@ -2,7 +2,7 @@
 // In a terrain-13 world (rule dynamicTrees) a sapling takes root: rooty soil under a twig of its wood's branch block. The
 // soil's random tick sends the tree one growth signal (GrowSignal): energy 16, up from the trunk's foot, turning at each
 // branch by these weights (up 2, the way it was going +1, air 1, leaves 2, a branch of the tree its radius + 2;
-// only up below the third block). Where it ends the tree grows: a twig leafs out, a thicker branch (or a leaf it reaches)
+// only up below the third block, and no side growth below five blocks, so the trunk stays bare). Where it ends the tree grows: a twig leafs out, a thicker branch (or a leaf it reaches)
 // branches out into a new twig with leaves round it. On the way back every branch it passed takes the pipe model's
 // radius: sqrt(the areas of the branches joining it) + 0.3, never thinner than it was, at most 8 (a whole block).
 // Each growth costs the soil its life now and then (1 in 8); dead soil grows no more; soil with no tree is dirt again.

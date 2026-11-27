@@ -248,8 +248,9 @@ MoveInfo Player::baseMove(const World& wd, const PlayerInput& inp, float dt, con
   }
   if (flying && onGround && !inp.jump) flying = false;
   hitWallLast = hitWall;
-  // jumped into a wall: catch the top edge if it's in reach (a ledge up to 2.7 above your feet)
-  if ((!onGround || inWater) && !flying && !inLava && !c.ladder && !crawling && !swimming && hitWall && inp.mz < -0.3f && vel.y < 5 && !sneaking && !opts.noLedge) {
+  // catch a ledge on the way down, once the jump has stopped rising. Grabbing while still going up
+  // stuck you on the side of a wall you had only jumped into.
+  if ((!onGround || inWater) && !flying && !inLava && !c.ladder && !crawling && !swimming && hitWall && inp.mz < -0.3f && vel.y <= 0.2f && !sneaking && !opts.noLedge) {
     vec3 L = lookVector(yaw, pitch);
     int dx = 0, dz = 0;
     if (std::fabs(L.x) > std::fabs(L.z)) dx = L.x > 0 ? 1 : L.x < 0 ? -1 : 0; else dz = L.z > 0 ? 1 : L.z < 0 ? -1 : 0;

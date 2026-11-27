@@ -58,6 +58,27 @@ bool chestPartner(World& w, int x, int y, int z, ivec3& out) {
   return true;
 }
 
+// The other leaf of a double door stands on this one's free edge. If it faces the same way but its hinge is not
+// the mirror (both hinges on the outside, against the frame), flip it so the two meet.
+static void mirrorDoorBeside(World& w, int x, int y, int z) {
+  const BlockId id = w.getBlock(x, y, z);
+  if (!bhas(id, BF::Door)) return;
+  const u8 meta = w.getMeta(x, y, z);
+  const int lower = (meta & 16) ? y - 1 : y;
+  if (!inWorldY(lower) || w.getBlock(x, lower, z) != id) return;
+  const u8 lm = w.getMeta(x, lower, z);
+  const int f = lm & 3;
+  const bool right = lm & 8;
+  const int side = right ? (f + 3) & 3 : (f + 1) & 3;
+  const int px = x + DIRX[side], pz = z + DIRZ[side];
+  if (w.getBlock(px, lower, pz) != id || w.getBlock(px, lower + 1, pz) != id) return;
+  u8 pm = w.getMeta(px, lower, pz);
+  if ((pm & 3) != f || ((pm & 8) != 0) != right) return;
+  pm = (u8)((pm ^ 8) & ~16);
+  w.setBlock(px, lower, pz, id, pm, SetFlags::Urgent);
+  w.setBlock(px, lower + 1, pz, id, (u8)(pm | 16), SetFlags::Urgent);
+}
+
 static std::string doorSound(BlockId id, bool open) {
   const std::string& k = reg().block(id).key;
   std::string kind = (k.rfind("iron", 0) == 0 || k.find("_iron") != std::string::npos || k.rfind("copper", 0) == 0 || k.find("_copper") != std::string::npos) ? "door_iron"
@@ -139,10 +160,22 @@ bool PlayerController::placement(const RayHit& hit, BlockId bid, Placement& out)
     if (!inWorldY(y + 1) || (!R.tReplaceable[up] && up != AIR)) return false;
     if (!R.tSolid[w.getBlock(x, y - 1, z)]) return false;
     int f = look, right = (f + 1) & 3, left = (f + 3) & 3;
-    BlockId ln = w.getBlock(x + DIRX[left], y, z + DIRZ[left]), rn = w.getBlock(x + DIRX[right], y, z + DIRZ[right]);
+    auto sameDoor = [&](int dir) {
+      const int ax = x + DIRX[dir], az = z + DIRZ[dir];
+      if (w.getBlock(ax, y, az) != bid) return false;
+      const u8 nm = w.getMeta(ax, y, az);
+      return (nm & 16) == 0 && (nm & 3) == (u8)f;   // the lower half, facing the same way
+    };
+    auto framed = [&](int dir) {   // a solid block beside the door: the hinge hangs against it
+      const int ax = x + DIRX[dir], az = z + DIRZ[dir];
+      if (w.getBlock(ax, y, az) == bid) return false;
+      return R.tSolid[w.getBlock(ax, y, az)] || R.tSolid[w.getBlock(ax, y + 1, az)];
+    };
     bool hingeRight;
-    if (bhas(ln, BF::Door)) hingeRight = true;
-    else if (bhas(rn, BF::Door)) hingeRight = false;
+    if (sameDoor(left)) hingeRight = true;    // the other leaf is on the left, so this hinge is on the right
+    else if (sameDoor(right)) hingeRight = false;
+    else if (framed(right) && !framed(left)) hingeRight = true;
+    else if (framed(left) && !framed(right)) hingeRight = false;
     else hingeRight = DIRX[right] * (fr.x - 0.5f) + DIRZ[right] * (fr.z - 0.5f) > 0;
     meta = (u8)(f | (hingeRight ? 8 : 0));
     out.also.push_back({x, y + 1, z, bid, meta | 16});
@@ -377,6 +410,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   w.setBlock(x, y, z, bid, meta, SetFlags::Urgent);
   if (seat) w.setCarve(x, y, z, seat, SetFlags::Urgent);
   for (auto& a : also) w.setBlock(a[0], a[1], a[2], (BlockId)a[3], (u8)a[4], SetFlags::Urgent);
+  if (door) mirrorDoorBeside(w, x, y, z);
   if (chestKind(bid) || bid == B.barrel) {
     json items = json::array();
     if (placed.tag.is_object() && placed.tag.contains("c") && placed.tag["c"].is_array()) items = placed.tag["c"];
@@ -831,9 +865,9 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   // ---- build.js ----
   if (bhas(id, BF::Door)) {
     int lower = (meta & 16) ? y - 1 : y;
-    u8 m0 = w.getMeta(x, lower, z) ^ 4;
-    w.setBlock(x, lower, z, id, m0 & ~16, SetFlags::Urgent); w.setBlock(x, lower + 1, z, id, m0 | 16, SetFlags::Urgent);
-    sfxAt(lv, doorSound(id, m0 & 4), vec3(x + 0.5f, lower + 1, z + 0.5f)); swingArm(); return true;
+    const bool open = !(w.getMeta(x, lower, z) & 4);
+    setDoorOpen(w, x, lower, z, open);
+    sfxAt(lv, doorSound(id, open), vec3(x + 0.5f, lower + 1, z + 0.5f)); swingArm(); return true;
   }
   if (bhas(id, BF::Trapdoor) || R.tShape[id] == ShapeKind::Gate) {
     u8 m = meta ^ 4;
@@ -909,6 +943,7 @@ bool PlayerController::useBlockAt(const RayHit& hit, ItemStack* held, const Item
   // collide them as octant boxes. The crosshair raycast's entry point is the geometry under the cursor, and a hit through
   // a carved notch still lands inside the aimed octant, so the same click toggles it back. Each octant toggles on its own.
   if (tool == "chisel") {
+    if (p.sneaking) return false;   // shift sets it down, the same as any other item
     bool chiselable = R.tSolid[id] && R.tOpaque[id] && !R.tShape[id] && !R.tWlog[id] && !(b.has("family") || b.has("base"))
                       && !b.has("table") && b.key.find("crafting_table") == std::string::npos;   // a crafting table is a workplace, not a block to carve; wlog blocks carry live meta
     u8 carve = w.getCarve(x, y, z);

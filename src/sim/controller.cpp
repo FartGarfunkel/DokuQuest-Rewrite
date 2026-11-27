@@ -939,6 +939,10 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
   }
   // Hands-on Stations: a furnace, smoker or blast furnace worked where you look (sim/hands.h): fuel low, what cooks high,
   // an empty hand takes back; held, one more each moment, and after a second the whole stack. Never its screen (sneak)
+  if (!fromOff && hit && !te && !p.sneaking && binfo(hit->id).furnace == "trommel") {
+    if (!repeat && handsTrommelUse(lv, p, w, *hit, held)) swingArm();
+    return;   // the hopper and the firebox, where it stands. No screen.
+  }
   if (!fromOff && hit && !te && handsStations && !p.sneaking && bhas(hit->id, BF::Furnace) && binfo(hit->id).furnace != "trommel") {
     if (!repeat) handsHoldAt = t;
     if (handsFurnaceUse(lv, p, w, *hit, held, repeat && t - handsHoldAt > 1.0) && !repeat) swingArm();
@@ -1108,7 +1112,7 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
     // tools (tilling, stripping, carving...) and items whose crouched use is their own keep it; a tool with nothing to act on is
     // still set down further on, as ever
     bool aimed = false;
-    if (def->hasTool) for (const char* t : {"hoe", "axe", "shovel", "chisel", "shears", "igniter"}) if (def->tool.type == t) aimed = true;   // (tilling, stripping, paths, carving)
+    if (def->hasTool) for (const char* t : {"hoe", "axe", "shovel", "shears", "igniter"}) if (def->tool.type == t) aimed = true;   // (tilling, stripping, paths; a chisel is set down like any other item)
     if (def->has("hammer") && immersive(lv)) aimed = true;   // (a stone anvil, smithing)
     for (const char* k : {"bucket", "igniter", "plants", "bonemeal", "summon", "summonWand", "paintbrush", "cart", "boat", "disc", "backpack", "bottle", "quiver", "lead", "enderEye"}) if (def->has(k)) aimed = true;
     if (held.id == "glass_bottle" || held.id == "ender_eye" || held.id == "lead" || held.id == "quiver" || held.id == "golden_quiver") aimed = true;
@@ -1165,7 +1169,10 @@ void PlayerController::use(bool repeat, const PlayerInput& in, bool fromOff) {
       if (b.has("table") && worktableUse(lv, p, w, *hit, held)) { swingArm(); return; }   // sim/worktable.h: the top worked in the world
       if (b.has("trough") && troughUse(lv, p, w, *hit, held)) { swingArm(); return; }   // sim/trough.h: food in, or back out
       if (b.has("table")) { swingArm(); openScreen(lv, p, "table", {{"pos", pos}}); return; }   // (where: the crafting table scene leans over it, ui/cinematic_table.cpp)
-      if (bhas(hit->id, BF::Furnace)) { swingArm(); containerEntity(w, hit->block.x, hit->block.y, hit->block.z); openScreen(lv, p, "furnace", {{"pos", pos}, {"kind", binfo(hit->id).furnace}}); return; }
+      if (bhas(hit->id, BF::Furnace)) {
+        if (binfo(hit->id).furnace != "trommel") { swingArm(); containerEntity(w, hit->block.x, hit->block.y, hit->block.z); openScreen(lv, p, "furnace", {{"pos", pos}, {"kind", binfo(hit->id).furnace}}); }
+        return;   // the trommel is worked at its hopper and its firebox
+      }
       if (b.has("harvest")) {
         swingArm(); sfxMaterial(lv, "grass", "dig", vec3(hit->block));
         dropItem(lv, p.realm, ItemStack(b.str("harvest"), 2 + (rnd() < 0.5 ? 1 : 0)), vec3(hit->block) + vec3(0.5f, 0.6f, 0.5f), true, 0.f);

@@ -15,6 +15,7 @@ const ivec3 DIRS[6] = {{0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}, {-1, 0, 0},
 constexpr int UP = 1, DOWN = 0;
 constexpr float TAPER = 0.3f;
 constexpr int MAX_R = 8, ENERGY = 16, LOWEST_BRANCH = 3, SECONDARY = 2;
+constexpr int LEAF_ABOVE = 5;   // no new leaves, and no side branch, closer to the soil than this
 u32 mix(u32 h) { h ^= h >> 16; h *= 0x7feb352d; h ^= h >> 15; h *= 0x846ca68b; h ^= h >> 16; return h; }
 
 struct Signal {
@@ -26,12 +27,17 @@ struct Signal {
   int rOf(ivec3 p) const { return dynRadius(w.getMeta(p.x, p.y, p.z)); }
   bool airy(ivec3 p) const { const BlockId b = at(p); return b == AIR || (reg().tReplaceable[b] && !reg().tLiquid[b]); }
   bool leafy(ivec3 p) const { return at(p) == leaves; }
+  bool crown(ivec3 p) const { return p.y - root.y >= LEAF_ABOVE; }
 
-  // leaves where there's air (DynamicLeavesBlock.needLeaves)
-  bool needLeaves(ivec3 p) { if (airy(p)) { w.setBlock(p.x, p.y, p.z, leaves, 0); return true; } return leafy(p); }
+  // leaves where there's air, and only up in the crown (the trunk stays bare)
+  bool needLeaves(ivec3 p) {
+    if (!crown(p)) return leafy(p);
+    if (airy(p)) { w.setBlock(p.x, p.y, p.z, leaves, 0); return true; }
+    return leafy(p);
+  }
   // DynamicLeavesBlock.branchOut: a new twig where a leaf would grow, with no other branch beside it; leaves round it
   void branchOut(ivec3 p, int fromDir) {
-    if (!needLeaves(p)) { success = false; return; }
+    if (!airy(p) && !leafy(p)) { success = false; return; }
     for (int d = 0; d < 6; d++) if (d != (fromDir ^ 1) && ours(p + DIRS[d])) { success = false; return; }
     w.setBlock(p.x, p.y, p.z, branch, branchMeta(1));
     for (int d = 0; d < 6; d++) needLeaves(p + DIRS[d]);
@@ -40,7 +46,8 @@ struct Signal {
       const int r2 = dx * dx + dz * dz + (dy > 0 ? dy * dy * 2 : dy * dy * 3);
       if (r2 > 5 || (r2 >= 4 && rnd() < 0.4f)) continue;
       const ivec3 q = p + ivec3(dx, dy, dz);
-      if (airy(q)) w.setBlock(q.x, q.y, q.z, leaves, 0);
+      if (!crown(q) || !airy(q)) continue;
+      w.setBlock(q.x, q.y, q.z, leaves, 0);
     }
     radius = SECONDARY; success = true;
   }
@@ -55,6 +62,7 @@ struct Signal {
     }
     prob[originDir] = 0;
     if (p.y - root.y <= LOWEST_BRANCH) for (int d = 0; d < 6; d++) if (d != UP) prob[d] = 0;   // the trunk: straight up at first
+    for (int d = 0; d < 6; d++) if (d != UP && (p + DIRS[d]).y - root.y < LEAF_ABOVE) prob[d] = 0;   // never grow back down to the ground
     int total = 0; for (int v : prob) total += v;
     if (!total) return -1;
     int pick = (int)(rnd() * total);
@@ -74,7 +82,9 @@ struct Signal {
     if (ours(q)) grow(q);
     else if (leafy(q)) branchOut(q, target);
     else if (airy(q)) {
-      if (rHere == 1) { success = needLeaves(q); }   // from a twig: only leaves
+      // up the trunk the branch grows on. A side twig below the crown only tries a leaf, and that leaf
+      // is refused, so nothing grows down onto the trunk or the ground.
+      if (rHere == 1 && !crown(q) && target != UP) success = needLeaves(q);
       else branchOut(q, target);
     }
     // the pipe model, back down the way it came
@@ -110,8 +120,7 @@ bool plantDynTree(Level& lv, World& w, int x, int y, int z) {
   w.setBlock(x, y - 1, z, rooty, 15);                 // rooty soil, full of life
   w.setBlock(x, y, z, branch, branchMeta(1));         // the sapling's twig
   auto leaf = [&](int a, int b, int c) { const BlockId k = w.getBlock(a, b, c); if (k == AIR || (R.tReplaceable[k] && !R.tLiquid[k])) w.setBlock(a, b, c, leaves, 0); };
-  leaf(x, y + 1, z);
-  for (int d = 2; d < 6; d++) leaf(x + DIRS[d].x, y, z + DIRS[d].z);
+  leaf(x, y + 1, z);                                  // one leaf on the twig; none down at the ground beside it
   return true;
 }
 
@@ -131,6 +140,11 @@ bool growDynTree(Level& lv, World& w, int x, int y, int z, u32 seed) {
   s.root = ivec3(x, y, z);
   s.dir = UP;
   s.grow(ivec3(x, y + 1, z));
+  // leaves that an earlier growth left down the trunk come off (the crown stays at LEAF_ABOVE and up)
+  for (int dy = 1; dy < LEAF_ABOVE; dy++) for (int dz = -4; dz <= 4; dz++) for (int dx = -4; dx <= 4; dx++) {
+    const int lx = x + dx, ly = y + dy, lz = z + dz;
+    if (R.tLeaves[w.getBlock(lx, ly, lz)]) w.setBlock(lx, ly, lz, AIR, 0);
+  }
   // the soil spends its life (Species.grow: soilLongevity)
   if (s.rnd() < (s.success ? 1.f / 8 : 1.f / 128)) w.setBlock(x, y, z, w.getBlock(x, y, z), (u8)((meta & ~15) | (life - 1)));
   // now and then a seed drops from the canopy (Species.seedDrop): it takes root where it lands (sim/gameplay.cpp)

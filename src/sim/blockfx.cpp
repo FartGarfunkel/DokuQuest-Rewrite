@@ -1,6 +1,7 @@
 // sim/blockfx.cpp — port of game/blockfx.js (FallingBlock, PrimedTNT, checkFall, checkHarden,
 // primeTNT, explode, trySleep) and game.js onBlockChanged.
 #include "sim/blockfx.h"
+#include "world/dirs.h"
 #include "sim/catchup.h"
 #include "sim/endstory.h"
 #include "sim/rules.h"
@@ -24,6 +25,33 @@ bool villageDamage(Level& lv, const Village& v, int x, int y, int z, BlockId id,
 void villageSeatChanged(Level& lv, World& w, int x, int y, int z, BlockId oldId, BlockId newId);   // sim/villagers.cpp
 
 static double rnd() { static thread_local std::mt19937 g{std::random_device{}()}; return std::uniform_real_distribution<double>(0, 1)(g); }
+
+void setDoorOpen(World& w, int x, int y, int z, bool open, int powered) {
+  const BlockId id = w.getBlock(x, y, z);
+  if (!bhas(id, BF::Door)) return;
+  const u8 meta = w.getMeta(x, y, z);
+  const int lower = (meta & 16) ? y - 1 : y;
+  if (!inWorldY(lower) || w.getBlock(x, lower, z) != id) return;
+  const u8 lm = w.getMeta(x, lower, z);
+  auto write = [&](int ax, int az, u8 base) {
+    u8 m = (u8)(base & ~(4 | 16 | (powered >= 0 ? 0x20 : 0)));
+    if (open) m |= 4;
+    if (powered > 0) m |= 0x20;
+    w.setBlock(ax, lower, az, id, m, SetFlags::Urgent);
+    w.setBlock(ax, lower + 1, az, id, (u8)(m | 16), SetFlags::Urgent);
+  };
+  write(x, z, lm);
+  const int f = lm & 3;
+  const int side = (lm & 8) ? (f + 3) & 3 : (f + 1) & 3;   // the free edge, where the other door stands
+  const int px = x + DIRX[side], pz = z + DIRZ[side];
+  if (w.getBlock(px, lower, pz) != id || w.getBlock(px, lower + 1, pz) != id) return;
+  const u8 pm = w.getMeta(px, lower, pz);
+  if ((pm & 3) != f || ((pm & 8) != 0) == ((lm & 8) != 0)) return;   // same way, hinge on the other side
+  const int keep = powered;
+  powered = -1;
+  write(px, pz, pm);
+  powered = keep;
+}
 
 // ---- a block in mid-air: lands where it stops ----
 class FallingBlock : public Entity {

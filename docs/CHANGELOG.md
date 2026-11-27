@@ -5,6 +5,26 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.40 (November 2026)
+
+**The trommel, worked where it stands:**
+- The trommel is its own machine: a drum on two cradles, a hopper open on top, and a firebox open in the front.
+- Use the top to set in what it sifts. Use the lower front to set in fuel. An empty hand takes it back. It does not open a screen.
+- While it burns, the firebox lights, and what it finds still comes out of its side.
+
+**Tools, doors, and the arm:**
+- A chisel is an ingot set over a stick. A throwing knife is a stick with the ingot on the diagonal.
+- A chisel is held by the handle, the same way as a pick, an axe, or a sword. Shift sets it down instead of carving.
+- A shovel shows its haft and its head in the materials they were made from.
+- Double doors mirror, hinges on the outside, and both leaves open and shut together.
+- Setting something down, or picking something up, is the same arm pump as placing a block.
+
+**Moving through the land:**
+- A jump into a wall no longer catches you while you are still going up.
+- A growing tree keeps a bare trunk. The leaves stay up in the crown.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.39 (November 2026)
 
 **A lantern in the hand, and a pick that stays a pick:**

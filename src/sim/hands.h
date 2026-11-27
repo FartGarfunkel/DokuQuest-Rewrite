@@ -22,6 +22,8 @@ vec3 handsFromNorth(int facing, vec3 north);
 // (what's done first, then what cooks; the fuel down low; the blast furnace's ingots from its mould). all: the whole stack.
 // false: not one of them (or nothing to do there)
 bool handsFurnaceUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held, bool all);
+// the trommel, worked where it stands: the top takes what sifts, the lower front takes fuel, an empty hand takes back. No screen.
+bool handsTrommelUse(Level& lv, Player& p, World& w, const RayHit& hit, ItemStack& held);
 bool handsDoorOpen(World& w, ivec3 at);
 
 // the anvil (the hands-on anvil over our "anvilwork" record {items: [work, material], hits, req}): what's held goes on it (the

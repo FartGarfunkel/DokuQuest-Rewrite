@@ -202,7 +202,8 @@ int main() {
   CraftMatch lsGrid = gridOf({{1, ingot}, {4, ingot}, {6, ingot}, {8, ingot}, {7, stick}});   // blade and a crossguard
   CraftMatch baGrid = gridOf({{0, ingot}, {2, ingot}, {3, ingot}, {4, ingot}, {5, ingot}, {7, stick}});   // two bits
   CraftMatch whGrid = gridOf({{0, ingot}, {1, ingot}, {2, ingot}, {4, ingot}, {7, stick}});   // a heavy head
-  CraftMatch tkGrid = gridOf({{0, ingot}, {3, stick}});   // a short blade over a grip
+  CraftMatch tkGrid = gridOf({{0, stick}, {4, ingot}});   // a stick, the ingot on the down-right diagonal
+  CraftMatch tkGridB = gridOf({{1, stick}, {3, ingot}});  // the other diagonal
   CraftMatch taGrid = gridOf({{0, ingot}, {1, ingot}, {4, stick}});   // a small head, stick at (1,1)
   CHECK(lsGrid && lsGrid.result().id == "mixed_longsword" && lsGrid.result().def()->num("hands") == 1
         && movesetOf(lsGrid.result().def()) == Moveset::Sword && qualOk(lsGrid.result()),
@@ -215,18 +216,28 @@ int main() {
         "four irons and a stick make a mixed warhammer");
   CHECK(tkGrid && tkGrid.result().id == "mixed_throwing_knife" && movesetOf(tkGrid.result().def()) == Moveset::Throw
         && attackMoveFor(Moveset::Throw, 0, false, false) == MV_NONE && qualOk(tkGrid.result()),
-        "an iron and a stick make a throwing knife");
-  CraftMatch chiselGrid = gridOf({{0, stick}, {3, ingot}});
+        "a stick and an ingot on the diagonal make a throwing knife");
+  CHECK(tkGridB && tkGridB.result().id == "mixed_throwing_knife",
+        "the other diagonal is a throwing knife too (%s)", tkGridB ? tkGridB.result().id.c_str() : "nothing");
+  CraftMatch chiselGrid = gridOf({{0, ingot}, {3, stick}});
   CHECK(chiselGrid && chiselGrid.result().id.find("chisel") != std::string::npos && chiselGrid.result().id != "mixed_throwing_knife",
-        "a stick over an ingot is a chisel, not a throwing knife (%s)", chiselGrid ? chiselGrid.result().id.c_str() : "nothing");
-  CraftMatch copperChisel = gridOf({{0, stick}, {3, ItemStack("copper_ingot", 1)}});
+        "an ingot over a stick is a chisel, not a throwing knife (%s)", chiselGrid ? chiselGrid.result().id.c_str() : "nothing");
+  CraftMatch copperChisel = gridOf({{0, ItemStack("copper_ingot", 1)}, {3, stick}});
   CHECK(copperChisel && copperChisel.result().id == "mixed_chisel",
-        "any metal under a stick is a chisel (%s)", copperChisel ? copperChisel.result().id.c_str() : "nothing");
-  CraftMatch goldChisel = gridOf({{0, stick}, {3, ItemStack("gold_ingot", 1)}});
+        "any metal over a stick is a chisel (%s)", copperChisel ? copperChisel.result().id.c_str() : "nothing");
+  CraftMatch goldChisel = gridOf({{0, ItemStack("gold_ingot", 1)}, {3, stick}});
   const bool goldMat = goldChisel && goldChisel.result().tag.is_object() && goldChisel.result().tag.contains("pt")
                         && goldChisel.result().tag["pt"]["m"].is_array() && goldChisel.result().tag["pt"]["m"][0] == "gold";
   CHECK(goldChisel && goldChisel.result().id == "mixed_chisel" && goldMat,
-        "a gold ingot under a stick is a gold chisel (%s)", goldChisel ? goldChisel.result().id.c_str() : "nothing");
+        "a gold ingot over a stick is a gold chisel (%s)", goldChisel ? goldChisel.result().id.c_str() : "nothing");
+  CraftMatch upside = gridOf({{0, stick}, {3, ingot}});
+  CHECK(!upside || (upside.result().id.find("chisel") == std::string::npos && upside.result().id != "mixed_throwing_knife"),
+        "a stick over an ingot is neither a chisel nor a throwing knife (%s)", upside ? upside.result().id.c_str() : "nothing");
+  recipeGate().immersive = true;
+  CraftMatch immChisel = gridOf({{0, ingot}, {3, stick}});
+  CHECK(immChisel && immChisel.result().id.find("chisel") != std::string::npos && immChisel.result().id != "mixed_throwing_knife",
+        "immersive: an ingot over a stick is a chisel (%s)", immChisel ? immChisel.result().id.c_str() : "nothing");
+  recipeGate().immersive = false;
   CHECK(taGrid && taGrid.result().id == "mixed_throwing_axe" && taGrid.result().n == 4 && movesetOf(taGrid.result().def()) == Moveset::Throw
         && qualOk(taGrid.result()),
         "two irons and a stick make four throwing axes");

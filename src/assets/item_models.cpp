@@ -80,7 +80,7 @@ float itemSize(const std::string& key) {
 bool isHandheld(const std::string& key) {
   const ItemDef* d = reg().item(key);
   if (!d) return false;
-  static const std::unordered_set<std::string> TYPES = {"pickaxe", "axe", "shovel", "sword", "hoe"};
+  static const std::unordered_set<std::string> TYPES = {"pickaxe", "axe", "shovel", "sword", "hoe", "chisel"};
   if (d->hasTool && TYPES.count(d->tool.type)) return true;
   static const std::regex re("stick|rod|wand|spear|staff|trident|mace");
   return std::regex_search(d->key, re);

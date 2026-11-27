@@ -24,8 +24,13 @@ struct M {
   VoxelPainter& P;
   const SpriteInfo& I;
   bool glow = false;
+  bool wood = false;   // paint a stick's brown, so a haft is found even when the picture's handle is grey
   explicit M(ItemBuild& bb) : b(bb), P(bb.P), I(bb.I) {}
-  PaintFn F(float k) { bool g = glow; return [this, k, g](const PaintPt& p) { u32 c = voxShade(I.fillAt(p.p.x, p.p.y), kk(k)); return g && c ? (c & 0x00FFFFFFu) | (u32)VOXEL_GLOW << 24 : c; }; }
+  PaintFn F(float k) {
+    bool g = glow;
+    if (wood) return [k, g](const PaintPt&) { u32 c = voxShade(voxRGBA(122, 86, 48), kk(k)); return g && c ? (c & 0x00FFFFFFu) | (u32)VOXEL_GLOW << 24 : c; };
+    return [this, k, g](const PaintPt& p) { u32 c = voxShade(I.fillAt(p.p.x, p.p.y), kk(k)); return g && c ? (c & 0x00FFFFFFu) | (u32)VOXEL_GLOW << 24 : c; };
+  }
   // sseg: a segment cut into short pieces, widths and depths easing from one end to the other
   void sseg(vec3 a, vec3 c, float w0, float w1, float d0, float d1, float k = 1, float step = 0.07f, float bevel = 0) {
     float L = std::hypot(c.x - a.x, c.y - a.y);
@@ -190,8 +195,12 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     m.sseg(diag(0.75f, -0.02f), diag(0.75f, -0.13f), 0.12f, 0.1f, 0.1f, 0.09f, 0.85f, 0.2f);     // the poll
     depth = 0.06f;
   } else if (k == "shovel") {
+    // the shovel picture's stick is grey, so the whole tool was read as the head's metal. The shaft and the
+    // grip are a haft, the same way a pick's brown handle is, and take the haft's material.
+    m.wood = true;
     handle(m, 0.8f);
     m.sseg(diag(-0.02f, -0.11f), diag(-0.02f, 0.11f), 0.06f, 0.06f, 0.08f, 0.08f, 0.8f);  // a crossbar grip
+    m.wood = false;
     m.sseg(diag(0.74f), diag(0.88f), 0.09f, 0.12f, 0.09f, 0.07f, 0.85f);                  // the socket
     m.sseg(diag(0.88f), diag(1.12f), 0.3f, 0.3f, 0.05f, 0.045f, 1, 0.06f);                // the blade
     for (float v : {-0.14f, 0.14f}) m.sseg(diag(0.89f, v, 0.02f), diag(1.1f, v, 0.02f), 0.035f, 0.03f, 0.05f, 0.045f, 0.92f);   // its sides turned up: a dished blade
