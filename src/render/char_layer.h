@@ -48,6 +48,7 @@ public:
     vec2 hurtDir{0};                                   // where the last blow came from: x their right, y their front (-1..1)
     float lastSwing = 0, swingU = 0; double swingAt = -10; u8 swingN = 0;
     u8 throwArm = 0;   // this swing is an overhand throw: 1 the right arm, 2 the left (Player::throwArm, copied as it starts)
+    u8 armLatch = 0;   // 1 digging, 2 placing: held until that one swing is over, so the body does not flail in after it
     // getting into bed (render/char_layer.cpp bedFrame): 0 standing beside it .. 1 lying in it; the bed found under them,
     // where they stood, which side they sat on
     float bedU = 0; bool bedFound = false; vec3 bedHead{0}, bedDir{0}, bedSide{0}, standPos{0}; float standYaw = 0, bedTop = 0;   // weapon combos: the cut in the chain and how far through it (its own clock: render/char_anim.cpp)

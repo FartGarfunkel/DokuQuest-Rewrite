@@ -138,19 +138,20 @@ const vec3 FP_HAND(0.56f, -0.5f, -0.72f);   // where the first-person arms sit (
 inline float wrapA(float a) { return std::fmod(std::fmod(a + PI * 3, TAU) + TAU, TAU) - PI; }
 // the classic first-person swing, turned about the fist: the item chops forward and down and eases back
 // (an empty hand punches instead)
-mat4 armSwing(const mat4& am, float side, float sp, bool empty, bool mining = false, bool pick = false, float look = 0) {
+mat4 armSwing(const mat4& am, float side, float sp, bool empty, bool mining = false, bool pick = false, float look = 0, float pumpK = 0) {
   float r = std::sqrt(sp), f = std::sin(sp * sp * PI), f1 = std::sin(r * PI), D = PI / 180;
   float k = empty ? -0.3f : 0.35f;
   vec3 pv = vec3(am[1]) * k + vec3(am[3]);   // turn about the shoulder end
   mat4 S(1);
+  const float pk = pumpK > 0 ? pumpK : (mining && pick ? 1.f : 0.f);   // a dig or a place keeps the pump for the whole swing
   if (empty) S = glm::translate(S, vec3(side * -0.3f * f1, 0.1f * std::sin(r * TAU) + 0.05f * f1, -0.38f * std::sin(sp * PI)));
-  else if (mining && pick) {
+  else if (pk > 0) {
     // the elbow pumps. The shoulder tips with the look (up raises the pick, down lowers it).
     const float aim = std::clamp(look, -1.1f, 1.1f) * 0.38f;
     const vec3 along = vec3(am[1]), origin = vec3(am[3]);
     const vec3 shoulder = origin + along * 0.36f, elbow0 = origin + along * 0.12f;
     const vec3 elbow = shoulder + vec3(glm::rotate(mat4(1), aim, vec3(1, 0, 0)) * vec4(elbow0 - shoulder, 0));
-    const float pump = std::sin(sp * PI) * -62.f * D + f1 * -8.f * D;
+    const float pump = (std::sin(sp * PI) * -62.f * D + f1 * -8.f * D) * pk;
     S = glm::translate(mat4(1), elbow);
     S = glm::rotate(S, pump, vec3(1, 0, 0));
     S = glm::translate(S, -elbow);
@@ -267,16 +268,30 @@ void HeldItemLayer::update(GameSession& s, double dt) {
   // swings: attacking the air, placing and using, mining (held)
   if (!menu) {
     Input& in = s.app.input;
-    if (in.pressed(Act::Attack)) swingArm();   // every attack swings: the air, a creature in front of a wall, a block (mining keeps it going)
-    if (in.pressed(Act::Use) && s.target.hit && p->blockT <= 0) swingArm();   // a guard is not a chop
-    else if (in.pressed(Act::Use) && p->held().id == "fishing_rod") swingArm();   // cast / reel in
-    if (s.breaking) { swinging = true; if (swing == 0) swing = 0.0001f; }
-    // holding Use places again and again: each placement restarts the player's swing, so the arm keeps looping
-    if (p->swing > 0 && (simSwing == 0 || p->swing < simSwing)) swingArm();
+    const u8 job = p->armJob;   // 1 a block click (the mining pump until the swing ends), 2 setting a block down
+    if (job == 1 || job == 2) {
+      // the same swing the body plays. A second clock here restarted once it passed 0.6, so a tap mined twice
+      // and a place then played the old flail, which turns the whole body.
+      swing = p->swing; swingJob = job;
+    } else {
+      if (swingJob == 1 || swingJob == 2) { swing = 0; swingJob = 0; }   // the block swing is over: do not play it on as a flail
+      auto begin = [&](u8 j) {
+        const bool restart = swing == 0 || swing > 0.6f;
+        swingArm();
+        if (restart) swingJob = j;
+      };
+      if (in.pressed(Act::Attack)) begin(0);   // the air, a creature, a blade: the hand's own swing
+      if (in.pressed(Act::Use) && s.target.hit && p->blockT <= 0) begin(0);   // a use that is not setting a block down
+      else if (in.pressed(Act::Use) && p->held().id == "fishing_rod") swingArm();   // cast / reel in
+      if (s.breaking) { swinging = true; if (swing == 0) swing = 0.0001f; }
+      // holding Use places again and again: each placement restarts the player's swing, so the arm keeps looping
+      if (p->swing > 0 && (simSwing == 0 || p->swing < simSwing)) begin(swingJob);
+    }
   }
   simSwing = p->swing;
   { static double lastTap = -1; const double t = cinematicTapTime(); if (t != lastTap) { if (lastTap >= 0 || t > 0) swingArm(); lastTap = t; } }   // (setting a thing down at a station: your arm's own swing)
-  if (swinging || swing > 0) { swing += fdt * fpSwingRate(p->held().id, s.breaking); if (swing >= 1) swing = 0; }
+  if (p->armJob == 1 || p->armJob == 2) { swing = p->swing; swingJob = p->armJob; }   // the station tap must not start a second swing over a dig or a place
+  else if (swinging || swing > 0) { swing += fdt * fpSwingRate(p->held().id, s.breaking || swingJob == 1); if (swing >= 1) { swing = 0; swingJob = 0; } }
   swinging = false;
   // a light for the hand: where your eyes are, and what you carry
   World& w = s.world();
@@ -380,7 +395,7 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     // and the tool grip made it small)
     bool tool = im.kind != VoxelModel::Block && isHandheld(stack.id) && model3dKind(stack.id, stack.def()) != "hammer";
     const bool bowItem = im.kind != VoxelModel::Block && (stack.id == "bow" || stack.id == "crossbow");   // at rest the size it is drawn (render/fp_bow.cpp)
-    float e = side > 0 ? eat : 0, pitch = 1.62f + e * 0.35f, yaw = side * 0.32f;
+    float e = side > 0 ? eat : 0, pitch = 1.62f + e * 0.35f, yaw = side * 0.32f, roll = 0.f;
     mat4 am = glm::translate(mat4(1), vec3(side * (FP_HAND.x + (side > 0 ? bx - e * 0.32f : -bx * 0.6f)),
       FP_HAND.y + by - (side > 0 ? eqMain * 0.55f : eq * 0.3f) + lift + (side > 0 ? e * 0.13f : std::sin((float)time * 1.3f) * 0.006f), FP_HAND.z + e * 0.12f));
     if (side > 0) {
@@ -390,6 +405,15 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     } else am = glm::translate(am, vec3(0, fo.dy * 0.8f, 0));
     am = glm::rotate(am, yaw, vec3(0, 1, 0));
     am = glm::rotate(am, pitch, vec3(1, 0, 0));
+    if (isCarriedLantern(stack.id)) {   // the arm low in the corner, the cage hung under the fist
+      pitch = 1.05f;
+      yaw = side * 0.18f;
+      roll = side * 0.22f;
+      am = glm::translate(mat4(1), vec3(side * 0.50f, -0.46f, -0.60f));
+      am = glm::rotate(am, roll, vec3(0, 0, 1));
+      am = glm::rotate(am, yaw, vec3(0, 1, 0));
+      am = glm::rotate(am, pitch, vec3(1, 0, 0));
+    }
     if (const ItemDef* sd = stack.def(); stack.id == "shield" || (sd && sd->has("shield"))) {
       // a shield (sim/combat_rpg.h) strapped on the forearm: carried with the forearm level, raised while you block (the
       // hand it's in, the main hand's first); a parry knocks it back
@@ -439,12 +463,13 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       am = glm::rotate(am, side * (pair ? 0.85f : 0.35f), vec3(0, 0, 1));
       am = glm::rotate(am, pair ? 0.7f : 0.85f, vec3(1, 0, 0));
       am = glm::rotate(am, side * (pair ? -0.45f : -0.15f), vec3(0, 1, 0));
-    } else if (side > 0 && swing > 0) am = armSwing(am, 1, swing, false, s.breaking, pickMine, p->pitch);
+    } else if (side > 0 && swing > 0) am = armSwing(am, 1, swing, false, s.breaking, pickMine, p->pitch, swingJob == 1 ? 1.f : swingJob == 2 ? 0.55f : 0.f);
     if (side > 0 && wind > 0) { am = glm::translate(am, vec3(0, 0.1f * wind, 0.05f * wind)); am = glm::rotate(am, -0.75f * std::sin(wind * PI / 2), vec3(1, 0, 0)); }   // the rod comes back over the shoulder before the cast
     drawArm(am);
     // the fist, turned back to face the way you look
     mat4 m = glm::translate(am, vec3(0, 0.3f - 0.6f, -0.02f));
     m = glm::rotate(m, -pitch, vec3(1, 0, 0)); m = glm::rotate(m, -yaw, vec3(0, 1, 0));
+    if (roll != 0.f) m = glm::rotate(m, -roll, vec3(0, 0, 1));   // a carried lantern stays upright; the arm's roll does not tip it
     if (im.torch3d) {   // held upright in the fist like the ones on the wall, leaning a little away
       m = glm::translate(m, vec3(-side * 0.02f, 0.05f, -0.05f));
       m = glm::rotate(m, -0.3f, vec3(1, 0, 0)); m = glm::rotate(m, side * 0.2f, vec3(0, 0, 1)); m = glm::rotate(m, side * 0.6f, vec3(0, 1, 0));
@@ -455,6 +480,14 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
         const int h = side > 0 ? 0 : 1;
         torchTip[h] = f.cam.origin + glm::dvec3(vec3(rs)); torchTipOn[h] = true;
       }
+    } else if (isCarriedLantern(stack.id)) {
+      const float sway = std::sin((float)time * 1.7f) * 0.07f;
+      const float lean = std::sin((float)time * 1.1f) * 0.03f;
+      m = glm::rotate(m, sway, vec3(1, 0, 0));
+      m = glm::rotate(m, lean, vec3(0, 0, 1));
+      m = glm::scale(m, vec3(0.50f));
+      const vec3 hook = vec3(im.matrix() * vec4(16.f, 22.f, 16.f, 1.f));
+      m = glm::translate(m, -hook);
     } else if (im.kind == VoxelModel::Block) {
       m = glm::translate(m, vec3(-side * 0.03f, 0.1f, -0.06f));
       m = glm::rotate(m, side * 0.78f, vec3(0, 1, 0)); m = glm::scale(m, vec3(0.4f));

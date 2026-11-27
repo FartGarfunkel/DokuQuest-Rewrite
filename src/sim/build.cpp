@@ -258,7 +258,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     RayHit h = raycastBlocks(w, glm::dvec3(p.pos.x, p.pos.y + p.eye, p.pos.z), L, 5, true);
     if (!h.hit || R.tLiquid[h.id] != 1 || w.getBlock(h.block.x, h.block.y + 1, h.block.z) != AIR) return;
     w.setBlock(h.block.x, h.block.y + 1, h.block.z, bid, 0, SetFlags::Urgent);
-    consumeHeld(); swingArm(); sfxMaterial(lv, "grass", "place", vec3(h.block));
+    consumeHeld(); swingPlace(); sfxMaterial(lv, "grass", "place", vec3(h.block));
     return;
   }
   if (const u8 rc = rugCodeOf(bid)) {
@@ -272,7 +272,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     if (f.y != -999 && inWorldY(f.y) && !R.tOpaque[w.getBlock(f.x, f.y + 1, f.z)]) {
       if (isRugCoat(w.getCoat(f.x, f.y, f.z))) { toastMsg("There's a rug there already"); return; }
       w.setCoat(f.x, f.y, f.z, rc, SetFlags::Urgent);
-      consumeHeld(); swingArm(); sfxMaterial(lv, bdef.sound.empty() ? "cloth" : bdef.sound, "place", vec3(f) + vec3(0.5f, 1.05f, 0.5f));
+      consumeHeld(); swingPlace(); sfxMaterial(lv, bdef.sound.empty() ? "cloth" : bdef.sound, "place", vec3(f) + vec3(0.5f, 1.05f, 0.5f));
       return;
     }
   }
@@ -341,7 +341,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
       if (partBlocked(w, x, y, z, -1, bid, meta)) { toastMsg("There's no room for it there"); return; }   // (more candles beside a cell's other parts)
       if (lv.events && !lv.events->emit("blockPlace", json::array({p.name, x, y, z, bdef.key}))) return;
       w.setBlock(x, y, z, bid, meta, SetFlags::Urgent);
-      consumeHeld(); swingArm(); sfxMaterial(lv, bdef.sound, "place", vec3(x, y, z) + vec3(0.5f));
+      consumeHeld(); swingPlace(); sfxMaterial(lv, bdef.sound, "place", vec3(x, y, z) + vec3(0.5f));
       if (bdef.key == "rift_core" || bdef.key == "command_block") tryWitherSummon(lv, p.realm, ivec3(x, y, z));   // sim/wither.cpp: the Wither Storm
       return;
     }
@@ -351,7 +351,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   if ((cur != AIR && !R.tReplaceable[cur]) || w.hasAttachments(x, y, z)) {   // an occupied cell: a part sharing it (sim/attach_play.h)
     const int r = placeAttachment(lv, &p, w, x, y, z, bid, meta);
     if (r == 1) {
-      consumeHeld(); swingArm();
+      consumeHeld(); swingPlace();
       if (bhas(bid, BF::Sign)) if (const auto* parts = w.attachments(x, y, z)) openScreen(lv, p, "sign", {{"pos", {x, y, z}}, {"slot", (int)parts->size() - 1}});
       return;
     }
@@ -389,7 +389,7 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
   if (bdef.has("painting")) w.setBlockEntity(x, y, z, {{"type", "painting"}, {"n", (int)(rnd() * 30)}});   // a picture of its own (render/painting_layer.cpp)
   if (bdef.key == "rift_core" || bdef.key == "command_block") tryWitherSummon(lv, p.realm, ivec3(x, y, z));   // sim/wither.cpp: the Wither Storm
   consumeHeld();
-  swingArm();
+  swingPlace();
   sfxMaterial(lv, bdef.sound, "place", vec3(x, y, z) + vec3(0.5f));
   if (bhas(bid, BF::Falls)) checkFall(lv, w, x, y, z);
   if (bhas(bid, BF::HardensTo)) checkHarden(lv, w, x, y, z);

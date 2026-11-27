@@ -116,8 +116,14 @@ void runGuestUse(Level& lv, Player& p, const json& a) {
   p.sneaking = was;
 }
 
-void PlayerController::swingArm() { if (p.swing == 0 || p.swing > 0.6f) p.swing = 0.0001f; }
-void PlayerController::swingThrow(bool off) { p.swing = 0.0001f; p.throwArm = off ? 2 : 1; p.throwArmFor = 0.55f; }
+void PlayerController::swingArm() { if (p.swing == 0 || p.swing > 0.6f) p.swing = 0.0001f; p.armJob = 0; }
+void PlayerController::swingPlace() {
+  swingArm(); p.armJob = 2;
+  // a block going down is the arm only. A cut already playing would turn the whole body once this swing ended.
+  if (p.atkMove) { p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); }
+  p.data.erase("atkQueue"); p.data.erase("atkQueueOff");
+}
+void PlayerController::swingThrow(bool off) { p.swing = 0.0001f; p.armJob = 0; p.throwArm = off ? 2 : 1; p.throwArmFor = 0.55f; }
 void PlayerController::heldBecomes(ItemStack s) { p.inv[p.selected] = std::move(s); }
 void PlayerController::consumeHeld(int n) {
   if (p.creative()) return;
@@ -176,7 +182,8 @@ void PlayerController::update(float dt, const PlayerInput& in) {
     p.contacts = sampleContacts(w, p, p.eye);
     if (p.invuln > 0) p.invuln -= dt;
     if (p.hurtFlash > 0) p.hurtFlash = std::max(0.f, p.hurtFlash - dt * 2.5f);
-    if (p.swinging || p.swing > 0) { p.swing += dt * 3.6f; if (p.swing >= 1) p.swing = 0; }
+    if (p.swinging || p.swing > 0) { p.swing += dt * 3.6f; if (p.swing >= 1) { p.swing = 0; p.armJob = 0; } }
+    else p.armJob = 0;
     if (p.throwArmFor > 0.f && (p.throwArmFor -= dt) <= 0.f) p.throwArm = 0;
     p.swinging = false; p.bobAmt *= 0.9f;
     if (p.eatAnim > 0) p.eatAnim -= dt;   // (a bite in the saddle ends like one on foot)
@@ -200,7 +207,8 @@ void PlayerController::update(float dt, const PlayerInput& in) {
   if (p.dead) return;
   if (p.equip < 1) p.equip = std::min(1.f, p.equip + dt * 5);
   if (p.eatAnim > 0) p.eatAnim -= dt;
-  if (p.swinging || p.swing > 0) { p.swing += dt * 3.6f; if (p.swing >= 1) p.swing = 0; }
+  if (p.swinging || p.swing > 0) { p.swing += dt * 3.6f; if (p.swing >= 1) { p.swing = 0; p.armJob = 0; } }
+  else p.armJob = 0;
   if (p.throwArmFor > 0.f && (p.throwArmFor -= dt) <= 0.f) p.throwArm = 0;
   p.swinging = false;
   updateTarget();
@@ -530,8 +538,25 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
   const bool allowSwing = te || !target.hit || meleeBlade;
   // the off hand swings from the attack button only when the main hand is empty. Two weapons share that button; use blocks.
   const bool offUse = in.usePressed && offHandSwings(p, false, true) && !(target.hit && interactable(target.id));
+  // a pick, a shovel or an axe on a block is a dig. A blade cut already going would play on after the button
+  // lifts, and that cut turns the whole body. Drop it before it can start.
+  const bool digHit = target.hit && !te && !meleeBlade;
+  if (digHit) {
+    fightHold = false;
+    p.data.erase("atkQueue"); p.data.erase("atkQueueOff");
+    if (p.atkMove) {
+      p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear();
+      if (p.swing > 0 && p.armJob != 2) p.armJob = 1;
+    }
+  }
   tickMelee(lv, p, dt, in, allowSwing || offUse, offUse);
-  if (p.atkMove) { mining.active = false; fightHold = true; if (in.attackPressed) return; }
+  if (digHit) {
+    if (p.atkMove) {
+      p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear();
+      if (p.swing > 0 && p.armJob != 2) p.armJob = 1;
+    }
+    p.data.erase("atkQueue"); p.data.erase("atkQueueOff");
+  } else if (p.atkMove) { mining.active = false; fightHold = true; if (in.attackPressed) return; }
   if (!in.attack) fightHold = false;
   if (in.attackPressed && (!target.hit || meleeBlade)) swingArm();
   // a held swing that hit a creature never digs into the ground behind it; in creative a sword never breaks blocks
@@ -577,6 +602,7 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
     const RayHit& tg = target;
     if (mining.active) rememberDamage(lv, mining);
     p.swinging = true; if (p.swing == 0) p.swing = 0.0001f;
+    if (!meleeBlade) { if (p.atkMove) { p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); } p.data.erase("atkQueue"); p.data.erase("atkQueueOff"); p.armJob = 1; }
     breakBlock(tg.block.x, tg.block.y, tg.block.z); forgetDamage(lv, tg.block.x, tg.block.y, tg.block.z);
     mining.active = false; breakCd = 0.25f;
   } else if (in.attack && target.hit && !te && !noDig) {
@@ -586,6 +612,7 @@ void PlayerController::interact(float dt, const PlayerInput& in0) {
       mining = Mining{true, tg.block.x, tg.block.y, tg.block.z, tg.id, damageFor(lv, tg.block.x, tg.block.y, tg.block.z, tg.id), breakTime(tg.id, &tg), 0};
     }
     p.swinging = true; if (p.swing == 0) p.swing = 0.0001f;
+    if (!meleeBlade) { if (p.atkMove) { p.atkMove = MV_NONE; p.atkT = 0; p.atkHit.clear(); } p.data.erase("atkQueue"); p.data.erase("atkQueueOff"); p.armJob = 1; }
     if (breakCd <= 0 && std::isfinite(mining.time)) {
       mining.progress += mining.time <= 0 ? 1 : dt / mining.time;
       mining.pt += dt;

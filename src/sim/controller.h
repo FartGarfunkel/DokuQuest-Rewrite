@@ -65,6 +65,7 @@ public:
   bool canHarvest(BlockId id);
   void breakBlock(int x, int y, int z);
   void swingArm();
+  void swingPlace();               // swingArm, and that swing is setting a block down
   void swingThrow(bool offhand);   // swingArm, and that swing is an overhand throw (Player::throwArm)
   bool useFromOff = false;         // use() is the off hand's stack this call (swapped into the main hand)
   int targetQuarter() const;

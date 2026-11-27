@@ -24,6 +24,7 @@ public:
   void eat() { eatAnim = 0.45f; }
   void setSwinging(bool on) { swinging = on; }   // held swing while mining (set every frame)
   float swing = 0, equip = 1, eatAnim = 0, bob = 0, bobAmt = 0, atkDown = 0;   // atkDown: the weapon down out of view while your body's arm swings it (first person)
+  u8 swingJob = 0;   // 1 the mining pump for the whole swing, 2 a lighter place, 0 the chop
   // other areas may take over a hand (a map held up, render/map_render.cpp): the hook draws it and returns the
   // hands it took (1 = main, 2 = off); or draw over the item in a hand (the live compass and clock dials,
   // render/instruments.cpp): m maps the item model's space (before VoxelModel::matrix()) to view space

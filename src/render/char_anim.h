@@ -20,6 +20,7 @@ struct CharPose {
   bool gui = false;      // in a menu (render/activity_layer.cpp): both forearms up before them, the right hand tapping at a floating screen
   bool doze = false;     // idle a long while: dozing on their feet, the head dropped, breathing slow
   bool held = false, off = false, carry = false, paddle = false, fp = false, fpLeftArm = false;
+  bool lanternR = false, lanternL = false;   // that hand carries a lantern: the arm stays forward and the cage hangs
   // anim.js: the body turned its own way, leans
   bool hasBodyYaw = false; float bodyYaw = 0, headTurn = 0, legTurn = 0, accLean = 0, turnLean = 0;
   bool fly = false; float flySpeed = 0, flyVy = 0;
@@ -64,6 +65,7 @@ struct CharPose {
   float roll = 0; bool rollBack = false;
   bool armed = false;
   bool pick = false;        // mining with a pick: the forearm pumps, the shoulder stays quiet
+  u8 dig = 0;               // 1 clicking a block, 2 setting one down: that pump, and a place is the lighter one
   i8 hurtLeg = 0;           // 1 the right leg, -1 the left: that leg drags
   i8 hurtArm = 0;           // 1 the right arm, -1 the left: it stays short and does not swing the cut
   float runAmt = -1, sneakAmt = -1;   // eased amounts (-1: from sprint / sneak as they are)
@@ -78,7 +80,8 @@ struct CharPose {
 enum CharWork : u8 { CW_NONE = 0, CW_HAMMER, CW_DIP, CW_BREW, CW_GRIND, CW_CHOP, CW_KNEAD, CW_CUT, CW_WEAVE, CW_TEND, CW_FIT, CW_SORT, CW_CRAFT, CW_HOE, CW_FEED, CW_CHISEL };
 CharWork charWorkOf(const std::string& doing);
 struct CharAngles { vec3 body{0}, head{0}, armR{0}, foreR{0}, armL{0}, foreL{0}, legR{0}, shinR{0}, legL{0}, shinL{0}; float lift = 0;
-                    vec2 toolR{0}, toolL{0}; };   // toolR/L: the grip's turn at the fist (x, z), the held thing turned in the hand
+                    vec2 toolR{0}, toolL{0};   // toolR/L: the grip's turn at the fist (x, z), the held thing turned in the hand
+                    u8 lanternShow = 0; };     // 1 the right arm, 2 the left: that arm is in the lantern carry
 // an attack move's pose over the stance (render/attack_poses.cpp): the move's keys at its time, blended in from the stance
 // and back out to it
 void attackPose(CharAngles& A, const CharPose& pose);
@@ -90,6 +93,10 @@ float attackWeight(const CharPose& pose);
 bool devAttackPose(u8& move, float& t);
 // the held thing's frame from the forearm's, turned by the grip (the fist at 0,-6,-1 of the forearm)
 mat4 gripTurn(const mat4& fore, vec2 turn);
+// a lantern, a soul lantern, or a firefly lantern carried in the hand
+bool isCarriedLantern(const std::string& id);
+// the cage hung from the fist: the bail's top at the hand, upright, swaying a little
+mat4 lanternHang(const mat4& fore, float time, const mat4& model);
 // while running, a few degrees that open that forearm outward, so a blade along it passes the head.
 // The item stays in the fist. Still, walking, a swing and a block are 0.
 // Positive opens the right forearm (a right-handed turn about the forearm's +Z).

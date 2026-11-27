@@ -307,7 +307,37 @@ void overhandThrow(CharAngles& A, const CharPose& pose) {
   A.body.y += by * k;
   A.body.x += pitch * 0.25f * k;
 }
+// the lantern carry is on while the arm is free. A swing, a dig, a place, a bow, a bite and the rest take the arm back.
+bool lanternIdle(const CharPose& pose) {
+  if (pose.dig || upperBusy(pose)) return false;
+  if (pose.swim || pose.crawl || pose.paddle || pose.fly || pose.glide || pose.hang || pose.climb > 0 || pose.ladder) return false;
+  if (pose.sleep || pose.carry || pose.deathT > 0) return false;
+  if (pose.talk || pose.fold || pose.read || pose.wave > 0.f || pose.hoe > 0.f || pose.work) return false;
+  if (pose.twoHand || pose.reach) return false;
+  return true;
+}
 }  // namespace
+
+bool isCarriedLantern(const std::string& id) {
+  return id == "lantern" || id == "soul_lantern" || id == "firefly_lantern";
+}
+
+mat4 lanternHang(const mat4& fore, float time, const mat4& model) {
+  // the fist, then upright in the world. The bail stays in the hand and the cage drops.
+  const vec3 fist = vec3(fore * vec4(0.f, -6.f, -1.f, 1.f));
+  vec3 fz = vec3(fore[2]); fz.y = 0.f;
+  const float yaw = glm::length(fz) > 1e-4f ? std::atan2(fz.x, fz.z) : 0.f;
+  const float sway = std::sin(time * 1.7f) * 0.07f;
+  const float roll = std::sin(time * 1.1f) * 0.03f;
+  const vec3 hook = vec3(model * vec4(16.f, 22.f, 16.f, 1.f));
+  mat4 m = glm::translate(mat4(1.f), fist);
+  m = glm::rotate(m, yaw, vec3(0, 1, 0));
+  m = glm::rotate(m, sway, vec3(1, 0, 0));
+  m = glm::rotate(m, roll, vec3(0, 0, 1));
+  m = glm::scale(m, vec3(0.55f));
+  m = glm::translate(m, -hook);
+  return m;
+}
 
 CharAngles charAnimate(const CharPose& pose) {
   CharAngles A;
@@ -328,8 +358,8 @@ CharAngles charAnimate(const CharPose& pose) {
     A.body.z += (pose.hurtLeg > 0 ? 0.07f : -0.07f) * hitch;
     A.lift -= 0.028f * hitch;
   }
-  if (pose.held && !pose.carry && !(pose.twoHand && !pose.atkMove && pose.swing <= 0.f)) A.armR.x = A.armR.x * 0.5f + 0.31f;
-  if (pose.off && !pose.carry && !pose.twoHand) A.armL.x = A.armL.x * 0.5f + 0.31f;
+  if (pose.held && !pose.lanternR && !pose.carry && !(pose.twoHand && !pose.atkMove && pose.swing <= 0.f)) A.armR.x = A.armR.x * 0.5f + 0.31f;
+  if (pose.off && !pose.lanternL && !pose.carry && !pose.twoHand) A.armL.x = A.armL.x * 0.5f + 0.31f;
   // off the ground: knees up; falling hard: arms up
   if (pose.air && !pose.swim && !pose.crawl && !pose.sit) {
     // a sense of weight: pushing off (legs straight under you, arms swung up), tucked at the top, then reaching down for
@@ -352,7 +382,8 @@ CharAngles charAnimate(const CharPose& pose) {
   // swinging a tool: the classic attack swing, a quick chop that eases out, the body twisting with it; a weapon cuts its
   // combo instead (weaponSwing: the sword chain, our own keys; render/char_layer.cpp runs its 0.5 s clock)
   float at = pose.swing;
-  if (pose.atkMove) attackPose(A, pose);   // an attack move (sim/attack_moves.h) drawn from its fitted keys, in step with its hits
+  // a dig or a place is the arm only. The attack pose turns the chest and the hips.
+  if (pose.atkMove && !pose.dig) attackPose(A, pose);
   if (pose.hurtArm != 0 && !pose.swim && !pose.crawl) {
     const bool right = pose.hurtArm > 0;
     const bool cuts = pose.atkMove && ((right && !pose.atkOff) || (!right && pose.atkOff));
@@ -367,15 +398,16 @@ CharAngles charAnimate(const CharPose& pose) {
       fore.x += 0.22f;
     }
   }
-  else if (at > 0 && (pose.swingKind == 4 || pose.swingKind == 5)) overhandThrow(A, pose);
-  else if (at > 0 && pose.swingKind > 0) weaponSwing(A, pose);
-  else if (at > 0 && pose.pick) {
-    // a pick: the forearm pumps at the elbow. The shoulder tips with the look so the head meets the block.
-    const float f = std::sin(at * PI);
+  else if (at > 0 && pose.dig) {
+    // clicking a block, or setting one down: the arm only, one pump. The body is not turned.
+    const float k = pose.dig == 2 ? 0.55f : 1.f;
+    const float f = std::sin(at * PI) * k;
     const float look = std::clamp(pose.headPitch, -1.1f, 1.1f);
-    A.armR.x += f * 0.22f + look * 0.32f;
-    A.foreR.x += 0.35f + f * 1.15f;
-  } else if (at > 0) {
+    A.armR = vec3(0.45f + look * 0.32f + f * 0.28f, 0.12f, 0);
+    A.foreR = vec3(0.25f + f * 1.05f, 0, 0);
+  } else if (at > 0 && (pose.swingKind == 4 || pose.swingKind == 5)) overhandThrow(A, pose);
+  else if (at > 0 && pose.swingKind > 0) weaponSwing(A, pose);
+  else if (at > 0) {
     float tw = std::sin(std::sqrt(at) * TAU) * 0.2f;
     float f = 1 - at; f *= f; f *= f; f = 1 - f;
     float f2 = std::sin(f * PI), f3 = std::sin(at * PI) * (pose.headPitch + 0.7f) * 0.75f;
@@ -629,6 +661,28 @@ CharAngles charAnimate(const CharPose& pose) {
       A.foreL = A.foreL + (mFore - A.foreL) * k;
     }
   }
+  // a lantern: the upper arm forward in front of the hip, the elbow bent so the cage hangs under the hand
+  if (lanternIdle(pose)) {
+    const float phase = std::sin(pose.walk) * clampf(pose.walkAmt, 0.f, 1.f);
+    auto hang = [&](bool left) {
+      if (!(left ? pose.lanternL : pose.lanternR)) return;
+      vec3& arm = left ? A.armL : A.armR;
+      vec3& fore = left ? A.foreL : A.foreR;
+      const float side = left ? -1.f : 1.f;
+      const float bob = left ? -phase : phase;
+      if (pose.fp) {
+        // the hip carry is below the eyes. This one sits the fist in the lower corner.
+        arm = vec3(1.22f + bob * 0.06f, side * -0.16f, side * -0.14f);
+        fore = vec3(0.70f, side * 0.03f, 0.f);
+      } else {
+        arm = vec3(1.05f + bob * 0.12f, side * -0.06f, side * -0.10f);
+        fore = vec3(0.78f + std::max(0.f, -bob) * 0.08f, side * 0.02f, 0.f);
+      }
+      A.lanternShow = (u8)(A.lanternShow | (left ? 2 : 1));
+    };
+    hang(false);
+    hang(true);
+  }
   return A;
 }
 
@@ -731,6 +785,12 @@ void charRig(const CharModel& M, CharPose pose, const mat4& base0, CharRig& R, b
     vec3 armA = side ? A.armL : A.armR, foreA = side ? A.foreL : A.foreR, legA = side ? A.legL : A.legR, shinA = side ? A.shinL : A.shinR;
     vec3 pu = M.pivot[up], pl = M.pivot[lu];
     vec3 armOff(pu.x * b, pu.y - 12, pu.z);
+    if (pose.fp && (A.lanternShow & (side ? 2 : 1))) {
+      // the carry sits by the hip, under the eyes. Bring that shoulder up and forward so the cage
+      // hangs in the lower corner of the view, the bail still in the fist.
+      const float s = side ? -1.f : 1.f;
+      armOff += vec3(s * 1.4f, 2.8f, -3.0f);
+    }
     R.part[up] = child(bodyM, armOff, armA);
     R.part[dn] = child(R.part[up], M.pivot[dn] - pu, foreA);
     // running only: open the forearm a few degrees. The sword stays in the fist and the tip

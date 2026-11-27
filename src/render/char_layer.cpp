@@ -309,6 +309,12 @@ void heldInHand(const mat4& fore, std::string id, float side, VoxelLight light, 
   mat4 hm = glm::translate(fore, vec3(0, -6 + T[0], -1 + T[1]));
   const ItemDef* fd = reg().item(id);
   const bool armTool = isHandheld(id) || (fd && fd->hasTool);   // (swords and tools: along the arm, full size, as third person holds them)
+  if (isCarriedLantern(id)) {   // hung from the fist by its bail, upright, not tipped in the hand like a block
+    hm = lanternHang(fore, (float)now, im.matrix());
+    if (headOut) *headOut = vec3(hm * im.matrix() * vec4(16.f, 8.f, 16.f, 1.f));
+    voxelRenderer().draw(im.gl, hm * im.matrix(), light, tint, glint ? 1.f : 0.f);
+    return;
+  }
   if (fpYaw && !armTool && !im.torch3d && !im.stand && !isBowKey(id) && id.rfind("fishing_rod", 0) != 0) {   // (a torch: held as a pickaxe, below)   // seamless first person: the old hand view's grip, at your own fist, turned with you
     // (turned with you and tipped with your look, as the old hand view held things; the fist is nearer the eye than that
     // view's was, so all a little smaller: DQ_DEV_FPGRIPK)
@@ -481,11 +487,17 @@ void CharacterLayer::update(GameSession& s, double dt) {
   if (fdt <= 0) return;
   // the local player's arm timers (the hand view keeps them)
   if (Player* lp = s.player) if (HeldItemLayer* h = s.layer<HeldItemLayer>()) {
-    lp->swingT = h->swing;
-    // each swing begun is counted: the count goes to the others (net/protocol.cpp "sn"), whose games play it
+    // a dig or a place is the player's one swing. The hand view's clock restarts past 0.6, so copying it
+    // here played the pump a second time, and a place then fell through into the body flail.
     Anim& a = anims[lp->id];
-    if (h->swing > 0 && (a.lastOwnSwing <= 0 || h->swing < a.lastOwnSwing - 0.05f)) lp->swingN++;
-    a.lastOwnSwing = h->swing;
+    if (lp->armJob == 1 || lp->armJob == 2 || a.armLatch) {
+      if (lp->swing > 0 && (a.lastOwnSwing <= 0 || lp->swing < a.lastOwnSwing - 0.05f)) lp->swingN++;
+      a.lastOwnSwing = lp->swing;
+    } else {
+      lp->swingT = h->swing;
+      if (h->swing > 0 && (a.lastOwnSwing <= 0 || h->swing < a.lastOwnSwing - 0.05f)) lp->swingN++;
+      a.lastOwnSwing = h->swing;
+    }
   }
   for (auto& up : s.level->entities()) {
     Entity* e = up.get();
@@ -590,8 +602,12 @@ void CharacterLayer::update(GameSession& s, double dt) {
         }
       } else st.digT = 0;
     }
-    // weapon combos: a swing begun within 0.8 s of the last is the next of the chain (the combo window)
-    if (p->swingT > 0 && (st.lastSwing <= 0 || p->swingT < st.lastSwing - 0.05f)) {
+    // weapon combos: a swing begun within 0.8 s of the last is the next of the chain (the combo window).
+    // a dig or a place is not one of those. Its swing is the arm pump, and this clock was a second motion after it.
+    if ((p->armJob == 1 || p->armJob == 2) && p->swingT > 0) st.armLatch = p->armJob;
+    else if (p->swingT <= 0) st.armLatch = 0;
+    if (st.armLatch) { st.swingU = 0; st.throwArm = 0; }
+    else if (p->swingT > 0 && (st.lastSwing <= 0 || p->swingT < st.lastSwing - 0.05f)) {
       st.swingN = time - st.swingAt < 0.8 ? (u8)((st.swingN + 1) % 3) : 0; st.swingAt = time; st.swingU = 0.0001f;
       st.throwArm = p->throwArm; if (p->throwArm) p->throwArm = 0;   // the throw that started this swing (the arm that let it go)
     }
@@ -909,6 +925,8 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.hasBodyYaw = true; ps.bodyYaw = st.bodyYaw + devTurn; ps.headTurn = wrapAngle(p.yaw - st.bodyYaw); ps.legTurn = st.legTurn;
   // the shield up, a dodge roll (sim/combat_rpg.h): the roll turns the body the way it goes (back to it on a step back)
   ps.block = st.block; ps.blockMain = isShieldItem(wear.held); ps.guardHit = st.guardHit;
+  if (p.armJob && p.swing > 0) ps.dig = p.armJob;
+  else if (st.armLatch && p.swingT > 0) ps.dig = st.armLatch;
   if (const ItemDef* hd = reg().item(wear.held)) {
     ps.twoHand = hd->num("hands") >= 2.f;
     ps.pick = hd->hasTool && hd->tool.type == "pickaxe";
@@ -1094,12 +1112,12 @@ void CharacterLayer::drawPlayer(GameSession& s, const FrameCtx& f, Player& p, An
   ps.runAmt = st.runAmt; ps.sneakAmt = ps.sneak && !p.sneaking ? 1.f : st.sneakAmt; ps.hurtDir = st.hurtDir;
   u8 devMove = 0; float devT = 0;
   if (&p == s.player && devAttackPose(devMove, devT)) { ps.atkMove = devMove; ps.atkT = devT; ps.swing = 0; ps.swingKind = 0; if (!fp) { ps.bodyYaw = p.yaw; ps.hasBodyYaw = true; } }
-  else if (p.atkMove && p.atkT < attackMove(p.atkMove).len) {   // an attack move (sim/attack_moves.h, the rules' own clock): drawn from its keys, the body turned to the blow
+  else if (p.atkMove && p.atkT < attackMove(p.atkMove).len && !ps.dig && !(p.armJob && p.swing > 0)) {   // an attack move turns the body. A dig or a place keeps the arm pump.
     ps.atkMove = p.atkMove; ps.atkT = p.atkT; ps.atkOff = p.atkOff; ps.swing = 0; ps.swingKind = 0;
     ps.headPitch = p.atkPitch;   // the drawn cut uses the frozen look, same as the blade's hit (sim/combat.cpp)
     if (!fp) { ps.bodyYaw = p.atkYaw; ps.hasBodyYaw = true; }
   } else if (st.swingU > 0 && st.throwArm && !p.swinging) { ps.swingKind = st.throwArm == 2 ? (u8)5 : (u8)4; ps.swing = st.swingU; }
-  else if (st.swingU > 0 && ps.armed && !isShieldItem(wear.held) && !p.swinging) { ps.swingKind = (u8)(1 + st.swingN); ps.swing = st.swingU; }
+  else if (st.swingU > 0 && ps.armed && !isShieldItem(wear.held) && !p.swinging && !ps.dig) { ps.swingKind = (u8)(1 + st.swingN); ps.swing = st.swingU; }
   {   // a spell held up in a free hand after a cast (render/spell_hands.h)
     float rdy[2], thr[2]; spellHandPose(p.id, rdy, thr);
     auto freeHand = [&](const std::string& it) { const ItemDef* d = it.empty() ? nullptr : reg().item(it); return it.empty() || (d && d->props.contains("staff")); };
@@ -1171,7 +1189,10 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
   if (L && !back.empty()) ov = gearPackOver(L, AR[1], AR[0], !cape.empty());
   bool cloak = L && L->cloak && cape.empty();
   CharRig R;
-  charRig(M, ps, base, R, cloak, !back.empty());
+  CharPose rig = ps;
+  rig.lanternR = rig.lanternR || isCarriedLantern(wear.held);
+  rig.lanternL = rig.lanternL || isCarriedLantern(wear.off);
+  charRig(M, rig, base, R, cloak, !back.empty());
   if (o.palms) {   // (the fists, where a held thing's grip is: the bow's)
     o.palms[0] = o.camPos + glm::dvec3(vec3(R.part[CP_ARMR_D] * vec4(0, -BOW_FIST, 0, 1)));
     o.palms[1] = o.camPos + glm::dvec3(vec3(R.part[CP_ARML_D] * vec4(0, -BOW_FIST, 0, 1)));
@@ -1388,7 +1409,7 @@ void drawCharacter(const CharacterSpec& spec, const CharPose& ps, const CharWear
     else if (!wear.off.empty() && isShieldItem(wear.off) && !twoHandBlock) shieldInHand(R, CP_ARML_D, wear.off, -1.f, ps.blockMain ? 0.f : ps.block, light, tint, wear.offGlint);
     else if (!wear.off.empty()) {
       vec3 head;
-      heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, 0, glm::dvec3(0), wear.offModel, fp ? &head : nullptr, fp ? fpYawV : nullptr);
+      heldInHand(gripTurn(R.part[CP_ARML_D], R.toolL), wear.off, -1.f, light, tint, wear.offGlint, 0, o.time, glm::dvec3(0), wear.offModel, fp ? &head : nullptr, fp ? fpYawV : nullptr);
       if (fp) { HeldItemLayer::torchTip[1] = o.camPos + glm::dvec3(head); HeldItemLayer::torchTipOn[1] = true; }
     }
   }

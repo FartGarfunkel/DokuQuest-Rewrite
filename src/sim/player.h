@@ -133,6 +133,8 @@ public:
   bool swinging = false, wasWater = false;
   // an overhand throw just begun (render/char_layer.cpp copies it onto that swing): 1 the main hand, 2 the off hand
   u8 throwArm = 0; float throwArmFor = 0;
+  // this swing, not saved and not sent: 0 a fight or a use, 1 digging a block, 2 setting a block down
+  u8 armJob = 0;
 
   ItemStack& held() { return inv[selected]; }
   bool creative() const { return mode == "creative"; }

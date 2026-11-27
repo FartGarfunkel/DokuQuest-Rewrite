@@ -5,6 +5,14 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.39 (November 2026)
+
+**A lantern in the hand, and a pick that stays a pick:**
+- A lantern, a soul lantern, or a firefly lantern hangs upright from its bail. The cage sways a little as you walk.
+- Digging a block, or setting one down, is an arm pump. The rest of the body stays put. A sword still swings as a sword.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.38 (November 2026)
 
 **A longboat you can sail and walk:**
