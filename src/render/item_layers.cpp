@@ -310,7 +310,21 @@ void HeldItemLayer::update(GameSession& s, double dt) {
   light = vec2((l >> 4) / 15.f, std::max<int>(l & 15, carried) / 15.f);
 }
 
+// the open pages on the window (logical pixels, y down), so the light passes can put them back clean
+static void shieldPages(const mat4& proj, const vec3 c[4], App& a) {
+  vec2 lo(1e9f), hi(-1e9f);
+  for (int i = 0; i < 4; i++) {
+    const vec4 q = proj * vec4(c[i], 1);
+    if (q.w <= 0.05f) return;
+    const vec2 n = vec2(q) / q.w;
+    const vec2 px((n.x * 0.5f + 0.5f) * a.width, (1.f - (n.y * 0.5f + 0.5f)) * a.height);
+    lo = glm::min(lo, px); hi = glm::max(hi, px);
+  }
+  bookUiShield(lo, hi);
+}
+
 void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
+  bookUiClearShield();
   armsDrawn = 0;   // (set again below for the hands this view draws)
   // leaning over a station: the hands are the scene's. Sat by the campfire in seamless (immersive) first person: your own
   // body's arms, as the others see them (render/char_layer.cpp), so no hand view; it stays when the body isn't drawn
@@ -605,6 +619,12 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
         if (hleaf >= 0) drawJournalLeaf(cd, F, jw, jh, bend, hp, hc, hleaf, hdir, vec2(1, 1), false);
         cd.end();
       }
+      {
+        const vec3 o = vec3(F[3]);
+        const float hx = jw * 0.5f, hy = jh * 0.5f;
+        const vec3 c[4] = {o + vec3(-hx, -hy, 0), o + vec3(hx, -hy, 0), o + vec3(hx, hy, 0), o + vec3(-hx, hy, 0)};
+        shieldPages(proj, c, s.app);
+      }
       return;
     }
   }
@@ -706,7 +726,9 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
       }
       // (the whole picture's place, of which the book shown is the crop: the mouse maps through it)
       const vec2 cs(crop.z - crop.x, crop.w - crop.y), sz = hi - lo;
-      bookUiSetRect(lo - sz * vec2(crop.x, crop.y) / cs, lo + sz * (vec2(1) - vec2(crop.x, crop.y)) / cs);
+      const vec2 r0 = lo - sz * vec2(crop.x, crop.y) / cs, r1 = lo + sz * (vec2(1) - vec2(crop.x, crop.y)) / cs;
+      bookUiSetRect(r0, r1);
+      bookUiShield(lo, hi);   // the pages themselves: the cover margin is added by the shield
     }
     return;
   }
@@ -780,6 +802,9 @@ void HeldItemLayer::drawOverlay(GameSession& s, const FrameCtx& f) {
     }
     bookUiSetQuad(q);
     bookUiSetBook(proj, offJM, offW, offH, top, 0.35f * 0.16f);   // (the mouse cast onto the pages exactly: render/journal_model.cpp geo's tilt)
+    vec2 slo(1e9f), shi(-1e9f);
+    for (int k = 0; k < 4; k++) { slo = glm::min(slo, q[k]); shi = glm::max(shi, q[k]); }
+    bookUiShield(slo, shi);
   }
   for (auto& [st2, m2] : over) itemHook(s, f, proj, st2, m2, itemModel(st2.id));
 }

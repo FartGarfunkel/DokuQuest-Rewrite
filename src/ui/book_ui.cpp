@@ -30,6 +30,7 @@ namespace {
 ImGuiContext* g_ctx = nullptr;
 GLuint g_fbo = 0, g_tex = 0; int g_w = 0, g_h = 0;
 vec2 g_lo{0}, g_hi{0}; bool g_rect = false; bool g_drawing = false;
+bool g_shield = false; vec2 g_shieldLo{0}, g_shieldHi{0};
 static vec2 g_size(1);   // the pages' picture (logical pixels)
 ImVec2 g_spA, g_spB; bool g_spread = false, g_hadSpread = false; vec4 g_crop(0, 0, 1, 1);
 std::vector<vec4> g_ribs, g_ribsShown;   // the ribbons drawn this frame (picture pixels), and last frame's in crop space
@@ -245,6 +246,14 @@ std::string bookUiLayout() { JournalPic p; p.spread = g_spreadUV; p.ribbons = g_
 // (g_size: up top)
 vec2 bookUiSize() { return g_size; }
 void bookUiSetRect(vec2 lo, vec2 hi) { g_lo = lo; g_hi = hi; g_rect = hi.x - lo.x > 8 && hi.y - lo.y > 8; }
+void bookUiClearShield() { g_shield = false; }
+void bookUiShield(vec2 lo, vec2 hi) {
+  const vec2 m = (hi - lo) * 0.045f;   // the cover sits a little outside the paper
+  lo -= m; hi += m;
+  if (hi.x - lo.x < 8 || hi.y - lo.y < 8) return;
+  g_shield = true; g_shieldLo = lo; g_shieldHi = hi;
+}
+bool bookUiShieldRect(vec2& lo, vec2& hi) { if (!g_shield) return false; lo = g_shieldLo; hi = g_shieldHi; return true; }
 
 void drawStationBag(App& a, int padCur);
 void bookUiRender(App& a, bool station) {

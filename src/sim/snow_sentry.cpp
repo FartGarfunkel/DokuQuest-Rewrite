@@ -106,6 +106,7 @@ void registerSnowSentry() {
   if (done) return;
   done = true;
   injectSentry();
+  reg().ensureSpawnEggs();
   reloadCreatureTypes();
   { CreatureHooks h; h.brain = sentryBrain; setCreatureHooks("snow_sentry", h); }
   registerLevelSystem([](Level& lv) -> std::shared_ptr<LevelSystem> {

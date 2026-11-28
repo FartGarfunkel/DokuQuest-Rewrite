@@ -2,6 +2,8 @@
 // in a temporary user dir, a test arena is built in the Overworld band, and a Player is driven
 // through PlayerController with scripted input. Prints PASS/FAIL per check; exit code = failures.
 //   ./build/dq-test-gameplay [--userdir DIR] [-v]
+#include "world/shapes.h"
+#include "world/carve_forms.h"
 #include "sim/weather.h"
 #include "sim/wind_field.h"
 #include "core/init.h"
@@ -460,6 +462,53 @@ int main(int argc, char** argv) {
     CHECK(r.get(0, Y, 1) == r.B("torch") && r.w().getMeta(0, Y, 1) == 3, "a torch fixes to the wall it's put on (meta %d, block %s)", r.w().getMeta(0, Y, 1), reg().block(r.get(0, Y, 1)).key.c_str());
     r.set(0, Y, 0, AIR); r.step(0.2);
     CHECK(r.get(0, Y, 1) == AIR, "and drops when the wall goes");
+    // a torch on a fence post, on a vertical slab (its inner face and its outer face), on the side of a
+    // bottom slab, and on the stone that is left of a chiseled block
+    auto clickTorch = [&](vec3 stand, vec3 at, ivec3 expect, int wantMeta, const char* what) {
+      r.hold(0, "torch", 8);
+      r.put(stand.x, stand.y, stand.z);
+      r.lookAt(at); r.c->updateTarget();
+      r.step(0.15);
+      r.put(stand.x, stand.y, stand.z, r.p->yaw, r.p->pitch);
+      r.lookAt(at); r.c->updateTarget();
+      const RayHit h = r.c->target;
+      r.step(0.05, use);
+      const BlockId got = r.get(expect.x, expect.y, expect.z);
+      const int gm = (int)(r.w().getMeta(expect.x, expect.y, expect.z) & 7);
+      CHECK(got == r.B("torch") && gm == wantMeta,
+            "%s (block %s meta %d; aim hit %d n %d,%d,%d at %d,%d,%d %s)",
+            what, reg().block(got).key.c_str(), gm, (int)h.hit, h.normal.x, h.normal.y, h.normal.z,
+            h.block.x, h.block.y - Y, h.block.z, h.hit ? reg().block(h.id).key.c_str() : "none");
+      r.step(0.25);
+      CHECK(r.get(expect.x, expect.y, expect.z) == r.B("torch"), "%s stays put", what);
+    };
+    r.set(6, Y, -8, r.B("oak_fence"));
+    clickTorch(vec3(6.5f, (float)Y, -6.f), vec3(6.5f, Y + 0.5f, -7.f), {6, Y, -7}, 3, "a torch fixes to the side of a fence");
+    {
+      WorldShapeNb nb(r.w(), 6, Y, -7);
+      const float back = torchSetBack(3, nb);
+      CHECK(back > 0.3f && back < 0.45f, "and steps onto the post (setback %.3f)", back);
+    }
+    r.set(6, Y, -8, AIR); r.step(0.2);
+    CHECK(r.get(6, Y, -7) == AIR, "a torch on a fence drops when the fence goes");
+    r.set(8, Y, -8, r.B("stone_slab"), 2);
+    CHECK(r.get(8, Y, -8) == stone && r.w().getCarve(8, Y, -8) != 0, "a vertical slab is the chiseled block (carve %d, id %s)", (int)r.w().getCarve(8, Y, -8), reg().block(r.get(8, Y, -8)).key.c_str());
+    clickTorch(vec3(8.5f, (float)Y, -6.f), vec3(8.5f, Y + 0.5f, -7.5f), {8, Y, -7}, 3, "a torch fixes to a vertical slab's inner face");
+    {
+      WorldShapeNb nb(r.w(), 8, Y, -7);
+      CHECK(torchSetBack(3, nb) == 0.5f, "and steps back onto that face (%.2f)", torchSetBack(3, nb));
+    }
+    r.set(8, Y, -7, AIR);
+    clickTorch(vec3(8.5f, (float)Y, -10.f), vec3(8.5f, Y + 0.5f, -8.f), {8, Y, -9}, 4, "a torch fixes to a vertical slab's outer face");
+    r.set(8, Y, -8, AIR); r.set(8, Y, -9, AIR);
+    r.set(12, Y, -8, r.B("stone_slab"), 0);
+    clickTorch(vec3(12.5f, (float)Y, -6.f), vec3(12.5f, Y + 0.25f, -7.f), {12, Y, -7}, 3, "a torch fixes to the side of a bottom slab");
+    r.set(12, Y, -8, AIR); r.set(12, Y, -7, AIR);
+    r.set(10, Y, -8, stone);
+    r.w().setCarve(10, Y, -8, octBit(1, 1, 1));
+    clickTorch(vec3(10.5f, (float)Y, -6.f), vec3(10.25f, Y + 0.25f, -7.f), {10, Y, -7}, 3, "a torch fixes to the stone left on a chiseled face");
+    r.set(10, Y, -8, AIR); r.set(10, Y, -7, AIR);
+    r.put(0.5f, (float)Y, 2.5f, 0, 0);
     r.hold(0, "chest", 1);
     aimFace({0, Y - 1, 1}, {0, 1, 0}); r.step(0.3); r.step(0.05, use);
     json* ce = r.w().blockEntity(0, Y, 1);

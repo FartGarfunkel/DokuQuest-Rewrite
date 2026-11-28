@@ -5,6 +5,27 @@ Release notes for the C++ versions of DokuQuest, newest first. The release workf
 GitHub release notes. Keep it in step with `assets/news/news.dqn` (the launcher's news). Patch notes never
 mention Herobrine and every entry ends with "Removed Herobrine."
 
+## 1.0.0-alpha.41 (November 2026)
+
+**The trommel is one piece:**
+- The trommel is one shell. The hopper is a hole in the top, and the firebox is an opening in the front, with the drum behind it.
+- What you set in sits in the hopper. Fuel sits in the firebox. An empty hand still takes either back.
+
+**A short chisel, a bag you lie on, and a torch that stays put:**
+- A chisel is short, about the length of a throwing knife, and still held by the handle.
+- A sleeping bag is lain on. You sit, turn, and lie on the quilt.
+- A torch sits on the side of a fence, a wall, or a pane, on either face of a vertical slab, and on the face that is left of a chiseled block.
+
+**The book stays clear:**
+- The journal and the other book pages no longer pick up the streaks of light across them.
+
+**Creatures you can take with you:**
+- Every creature in the compendium has a spawn egg. One that already had its own picture keeps it. The rest are a plain egg in a colour of their own.
+- A wolf, and a maned wolf, is picked up like a chicken, a cow, or a pig: sneak and use with an empty hand. Once it is tamed, only its owner lifts it.
+- Look at a minecart or a boat and use to set a carried animal in. It stays in the seat while you travel. Sneak and use, empty hands, lifts it back out.
+
+- Removed Herobrine.
+
 ## 1.0.0-alpha.40 (November 2026)
 
 **The trommel, worked where it stands:**

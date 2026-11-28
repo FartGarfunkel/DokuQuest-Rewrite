@@ -456,8 +456,23 @@ u8 faceSeat(const World& w, vec3 point, bool aimed, int sx, int sy, int sz, int 
   if (!aimed) return 0xFF;                              // a broken face we did not aim at would float in the middle
   int oct = aimedOctant(point, sx, sy, sz, nx, ny, nz);
   int hx = (oct >> 2) & 1, hy = (oct >> 1) & 1, hz = oct & 1;
-  if (!octPresent(cv, hx, hy, hz)) return 0xFF;
-  return packSeat(oct);
+  if (octPresent(cv, hx, hy, hz)) return packSeat(oct);
+  // the crosshair landed just off the stone (a face split on an octant boundary). Take the corner
+  // that is still there when it is the one under the click, and refuse a click in the open part.
+  const float fx = clampv(point.x - (float)sx - (float)nx * 0.001f, 0.f, 0.999f);
+  const float fy = clampv(point.y - (float)sy - (float)ny * 0.001f, 0.f, 0.999f);
+  const float fz = clampv(point.z - (float)sz - (float)nz * 0.001f, 0.f, 0.999f);
+  int best = -1; float bestD = 0.36f;
+  for (int o = 0; o < 8; o++) {
+    int x = (o >> 2) & 1, y = (o >> 1) & 1, z = o & 1;
+    if (!octPresent(cv, x, y, z)) continue;
+    float d = std::fabs(fx - (x ? 0.75f : 0.25f));
+    d = std::max(d, std::fabs(fy - (y ? 0.75f : 0.25f)));
+    d = std::max(d, std::fabs(fz - (z ? 0.75f : 0.25f)));
+    if (d < bestD) { bestD = d; best = o; }
+  }
+  if (best < 0) return 0xFF;
+  return packSeat(best);
 }
 
 u8 inheritColumn(const World& w, int x, int y, int z, u8 seat) {
@@ -1103,7 +1118,29 @@ float torchSetBack(u8 m, const ShapeNb& nb) {
   if (m < 1 || m > 4) return 0;
   int wx = m == 1 ? 1 : m == 2 ? -1 : 0, wz = m == 3 ? 1 : m == 4 ? -1 : 0;
   static const int side[4] = {3, 1, 0, 2};
-  return slabGap(nb.id(-wx, 0, -wz), nb.meta(-wx, 0, -wz), side[m - 1], nb.carve(-wx, 0, -wz)) ? 0.5f : 0.f;
+  const BlockId id = nb.id(-wx, 0, -wz);
+  const u8 meta = nb.meta(-wx, 0, -wz);
+  const u8 carve = nb.carve(-wx, 0, -wz);
+  if (slabGap(id, meta, side[m - 1], carve)) return 0.5f;
+  // a post stands in from the cell face. A rail only runs toward a neighbour, so the side you can
+  // put a torch on is the post itself.
+  const int sk = reg().tShape[id];
+  if (sk == ShapeKind::Fence) return 6.f / 16.f;
+  if (sk == ShapeKind::Wall) return 4.f / 16.f;
+  if (sk == ShapeKind::Pane) return 7.f / 16.f;
+  // a corner seat on a column whose near half is carved: the stone is half a block in
+  if (u8 seat = nb.carve(0, 0, 0); seatMark(seat)) {
+    const int o = seat & 7;
+    const int hx = (o >> 2) & 1, hy = (o >> 1) & 1, hz = o & 1;
+    auto bit = [](int x, int y, int z) { return 1 << ((x << 2) | (y << 1) | z); };
+    int near = -1, far = -1;
+    if (m == 1 && hx == 0) { near = bit(1, hy, hz); far = bit(0, hy, hz); }
+    else if (m == 2 && hx == 1) { near = bit(0, hy, hz); far = bit(1, hy, hz); }
+    else if (m == 3 && hz == 0) { near = bit(hx, hy, 1); far = bit(hx, hy, 0); }
+    else if (m == 4 && hz == 1) { near = bit(hx, hy, 0); far = bit(hx, hy, 1); }
+    if (near >= 0 && (carve & near) && !(carve & far)) return 0.5f;
+  }
+  return 0;
 }
 
 bool blockShapeBoxes(const World& w, int x, int y, int z, int purpose, std::vector<BoxF>& out) {
@@ -1119,9 +1156,13 @@ bool blockShapeBoxes(const World& w, int x, int y, int z, int purpose, std::vect
   if (!sh.micro) restShift(id, nb, rx, ry, rz);
   float sink = sh.micro ? sh.y : (float)ry;
   vec3 off(sh.micro ? sh.x : (float)rx, 0, sh.micro ? sh.z : (float)rz);
-  if (!sh.micro && reg().tRender[id] == (u8)Render::Torch) {
+  if (reg().tRender[id] == (u8)Render::Torch) {
     int m = meta & 7; float back = torchSetBack((u8)m, nb);
-    if (back > 0) off = vec3(m == 1 ? -8 : m == 2 ? 8 : 0, 0, m == 3 ? -8 : m == 4 ? 8 : 0);
+    if (m && back > 0) {
+      const float px = back * 16.f;
+      const vec3 step(m == 1 ? -px : m == 2 ? px : 0, 0, m == 3 ? -px : m == 4 ? px : 0);
+      if (sh.micro) off += step; else off = step;
+    }
   }
   bool stretch = sh.micro && sh.hang && sh.hy == 1;
   vec3 base(x, y, z);

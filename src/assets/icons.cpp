@@ -75,7 +75,26 @@ void ItemIcons::build(const TileSet& ts) {
     else {
       int t = R.tile(startsWith(it.icon, "block:") ? R.block(R.blockId(it.block)).tex : it.icon);
       if (t < 0 && !it.block.empty()) t = R.block(R.blockId(it.block)).faces[0];
+      if (t < 0 && it.has("spawnEgg")) t = R.tile("egg");
       if (t >= 0 && t < ts.count) std::memcpy(cell32.data(), ts.tile(t), cell32.size());
+      // a creature with no picture of its own: the plain egg, spotted in a colour of its name
+      if (it.has("spawnEgg") && (it.icon == "egg" || R.tile(it.icon) < 0)) {
+        u32 hsh = 2166136261u;
+        for (unsigned char c : it.str("spawnEgg")) { hsh ^= c; hsh *= 16777619u; }
+        const float hue = (hsh % 360) / 360.f * 6.f;
+        const int hi = (int)hue;
+        const float f = hue - hi, q = 1.f - f;
+        float r = 1, g = 1, b = 1;
+        if (hi == 0) { g = f; b = 0; } else if (hi == 1) { r = q; b = 0; } else if (hi == 2) { r = 0; b = f; }
+        else if (hi == 3) { r = 0; g = q; } else if (hi == 4) { r = f; g = 0; } else { g = 0; b = q; }
+        r = (r * 0.55f + 0.45f) * 0.95f; g = (g * 0.55f + 0.45f) * 0.95f; b = (b * 0.55f + 0.45f) * 0.95f;
+        for (size_t p = 0; p + 3 < cell32.size(); p += 4) {
+          if (!cell32[p + 3]) continue;
+          cell32[p] = (u8)(cell32[p] * r);
+          cell32[p + 1] = (u8)(cell32[p + 1] * g);
+          cell32[p + 2] = (u8)(cell32[p + 2] * b);
+        }
+      }
     }
     u8* d = img.data() + ((size_t)(i / cols) * size * atlasW + (i % cols) * size) * 4;
     for (int y = 0; y < size; y++) for (int x = 0; x < size; x++)
@@ -87,7 +106,7 @@ void ItemIcons::build(const TileSet& ts) {
   // (keyed by the tiles' pixels, the items and the builders' version)
   u64 h = 1469598103934665603ull;
   auto mix = [&](const void* p, size_t k) { const u8* b = (const u8*)p; for (size_t q = 0; q < k; q++) { h ^= b[q]; h *= 1099511628211ull; } };
-  const char* VERSION = "dq-item-icons-34";   // 34: a shovel's haft is a handle, not the head's metal   // 33: Vulkan drew none of the models at start-up (only the flat ones), and that was cached   // 32: a blank read-back (an ES 3.0 phone) was cached as the icons   // 8: rods drawn from their sheets; 11: the modelled pottery, molds and hammers (assets/pottery3d)
+  const char* VERSION = "dq-item-icons-35";   // 35: a chisel is short, like a throwing knife   // 34: a shovel's haft is a handle, not the head's metal   // 33: Vulkan drew none of the models at start-up (only the flat ones), and that was cached   // 32: a blank read-back (an ES 3.0 phone) was cached as the icons   // 8: rods drawn from their sheets; 11: the modelled pottery, molds and hammers (assets/pottery3d)
   mix(VERSION, std::strlen(VERSION)); mix(&size, sizeof size); mix(ts.rgba.data(), ts.rgba.size()); mix(ts.res.data(), ts.res.size());
   for (auto& it : R.items) { mix(it.key.data(), it.key.size()); mix(it.icon.data(), it.icon.size()); mix(it.block.data(), it.block.size()); h ^= 0xFF; }
   fs::path cacheDir = userSub("cache"), cacheFile = cacheDir / strFormat("icons-%016llx.png", (unsigned long long)h);

@@ -821,6 +821,17 @@ void Creature::tick(Level& lv, double dtd) {
   Creature* mnt = jockeyOf ? dynamic_cast<Creature*>(ent(lv, jockeyOf)) : nullptr;
   if (jockeyOf && (!mnt || !mnt->alive() || !alive())) { if (mnt && mnt->jockeyRider == id) mnt->jockeyRider = 0; jockeyOf = 0; mnt = nullptr; }
   if (jockeyRider) { auto* r = dynamic_cast<Creature*>(ent(lv, jockeyRider)); if (!r || r->jockeyOf != id) jockeyRider = 0; }
+  // riding in a minecart or a boat (Vehicle::seatPet puts it in the seat). It stays there; a step of its own
+  // would walk it off between the cart's ticks.
+  if (!data.value("mountedOn", std::string()).empty()) {
+    auto* ride = dynamic_cast<Vehicle*>(ent(lv, riding));
+    if (ride && !ride->removed && ride->pet == id) {
+      vel = vec3(0); onGround = true; fallDist = 0;
+      return;
+    }
+    data.erase("mountedOn");
+    riding = 0;
+  }
   vec3 from = pos; float st0 = soundT;
   update(lv, dt);
   if (!removed && alive() && T->j.value("whirlwind", false)) whirlwindTick(lv, *this, dt);

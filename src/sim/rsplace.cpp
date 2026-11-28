@@ -9,6 +9,8 @@
 #include "sim/redstone_entities.h"
 #include "sim/minecart.h"
 #include "sim/vehicles.h"
+#include "sim/creature.h"
+#include "sim/mob_carry.h"
 #include "sim/machines.h"
 #include "sim/player.h"
 #include "core/init.h"
@@ -330,6 +332,21 @@ bool rsItemUse(Level& lv, const json& a) {
       vec3 eye = p.pos + vec3(0, p.sneaking ? 1.5f : 1.62f, 0);
       float bd = hasBlock ? blockDist(eye, lookVec(p), hit) : 1e9f;
       if (vd <= bd + 0.01f) {
+        // sneak and use, empty hands: the creature riding in it comes up into your arms
+        if (p.sneaking && v->pet && p.carrying.is_null() && (!held || held->empty())) {
+          if (auto* c = dynamic_cast<Creature*>(lv.entity(v->pet))) {
+            std::string why;
+            if (!canCarryInArms(*c, p, &why)) { if (!why.empty()) vehToast(lv, p, why); return false; }
+            json out = unloadVehicle(lv, *v);
+            Entity* m = out.is_object() ? lv.entity(out.value("id", 0u)) : nullptr;
+            if (auto* up = dynamic_cast<Creature*>(m); up && pickUpCreature(lv, p, *up, &why)) {
+              std::string who = !up->petName.empty() ? up->petName : up->label();
+              vehToast(lv, p, "Carrying " + who + " \xE2\x80\x94 use to set it down", "good");
+              return false;
+            }
+          }
+          return false;
+        }
         if (dynamic_cast<Boat*>(v)) { if (!p.sneaking && !p.riding) { v->mount(lv, p); return false; } }
         else if (!p.sneaking && v->use(lv, p, held)) return false;
       }

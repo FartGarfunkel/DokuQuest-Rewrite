@@ -95,6 +95,7 @@ bool Registry::loadBase(const fs::path& dir) {
     for (auto& [k, v] : t->items()) if (mobs.contains(k) && v.is_object()) mobs[k].update(v);
   // a creature the traits say is "removed" is not in the game at all (no spawning, no egg, no entry in the book)
   if (mobs.is_object()) for (auto it = mobs.begin(); it != mobs.end();) { if (it->is_object() && it->value("removed", false)) it = mobs.erase(it); else ++it; }
+  ensureSpawnEggs();
   finalize();
   DQ_LOG("registry: %zu blocks, %zu items, %zu recipes, %zu tiles", blocks.size(), items.size(), recipes.size(), tileIndex.size());
   return true;
@@ -133,6 +134,35 @@ BlockId Registry::registerBlock(BlockDef def) {
   blocks.push_back(std::move(def));
   return blocks.back().id;
 }
+void Registry::ensureSpawnEggs() {
+  // a spawn egg for every creature, so the compendium, the creative list and a monster cage can all call one up.
+  // kinds that already have their own egg keep it. The story's figure and its climax stay out. Called again after
+  // the seasonal creatures are added (they are not in mobs.json).
+  if (!mobs.is_object()) return;
+  int made = 0;
+  for (auto& [k, m] : mobs.items()) {
+    if (!m.is_object() || m.value("npc", false)) continue;
+    if (k == "herobrine" || k == "wither_storm" || k == "end_crystal") continue;
+    if (item(k + "_spawn_egg")) continue;
+    std::string n = m.value("name", std::string());
+    if (n.empty()) n = m.value("label", std::string());
+    if (n.rfind("a ", 0) == 0) n = n.substr(2);
+    else if (n.rfind("an ", 0) == 0) n = n.substr(3);
+    else if (n.rfind("the ", 0) == 0) n = n.substr(4);
+    if (n.empty()) { n = k; for (char& c : n) if (c == '_') c = ' '; }
+    if (!n.empty()) n[0] = (char)std::toupper((unsigned char)n[0]);
+    ItemDef egg;
+    egg.key = k + "_spawn_egg";
+    egg.name = n + " Spawn Egg";
+    egg.maxStack = 64;
+    egg.icon = tile(std::string("spawn_egg_") + k) >= 0 ? std::string("spawn_egg_") + k : "egg";
+    egg.props = json{{"spawnEgg", k}};
+    registerItem(std::move(egg));
+    made++;
+  }
+  if (made) DQ_LOG("registry: %d creatures gained a spawn egg", made);
+}
+
 u16 Registry::registerItem(ItemDef def) {
   auto it = itemIds.find(def.key);
   if (it != itemIds.end()) { def.id = it->second; items[def.id] = std::move(def); return it->second; }

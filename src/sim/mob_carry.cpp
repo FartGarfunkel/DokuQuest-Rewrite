@@ -52,4 +52,8 @@ Creature* setDownCarriedCreature(Level& lv, Player& p, vec3 at, float yaw) {
   return dynamic_cast<Creature*>(placed);
 }
 
+Entity* setDownCarried(Level& lv, Player& p, vec3 at, float yaw) {
+  return setDownCarriedCreature(lv, p, at, yaw);
+}
+
 } // namespace dq

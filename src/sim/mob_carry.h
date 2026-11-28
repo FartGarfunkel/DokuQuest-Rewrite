@@ -24,5 +24,7 @@ bool pickUpCreature(Level& lv, Player& p, Creature& c, std::string* why = nullpt
 bool liftInArms(PlayerController& pc, Entity& e);
 // the carried creature back in the world at `at` facing `yaw` (nullptr: nothing carried, or not a creature)
 Creature* setDownCarriedCreature(Level& lv, Player& p, vec3 at, float yaw);
+// the same, as an entity, for a file that cannot include the creature header (its item drop clashes)
+Entity* setDownCarried(Level& lv, Player& p, vec3 at, float yaw);
 
 } // namespace dq

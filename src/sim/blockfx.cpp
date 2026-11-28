@@ -275,7 +275,7 @@ void riseFromBed(Player& p) {
     p.pos = vec3(a[0].get<float>(), a[1].get<float>(), a[2].get<float>());
     p.vel = vec3(0);
   }
-  p.data.erase("bedFrom"); p.data.erase("bedHead"); p.data.erase("bedMoved"); p.data.erase("sleepT");
+  p.data.erase("bedFrom"); p.data.erase("bedHead"); p.data.erase("bedMoved"); p.data.erase("bedBag"); p.data.erase("sleepT");
 }
 static void parkOnBed(Player& p) {
   if (p.data.value("bedMoved", false) || !p.data.contains("bedHead") || !p.data["bedHead"].is_array() || p.data["bedHead"].size() < 4) return;
@@ -283,7 +283,8 @@ static void parkOnBed(Player& p) {
   int x = h[0].get<int>(), y = h[1].get<int>(), z = h[2].get<int>(), meta = h[3].get<int>();
   const int f = meta & 3;
   if (!(meta & 4)) { x += DIRX[f]; z += DIRZ[f]; }   // the pillow half
-  p.pos = vec3(x + 0.5f - DIRX[f] * 0.4f, y + 0.56f, z + 0.5f - DIRZ[f] * 0.4f);
+  const float lift = p.data.value("bedBag", false) ? 0.02f : 0.56f;   // a bag lies on the floor; a bed's mattress is nine pixels up
+  p.pos = vec3(x + 0.5f - DIRX[f] * 0.4f, y + lift, z + 0.5f - DIRZ[f] * 0.4f);
   p.vel = vec3(0);
   p.data["bedMoved"] = true;
 }

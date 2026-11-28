@@ -76,7 +76,15 @@ int main(int argc, char** argv) {
   printf("  (%d creatures: %d tameable, %d mounts, %d carried by anyone, %d carried as pets, %d basket-only, %d aquatic, %d amphibious)\n",
          n, tameable, mounts, arms, pets, basket, aquatic, amphib);
   for (const char* k : {"wolf", "cat", "fox", "parrot", "rabbit", "maned_wolf", "toucan", "terrapin"}) CHECK(creatureType(k) && creatureType(k)->tameable(), "%s can be tamed", k);
-  for (const char* k : {"wolf", "cat", "fox", "parrot"}) CHECK(creatureType(k) && creatureType(k)->carryMode == "pet", "a tamed %s is carried by its owner", k);
+  for (const char* k : {"cat", "fox", "parrot"}) CHECK(creatureType(k) && creatureType(k)->carryMode == "pet", "a tamed %s is carried by its owner", k);
+  for (const char* k : {"wolf", "maned_wolf", "chicken", "cow", "pig"}) CHECK(creatureType(k) && creatureType(k)->carryMode == "any", "a %s is picked up like the other stock", k);
+  int noEgg = 0;
+  for (auto& [k, v] : reg().mobs.items()) {
+    if (!v.is_object() || v.value("npc", false) || k == "herobrine" || k == "wither_storm" || k == "end_crystal") continue;
+    if (!creatureType(k) || reg().item(k + "_spawn_egg")) continue;
+    noEgg++; if (noEgg <= 8) printf("  FAIL no spawn egg for %s\n", k.c_str());
+  }
+  CHECK(noEgg == 0, "every creature in the compendium has a spawn egg (%d missing)", noEgg);
   for (const char* k : {"ghoul", "skeleton", "herobrine", "ender_dragon", "warden", "night_lord"}) if (creatureType(k)) CHECK(!creatureType(k)->tameable() && creatureType(k)->carryMode.empty(), "%s: never tamed or carried", k);
   CHECK(!isCreatureType("phantom"), "no phantoms, ever");
   for (const char* k : {"cod", "squid", "shark", "orca", "hammerhead_shark", "giant_squid", "blobfish"}) if (creatureType(k)) CHECK(creatureType(k)->aquatic, "%s lives in the water", k);
@@ -208,16 +216,19 @@ int main(int argc, char** argv) {
     Creature* dog = spawnCreature(*lv, 0, "wolf", vec3(6.5f, Y, 6.5f));
     pc.targetEnt = dog->id; pc.target = RayHit{};
     pc.use(false, sneak);
-    CHECK(p.carrying.is_null() && !dog->removed, "a wild wolf won't be picked up");
-    p.inv[0] = ItemStack("bone", 1); useOnCreature(*lv, p, *dog, false); p.inv[0] = ItemStack();
-    dog->petName = "Rex";
-    CHECK(dog->owner == p.name, "tamed");
-    pc2.targetEnt = dog->id; pc2.target = RayHit{};
+    CHECK(p.carrying.is_object() && p.carrying.value("type", "") == "wolf" && dog->removed, "a wild wolf is picked up like the other stock");
+    pc.targetEnt = 0; pc.target = RayHit{}; pc.target.hit = true; pc.target.block = ivec3(6, Y - 1, 6); pc.target.normal = ivec3(0, 1, 0); pc.target.id = stone;
+    pc.placeCarried();
+    dog = findLive(*lv, "wolf");
+    CHECK(dog && p.carrying.is_null(), "and set back down");
+    if (dog) { pc.targetEnt = dog->id; pc.target = RayHit{}; p.inv[0] = ItemStack("bone", 1); useOnCreature(*lv, p, *dog, false); p.inv[0] = ItemStack(); dog->petName = "Rex"; }
+    CHECK(dog && dog->owner == p.name, "tamed");
+    if (dog) { pc2.targetEnt = dog->id; pc2.target = RayHit{}; }
     pc2.use(false, sneak);
-    CHECK(other.carrying.is_null() && !dog->removed, "someone else can't pick up your dog");
-    pc.use(false, sneak);
-    CHECK(p.carrying.is_object() && p.carrying.value("type", "") == "wolf" && dog->removed, "its owner picks it up (sneak + use, empty hand)");
-    CHECK(!dog->stay, "  ...rather than telling it to sit");
+    CHECK(dog && other.carrying.is_null() && !dog->removed, "someone else can't pick up your dog");
+    if (dog) pc.use(false, sneak);
+    CHECK(dog && p.carrying.is_object() && p.carrying.value("type", "") == "wolf" && dog->removed, "its owner picks it up (sneak + use, empty hand)");
+    CHECK(dog && !dog->stay, "  ...rather than telling it to sit");
     lv->tick(TICK_DT);
     pc.targetEnt = 0; pc.target = RayHit{}; pc.target.hit = true; pc.target.block = ivec3(9, Y - 1, 9); pc.target.normal = ivec3(0, 1, 0); pc.target.id = stone;
     pc.placeCarried();

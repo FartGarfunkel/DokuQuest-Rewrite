@@ -30,6 +30,7 @@
 #include "world/dims.h"
 #include "core/registry.h"
 #include "sim/inventory.h"
+#include "ui/book_ui.h"
 #include <algorithm>
 #include <cmath>
 #include <cctype>
@@ -3528,9 +3529,85 @@ private:
   }
 };
 
+// The journal is drawn with the hands, and the grade, the sun rays and the dream light run after it, so those
+// streaks land on the pages. The pages are copied here, after the hand, and put back after those passes.
+struct BookKeep {
+  GLuint tex = 0, fbo = 0; int tw = 0, th = 0;
+  int x = 0, y = 0, w = 0, h = 0, vx = 0, vy = 0;
+  bool on = false;
+  void ensure(int nw, int nh) {
+    if (tex && tw == nw && th == nh) return;
+    if (!tex) { glGenTextures(1, &tex); glGenFramebuffers(1, &fbo); }
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, nw, nh, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0); glBindTexture(GL_TEXTURE_2D, 0);
+    tw = nw; th = nh;
+  }
+};
+BookKeep g_bookKeep;
+
+class BookKeepLayer : public RenderLayer {
+public:
+  const char* name() const override { return "book-keep"; }
+  int order() const override { return 1200; }   // after the hand (900), before the grade (4900)
+  void drawOverlay(GameSession& s, const FrameCtx&) override {
+    g_bookKeep.on = false;
+    vec2 lo, hi;
+    if (!bookUiShieldRect(lo, hi)) return;
+    GLint vp[4]; glGetIntegerv(GL_VIEWPORT, vp);
+    if (vp[2] <= 16 || vp[3] <= 16 || s.app.width <= 0 || s.app.height <= 0) return;
+    const float sx = (float)vp[2] / (float)s.app.width, sy = (float)vp[3] / (float)s.app.height;
+    const int x0 = std::clamp((int)std::floor(lo.x * sx), 0, vp[2]);
+    const int x1 = std::clamp((int)std::ceil(hi.x * sx), 0, vp[2]);
+    const int gy0 = std::clamp(vp[3] - (int)std::ceil(hi.y * sy), 0, vp[3]);
+    const int gy1 = std::clamp(vp[3] - (int)std::floor(lo.y * sy), 0, vp[3]);
+    const int w = x1 - x0, h = gy1 - gy0;
+    if (w < 8 || h < 8) return;
+    GLint draw = 0; glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw);
+    const GLboolean sc = glIsEnabled(GL_SCISSOR_TEST);
+    if (sc) glDisable(GL_SCISSOR_TEST);
+    g_bookKeep.ensure(w, h);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, (GLuint)draw);
+    glBindTexture(GL_TEXTURE_2D, g_bookKeep.tex);
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vp[0] + x0, vp[1] + gy0, w, h);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)draw);
+    if (sc) glEnable(GL_SCISSOR_TEST);
+    g_bookKeep.x = x0; g_bookKeep.y = gy0; g_bookKeep.w = w; g_bookKeep.h = h; g_bookKeep.vx = vp[0]; g_bookKeep.vy = vp[1];
+    g_bookKeep.on = true;
+  }
+};
+
+class BookRestoreLayer : public RenderLayer {
+public:
+  const char* name() const override { return "book-restore"; }
+  int order() const override { return 4960; }   // after the grade, the sun rays and the dream light, before the colour filter
+  void drawOverlay(GameSession&, const FrameCtx&) override {
+    if (!g_bookKeep.on) return;
+    g_bookKeep.on = false;
+    GLint draw = 0; glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &draw);
+    const GLboolean sc = glIsEnabled(GL_SCISSOR_TEST);
+    if (sc) glDisable(GL_SCISSOR_TEST);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, g_bookKeep.fbo);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, (GLuint)draw);
+    glBlitFramebuffer(0, 0, g_bookKeep.w, g_bookKeep.h,
+                      g_bookKeep.vx + g_bookKeep.x, g_bookKeep.vy + g_bookKeep.y,
+                      g_bookKeep.vx + g_bookKeep.x + g_bookKeep.w, g_bookKeep.vy + g_bookKeep.y + g_bookKeep.h,
+                      GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)draw);
+    if (sc) glEnable(GL_SCISSOR_TEST);
+  }
+};
+
 void registerPostLayer() {
   registerRenderLayer([](GameSession&) { return std::make_shared<PostLayer>(); });
   registerRenderLayer([](GameSession&) { return std::make_shared<GradeLayer>(); });
+  registerRenderLayer([](GameSession&) { return std::make_shared<BookKeepLayer>(); });
+  registerRenderLayer([](GameSession&) { return std::make_shared<BookRestoreLayer>(); });
 }
 
 } // namespace dq

@@ -110,7 +110,8 @@ bool partBoxes(const World& w, int x, int y, int z, BlockId id, u8 meta, int pur
   float ox = (float)ix, oz = (float)iz, oy = (float)iy;
   if (reg().tRender[id] == (u8)Render::Torch) {
     const int m = meta & 7;
-    if (torchSetBack((u8)m, nb) > 0) { ox = m == 1 ? -8.f : m == 2 ? 8.f : 0; oz = m == 3 ? -8.f : m == 4 ? 8.f : 0; }
+    const float back = torchSetBack((u8)m, nb);
+    if (m && back > 0) { const float px = back * 16.f; ox = m == 1 ? -px : m == 2 ? px : 0; oz = m == 3 ? -px : m == 4 ? px : 0; }
   }
   for (auto& b : boxes) {
     if (purpose == ShapePurpose::Collide && b.nocol) continue;

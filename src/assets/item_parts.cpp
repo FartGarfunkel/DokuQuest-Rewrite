@@ -120,6 +120,7 @@ std::string model3dKind(const std::string& key, const ItemDef* def) {
   if (t == "axe") return "axe";
   if (t == "shovel") return "shovel";
   if (t == "hoe") return "hoe";
+  if (t == "chisel") return "chisel";
   if (key == "ogre_club") return "club";
   if (key.find("dagger") != std::string::npos) return "dagger";
   if (t == "greatsword" || key.find("greatsword") != std::string::npos) return "greatsword";
@@ -207,6 +208,14 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     m.sseg(diag(1.12f), diag(1.18f), 0.21f, 0.12f, 0.04f, 0.035f, 1.1f);                  // rounded off at the tip
     m.sseg(diag(0.9f, 0, 0.03f), diag(1.08f, 0, 0.03f), 0.03f, 0.03f, 0.02f, 0.02f, 0.75f);   // a rib
     depth = 0.05f;
+  } else if (k == "chisel") {   // short, like a throwing knife: a grip and a small flat blade
+    m.wood = true;
+    handle(m, 0.36f, 0.07f);
+    m.wood = false;
+    m.sseg(diag(0.32f), diag(0.40f), 0.08f, 0.10f, 0.06f, 0.05f, 0.85f);                 // the socket
+    m.sseg(diag(0.40f), diag(0.62f), 0.10f, 0.08f, 0.04f, 0.028f, 1.f, 0.05f);           // the blade
+    m.sseg(diag(0.62f), diag(0.70f), 0.08f, 0.06f, 0.028f, 0.012f, 1.12f, 0.04f);        // the edge
+    depth = 0.04f;
   } else if (k == "hoe") {
     handle(m, 0.9f);
     m.sseg(diag(0.76f), diag(0.9f), 0.1f, 0.1f, 0.1f, 0.1f, 0.8f);
@@ -505,7 +514,7 @@ bool buildModel3d(const std::string& k, ItemBuild& b) {
     depth = 0.09f;
   } else return false;
   // (the tools and weapons the same on both faces: an axe's head, a sword's blade, a hoe's...)
-  static const std::set<std::string> SYM = {"pickaxe", "axe", "shovel", "hoe", "sword", "dagger", "greatsword", "spear", "mace", "saw", "scythe", "javelin", "club", "hammer", "longsword", "battleaxe", "warhammer", "throwing_knife", "throwing_axe"};
+  static const std::set<std::string> SYM = {"pickaxe", "axe", "shovel", "hoe", "chisel", "sword", "dagger", "greatsword", "spear", "mace", "saw", "scythe", "javelin", "club", "hammer", "longsword", "battleaxe", "warhammer", "throwing_knife", "throwing_axe"};
   if (SYM.count(k)) {   // both faces alike: the grid has no middle layer (its centres sit half a voxel either side of the blade's plane),
         // so where the blade thins to its edges one layer was left on one side: that face flat, the other stepped
       VoxelGrid& G = b.P.g; const int Z = G.size.z;

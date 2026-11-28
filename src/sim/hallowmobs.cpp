@@ -559,6 +559,7 @@ void registerHalloweenMobs() {
   if (done) return;
   done = true;
   injectTypes();
+  reg().ensureSpawnEggs();
   reloadCreatureTypes();
   registerRigAnim("hw_pumpkin", animPumpkin);
   { CreatureHooks h; h.brain = pumpkinBrain; h.afterHurt = pumpkinHurt; setCreatureHooks("pumpkin_creature", h); }

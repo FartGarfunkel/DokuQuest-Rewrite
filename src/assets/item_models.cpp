@@ -842,7 +842,27 @@ bool buildItemModel(const std::string& key, VoxelModel& out) {
 
   // ---- everything else: built from parts, or sculpted from the picture
   int t = def ? tileOf(def->icon) : -1;
+  if (def && def->has("spawnEgg") && t < 0) t = tileOf("egg");
   SpriteInfo I = SpriteInfo::of(ts, t);
+  // no drawn egg of its own: the plain egg, in a colour of the creature, so the compendium can tell them apart
+  if (def && def->has("spawnEgg") && (def->icon == "egg" || tileOf(def->icon) < 0) && !I.empty()) {
+    u32 hsh = 2166136261u;
+    for (unsigned char c : def->str("spawnEgg")) { hsh ^= c; hsh *= 16777619u; }
+    const float hue = (hsh % 360) / 360.f * 6.f;
+    const int hi = (int)hue;
+    const float f = hue - (float)hi, q = 1.f - f;
+    float rr = 1, gg = 1, bb = 1;
+    if (hi == 0) { gg = f; bb = 0; } else if (hi == 1) { rr = q; bb = 0; } else if (hi == 2) { rr = 0; bb = f; }
+    else if (hi == 3) { rr = 0; gg = q; } else if (hi == 4) { rr = f; gg = 0; } else { gg = 0; bb = q; }
+    rr = (rr * 0.55f + 0.45f) * 0.95f; gg = (gg * 0.55f + 0.45f) * 0.95f; bb = (bb * 0.55f + 0.45f) * 0.95f;
+    auto mul = [&](u32 c) {
+      if (!(c >> 24)) return c;
+      return voxRGBA((int)((c & 255) * rr), (int)(((c >> 8) & 255) * gg), (int)(((c >> 16) & 255) * bb), (u8)(c >> 24));
+    };
+    for (u32& c : I.raw) c = mul(c);
+    for (u32& c : I.fill) c = mul(c);
+    for (auto& px : I.px) { px.r = (int)(px.r * rr); px.g = (int)(px.g * gg); px.b = (int)(px.b * bb); }
+  }
   if (def && !I.empty() && model3dKind(base, def) == "hammer") {
     // a hammer, a real one: a straight haft with a leather grip, the squared head across its top (the smith's with a
     // cross-peen), coloured from its own picture (the wood of its handle, the stone, flint or iron of its head). Built

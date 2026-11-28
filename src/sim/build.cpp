@@ -325,10 +325,12 @@ void PlayerController::placeBlock(const RayHit& hit, const ItemDef& def, ItemSta
     if (ny == 1 || (R.tReplaceable[hit.id] && R.tSolid[below])) { if (!belowTop) { if (R.tSolid[below]) toastMsg("Torches stand on a whole top face"); return; } meta = 0; }
     else if (ny == -1) return;
     else {
-      // a full block's face is enough: the seat picks the centre or the aimed corner. Fences, panes and odd shapes still refuse.
+      // a full face, a clean slab, or the side of a fence, wall or pane. The seat picks the centre or the
+      // corner that is still there. The torch stands in the next cell and steps back onto a post or a slab's inner face.
       BlockId sid = hit.id; int sk = R.tShape[sid]; int sm = w.getMeta(hit.block.x, hit.block.y, hit.block.z) & 7;
       Render rr = (Render)R.tRender[sid];
-      bool whole = fullSolid(sid) || (R.tSolid[sid] && (!sk ? (rr == Render::Cube || rr == Render::Cutout) && carveFaceDepth(w.getCarve(hit.block.x, hit.block.y, hit.block.z), nx, ny, nz) >= 0
+      const bool post = sk == ShapeKind::Fence || sk == ShapeKind::Wall || sk == ShapeKind::Pane;
+      bool whole = post || fullSolid(sid) || (R.tSolid[sid] && (!sk ? (rr == Render::Cube || rr == Render::Cutout) && carveFaceDepth(w.getCarve(hit.block.x, hit.block.y, hit.block.z), nx, ny, nz) >= 0
                                          : sk == ShapeKind::Slab && (sm == 6 || (sm >= 2 && (sm - 2 == dirOf((float)-nx, (float)-nz) || sm - 2 == dirOf((float)nx, (float)nz))))));
       if (!whole) { toastMsg("Torches fix to the full face of a block \xE2\x80\x94 or stand one on top"); return; }
       meta = nx == 1 ? 1 : nx == -1 ? 2 : nz == 1 ? 3 : 4;
@@ -1030,6 +1032,7 @@ void PlayerController::sleep(int x, int y, int z, u8 meta) {
   p.vel.x = p.vel.z = 0;
   p.data["bedFrom"] = {p.pos.x, p.pos.y, p.pos.z};
   p.data["bedHead"] = {x, y, z, (int)meta};
+  p.data["bedBag"] = reg().block(world().getBlock(x, y, z)).has("bag");
   p.data["sleepT"] = 0.0;
   p.data["bedMoved"] = false;
   toastMsg("Sleeping\xE2\x80\xA6 spawn point set", "good");
@@ -1186,8 +1189,25 @@ void PlayerController::placeCarried() {
   World& w = world();
   const Registry& R = reg();
   json c = p.carrying;
-  if (!target.hit) { toastMsg("Look at the ground to set it down"); return; }
+  if (!target.hit && c.value("kind", "") != "mob") { toastMsg("Look at the ground to set it down"); return; }
   if (lv.isRemote() && c.value("kind", "") == "mob") { useOnHost(*this, "block", &target); return; }   // (the host sets it down: sim/basket.cpp)
+  // a creature in your arms goes into the cart or the boat you are looking at
+  if (c.value("kind", "") == "mob") {
+    float vd = 0;
+    if (Vehicle* v = vehiclePick(lv, p, 5.f, &vd)) {
+      Entity* cr = setDownCarried(lv, p, v->pos + vec3(0, 0.15f, 0), p.yaw);
+      json load = json::object(); load["kind"] = "mob"; if (cr) load["id"] = cr->id;
+      if (cr && loadVehicle(lv, *v, load)) {
+        toastMsg("Set in \xE2\x80\x94 sneak and use to lift it out", "good");
+        swingArm();
+        return;
+      }
+      toastMsg(cr ? "No room for it there" : "It won't go in");
+      swingArm();
+      return;
+    }
+  }
+  if (!target.hit) { toastMsg("Look at the ground to set it down"); return; }
   ivec3 t = placeTarget(target);
   if (!inWorldY(t.y) || !R.tReplaceable[w.getBlock(t.x, t.y, t.z)]) { toastMsg("No room to set it down there"); return; }
   if (c.value("kind", "") == "block") {

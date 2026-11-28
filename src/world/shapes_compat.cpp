@@ -44,11 +44,16 @@ bool worldBoxes(const World& w, int x, int y, int z, BlockId id, int purpose, st
     int ix = 0, iy = 0, iz = 0;
     restShift(id, nb, ix, iy, iz);
     ox = (float)ix; oy = (float)iy; oz = (float)iz;
-    if (reg().tRender[id] == (u8)Render::Torch) {
-      int m = meta & 7;
-      if (torchSetBack((u8)m, nb) > 0) { ox = m == 1 ? -8.f : m == 2 ? 8.f : 0; oz = m == 3 ? -8.f : m == 4 ? 8.f : 0; }
-    }
     if (reg().block(id).str("shape") == "chain" && fullSolid(w.getBlock(x, y + 1, z)) && carveFaceDepth(w.getCarve(x, y + 1, z), 0, -1, 0) == 8) stretch = true;
+  }
+  if (reg().tRender[id] == (u8)Render::Torch) {
+    int m = meta & 7;
+    const float back = torchSetBack((u8)m, nb);
+    if (m && back > 0) {
+      const float px = back * 16.f;
+      const float sx = m == 1 ? -px : m == 2 ? px : 0, sz = m == 3 ? -px : m == 4 ? px : 0;
+      if (sh.micro) { ox += sx; oz += sz; } else { ox = sx; oz = sz; }
+    }
   }
   for (auto& b : boxes) {
     if (purpose == ShapePurpose::Collide && b.nocol) continue;

@@ -738,7 +738,7 @@ void emitTorch(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int
       vec3 at((float)x, (float)y, (float)z);
       if (sh.micro) at += vec3(sh.x, sh.y, sh.z) / 16.f;
       else if (!m) at.y += sinkOffset(id, nb) / 16.f;
-      else {   // on a wall that stands back (a vertical slab, a carved face): the torch steps back onto it
+      if (m) {   // onto a face that stands back: a vertical slab, a carved column, a fence post
         const float back = torchSetBack((u8)m, nb);
         const float wx = m == 1 ? 1.f : m == 2 ? -1.f : 0.f, wz = m == 3 ? 1.f : m == 4 ? -1.f : 0.f;
         at -= vec3(wx, 0, wz) * back;
@@ -761,7 +761,7 @@ void emitTorch(MeshCtx& c, std::vector<ChunkVertex>& dst, BlockId id, int x, int
   SeatShift sh = seatShiftOf(id, (u8)meta, c.carveAt(x, y, z), nb);
   float bx = x + 0.5f, by = (float)y, bz = z + 0.5f;
   if (m) {
-    float back = sh.micro ? 0.f : torchSetBack((u8)m, nb);   // a clean slab steps back; a corner seat does not
+    float back = torchSetBack((u8)m, nb);   // a clean slab, an inset corner, or a post
     bx = x + 0.5f - wx * (0.5f + back - 1.6f * P); bz = z + 0.5f - wz * (0.5f + back - 1.6f * P); by = y + 3.5f * P;
   } else if (!sh.micro) by += sinkOffset(id, nb) / 16.f;
   if (sh.micro) { bx += sh.x * P; by += sh.y * P; bz += sh.z * P; }

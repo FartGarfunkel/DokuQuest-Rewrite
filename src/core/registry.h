@@ -85,6 +85,7 @@ public:
   bool loadDataPack(const fs::path& dir, const std::string& modId);   // same file names, merged in
   BlockId registerBlock(BlockDef def);                       // returns id (existing key -> replaced)
   u16 registerItem(ItemDef def);
+  void ensureSpawnEggs();   // an egg for every creature that has none yet (the compendium, the creative list, a monster cage)
   void addRecipe(Recipe r) { recipes.push_back(std::move(r)); }
   void finalize();                                           // rebuild tables, resolve faces/drops
 

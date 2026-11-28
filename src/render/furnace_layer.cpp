@@ -80,7 +80,7 @@ public:
         sp.rackW = (x1 - x0) / 16.f; sp.rackH = (ty - fy) / 16.f;
       }
       if (trom) {   // what was set in the hopper, lying in the mouth; the fuel is already the firebox slot
-        sp.rackAt = vec3(x, y, z) + turn(vec3(8.f, 13.05f, 8.f), q) / 16.f;
+        sp.rackAt = vec3(x, y, z) + turn(vec3(8.f, 11.15f, 8.f), q) / 16.f;
         sp.rackW = 0.32f; sp.rackH = 0.2f;
         if (e.contains("items") && e["items"].is_array()) for (int k = 0; k < 4 && k < (int)e["items"].size(); k++) {
           const ItemStack s = ItemStack::fromJson(e["items"][k]);

@@ -47,6 +47,10 @@ bool bookUiCrop(vec4& uv);
 vec2 bookUiSize();                     // the picture's size (logical pixels)                  // the screens are drawing into the book now (they leave out their own drawn book)              // the pages' picture (GL texture; 0 none yet)
 // where the open pages are on the window (logical pixels, top left and bottom right), set by the hand view each frame
 void bookUiSetRect(vec2 lo, vec2 hi);
+// the pages' rectangle this frame, a little past the paper, so the light passes can put the clean pages back
+void bookUiClearShield();
+void bookUiShield(vec2 lo, vec2 hi);
+bool bookUiShieldRect(vec2& lo, vec2& hi);
 // a bookmark ribbon's showing part, as drawn (ui/book.cpp drawBookTab): in the hands it is cloth of its own
 void bookUiRibbon(ImVec2 a, ImVec2 b);
 // the journal's picture for the hand view: the texture, the crop, the drawn book and the ribbons in it (false: none)

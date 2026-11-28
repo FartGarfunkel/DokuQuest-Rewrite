@@ -623,13 +623,13 @@ void CharacterLayer::update(GameSession& s, double dt) {
         for (int dy = -1; dy <= 1; dy++) for (int dz = -2; dz <= 2; dz++) for (int dx = -2; dx <= 2; dx++) {
           const int x = c0.x + dx, y = c0.y + dy, z = c0.z + dz;
           const BlockId id = bw.getBlock(x, y, z);
-          if (!bhas(id, BF::Bed) || reg().block(id).has("bag")) continue;
+          if (!bhas(id, BF::Bed)) continue;
           const u8 m = bw.getMeta(x, y, z); const int f = m & 3;
           const ivec3 head = (m & 4) ? ivec3(x, y, z) : ivec3(x + DIRX[f], y, z + DIRZ[f]);
           if (!bhas(bw.getBlock(head.x, head.y, head.z), BF::Bed)) continue;
           const vec3 H = vec3(head) + vec3(0.5f, 0, 0.5f), Dd((float)DIRX[f], 0, (float)DIRZ[f]);
           const float d = glm::distance(vec3(p->pos.x, 0, p->pos.z), vec3(H.x, 0, H.z) - Dd * 0.5f);
-          if (d < best) { best = d; st.bedHead = H; st.bedDir = Dd; st.bedTop = (float)head.y + 0.5625f; st.bedFound = true; }
+          if (d < best) { best = d; st.bedHead = H; st.bedDir = Dd; st.bedTop = (float)head.y + (reg().block(id).has("bag") ? 3.2f / 16.f : 0.5625f); st.bedFound = true; }
         }
         if (st.bedFound) {   // the near side: they sit on the edge they came to it from
           const vec3 mid = st.bedHead - st.bedDir * 0.5f, side(-st.bedDir.z, 0, st.bedDir.x);
@@ -637,7 +637,7 @@ void CharacterLayer::update(GameSession& s, double dt) {
           if (st.bedU <= 0) { st.standPos = p->pos; st.standYaw = p->yaw; }
           if (st.bedU <= 0 && p->pos.y > st.bedTop - 0.1f) {   // (already on it, sim/blockfx.cpp parkOnBed: someone who came in
             st.bedU = 1;                                       //  or looked round once they'd lain down sees them lying there)
-            st.standPos = vec3(mid.x, st.bedTop - 0.5625f, mid.z) + st.bedSide * 0.9f; st.standYaw = yawFacing(-st.bedSide);
+            st.standPos = vec3(mid.x, st.bedHead.y, mid.z) + st.bedSide * 0.9f; st.standYaw = yawFacing(-st.bedSide);
           }
         }
       }

@@ -376,32 +376,37 @@ void buildFurnaceModels(TileSet& ts) {
     (*D)[front] = fm;
     if (lit >= 0) { FurnaceModel fl = fm; fl.back.boxes[0].face[0].tile = lit; (*D)[lit] = fl; }   // (lit: the same holes, its fire behind them)
   }
-  {   // the trommel: its own machine, not a hollowed cube. A drum on two cradles, a hopper open on top, a firebox open in the front.
+  {   // the trommel keeps its own pictures, with two real openings cut in: the hopper on top, the firebox in the front.
+    // One shell. Nothing floats, and nothing sticks out of the block.
     const int front = at("trommel_front"), lit = at("trommel_front_lit"), side = at("trommel_side"), top = at("trommel_top"), bot = at("trommel_bottom");
     if (front >= 0 && side >= 0 && top >= 0) {
-      auto face = [&](int tile) { PackModelFace f; f.tile = tile; f.uv = vec4(0, 0, 16, 16); return f; };
-      auto box = [&](vec3 a, vec3 b, int tile) {
-        PackModelBox bx; bx.from = a; bx.to = b; for (int i = 0; i < 6; i++) bx.face[i] = face(tile); return bx;
+      auto face = [&](int tile, float u0, float v0, float u1, float v1) { PackModelFace f; f.tile = tile; f.uv = vec4(u0, v0, u1, v1); return f; };
+      auto put = [&](FurnaceModel& fm, vec3 a, vec3 b) {
+        PackModelBox bx; bx.from = a; bx.to = b;
+        const PackModelFace inn = face(front, 6, 6, 10, 10);   // the dark of the firebox, on the inside of a hole
+        for (int i = 0; i < 6; i++) bx.face[i] = inn;
+        if (a.z <= 0.01f) bx.face[0] = face(front, 16 - b.x, 16 - b.y, 16 - a.x, 16 - a.y);
+        if (b.z >= 15.99f) bx.face[1] = face(side, a.x, 16 - b.y, b.x, 16 - a.y);
+        if (a.x <= 0.01f) bx.face[2] = face(side, a.z, 16 - b.y, b.z, 16 - a.y);
+        if (b.x >= 15.99f) bx.face[3] = face(side, 16 - b.z, 16 - b.y, 16 - a.z, 16 - a.y);
+        if (b.y >= 15.99f) bx.face[4] = face(top, a.x, a.z, b.x, b.z);
+        if (a.y <= 0.01f && bot >= 0) bx.face[5] = face(bot, a.x, a.z, b.x, b.z);
+        fm.body.boxes.push_back(bx);
       };
       FurnaceModel fm;
-      fm.floorY = 3; fm.floorX0 = 5; fm.floorX1 = 11; fm.topY = 6;   // the firebox floor, where the fuel lies
-      fm.up = true; fm.upFloorY = 13; fm.upTopY = 16; fm.upX0 = 5; fm.upX1 = 11;   // the hopper mouth
-      fm.body.boxes.push_back(box({0, 0, 0}, {16, 3, 16}, bot >= 0 ? bot : side));          // the bed
-      fm.body.boxes.push_back(box({0, 3, 3}, {3, 14, 13}, side));                            // the two cradles
-      fm.body.boxes.push_back(box({13, 3, 3}, {16, 14, 13}, side));
-      fm.body.boxes.push_back(box({3, 4, 6}, {13, 13, 14}, side));                           // the drum
-      fm.body.boxes.push_back(box({4, 5, 5}, {12, 12, 6}, side));                            // its front cap, behind the firebox
-      fm.body.boxes.push_back(box({4, 6, 0}, {5, 8, 6}, front));                             // the firebox frame
-      fm.body.boxes.push_back(box({11, 6, 0}, {12, 8, 6}, front));
-      fm.body.boxes.push_back(box({5, 6, 0}, {11, 8, 6}, front));                            // its lintel
-      fm.body.boxes.push_back(box({5, 2, 0}, {11, 3, 6}, front));                            // its sill
-      fm.body.boxes.push_back(box({3, 13, 3}, {13, 16, 5}, top));                            // the hopper rim, open in the middle
-      fm.body.boxes.push_back(box({3, 13, 11}, {13, 16, 13}, top));
-      fm.body.boxes.push_back(box({3, 13, 5}, {5, 16, 11}, top));
-      fm.body.boxes.push_back(box({11, 13, 5}, {13, 16, 11}, top));
-      fm.body.boxes.push_back(box({5, 12.6f, 5}, {11, 13, 11}, side));                       // the hopper's floor, what you set in sits on it
-      PackModelBox back; back.from = vec3(5, 3, 5.6f); back.to = vec3(11, 6, 6); back.shade = false;
-      back.face[0] = face(front);                                                            // the firebox's back wall, seen through the opening
+      fm.floorY = 4; fm.floorX0 = 4; fm.floorX1 = 12; fm.topY = 11;   // fuel lies on the floor of the front opening
+      fm.up = true; fm.upFloorY = 11; fm.upTopY = 16; fm.upX0 = 5; fm.upX1 = 11;
+      put(fm, {0, 0, 0}, {16, 4, 16});          // the bed, under the firebox
+      put(fm, {0, 4, 0}, {4, 11, 16});          // left of the front opening
+      put(fm, {12, 4, 0}, {16, 11, 16});        // right of it
+      put(fm, {4, 4, 7}, {12, 11, 16});         // the drum, behind the opening
+      put(fm, {4, 11, 0}, {12, 16, 5});         // the front lip over the firebox
+      put(fm, {0, 11, 5}, {5, 16, 11});         // the hopper rim, open in the middle
+      put(fm, {11, 11, 5}, {16, 16, 11});
+      put(fm, {0, 11, 11}, {16, 16, 16});
+      put(fm, {5, 10.6f, 5}, {11, 11, 11});     // the shelf you set things on
+      PackModelBox back; back.from = vec3(4, 4, 6.7f); back.to = vec3(12, 11, 7); back.shade = false;
+      back.face[0] = face(front, 4, 5, 12, 12);                        // the back of the firebox, seen through the opening
       fm.back.boxes.push_back(back);
       (*D)[front] = fm;
       if (lit >= 0) { FurnaceModel fl = fm; fl.back.boxes[0].face[0].tile = lit; (*D)[lit] = fl; }
